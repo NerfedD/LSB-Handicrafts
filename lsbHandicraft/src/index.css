@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* FLUID TYPOGRAPHY CORE */
+  /* This scales the base font size from 14px on small phones up to 18px on 1080p+ displays. */
+  /* Because Tailwind uses 'rem', ALL text, padding, and margins will now seamlessly adjust! */
+  font-size: clamp(14px, 1vw + 12px, 18px);
+  
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+  background-color: #f8fafc;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Adds a smooth scroll behavior globally */
+  scroll-behavior: smooth;
+}
+
+/* Super seamless page transition animation */
+@keyframes smoothFadeIn {
+  0% { opacity: 0; transform: translateY(10px) scale(0.99); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.seamless-view {
+  animation: smoothFadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }

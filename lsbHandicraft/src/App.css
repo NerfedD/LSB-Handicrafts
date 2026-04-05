@@ -1,0 +1,32 @@
+/* Custom animations and utility classes that are easier 
+  to write in standard CSS than Tailwind.
+*/
+
+/* A smooth fade-in and slide-up animation for our cards */
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUpFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Safe area padding for modern mobile phones (like iPhones with the notch at the bottom) */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+/* A glass effect class if you want to make any menus slightly transparent and blurred */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
