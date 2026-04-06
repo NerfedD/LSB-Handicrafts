@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../components/ui/Icons';
 
-export default function Dashboard({ inventory }) {
+export default function Dashboard({ inventory = [] }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex justify-between items-end mb-4 md:mb-8">

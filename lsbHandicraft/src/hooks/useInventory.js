@@ -18,7 +18,11 @@ export const useInventory = () => {
   }, [inventory]);
 
   const updateInventory = (updatedInventory) => {
-    setInventory(updatedInventory);
+    if (Array.isArray(updatedInventory)) {
+      setInventory(updatedInventory);
+    } else {
+      console.warn('Attempted to set inventory to a non-array value:', updatedInventory);
+    }
   };
 
   const addItem = (item) => {
@@ -27,10 +31,11 @@ export const useInventory = () => {
       id: Date.now(), 
       status: item.stock < 50 ? 'Low Stock' : 'In Stock' 
     };
-    setInventory(prev => [...prev, newRecord]);
+    setInventory(prev => Array.isArray(prev) ? [...prev, newRecord] : [newRecord]);
   };
 
   const editItem = (id, updatedData) => {
+    if (!Array.isArray(inventory)) return;
     const updatedInventory = inventory.map(item => 
       item.id === id ? { ...updatedData, status: updatedData.stock < 50 ? 'Low Stock' : 'In Stock' } : item
     );
@@ -38,7 +43,7 @@ export const useInventory = () => {
   };
 
   const removeItem = (itemId) => {
-    const updatedInventory = deleteFromInventory(inventory, itemId);
+    const updatedInventory = deleteFromInventory(Array.isArray(inventory) ? inventory : [], itemId);
     setInventory(updatedInventory);
   };
 

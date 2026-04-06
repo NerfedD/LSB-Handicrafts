@@ -19,7 +19,10 @@ export default function AdminLayout() {
   const { isDarkMode, toggleTheme } = useTheme();
   const { inventory, addItem, editItem, removeItem } = useInventory();
 
-  const filteredInventory = inventory.filter(item => {
+  // Ensure inventory is an array before filtering
+  const safeInventory = Array.isArray(inventory) ? inventory : [];
+
+  const filteredInventory = safeInventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterCategory === 'All' || item.category === filterCategory;
