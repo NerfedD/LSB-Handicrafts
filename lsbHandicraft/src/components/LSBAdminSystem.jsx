@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Icons } from './Icons';
 import Sidebar from './layout/Sidebar';
 import Header from './layout/Header';
@@ -49,42 +49,54 @@ export default function LSBAdminSystem() {
     localStorage.setItem('lsb_inventory', JSON.stringify(inventory));
   }, [inventory]);
 
-  const toggleTheme = () => {
-    if (isDarkMode) {
-      document.documentElement.classList.remove('dark');
-      setIsDarkMode(false);
-    } else {
-      document.documentElement.classList.add('dark');
-      setIsDarkMode(true);
-    }
-  };
+  const toggleTheme = useCallback(() => {
+    setIsDarkMode(prev => {
+      if (prev) {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+      return !prev;
+    });
+  }, []);
 
-  const filteredInventory = inventory.filter(item => {
+  const filteredInventory = useMemo(() => inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = filterCategory === 'All' || item.category === filterCategory;
     return matchesSearch && matchesFilter;
-  });
+  }), [inventory, searchQuery, filterCategory]);
 
-  const handleView = (record) => { setCurrentRecord(record); setActiveTab('detail'); };
-  const handleEdit = (record) => { setCurrentRecord(record); setFormData(record); setActiveTab('edit'); };
+  const handleView = useCallback((record) => {
+    setCurrentRecord(record);
+    setActiveTab('detail');
+  }, []);
+
+  const handleEdit = useCallback((record) => {
+    setCurrentRecord(record);
+    setFormData(record);
+    setActiveTab('edit');
+  }, []);
   
-  const handleSaveCreate = (e) => {
+  const resetFormData = useCallback(() => {
+    setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 });
+  }, []);
+
+  const handleSaveCreate = useCallback((e) => {
     e.preventDefault();
     const newRecord = { ...formData, id: Date.now(), status: formData.stock < 50 ? 'Low Stock' : 'In Stock' };
-    setInventory([...inventory, newRecord]);
+    setInventory(prev => [...prev, newRecord]);
     setActiveTab('inventory');
-    setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 });
-  };
+    resetFormData();
+  }, [formData, resetFormData]);
 
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = useCallback((e) => {
     e.preventDefault();
-    const updatedInventory = inventory.map(item => 
+    setInventory(prev => prev.map(item => 
       item.id === currentRecord.id ? { ...formData, status: formData.stock < 50 ? 'Low Stock' : 'In Stock' } : item
-    );
-    setInventory(updatedInventory);
+    ));
     setActiveTab('inventory');
-  };
+  }, [formData, currentRecord]);
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-[#08080b] text-slate-800 dark:text-gray-300 font-sans overflow-hidden selection:bg-violet-500/30 transition-colors duration-300">

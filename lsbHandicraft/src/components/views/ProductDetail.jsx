@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-export default function ProductDetail({ currentRecord, setActiveTab, handleEdit }) {
+function ProductDetail({ currentRecord, setActiveTab, handleEdit }) {
   if (!currentRecord) return null;
 
   return (
@@ -43,3 +43,5 @@ export default function ProductDetail({ currentRecord, setActiveTab, handleEdit 
     </div>
   );
 }
+
+export default memo(ProductDetail);

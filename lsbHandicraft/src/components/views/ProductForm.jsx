@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-export default function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit }) {
+function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit }) {
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <button onClick={() => setActiveTab('inventory')} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2 transition-colors">
@@ -58,3 +58,5 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
     </div>
   );
 }
+
+export default memo(ProductForm);

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-export default function InventoryList({ 
+function InventoryList({ 
   searchQuery, setSearchQuery, 
   filterCategory, setFilterCategory, 
   filteredInventory, handleView, handleEdit, 
@@ -77,3 +77,5 @@ export default function InventoryList({
     </div>
   );
 }
+
+export default memo(InventoryList);

@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Icons } from '../Icons';
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+function Sidebar({ activeTab, setActiveTab }) {
   return (
     <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0b0b0f] border-r border-slate-200 dark:border-white/5 h-full transition-colors duration-300">
       <div className="p-6 flex items-center gap-3">
@@ -46,3 +46,5 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     </aside>
   );
 }
+
+export default memo(Sidebar);
