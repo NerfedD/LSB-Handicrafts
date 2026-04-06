@@ -1,11 +1,27 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function InventoryList({ 
   searchQuery, setSearchQuery, 
   filterCategory, setFilterCategory, 
-  filteredInventory, handleView, handleEdit, 
+  filteredInventory, handleView, handleEdit, handleDelete,
   setActiveTab, setFormData 
 }) {
+  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, itemId: null, itemName: '' });
+
+  const openDeleteDialog = (itemId, itemName) => {
+    setDeleteConfirm({ show: true, itemId, itemName });
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm.itemId) {
+      handleDelete(deleteConfirm.itemId);
+      setDeleteConfirm({ show: false, itemId: null, itemName: '' });
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({ show: false, itemId: null, itemName: '' });
+  };
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-4">
@@ -63,7 +79,8 @@ export default function InventoryList({
                   </td>
                   <td className="px-6 py-3 md:py-4 text-right opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleView(item)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-violet-600 dark:hover:text-white px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg mr-2 transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">View</button>
-                    <button onClick={() => handleEdit(item)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-amber-600 dark:hover:text-white px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">Edit</button>
+                    <button onClick={() => handleEdit(item)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-amber-600 dark:hover:text-white px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg mr-2 transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">Edit</button>
+                    <button onClick={() => openDeleteDialog(item.id, item.name)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -74,6 +91,37 @@ export default function InventoryList({
           </table>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {deleteConfirm.show && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#15151a] border border-slate-200 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 mb-4 mx-auto">
+              <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white text-center mb-2">Delete Product?</h3>
+            <p className="text-slate-600 dark:text-gray-400 text-center text-sm md:text-base mb-6">
+              Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white">"{deleteConfirm.itemName}"</span>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={cancelDelete}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors text-sm md:text-base"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white shadow-[0_4px_15px_rgba(220,38,38,0.2)] transition-colors text-sm md:text-base"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,7 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export default function ProductDetail({ currentRecord, setActiveTab, handleEdit }) {
+export default function ProductDetail({ currentRecord, setActiveTab, handleEdit, handleDelete }) {
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+
   if (!currentRecord) return null;
+
+  const confirmDelete = () => {
+    handleDelete(currentRecord.id);
+    setDeleteConfirm(false);
+  };
 
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -36,9 +43,43 @@ export default function ProductDetail({ currentRecord, setActiveTab, handleEdit 
           </div>
         </div>
 
-        <button onClick={() => handleEdit(currentRecord)} className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white py-3 md:py-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 transition-all text-sm md:text-base">
+        <button onClick={() => handleEdit(currentRecord)} className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white py-3 md:py-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 transition-all text-sm md:text-base mb-3">
           Edit Details
         </button>
+        <button onClick={() => setDeleteConfirm(true)} className="w-full bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 py-3 md:py-4 rounded-xl font-bold border border-red-200 dark:border-red-500/20 transition-all text-sm md:text-base">
+          Delete Product
+        </button>
+
+        {/* Delete Confirmation Dialog */}
+        {deleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-[#15151a] border border-slate-200 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 mb-4 mx-auto">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white text-center mb-2">Delete Product?</h3>
+              <p className="text-slate-600 dark:text-gray-400 text-center text-sm md:text-base mb-6">
+                Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white">"{currentRecord.name}"</span>? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setDeleteConfirm(false)}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors text-sm md:text-base"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white shadow-[0_4px_15px_rgba(220,38,38,0.2)] transition-colors text-sm md:text-base"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,6 +6,7 @@ import Dashboard from './views/Dashboard';
 import InventoryList from './views/InventoryList';
 import ProductForm from './views/ProductForm';
 import ProductDetail from './views/ProductDetail';
+import { saveInventory, loadInventory, deleteFromInventory } from '../utils/storageManager';
 
 const initialInventory = [
   { id: 1, sku: 'SB-001', name: 'Styro Ball 2 inch', category: 'Styro Balls', price: 15, stock: 120, status: 'In Stock' },
@@ -22,13 +23,9 @@ export default function LSBAdminSystem() {
   const [currentRecord, setCurrentRecord] = useState(null);
   const [formData, setFormData] = useState({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 });
 
-  // Initialize state with localStorage to persist data across reloads
+  // Initialize state with localStorage using storageManager
   const [inventory, setInventory] = useState(() => {
-    const savedInventory = localStorage.getItem('lsb_inventory');
-    if (savedInventory) {
-      return JSON.parse(savedInventory);
-    }
-    return initialInventory;
+    return loadInventory(initialInventory);
   });
 
   // Handle Dark Mode
@@ -44,9 +41,9 @@ export default function LSBAdminSystem() {
     }
   }, []);
 
-  // Save to localStorage whenever inventory changes
+  // Save to localStorage whenever inventory changes using storageManager
   useEffect(() => {
-    localStorage.setItem('lsb_inventory', JSON.stringify(inventory));
+    saveInventory(inventory);
   }, [inventory]);
 
   const toggleTheme = () => {
@@ -68,6 +65,13 @@ export default function LSBAdminSystem() {
 
   const handleView = (record) => { setCurrentRecord(record); setActiveTab('detail'); };
   const handleEdit = (record) => { setCurrentRecord(record); setFormData(record); setActiveTab('edit'); };
+  
+  const handleDelete = (itemId) => {
+    const updatedInventory = deleteFromInventory(inventory, itemId);
+    setInventory(updatedInventory);
+    setCurrentRecord(null);
+    setActiveTab('inventory');
+  };
   
   const handleSaveCreate = (e) => {
     e.preventDefault();
@@ -117,7 +121,7 @@ export default function LSBAdminSystem() {
                 searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                 filterCategory={filterCategory} setFilterCategory={setFilterCategory}
                 filteredInventory={filteredInventory}
-                handleView={handleView} handleEdit={handleEdit}
+                handleView={handleView} handleEdit={handleEdit} handleDelete={handleDelete}
                 setActiveTab={setActiveTab} setFormData={setFormData}
               />
             )}
@@ -134,7 +138,8 @@ export default function LSBAdminSystem() {
               <ProductDetail 
                 currentRecord={currentRecord} 
                 setActiveTab={setActiveTab} 
-                handleEdit={handleEdit} 
+                handleEdit={handleEdit}
+                handleDelete={handleDelete}
               />
             )}
 
