@@ -6,7 +6,10 @@ export default function Sidebar({ activeTab, setActiveTab }) {
     <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#0b0b0f] border-r border-slate-200 dark:border-white/5 h-full transition-colors duration-300">
       <div className="p-6 flex items-center gap-3">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-black shadow-md shadow-violet-500/20">L</div>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-wide">LSB Admin</h1>
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-wide">LSB Admin</h1>
+          <span className="h-0.5 w-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-600" />
+        </div>
       </div>
 
       <div className="px-3 py-2">
