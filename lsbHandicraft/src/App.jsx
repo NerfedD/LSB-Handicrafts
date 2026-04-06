@@ -1,11 +1,11 @@
 import React from 'react';
-import LSBAdminSystem from './components/LSBAdminSystem';
-import './App.css'; // <-- Add this!
+import AdminLayout from './layouts/AdminLayout';
+import './App.css';
 
 function App() {
   return (
     <div className="w-full min-h-screen">
-      <LSBAdminSystem />
+      <AdminLayout />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icons } from '../Icons';
+import { Icons } from '../ui/Icons';
 
 export default function Sidebar({ activeTab, setActiveTab }) {
   return (
