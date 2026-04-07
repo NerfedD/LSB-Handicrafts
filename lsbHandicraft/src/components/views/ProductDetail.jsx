@@ -31,6 +31,21 @@ export default function ProductDetail({ currentRecord, setActiveTab, handleEdit,
             {currentRecord.status}
           </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
+          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
+            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Category</p>
+            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{currentRecord.category}</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
+            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Stock Health</p>
+            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{currentRecord.stock < 50 ? 'Needs Restock' : 'Stable'}</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
+            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Last Updated</p>
+            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">Recent record</p>
+          </div>
+        </div>
         
         <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
           <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 md:p-6 rounded-2xl shadow-inner dark:shadow-none">

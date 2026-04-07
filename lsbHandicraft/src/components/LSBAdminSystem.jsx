@@ -15,13 +15,36 @@ const initialInventory = [
   { id: 4, sku: 'SS-002', name: 'Styro Sheet 1 inch', category: 'Styro Sheets', price: 180, stock: 10, status: 'Low Stock' },
 ];
 
+const emptyFormData = { sku: '', name: '', category: 'Styro Balls', price: '', stock: '' };
+
+const getStatusFromStock = (stock) => (Number(stock) < 50 ? 'Low Stock' : 'In Stock');
+
+const validateForm = (data, inventory, currentId = null) => {
+  const errors = {};
+
+  if (!data.sku.trim()) errors.sku = 'SKU is required.';
+  if (!data.name.trim()) errors.name = 'Product name is required.';
+  if (!data.category.trim()) errors.category = 'Category is required.';
+  if (data.price === '' || Number.isNaN(Number(data.price)) || Number(data.price) < 0) errors.price = 'Enter a valid price.';
+  if (data.stock === '' || Number.isNaN(Number(data.stock)) || Number(data.stock) < 0) errors.stock = 'Enter a valid stock count.';
+
+  const duplicateSku = inventory.some(
+    (item) => item.sku.trim().toLowerCase() === data.sku.trim().toLowerCase() && item.id !== currentId,
+  );
+  if (duplicateSku) errors.sku = 'SKU already exists.';
+
+  return errors;
+};
+
 export default function LSBAdminSystem() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('name-asc');
   const [currentRecord, setCurrentRecord] = useState(null);
-  const [formData, setFormData] = useState({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 });
+  const [formData, setFormData] = useState(emptyFormData);
+  const [formErrors, setFormErrors] = useState({});
 
   // Initialize state with localStorage using storageManager
   const [inventory, setInventory] = useState(() => {
@@ -56,6 +79,17 @@ export default function LSBAdminSystem() {
     }
   };
 
+  const resetForm = () => {
+    setCurrentRecord(null);
+    setFormData(emptyFormData);
+    setFormErrors({});
+  };
+
+  const handleCreateClick = () => {
+    resetForm();
+    setActiveTab('create');
+  };
+
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
@@ -63,8 +97,34 @@ export default function LSBAdminSystem() {
     return matchesSearch && matchesFilter;
   });
 
-  const handleView = (record) => { setCurrentRecord(record); setActiveTab('detail'); };
-  const handleEdit = (record) => { setCurrentRecord(record); setFormData(record); setActiveTab('edit'); };
+  const sortedInventory = [...filteredInventory].sort((a, b) => {
+    switch (sortBy) {
+      case 'name-desc':
+        return b.name.localeCompare(a.name);
+      case 'stock-asc':
+        return Number(a.stock) - Number(b.stock);
+      case 'stock-desc':
+        return Number(b.stock) - Number(a.stock);
+      case 'price-asc':
+        return Number(a.price) - Number(b.price);
+      case 'price-desc':
+        return Number(b.price) - Number(a.price);
+      case 'category-asc':
+        return a.category.localeCompare(b.category);
+      case 'name-asc':
+      default:
+        return a.name.localeCompare(b.name);
+    }
+  });
+
+  const handleView = (record) => { setCurrentRecord(record); setFormErrors({}); setActiveTab('detail'); };
+  const handleEdit = (record) => { setCurrentRecord(record); setFormErrors({}); setFormData({
+    sku: record.sku,
+    name: record.name,
+    category: record.category,
+    price: String(record.price),
+    stock: String(record.stock),
+  }); setActiveTab('edit'); };
   
   const handleDelete = (itemId) => {
     const updatedInventory = deleteFromInventory(inventory, itemId);
@@ -75,18 +135,47 @@ export default function LSBAdminSystem() {
   
   const handleSaveCreate = (e) => {
     e.preventDefault();
-    const newRecord = { ...formData, id: Date.now(), status: formData.stock < 50 ? 'Low Stock' : 'In Stock' };
-    setInventory([...inventory, newRecord]);
+    const errors = validateForm(formData, inventory);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    const newRecord = {
+      id: Date.now(),
+      sku: formData.sku.trim(),
+      name: formData.name.trim(),
+      category: formData.category,
+      price: Number(formData.price),
+      stock: Number(formData.stock),
+      status: getStatusFromStock(formData.stock),
+    };
+
+    setInventory(prev => [...prev, newRecord]);
+    resetForm();
     setActiveTab('inventory');
-    setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 });
   };
 
   const handleSaveEdit = (e) => {
     e.preventDefault();
+    const errors = validateForm(formData, inventory, currentRecord?.id);
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0 || !currentRecord) return;
+
     const updatedInventory = inventory.map(item => 
-      item.id === currentRecord.id ? { ...formData, status: formData.stock < 50 ? 'Low Stock' : 'In Stock' } : item
+      item.id === currentRecord.id 
+        ? {
+            ...item,
+            sku: formData.sku.trim(),
+            name: formData.name.trim(),
+            category: formData.category,
+            price: Number(formData.price),
+            stock: Number(formData.stock),
+            status: getStatusFromStock(formData.stock),
+          }
+        : item
     );
     setInventory(updatedInventory);
+    setCurrentRecord(updatedInventory.find(item => item.id === currentRecord.id) || null);
+    resetForm();
     setActiveTab('inventory');
   };
 
@@ -105,7 +194,7 @@ export default function LSBAdminSystem() {
           searchQuery={searchQuery} 
           setSearchQuery={setSearchQuery} 
           setActiveTab={setActiveTab} 
-          setFormData={setFormData} 
+          onCreateClick={handleCreateClick}
         />
 
         {/* SCROLLABLE VIEWPORT */}
@@ -120,9 +209,10 @@ export default function LSBAdminSystem() {
               <InventoryList 
                 searchQuery={searchQuery} setSearchQuery={setSearchQuery}
                 filterCategory={filterCategory} setFilterCategory={setFilterCategory}
-                filteredInventory={filteredInventory}
+                sortBy={sortBy} setSortBy={setSortBy}
+                filteredInventory={sortedInventory}
                 handleView={handleView} handleEdit={handleEdit} handleDelete={handleDelete}
-                setActiveTab={setActiveTab} setFormData={setFormData}
+                setActiveTab={setActiveTab} onCreateClick={handleCreateClick}
               />
             )}
 
@@ -131,6 +221,7 @@ export default function LSBAdminSystem() {
                 activeTab={activeTab} setActiveTab={setActiveTab}
                 formData={formData} setFormData={setFormData}
                 handleSaveCreate={handleSaveCreate} handleSaveEdit={handleSaveEdit}
+                formErrors={formErrors}
               />
             )}
 
@@ -152,7 +243,7 @@ export default function LSBAdminSystem() {
         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
           <Icons.Dashboard />
         </button>
-        <button onClick={() => { setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 }); setActiveTab('create'); }} className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white p-3.5 rounded-full -translate-y-4 shadow-[0_4px_15px_rgba(139,92,246,0.4)] active:scale-95 transition-transform">
+        <button onClick={handleCreateClick} className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white p-3.5 rounded-full -translate-y-4 shadow-[0_4px_15px_rgba(139,92,246,0.4)] active:scale-95 transition-transform">
           <Icons.Plus />
         </button>
         <button onClick={() => setActiveTab('inventory')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'inventory' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>

@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 export default function InventoryList({ 
   searchQuery, setSearchQuery, 
   filterCategory, setFilterCategory, 
+  sortBy, setSortBy,
   filteredInventory, handleView, handleEdit, handleDelete,
-  setActiveTab, setFormData 
+  setActiveTab, onCreateClick 
 }) {
   const [deleteConfirm, setDeleteConfirm] = useState({ show: false, itemId: null, itemName: '' });
 
@@ -27,6 +28,7 @@ export default function InventoryList({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-4">
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-wide">Products</h2>
+          <p className="text-xs md:text-sm text-slate-500 dark:text-gray-500 mt-1">Search, filter, sort, and manage product records.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -37,7 +39,17 @@ export default function InventoryList({
             <option value="Styro Balls">Styro Balls</option>
             <option value="Styro Sheets">Styro Sheets</option>
           </select>
-          <button onClick={() => { setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 }); setActiveTab('create'); }}
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}
+            className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 text-slate-700 dark:text-gray-300 text-sm font-medium rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-violet-500/30">
+            <option value="name-asc">Sort: Name A-Z</option>
+            <option value="name-desc">Sort: Name Z-A</option>
+            <option value="stock-asc">Sort: Stock Low-High</option>
+            <option value="stock-desc">Sort: Stock High-Low</option>
+            <option value="price-asc">Sort: Price Low-High</option>
+            <option value="price-desc">Sort: Price High-Low</option>
+            <option value="category-asc">Sort: Category</option>
+          </select>
+          <button onClick={onCreateClick}
             className="hidden md:flex bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(139,92,246,0.25)] transition-all active:scale-95 items-center justify-center gap-2">
             <span>+</span> Add Product
           </button>
@@ -85,7 +97,15 @@ export default function InventoryList({
                 </tr>
               ))}
               {filteredInventory.length === 0 && (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-slate-500 dark:text-gray-500">No products found.</td></tr>
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 dark:text-gray-500">
+                    <div className="space-y-2">
+                      <p className="font-bold text-slate-700 dark:text-gray-300">No products found.</p>
+                      <p className="text-sm">Try a different search, filter, or create a new product record.</p>
+                      <button onClick={onCreateClick} className="mt-2 inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors">+ Add Product</button>
+                    </div>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

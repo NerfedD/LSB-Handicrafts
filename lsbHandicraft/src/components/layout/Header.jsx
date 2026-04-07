@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '../Icons';
 
-export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearchQuery, setActiveTab, setFormData }) {
+export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearchQuery, setActiveTab, onCreateClick }) {
   return (
     <header className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/60 dark:bg-[#0b0b0f]/60 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shrink-0 transition-colors duration-300 z-10">
       <div className="md:hidden flex items-center gap-3">
@@ -25,7 +25,7 @@ export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearch
           <Icons.Bell />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-full border-2 border-white dark:border-[#0b0b0f]"></span>
         </button>
-        <button onClick={() => { setFormData({ sku: '', name: '', category: 'Styro Balls', price: 0, stock: 0 }); setActiveTab('create'); }} 
+        <button onClick={onCreateClick} 
           className="hidden md:flex ml-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold items-center gap-2 transition-all shadow-[0_4px_15px_rgba(139,92,246,0.25)] dark:shadow-[0_4px_15px_rgba(139,92,246,0.15)]">
           <Icons.Plus /> Add Product
         </button>
