@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit }) {
+export default function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit, formErrors }) {
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <button onClick={() => setActiveTab('inventory')} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2 transition-colors">
@@ -12,12 +12,17 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
           {activeTab === 'create' ? 'Create New Product' : 'Edit Product'}
         </h2>
 
+        <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/10 p-4 text-sm text-violet-900 dark:text-violet-100">
+          Use this form to simulate event-driven updates: typing changes state, and submit updates the inventory list.
+        </div>
+
         <form onSubmit={activeTab === 'create' ? handleSaveCreate : handleSaveEdit} className="space-y-4 md:space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-2">
               <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">SKU Code</label>
               <input required type="text" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
                 value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
+              {formErrors?.sku && <p className="text-xs text-red-500 font-medium">{formErrors.sku}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Category</label>
@@ -26,6 +31,7 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
                 <option value="Styro Balls">Styro Balls</option>
                 <option value="Styro Sheets">Styro Sheets</option>
               </select>
+              {formErrors?.category && <p className="text-xs text-red-500 font-medium">{formErrors.category}</p>}
             </div>
           </div>
 
@@ -33,6 +39,7 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
             <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Product Name</label>
             <input required type="text" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
               value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+            {formErrors?.name && <p className="text-xs text-red-500 font-medium">{formErrors.name}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-4 md:gap-6">
@@ -40,11 +47,13 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
               <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Price (₱)</label>
               <input required type="number" min="0" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
                 value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+              {formErrors?.price && <p className="text-xs text-red-500 font-medium">{formErrors.price}</p>}
             </div>
             <div className="space-y-2">
               <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Stock</label>
               <input required type="number" min="0" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
                 value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
+              {formErrors?.stock && <p className="text-xs text-red-500 font-medium">{formErrors.stock}</p>}
             </div>
           </div>
 

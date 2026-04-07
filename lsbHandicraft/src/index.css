@@ -21,6 +21,21 @@ body {
   -moz-osx-font-smoothing: grayscale;
   /* Adds a smooth scroll behavior globally */
   scroll-behavior: smooth;
+  background:
+    radial-gradient(circle at top left, rgba(139, 92, 246, 0.08), transparent 28%),
+    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 24%),
+    #f8fafc;
+}
+
+html.dark body {
+  background:
+    radial-gradient(circle at top left, rgba(139, 92, 246, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 24%),
+    #08080b;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.25);
 }
 
 /* Super seamless page transition animation */
