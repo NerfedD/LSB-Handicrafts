@@ -4,9 +4,11 @@ import Sidebar from './layout/Sidebar';
 import Header from './layout/Header';
 import Dashboard from './views/Dashboard';
 import InventoryList from './views/InventoryList';
+import DeliveryList from './views/DeliveryList';
 import ProductForm from './views/ProductForm';
 import ProductDetail from './views/ProductDetail';
-import { saveInventory, loadInventory, deleteFromInventory } from '../utils/storageManager';
+import { saveInventory, loadInventory, deleteFromInventory, saveDeliveries, loadDeliveries, deleteFromDeliveries } from '../utils/storageManager';
+import { initialDeliveries } from '../utils/data';
 
 const initialInventory = [
   { id: 1, sku: 'SB-001', name: 'Styro Ball 2 inch', category: 'Styro Balls', price: 15, stock: 120, status: 'In Stock' },
@@ -50,6 +52,9 @@ export default function LSBAdminSystem() {
   const [inventory, setInventory] = useState(() => {
     return loadInventory(initialInventory);
   });
+  const [deliveries, setDeliveries] = useState(() => {
+    return loadDeliveries(initialDeliveries);
+  });
 
   // Handle Dark Mode
   useEffect(() => {
@@ -68,6 +73,11 @@ export default function LSBAdminSystem() {
   useEffect(() => {
     saveInventory(inventory);
   }, [inventory]);
+
+  // Save to localStorage whenever deliveries change using storageManager
+  useEffect(() => {
+    saveDeliveries(deliveries);
+  }, [deliveries]);
 
   const toggleTheme = () => {
     if (isDarkMode) {
@@ -131,6 +141,21 @@ export default function LSBAdminSystem() {
     setInventory(updatedInventory);
     setCurrentRecord(null);
     setActiveTab('inventory');
+  };
+
+  const handleAddDelivery = (newDelivery) => {
+    setDeliveries(prev => [...prev, newDelivery]);
+  };
+
+  const handleEditDelivery = (updatedDelivery) => {
+    setDeliveries(prev => prev.map(delivery => 
+      delivery.id === updatedDelivery.id ? updatedDelivery : delivery
+    ));
+  };
+
+  const handleDeleteDelivery = (deliveryId) => {
+    const updatedDeliveries = deleteFromDeliveries(deliveries, deliveryId);
+    setDeliveries(updatedDeliveries);
   };
   
   const handleSaveCreate = (e) => {
@@ -216,6 +241,16 @@ export default function LSBAdminSystem() {
               />
             )}
 
+            {activeTab === 'deliveries' && (
+              <DeliveryList
+                deliveries={deliveries}
+                inventory={inventory}
+                handleAddDelivery={handleAddDelivery}
+                handleEditDelivery={handleEditDelivery}
+                handleDeleteDelivery={handleDeleteDelivery}
+              />
+            )}
+
             {(activeTab === 'create' || activeTab === 'edit') && (
               <ProductForm 
                 activeTab={activeTab} setActiveTab={setActiveTab}
@@ -243,11 +278,14 @@ export default function LSBAdminSystem() {
         <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'dashboard' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
           <Icons.Dashboard />
         </button>
+        <button onClick={() => setActiveTab('inventory')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'inventory' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
+          <Icons.Inventory />
+        </button>
         <button onClick={handleCreateClick} className="bg-gradient-to-br from-violet-500 to-indigo-600 text-white p-3.5 rounded-full -translate-y-4 shadow-[0_4px_15px_rgba(139,92,246,0.4)] active:scale-95 transition-transform">
           <Icons.Plus />
         </button>
-        <button onClick={() => setActiveTab('inventory')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'inventory' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
-          <Icons.Inventory />
+        <button onClick={() => setActiveTab('deliveries')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'deliveries' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
+          <Icons.Delivery />
         </button>
       </nav>
     </div>
