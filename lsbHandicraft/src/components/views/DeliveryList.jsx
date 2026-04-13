@@ -13,7 +13,7 @@ export default function DeliveryList({
     product: '',
     size: '',
     location: '',
-    status: 'Pending'
+    status: 'Not yet delivered'
   });
 
   const openDeleteDialog = (deliveryId, productName) => {
@@ -75,7 +75,7 @@ export default function DeliveryList({
       product: '',
       size: '',
       location: '',
-      status: 'Pending'
+      status: 'Not yet delivered'
     });
   };
 
@@ -105,9 +105,10 @@ export default function DeliveryList({
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'Pending': return 'bg-yellow-500';
-      case 'In Transit': return 'bg-blue-500';
-      case 'Delivered': return 'bg-green-500';
+      case 'Not yet delivered': return 'bg-red-500';
+      case 'Ready to deliver': return 'bg-orange-500';
+      case 'On the way': return 'bg-yellow-500';
+      case 'Arrived': return 'bg-green-500';
       default: return 'bg-gray-500';
     }
   };
@@ -161,9 +162,10 @@ export default function DeliveryList({
             onChange={(e) => setNewDelivery({...newDelivery, status: e.target.value})}
             className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/30"
           >
-            <option value="Pending">Pending</option>
-            <option value="In Transit">In Transit</option>
-            <option value="Delivered">Delivered</option>
+            <option value="Not yet delivered">Not yet delivered</option>
+            <option value="Ready to deliver">Ready to deliver</option>
+            <option value="On the way">On the way</option>
+            <option value="Arrived">Arrived</option>
           </select>
           <button
             type="submit"
@@ -196,15 +198,17 @@ export default function DeliveryList({
                   <td className="px-6 py-3 md:py-4 text-slate-600 dark:text-gray-400 text-xs md:text-sm">{delivery.location}</td>
                   <td className="px-6 py-3 md:py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                      delivery.status === 'Pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300' :
-                      delivery.status === 'In Transit' ? 'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300' :
-                      delivery.status === 'Delivered' ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300' :
+                      delivery.status === 'Not yet delivered' ? 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300' :
+                      delivery.status === 'Ready to deliver' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-300' :
+                      delivery.status === 'On the way' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300' :
+                      delivery.status === 'Arrived' ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300' :
                       'bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-300'
                     }`}>
                       <div className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                        delivery.status === 'Pending' ? 'bg-yellow-500' :
-                        delivery.status === 'In Transit' ? 'bg-blue-500' :
-                        delivery.status === 'Delivered' ? 'bg-green-500' :
+                        delivery.status === 'Not yet delivered' ? 'bg-red-500' :
+                        delivery.status === 'Ready to deliver' ? 'bg-orange-500' :
+                        delivery.status === 'On the way' ? 'bg-yellow-500' :
+                        delivery.status === 'Arrived' ? 'bg-green-500' :
                         'bg-gray-500'
                       }`}></div>
                       {delivery.status}

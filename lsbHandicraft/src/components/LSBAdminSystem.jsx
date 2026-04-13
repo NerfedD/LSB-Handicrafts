@@ -17,7 +17,7 @@ const initialInventory = [
   { id: 4, sku: 'SS-002', name: 'Styro Sheet 1 inch', category: 'Styro Sheets', price: 180, stock: 10, status: 'Low Stock' },
 ];
 
-const emptyFormData = { sku: '', name: '', category: 'Styro Balls', price: '', stock: '' };
+const emptyFormData = { sku: '', name: '', category: 'Styro Balls', size: '', price: '', stock: '' };
 
 const getStatusFromStock = (stock) => (Number(stock) < 50 ? 'Low Stock' : 'In Stock');
 
@@ -25,8 +25,9 @@ const validateForm = (data, inventory, currentId = null) => {
   const errors = {};
 
   if (!data.sku.trim()) errors.sku = 'SKU is required.';
-  if (!data.name.trim()) errors.name = 'Product name is required.';
+  if (!data.name.trim()) errors.name = 'Product description is required.';
   if (!data.category.trim()) errors.category = 'Category is required.';
+  if (!data.size.trim()) errors.size = 'Size is required.';
   if (data.price === '' || Number.isNaN(Number(data.price)) || Number(data.price) < 0) errors.price = 'Enter a valid price.';
   if (data.stock === '' || Number.isNaN(Number(data.stock)) || Number(data.stock) < 0) errors.stock = 'Enter a valid stock count.';
 

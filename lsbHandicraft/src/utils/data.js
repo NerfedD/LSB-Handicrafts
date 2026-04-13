@@ -6,11 +6,11 @@ export const initialInventory = [
 ];
 
 export const initialDeliveries = [
-  { id: 1, product: 'Styro Ball 2 inch', size: '2 inch', location: 'Davao City', status: 'Pending', createdAt: '2024-04-10T10:00:00Z' },
-  { id: 2, product: 'Styro Sheet 1/2 inch', size: '1/2 inch', location: 'Tagum City', status: 'In Transit', createdAt: '2024-04-09T14:30:00Z' },
-  { id: 3, product: 'Styro Ball 4 inch', size: '4 inch', location: 'Panabo City', status: 'Delivered', createdAt: '2024-04-08T09:15:00Z' },
-  { id: 4, product: 'Styro Sheet 1 inch', size: '1 inch', location: 'Davao City', status: 'Pending', createdAt: '2024-04-11T11:45:00Z' },
-  { id: 5, product: 'Styro Ball 2 inch', size: '2 inch', location: 'Mati City', status: 'In Transit', createdAt: '2024-04-07T16:20:00Z' },
+  { id: 1, product: 'Styro Ball 2 inch', size: '2 inch', location: 'Davao City', status: 'Not yet delivered', createdAt: '2024-04-10T10:00:00Z' },
+  { id: 2, product: 'Styro Sheet 1/2 inch', size: '1/2 inch', location: 'Tagum City', status: 'On the way', createdAt: '2024-04-09T14:30:00Z' },
+  { id: 3, product: 'Styro Ball 4 inch', size: '4 inch', location: 'Panabo City', status: 'Arrived', createdAt: '2024-04-08T09:15:00Z' },
+  { id: 4, product: 'Styro Sheet 1 inch', size: '1 inch', location: 'Davao City', status: 'Ready to deliver', createdAt: '2024-04-11T11:45:00Z' },
+  { id: 5, product: 'Styro Ball 2 inch', size: '2 inch', location: 'Mati City', status: 'On the way', createdAt: '2024-04-07T16:20:00Z' },
 ];
 
 export const stockHistory = [80, 95, 72, 110, 88, 120, 108, 130, 115, 140];

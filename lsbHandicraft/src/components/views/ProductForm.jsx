@@ -1,6 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit, formErrors }) {
+  const [customSize, setCustomSize] = useState('');
+
+  useEffect(() => {
+    const standardSizes = ['2 inch', '4 inch', '1/2 inch', '1 inch'];
+    if (!standardSizes.includes(formData.size) && formData.size) {
+      setCustomSize(formData.size);
+    } else {
+      setCustomSize('');
+    }
+  }, [formData.size]);
   return (
     <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       <button onClick={() => setActiveTab('inventory')} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2 transition-colors">
@@ -17,7 +27,7 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
         </div>
 
         <form onSubmit={activeTab === 'create' ? handleSaveCreate : handleSaveEdit} className="space-y-4 md:space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
             <div className="space-y-2">
               <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">SKU Code</label>
               <input required type="text" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
@@ -33,11 +43,37 @@ export default function ProductForm({ activeTab, setActiveTab, formData, setForm
               </select>
               {formErrors?.category && <p className="text-xs text-red-500 font-medium">{formErrors.category}</p>}
             </div>
+            <div className="space-y-2">
+              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Size</label>
+              <select className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors appearance-none shadow-inner dark:shadow-none"
+                value={['2 inch', '4 inch', '1/2 inch', '1 inch'].includes(formData.size) ? formData.size : 'Others'} onChange={e => {
+                  const value = e.target.value;
+                  if (value === 'Others') {
+                    setFormData({...formData, size: customSize});
+                  } else {
+                    setFormData({...formData, size: value});
+                  }
+                }}>
+                <option value="">Select Size</option>
+                <option value="2 inch">2 inch</option>
+                <option value="4 inch">4 inch</option>
+                <option value="1/2 inch">1/2 inch</option>
+                <option value="1 inch">1 inch</option>
+                <option value="Others">Others</option>
+              </select>
+              {(['2 inch', '4 inch', '1/2 inch', '1 inch'].includes(formData.size) ? false : formData.size || customSize) && (
+                <input type="text" placeholder="Enter custom size" value={customSize} onChange={e => {
+                  setCustomSize(e.target.value);
+                  setFormData({...formData, size: e.target.value});
+                }} className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none mt-2" />
+              )}
+              {formErrors?.size && <p className="text-xs text-red-500 font-medium">{formErrors.size}</p>}
+            </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Product Name</label>
-            <input required type="text" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
+            <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Product Description</label>
+            <textarea required className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none resize-none" rows="3"
               value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
             {formErrors?.name && <p className="text-xs text-red-500 font-medium">{formErrors.name}</p>}
           </div>
