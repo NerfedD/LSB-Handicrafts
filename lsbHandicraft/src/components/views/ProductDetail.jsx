@@ -1,100 +1,125 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock } from 'lucide-react';
 
-export default function ProductDetail({ currentRecord, setActiveTab, handleEdit, handleDelete }) {
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+export default function ProductDetail({ record, navigateTo, inventory, setInventory, showModal }) {
+  if(!record) return null;
 
-  if (!currentRecord) return null;
-
-  const confirmDelete = () => {
-    handleDelete(currentRecord.id);
-    setDeleteConfirm(false);
+  const handleDelete = () => {
+    showModal(
+      "Delete Product",
+      "Are you sure you want to delete this product? This action cannot be undone.",
+      () => {
+        setInventory(inventory.filter(item => item.id !== record.id));
+        navigateTo('inventory');
+      }
+    );
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <button onClick={() => setActiveTab('inventory')} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2 transition-colors">
-        ← Back to Inventory
-      </button>
-      
-      <div className="bg-white dark:bg-[#15151a] border border-slate-200 dark:border-white/5 rounded-3xl p-6 md:p-8 shadow-xl dark:shadow-2xl relative overflow-hidden">
-        
-        {/* Clean violet blur in Light Mode, deep glow in Dark Mode */}
-        <div className="absolute top-0 right-0 w-48 h-48 md:w-64 md:h-64 bg-violet-100/50 dark:bg-violet-500/10 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3"></div>
-        
-        <div className="flex flex-col md:flex-row justify-between items-start mb-6 md:mb-8 gap-4">
-          <div>
-            <p className="text-violet-600 dark:text-violet-400 text-[10px] md:text-sm font-bold uppercase tracking-widest mb-1 md:mb-2">{currentRecord.category}</p>
-            <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-1 md:mb-2">{currentRecord.name}</h2>
-            <p className="text-slate-500 dark:text-gray-500 font-mono font-medium text-xs md:text-sm">SKU: {currentRecord.sku}</p>
-          </div>
-          <div className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold border ${currentRecord.status === 'Low Stock' ? 'bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-500/20' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'}`}>
-            {currentRecord.status}
-          </div>
-        </div>
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 w-full">
+      <div className="flex justify-between items-center mb-6 md:mb-8">
+        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">View Product</h1>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
-          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
-            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Category</p>
-            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{currentRecord.category}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
-            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Stock Health</p>
-            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">{currentRecord.stock < 50 ? 'Needs Restock' : 'Stable'}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 rounded-2xl shadow-inner dark:shadow-none">
-            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Last Updated</p>
-            <p className="text-sm md:text-base font-bold text-slate-900 dark:text-white">Recent record</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
-          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 md:p-6 rounded-2xl shadow-inner dark:shadow-none">
-            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1 md:mb-2">Unit Price</p>
-            <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white"><span className="text-slate-400 dark:text-gray-600 mr-1">₱</span>{currentRecord.price}</p>
-          </div>
-          <div className="bg-slate-50 dark:bg-[#0b0b0f] border border-slate-100 dark:border-white/5 p-4 md:p-6 rounded-2xl shadow-inner dark:shadow-none">
-            <p className="text-slate-500 dark:text-gray-500 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1 md:mb-2">Stock Level</p>
-            <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{currentRecord.stock} <span className="text-xs md:text-sm text-slate-400 dark:text-gray-600 font-bold">pcs</span></p>
-          </div>
-        </div>
-
-        <button onClick={() => handleEdit(currentRecord)} className="w-full bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-900 dark:text-white py-3 md:py-4 rounded-xl font-bold border border-slate-200 dark:border-white/5 transition-all text-sm md:text-base mb-3">
-          Edit Details
+      <div className="flex flex-col sm:flex-row justify-start sm:justify-between items-start sm:items-center gap-4 mb-6">
+        <button onClick={() => navigateTo('inventory')} className="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-white flex items-center gap-3 font-semibold text-xl transition-colors">
+          <ArrowLeft size={20} className="text-zinc-500 dark:text-zinc-400" /> {record.name}
         </button>
-        <button onClick={() => setDeleteConfirm(true)} className="w-full bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 text-red-600 dark:text-red-400 py-3 md:py-4 rounded-xl font-bold border border-red-200 dark:border-red-500/20 transition-all text-sm md:text-base">
-          Delete Product
-        </button>
+        <div className="flex flex-wrap gap-3 w-full sm:w-auto">
+          <button onClick={() => navigateTo('edit-product', record)} className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+            <Edit2 size={16} /> Edit Product
+          </button>
+          <button onClick={handleDelete} className="flex-1 sm:flex-none justify-center bg-transparent border border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+            <Trash2 size={16} /> Delete
+          </button>
+        </div>
+      </div>
 
-        {/* Delete Confirmation Dialog */}
-        {deleteConfirm && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-[#15151a] border border-slate-200 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 mb-4 mx-auto">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
+      <div className="flex flex-col lg:flex-row gap-6 w-full">
+        <div className="flex-1 space-y-6">
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Product Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 sm:gap-y-8 gap-x-6">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Product Name</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium">{record.name}</p>
               </div>
-              <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white text-center mb-2">Delete Product?</h3>
-              <p className="text-slate-600 dark:text-gray-400 text-center text-sm md:text-base mb-6">
-                Are you sure you want to delete <span className="font-bold text-slate-900 dark:text-white">"{currentRecord.name}"</span>? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setDeleteConfirm(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors text-sm md:text-base"
-                >
-                  Cancel
-                </button>
-                <button 
-                  onClick={confirmDelete}
-                  className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white shadow-[0_4px_15px_rgba(220,38,38,0.2)] transition-colors text-sm md:text-base"
-                >
-                  Delete
-                </button>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">SKU</p>
+                <p className="text-zinc-600 dark:text-zinc-400 font-mono text-sm">{record.sku}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Category</p>
+                <p className="text-zinc-900 dark:text-zinc-200">{record.category}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Price</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium">${record.price.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Size</p>
+                <p className="text-zinc-900 dark:text-zinc-200">{record.name.split(' ').slice(-2).join(' ')}</p>
               </div>
             </div>
           </div>
-        )}
+
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Stock Information</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Status</p>
+                <div className="flex items-center gap-2">
+                  <div className={`w-1.5 h-1.5 rounded-full ${record.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                  <span className={`font-medium text-sm ${record.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}`}>
+                    {record.status}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Current Stock</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium text-xl">{record.stock}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full lg:w-80 space-y-6 shrink-0">
+          <div className="bg-blue-50 dark:bg-[#0f1422] border border-blue-200 dark:border-blue-900/30 rounded-2xl p-5 md:p-6 relative overflow-hidden shadow-sm dark:shadow-none">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-200/50 dark:bg-blue-600/10 rounded-full blur-3xl"></div>
+            <div className="flex items-center gap-2 mb-6">
+              <div className="bg-blue-600 rounded p-1.5"><LayoutDashboard size={18} className="text-white" /></div>
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Quick Stats</h3>
+            </div>
+            
+            <div className="space-y-6 relative z-10">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Total Value</p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">${(record.price * record.stock).toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Stock Turnover</p>
+                <p className="text-zinc-700 dark:text-zinc-300 font-medium">8.5 days avg.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <div className="flex items-center gap-2 mb-6">
+              <Clock size={18} className="text-zinc-400" />
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Timestamps</h3>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 mb-1">Created</p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">March 15, 2026</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 mb-1">Last Updated</p>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300">April 10, 2026</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

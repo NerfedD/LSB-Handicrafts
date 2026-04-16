@@ -1,271 +1,195 @@
 import React, { useState } from 'react';
+import { Plus, ChevronDown, Trash2 } from 'lucide-react';
 
-export default function DeliveryList({
-  deliveries,
-  inventory,
-  handleAddDelivery,
-  handleEditDelivery,
-  handleDeleteDelivery
-}) {
-  const [deleteConfirm, setDeleteConfirm] = useState({ show: false, deliveryId: null, productName: '' });
-  const [editingDelivery, setEditingDelivery] = useState(null);
-  const [newDelivery, setNewDelivery] = useState({
-    product: '',
-    size: '',
-    location: '',
-    status: 'Not yet delivered'
-  });
-
-  const openDeleteDialog = (deliveryId, productName) => {
-    setDeleteConfirm({ show: true, deliveryId, productName });
+export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal }) {
+  
+  const handleDelete = (id) => {
+    showModal(
+      "Delete Delivery",
+      "Are you sure you want to remove this delivery record?",
+      () => setDeliveries(deliveries.filter(d => d.id !== id))
+    );
   };
 
-  const confirmDelete = () => {
-    if (deleteConfirm.deliveryId) {
-      handleDeleteDelivery(deleteConfirm.deliveryId);
-      setDeleteConfirm({ show: false, deliveryId: null, productName: '' });
-    }
-  };
-
-  const cancelDelete = () => {
-    setDeleteConfirm({ show: false, deliveryId: null, productName: '' });
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!newDelivery.product || !newDelivery.location) return;
-
-    if (editingDelivery) {
-      // Update existing delivery
-      handleEditDelivery({
-        ...editingDelivery,
-        ...newDelivery
-      });
-      setEditingDelivery(null);
-    } else {
-      // Add new delivery
-      handleAddDelivery({
-        ...newDelivery,
-        id: Date.now(),
-        createdAt: new Date().toISOString()
-      });
-    }
-
-    setNewDelivery({
-      product: '',
-      size: '',
-      location: '',
-      status: 'Pending'
-    });
-  };
-
-  const startEdit = (delivery) => {
-    setEditingDelivery(delivery);
-    setNewDelivery({
-      product: delivery.product,
-      size: delivery.size,
-      location: delivery.location,
-      status: delivery.status
-    });
-  };
-
-  const cancelEdit = () => {
-    setEditingDelivery(null);
-    setNewDelivery({
-      product: '',
-      size: '',
-      location: '',
-      status: 'Not yet delivered'
-    });
-  };
-
-  const handleProductChange = (productName) => {
-    const product = inventory.find(item => item.name === productName);
-    if (product) {
-      // Extract size from product name (e.g., "Styro Ball 2 inch" -> "2 inch")
-      const sizeMatch = product.name.match(/(\d+(?:\.\d+)?\s*\w+)$/);
-      const size = sizeMatch ? sizeMatch[1] : product.name;
-      setNewDelivery({
-        ...newDelivery,
-        product: productName,
-        size: size
-      });
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Not yet delivered': return 'bg-red-500';
-      case 'Ready to deliver': return 'bg-orange-500';
-      case 'On the way': return 'bg-yellow-500';
-      case 'Arrived': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
+  const handleStatusChange = (id, newStatus) => {
+    setDeliveries(deliveries.map(d => d.id === id ? { ...d, status: newStatus } : d));
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-4">
-        <div>
-          <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-wide">Deliveries</h2>
-          <p className="text-xs md:text-sm text-slate-500 dark:text-gray-500 mt-1">Manage delivery orders and track their status.</p>
-        </div>
+    <div className="animate-in fade-in duration-300 w-full">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Delivery List</h1>
       </div>
 
-      {/* Add/Edit New Delivery Form */}
-      <div className="bg-white dark:bg-gradient-to-b dark:from-[#15151a] dark:to-[#121217] border border-slate-200 dark:border-white/5 rounded-3xl p-6 shadow-sm dark:shadow-none">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-            {editingDelivery ? 'Edit Delivery' : 'Add New Delivery'}
-          </h3>
-          {editingDelivery && (
-            <button
-              onClick={cancelEdit}
-              className="text-slate-500 hover:text-slate-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <select
-            value={newDelivery.product}
-            onChange={(e) => handleProductChange(e.target.value)}
-            className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/30"
-            required
+      <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 md:mb-0">
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
+          <button 
+            onClick={() => navigateTo('add-delivery')}
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(37,99,235,0.2)]"
           >
-            <option value="">Select Product</option>
-            {inventory.map(item => (
-              <option key={item.id} value={item.name}>{item.name}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Location"
-            value={newDelivery.location}
-            onChange={(e) => setNewDelivery({...newDelivery, location: e.target.value})}
-            className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/30"
-            required
-          />
-          <select
-            value={newDelivery.status}
-            onChange={(e) => setNewDelivery({...newDelivery, status: e.target.value})}
-            className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-violet-500/30"
-          >
-            <option value="Not yet delivered">Not yet delivered</option>
-            <option value="Ready to deliver">Ready to deliver</option>
-            <option value="On the way">On the way</option>
-            <option value="Arrived">Arrived</option>
-          </select>
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(139,92,246,0.25)] transition-all active:scale-95"
-          >
-            {editingDelivery ? 'Update Delivery' : 'Add Delivery'}
+            <Plus size={16} /> Add Delivery
           </button>
-        </form>
-      </div>
+        </div>
 
-      {/* Deliveries Table */}
-      <div className="bg-white dark:bg-gradient-to-b dark:from-[#15151a] dark:to-[#121217] border border-slate-200 dark:border-white/5 rounded-3xl overflow-hidden shadow-sm dark:shadow-none">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-white/5 text-slate-500 dark:text-gray-400 bg-slate-50/80 dark:bg-black/20">
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs">Product</th>
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs">Size</th>
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs">Location</th>
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs">Status</th>
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs">Order Created</th>
-                <th className="px-6 py-4 md:py-5 font-bold uppercase tracking-wider text-[10px] md:text-xs text-right">Actions</th>
+              <tr className="border-y border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
+                <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase">Product</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Size</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Location</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Status</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Created</th>
+                <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-white/5">
-              {deliveries.map(delivery => (
-                <tr key={delivery.id} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.03] transition-colors group">
-                  <td className="px-6 py-3 md:py-4 font-bold text-slate-900 dark:text-gray-200 text-xs md:text-sm">{delivery.product}</td>
-                  <td className="px-6 py-3 md:py-4 text-slate-600 dark:text-gray-400 text-xs md:text-sm">{delivery.size}</td>
-                  <td className="px-6 py-3 md:py-4 text-slate-600 dark:text-gray-400 text-xs md:text-sm">{delivery.location}</td>
-                  <td className="px-6 py-3 md:py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
-                      delivery.status === 'Not yet delivered' ? 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300' :
-                      delivery.status === 'Ready to deliver' ? 'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-300' :
-                      delivery.status === 'On the way' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/20 dark:text-yellow-300' :
-                      delivery.status === 'Arrived' ? 'bg-green-100 text-green-800 dark:bg-green-500/20 dark:text-green-300' :
-                      'bg-gray-100 text-gray-800 dark:bg-gray-500/20 dark:text-gray-300'
-                    }`}>
-                      <div className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                        delivery.status === 'Not yet delivered' ? 'bg-red-500' :
-                        delivery.status === 'Ready to deliver' ? 'bg-orange-500' :
-                        delivery.status === 'On the way' ? 'bg-yellow-500' :
-                        delivery.status === 'Arrived' ? 'bg-green-500' :
-                        'bg-gray-500'
-                      }`}></div>
-                      {delivery.status}
-                    </span>
+            <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
+              {deliveries.map((delivery, i) => (
+                <tr key={delivery.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/30 transition-colors">
+                  <td className="px-4 md:px-6 py-5 flex items-center gap-3">
+                    <div className={`w-1.5 h-1.5 rounded-full ${i % 2 === 0 ? 'bg-red-500' : 'bg-yellow-500'} shrink-0`}></div>
+                    <span className="text-zinc-900 dark:text-zinc-100 font-semibold">{delivery.product}</span>
                   </td>
-                  <td className="px-6 py-3 md:py-4 text-slate-600 dark:text-gray-400 text-xs md:text-sm">{formatDate(delivery.createdAt)}</td>
-                  <td className="px-6 py-3 md:py-4 text-right opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => startEdit(delivery)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-amber-600 dark:hover:text-white px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg mr-2 transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">Edit</button>
-                    <button onClick={() => openDeleteDialog(delivery.id, delivery.product)} className="text-slate-600 dark:text-gray-400 font-bold hover:text-red-600 dark:hover:text-red-400 px-2.5 py-1.5 md:px-3 bg-white dark:bg-white/5 border border-slate-200 dark:border-transparent rounded-lg transition-colors text-xs md:text-sm shadow-sm dark:shadow-none">Delete</button>
+                  <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">{delivery.size}</td>
+                  <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
+                     <div className="flex items-center gap-2">
+                       <span className="text-zinc-400 dark:text-zinc-500">📍</span> {delivery.location}
+                     </div>
+                  </td>
+                  <td className="px-4 py-5">
+                    <div className="relative inline-block w-[140px] md:w-[150px]">
+                      <select
+                        value={delivery.status}
+                        onChange={(e) => handleStatusChange(delivery.id, e.target.value)}
+                        className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                          delivery.status === 'Not Yet Delivered' 
+                            ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40' 
+                            : delivery.status === 'Delivered'
+                            ? 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900/50 dark:text-emerald-500 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
+                            : 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40'
+                        }`}
+                      >
+                        <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
+                        <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
+                        <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
+                      </select>
+                      <ChevronDown size={14} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70 ${
+                        delivery.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' : delivery.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' : 'text-yellow-600 dark:text-yellow-500'
+                      }`} />
+                    </div>
+                  </td>
+                  <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
+                     <span>{delivery.createdAt.split(',')[0]}</span>
+                  </td>
+                  <td className="px-4 md:px-6 py-5 text-right">
+                    <button onClick={() => handleDelete(delivery.id)} className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors inline-block p-2"><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}
-              {deliveries.length === 0 && (
-                <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-slate-500 dark:text-gray-500">
-                    <div className="space-y-2">
-                      <p className="font-bold text-slate-700 dark:text-gray-300">No deliveries found.</p>
-                      <p className="text-sm">Add your first delivery order above.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Delete Confirmation Dialog */}
-      {deleteConfirm.show && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-[#15151a] border border-slate-200 dark:border-white/5 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 dark:bg-red-500/10 mb-4 mx-auto">
-              <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+export function AddDelivery({ navigateTo, inventory, deliveries, setDeliveries, showModal }) {
+  const [formData, setFormData] = useState({
+    product: '',
+    location: '',
+    status: 'Not Yet Delivered'
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if(!formData.product) return;
+    
+    showModal(
+      "Add Delivery",
+      "Are you sure you want to add this new delivery record?",
+      () => {
+        const sizeMatch = formData.product.match(/(\d+(?:\.\d+)?\s*\w+(?:\/\d+\s*\w+)?)$/);
+        const size = sizeMatch ? sizeMatch[1] : 'Standard';
+
+        const newDel = {
+          id: Date.now(),
+          product: formData.product,
+          size: size,
+          location: formData.location || 'Davao City',
+          status: formData.status,
+          createdAt: 'Apr 16, 2026'
+        };
+
+        setDeliveries([newDel, ...deliveries]);
+        navigateTo('deliveries');
+      }
+    );
+  };
+
+  return (
+    <div className="animate-in fade-in duration-300 w-full">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Delivery List</h1>
+      </div>
+
+      <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
+          <button className="w-full sm:w-auto bg-blue-100 text-blue-400 dark:bg-blue-600/50 dark:text-white/50 px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
+            <Plus size={16} /> Add Delivery
+          </button>
+        </div>
+
+        <div className="bg-zinc-50 dark:bg-[#181820] border border-zinc-200 dark:border-[#272730] rounded-xl p-4 md:p-6 mb-8">
+          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Add New Delivery</h3>
+          <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row items-end gap-4 w-full">
+            <div className="flex-1 w-full space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Product <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <select required value={formData.product} onChange={e => setFormData({...formData, product: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                  <option value="" disabled>Select product</option>
+                  {inventory.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+              </div>
             </div>
-            <h3 className="text-lg md:text-xl font-bold text-slate-900 dark:text-white text-center mb-2">Delete Delivery?</h3>
-            <p className="text-slate-600 dark:text-gray-400 text-center text-sm md:text-base mb-6">
-              Are you sure you want to delete the delivery for <span className="font-bold text-slate-900 dark:text-white">"{deleteConfirm.productName}"</span>? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={cancelDelete}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold border border-slate-200 dark:border-white/5 text-slate-900 dark:text-white bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/10 transition-colors text-sm md:text-base"
-              >
+            <div className="flex-1 w-full space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Location <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <select required value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                  <option value="" disabled>Select location</option>
+                  <option value="Davao City">Davao City</option>
+                  <option value="Digos City">Digos City</option>
+                  <option value="General Santos">General Santos</option>
+                  <option value="Panabo City">Panabo City</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="flex-1 w-full space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Initial Status</label>
+              <div className="relative">
+                <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                  <option value="Not Yet Delivered">Not Yet Delivered</option>
+                  <option value="On The Way">On The Way</option>
+                  <option value="Delivered">Delivered</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto pt-2 lg:pt-0">
+              <button type="submit" className="w-full sm:w-auto justify-center bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors">
+                Add
+              </button>
+              <button type="button" onClick={() => navigateTo('deliveries')} className="w-full sm:w-auto justify-center bg-transparent hover:bg-zinc-200 dark:hover:bg-[#1A1A24] text-zinc-700 dark:text-zinc-300 px-4 py-3 rounded-xl text-sm font-medium transition-colors border border-transparent">
                 Cancel
               </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 px-4 py-2.5 rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white shadow-[0_4px_15px_rgba(220,38,38,0.2)] transition-colors text-sm md:text-base"
-              >
-                Delete
-              </button>
             </div>
-          </div>
+          </form>
         </div>
-      )}
+      </div>
     </div>
   );
 }

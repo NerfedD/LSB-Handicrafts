@@ -1,105 +1,121 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { ArrowLeft, Save, Lightbulb } from 'lucide-react';
 
-export default function ProductForm({ activeTab, setActiveTab, formData, setFormData, handleSaveCreate, handleSaveEdit, formErrors }) {
-  const [customSize, setCustomSize] = useState('');
+export default function ProductForm({ mode, record, navigateTo, inventory, setInventory, showModal }) {
+  const [formData, setFormData] = useState(
+    record || { sku: '', name: '', category: '', price: '', stock: '', maxStock: '' }
+  );
 
-  useEffect(() => {
-    const standardSizes = ['2 inch', '4 inch', '1/2 inch', '1 inch'];
-    if (!standardSizes.includes(formData.size) && formData.size) {
-      setCustomSize(formData.size);
-    } else {
-      setCustomSize('');
-    }
-  }, [formData.size]);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    showModal(
+      mode === 'edit' ? "Save Changes" : "Add Product",
+      `Are you sure you want to ${mode === 'edit' ? 'save changes to' : 'add'} this product?`,
+      () => {
+        const isEditing = mode === 'edit';
+        const status = Number(formData.stock) < 50 ? 'Low Stock' : 'In Stock';
+        
+        if (isEditing) {
+          setInventory(inventory.map(item => item.id === record.id ? { ...formData, price: Number(formData.price), stock: Number(formData.stock), status } : item));
+        } else {
+          setInventory([...inventory, { ...formData, id: Date.now(), price: Number(formData.price), stock: Number(formData.stock), status }]);
+        }
+        navigateTo('inventory');
+      }
+    );
+  };
+
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <button onClick={() => setActiveTab('inventory')} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white font-bold text-xs md:text-sm mb-4 md:mb-6 flex items-center gap-2 transition-colors">
-        ← Back to Inventory
-      </button>
-      
-      <div className="bg-white dark:bg-[#121217] border border-slate-200 dark:border-white/5 rounded-3xl p-5 md:p-8 shadow-lg dark:shadow-2xl">
-        <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white mb-6 md:mb-8">
-          {activeTab === 'create' ? 'Create New Product' : 'Edit Product'}
-        </h2>
+    <div className="animate-in fade-in slide-in-from-right-4 duration-300 w-full">
+      <div className="flex items-center gap-4 mb-6 md:mb-8">
+        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">
+          {mode === 'add' ? 'Add Product' : 'Edit Product'}
+        </h1>
+      </div>
 
-        <div className="mb-6 rounded-2xl border border-violet-200 dark:border-violet-500/20 bg-violet-50 dark:bg-violet-500/10 p-4 text-sm text-violet-900 dark:text-violet-100">
-          Use this form to simulate event-driven updates: typing changes state, and submit updates the inventory list.
+      <button onClick={() => navigateTo('inventory')} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 flex items-center gap-2 mb-6 text-sm font-medium transition-colors w-fit">
+        <ArrowLeft size={16} /> Back
+      </button>
+
+      <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-6 w-full">
+        <div className="flex-1 space-y-6">
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">SKU <span className="text-red-500">*</span></label>
+                <input required type="text" placeholder="e.g., SB-001" 
+                  value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Product Description <span className="text-red-500">*</span></label>
+                <input required type="text" placeholder="e.g., Styro Ball" 
+                  value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Category <span className="text-red-500">*</span></label>
+                <input required type="text" placeholder="e.g., Styro Balls" 
+                  value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Price (Php) <span className="text-red-500">*</span></label>
+                <input required type="number" step="0.01" placeholder="0" 
+                  value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Stock Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Current Stock Level <span className="text-red-500">*</span></label>
+                <input required type="number" placeholder="0" 
+                  value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Maximum Stock <span className="text-red-500">*</span></label>
+                <input required type="number" placeholder="0" 
+                  value={formData.maxStock || ''} onChange={e => setFormData({...formData, maxStock: e.target.value})}
+                  className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500/50 transition-colors" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={activeTab === 'create' ? handleSaveCreate : handleSaveEdit} className="space-y-4 md:space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">SKU Code</label>
-              <input required type="text" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
-                value={formData.sku} onChange={e => setFormData({...formData, sku: e.target.value})} />
-              {formErrors?.sku && <p className="text-xs text-red-500 font-medium">{formErrors.sku}</p>}
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Category</label>
-              <select className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors appearance-none shadow-inner dark:shadow-none"
-                value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
-                <option value="Styro Balls">Styro Balls</option>
-                <option value="Styro Sheets">Styro Sheets</option>
-              </select>
-              {formErrors?.category && <p className="text-xs text-red-500 font-medium">{formErrors.category}</p>}
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Size</label>
-              <select className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors appearance-none shadow-inner dark:shadow-none"
-                value={['2 inch', '4 inch', '1/2 inch', '1 inch'].includes(formData.size) ? formData.size : 'Others'} onChange={e => {
-                  const value = e.target.value;
-                  if (value === 'Others') {
-                    setFormData({...formData, size: customSize});
-                  } else {
-                    setFormData({...formData, size: value});
-                  }
-                }}>
-                <option value="">Select Size</option>
-                <option value="2 inch">2 inch</option>
-                <option value="4 inch">4 inch</option>
-                <option value="1/2 inch">1/2 inch</option>
-                <option value="1 inch">1 inch</option>
-                <option value="Others">Others</option>
-              </select>
-              {(['2 inch', '4 inch', '1/2 inch', '1 inch'].includes(formData.size) ? false : formData.size || customSize) && (
-                <input type="text" placeholder="Enter custom size" value={customSize} onChange={e => {
-                  setCustomSize(e.target.value);
-                  setFormData({...formData, size: e.target.value});
-                }} className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none mt-2" />
-              )}
-              {formErrors?.size && <p className="text-xs text-red-500 font-medium">{formErrors.size}</p>}
+        <div className="w-full lg:w-80 space-y-6 shrink-0">
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Actions</h3>
+            <div className="space-y-3">
+              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
+                {mode === 'edit' ? <><Save size={18} /> Update Product</> : 'Add Product'}
+              </button>
+              <button type="button" onClick={() => navigateTo('inventory')} className="w-full bg-zinc-100 dark:bg-[#1A1A24] hover:bg-zinc-200 dark:hover:bg-[#22222E] text-zinc-700 dark:text-zinc-300 font-medium py-3 rounded-xl transition-colors">
+                Cancel
+              </button>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Product Description</label>
-            <textarea required className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none resize-none" rows="3"
-              value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-            {formErrors?.name && <p className="text-xs text-red-500 font-medium">{formErrors.name}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <div className="space-y-2">
-              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Price (₱)</label>
-              <input required type="number" min="0" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
-                value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
-              {formErrors?.price && <p className="text-xs text-red-500 font-medium">{formErrors.price}</p>}
+          <div className="bg-blue-50 dark:bg-[#0f1422] border border-blue-200 dark:border-blue-900/30 rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none">
+            <div className="flex items-center gap-2 mb-4 text-blue-600 dark:text-blue-400">
+              <Lightbulb size={20} />
+              <h3 className="text-lg font-semibold">Tips</h3>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] md:text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Stock</label>
-              <input required type="number" min="0" className="w-full bg-slate-50 dark:bg-[#0b0b0f] border border-slate-200 dark:border-white/5 rounded-xl px-4 py-2.5 md:py-3 text-sm md:text-base text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors shadow-inner dark:shadow-none" 
-                value={formData.stock} onChange={e => setFormData({...formData, stock: e.target.value})} />
-              {formErrors?.stock && <p className="text-xs text-red-500 font-medium">{formErrors.stock}</p>}
-            </div>
+            <ul className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400 list-disc pl-4 marker:text-zinc-400 dark:marker:text-zinc-600">
+              <li>SKU should be unique for each product</li>
+              <li>Status is auto-calculated based on stock level</li>
+              <li>Stock below 50 is marked as "Low Stock"</li>
+              <li>All fields marked with * are required</li>
+            </ul>
           </div>
-
-          <div className="pt-4 md:pt-6">
-            <button type="submit" className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white py-3 md:py-4 rounded-xl font-bold shadow-[0_4px_15px_rgba(139,92,246,0.3)] transition-all active:scale-[0.98] text-sm md:text-base">
-              {activeTab === 'create' ? 'Save Product' : 'Update Product'}
-            </button>
-          </div>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 }
