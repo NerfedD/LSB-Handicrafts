@@ -3,6 +3,7 @@ import { Search, Plus, Eye, Edit2, Trash2, ChevronDown } from 'lucide-react';
 
 export default function InventoryList({ inventory, navigateTo, setInventory, showModal }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
   const handleDelete = (id) => {
     showModal(
@@ -11,6 +12,13 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
       () => setInventory(inventory.filter(item => item.id !== id))
     );
   };
+
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -33,10 +41,14 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative w-full sm:w-auto">
-              <select className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full">
-                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Categories</option>
-                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Balls</option>
-                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Sheets</option>
+              <select 
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="All Categories" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Categories</option>
+                <option value="Styro Balls" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Balls</option>
+                <option value="Styro Sheets" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Sheets</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>
@@ -63,34 +75,41 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {inventory.map(item => (
-                <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/50 transition-colors">
-                  <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{item.sku}</td>
-                  <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>
-                  <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{item.category}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                      <span className={`font-medium text-xs ${item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}`}>
-                        {item.status}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${item.stock < 50 ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                      <span className="text-zinc-700 dark:text-zinc-300 font-medium">{item.stock}</span>
-                    </div>
-                  </td>
-                  {/* Changed $ to PHP here */}
-                  <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right space-x-3">
-                    <button onClick={() => navigateTo('view-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Eye size={16} /></button>
-                    <button onClick={() => navigateTo('edit-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(item.id)} className="text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors inline-block"><Trash2 size={16} /></button>
+              {filteredInventory.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
+                    No products found matching your search.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredInventory.map(item => (
+                  <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/50 transition-colors">
+                    <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{item.sku}</td>
+                    <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>
+                    <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{item.category}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                        <span className={`font-medium text-xs ${item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${item.stock < 50 ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                        <span className="text-zinc-700 dark:text-zinc-300 font-medium">{item.stock}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-right space-x-3">
+                      <button onClick={() => navigateTo('view-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Eye size={16} /></button>
+                      <button onClick={() => navigateTo('edit-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDelete(item.id)} className="text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors inline-block"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

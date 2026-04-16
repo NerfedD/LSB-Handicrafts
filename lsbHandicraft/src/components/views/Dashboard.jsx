@@ -11,6 +11,28 @@ export default function Dashboard({ inventory, deliveries, orders = [] }) {
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
 
+  // Combine orders and deliveries into a single activity list
+  const recentActivities = [
+    ...orders.map(order => ({
+      id: order.id,
+      type: 'Order',
+      title: 'Order Created',
+      description: `Order #${order.id.toString().slice(-6)} for ${order.customerName}`,
+      amount: order.totalAmount,
+      date: order.createdAt,
+      color: 'bg-blue-500'
+    })),
+    ...deliveries.map(delivery => ({
+      id: delivery.id,
+      type: 'Delivery',
+      title: 'Delivery Update',
+      description: `${delivery.product} to ${delivery.location}`,
+      status: delivery.status,
+      date: delivery.createdAt,
+      color: delivery.status === 'Delivered' ? 'bg-emerald-500' : 'bg-yellow-500'
+    }))
+  ].sort((a, b) => b.id - a.id).slice(0, 5); // Show latest 5
+
   const filteredInventory = inventory.filter(item => {
     if (invFilter === 'All') return true;
     return item.status === invFilter;
@@ -71,15 +93,25 @@ export default function Dashboard({ inventory, deliveries, orders = [] }) {
             <Clock size={16} className="text-zinc-400 dark:text-zinc-500" />
           </div>
           <div className="space-y-4">
-            <div className="flex gap-4">
-              <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>
-              <div>
-                <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">Delivery Added</span> Styro Ball 4 inch - <span className="text-red-500 dark:text-red-400">Not Yet Delivered</span>
-                </p>
-                <p className="text-xs text-zinc-500 mt-1">Just now</p>
-              </div>
-            </div>
+            {recentActivities.length === 0 ? (
+              <p className="text-sm text-zinc-500 text-center py-4">No recent activity found.</p>
+            ) : (
+              recentActivities.map((activity, idx) => (
+                <div key={idx} className="flex gap-4">
+                  <div className={`mt-1.5 w-1.5 h-1.5 rounded-full ${activity.color} shrink-0`}></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                      <span className={`font-medium ${activity.type === 'Order' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                        {activity.title}:
+                      </span> {activity.description}
+                      {activity.amount && <span className="ml-1 font-bold"> - PHP {activity.amount.toLocaleString()}</span>}
+                      {activity.status && <span className={`ml-1 italic ${activity.status === 'Delivered' ? 'text-emerald-500' : 'text-yellow-500'}`}> ({activity.status})</span>}
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-1">{activity.date}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
