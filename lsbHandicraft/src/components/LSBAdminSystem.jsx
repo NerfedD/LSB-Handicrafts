@@ -5,10 +5,11 @@ import Header from './layout/Header';
 import Dashboard from './views/Dashboard';
 import InventoryList from './views/InventoryList';
 import DeliveryList from './views/DeliveryList';
+import OrdersList from './views/OrdersList';
 import ProductForm from './views/ProductForm';
 import ProductDetail from './views/ProductDetail';
 import { saveInventory, loadInventory, deleteFromInventory, saveDeliveries, loadDeliveries, deleteFromDeliveries } from '../utils/storageManager';
-import { initialDeliveries } from '../utils/data';
+import { initialDeliveries, initialOrders } from '../utils/data';
 
 const initialInventory = [
   { id: 1, sku: 'SB-001', name: 'Styro Ball 2 inch', category: 'Styro Balls', price: 15, stock: 120, status: 'In Stock' },
@@ -56,6 +57,10 @@ export default function LSBAdminSystem() {
   const [deliveries, setDeliveries] = useState(() => {
     return loadDeliveries(initialDeliveries);
   });
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('lsb-orders');
+    return saved ? JSON.parse(saved) : initialOrders;
+  });
 
   // Handle Dark Mode
   useEffect(() => {
@@ -79,6 +84,11 @@ export default function LSBAdminSystem() {
   useEffect(() => {
     saveDeliveries(deliveries);
   }, [deliveries]);
+
+  // Save to localStorage whenever orders change
+  useEffect(() => {
+    localStorage.setItem('lsb-orders', JSON.stringify(orders));
+  }, [orders]);
 
   const toggleTheme = () => {
     if (isDarkMode) {
@@ -158,7 +168,7 @@ export default function LSBAdminSystem() {
     const updatedDeliveries = deleteFromDeliveries(deliveries, deliveryId);
     setDeliveries(updatedDeliveries);
   };
-  
+
   const handleSaveCreate = (e) => {
     e.preventDefault();
     const errors = validateForm(formData, inventory);
@@ -252,6 +262,16 @@ export default function LSBAdminSystem() {
               />
             )}
 
+            {activeTab === 'orders' && (
+              <OrdersList
+                inventory={inventory}
+                orders={orders}
+                setOrders={setOrders}
+                deliveries={deliveries}
+                setDeliveries={setDeliveries}
+              />
+            )}
+
             {(activeTab === 'create' || activeTab === 'edit') && (
               <ProductForm 
                 activeTab={activeTab} setActiveTab={setActiveTab}
@@ -287,6 +307,9 @@ export default function LSBAdminSystem() {
         </button>
         <button onClick={() => setActiveTab('deliveries')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'deliveries' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
           <Icons.Delivery />
+        </button>
+        <button onClick={() => setActiveTab('orders')} className={`flex flex-col items-center p-2 rounded-xl transition-colors ${activeTab === 'orders' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-400 dark:text-gray-500'}`}>
+          <Icons.Orders />
         </button>
       </nav>
     </div>

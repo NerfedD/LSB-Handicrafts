@@ -39,6 +39,14 @@ export default function Sidebar({ activeTab, setActiveTab }) {
             }`}>
             <Icons.Delivery /> <span>Deliveries</span>
           </button>
+          <button onClick={() => setActiveTab('orders')} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 border-l-4 ${
+              activeTab === 'orders' 
+                ? 'bg-gradient-to-r from-violet-50/80 to-transparent dark:from-violet-500/10 dark:to-transparent border-violet-600 text-violet-700 dark:text-violet-400 font-bold' 
+                : 'border-transparent text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-gray-200 hover:bg-slate-50 dark:hover:bg-white/5 font-medium'
+            }`}>
+            <Icons.Orders /> <span>Orders</span>
+          </button>
         </nav>
       </div>
 
