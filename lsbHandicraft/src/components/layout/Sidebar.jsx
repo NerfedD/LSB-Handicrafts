@@ -1,9 +1,10 @@
 import React from 'react';
-import { LayoutDashboard, Package, Truck, X } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, ShoppingCart, X } from 'lucide-react';
 
 export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSidebarOpen }) {
   const isInventoryGroup = ['inventory', 'add-product', 'edit-product', 'view-product'].includes(activeTab);
   const isDeliveryGroup = ['deliveries', 'add-delivery'].includes(activeTab);
+  const isOrdersGroup = ['orders', 'create-order'].includes(activeTab);
 
   const handleNavigate = (tab) => {
     navigateTo(tab);
@@ -75,6 +76,18 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
             >
               <div className={isDeliveryGroup ? 'border-l-2 border-blue-600 dark:border-blue-500 h-4 absolute left-4' : 'hidden'}></div>
               <Truck size={18} /> <span className="font-medium text-sm">Deliveries</span>
+            </button>
+
+            <button 
+              onClick={() => handleNavigate('orders')}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+                isOrdersGroup
+                  ? 'bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-500' 
+                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-[#1A1A24]'
+              }`}
+            >
+              <div className={isOrdersGroup ? 'border-l-2 border-blue-600 dark:border-blue-500 h-4 absolute left-4' : 'hidden'}></div>
+              <ShoppingCart size={18} /> <span className="font-medium text-sm">Orders</span>
             </button>
           </nav>
         </div>

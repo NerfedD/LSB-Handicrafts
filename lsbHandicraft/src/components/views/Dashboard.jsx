@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, Clock } from 'lucide-react';
 
-export default function Dashboard({ inventory, deliveries }) {
+export default function Dashboard({ inventory, deliveries, orders = [] }) {
   const [invFilter, setInvFilter] = useState('All');
 
   const totalProducts = inventory.length;
   const totalVolume = inventory.reduce((sum, item) => sum + Number(item.stock), 0);
   const lowStockCount = inventory.filter(i => i.status === 'Low Stock').length;
+  
+  const totalOrders = orders.length;
+  const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
 
   const filteredInventory = inventory.filter(item => {
     if (invFilter === 'All') return true;
@@ -20,28 +23,38 @@ export default function Dashboard({ inventory, deliveries }) {
         <p className="text-zinc-500 dark:text-zinc-400 text-sm">Here is today's report and performances</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
         <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-none w-full">
           <button className="absolute top-5 right-5 md:top-6 md:right-6 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"><MoreHorizontal size={18}/></button>
           <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Products</h3>
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalProducts}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
             <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+12%</span>
-            <span className="text-zinc-500">from last quarter</span>
+            <span className="text-zinc-500">from last month</span>
           </div>
         </div>
 
         <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-none w-full">
           <button className="absolute top-5 right-5 md:top-6 md:right-6 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"><MoreHorizontal size={18}/></button>
-          <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Volume</h3>
-          <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalVolume}</p>
+          <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Orders</h3>
+          <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalOrders}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+5%</span>
-            <span className="text-zinc-500">from last quarter</span>
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+8%</span>
+            <span className="text-zinc-500">from last month</span>
           </div>
         </div>
 
-        <div className="bg-red-50 dark:bg-[#181111] border border-red-100 dark:border-red-900/30 rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-[inset_0_0_20px_rgba(239,68,68,0.02)] sm:col-span-2 lg:col-span-1 w-full">
+        <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-none w-full">
+          <button className="absolute top-5 right-5 md:top-6 md:right-6 text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300"><MoreHorizontal size={18}/></button>
+          <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Revenue</h3>
+          <p className="text-3xl md:text-4xl font-bold text-blue-600 dark:text-blue-500 mb-3 md:mb-4">PHP {totalRevenue.toLocaleString()}</p>
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+15%</span>
+            <span className="text-zinc-500">from last month</span>
+          </div>
+        </div>
+
+        <div className="bg-red-50 dark:bg-[#181111] border border-red-100 dark:border-red-900/30 rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-[inset_0_0_20px_rgba(239,68,68,0.02)] w-full">
           <button className="absolute top-5 right-5 md:top-6 md:right-6 text-red-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-zinc-300"><MoreHorizontal size={18}/></button>
           <h3 className="text-sm font-medium text-red-600/80 dark:text-red-400/80 mb-3 md:mb-4">Low Stock Alerts</h3>
           <p className="text-3xl md:text-4xl font-bold text-red-600 dark:text-red-500 mb-3 md:mb-4">{lowStockCount}</p>

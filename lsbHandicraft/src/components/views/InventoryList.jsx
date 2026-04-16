@@ -34,9 +34,9 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative w-full sm:w-auto">
               <select className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full">
-                <option>All Categories</option>
-                <option>Styro Balls</option>
-                <option>Styro Sheets</option>
+                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Categories</option>
+                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Balls</option>
+                <option className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Sheets</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>

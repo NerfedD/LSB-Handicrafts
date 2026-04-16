@@ -38,10 +38,10 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
               <tr className="border-y border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
                 <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase">Product</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Size</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Amount</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Location</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Status</th>
-                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Created</th>
-                <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase text-right">Actions</th>
+                <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
@@ -52,6 +52,7 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
                     <span className="text-zinc-900 dark:text-zinc-100 font-semibold">{delivery.product}</span>
                   </td>
                   <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">{delivery.size}</td>
+                  <td className="px-4 py-5 text-zinc-900 dark:text-zinc-100 font-medium">{delivery.amount || '-'}</td>
                   <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
                      <div className="flex items-center gap-2">
                        <span className="text-zinc-400 dark:text-zinc-500">📍</span> {delivery.location}
@@ -79,9 +80,6 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
                       }`} />
                     </div>
                   </td>
-                  <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
-                     <span>{delivery.createdAt.split(',')[0]}</span>
-                  </td>
                   <td className="px-4 md:px-6 py-5 text-right">
                     <button onClick={() => handleDelete(delivery.id)} className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors inline-block p-2"><Trash2 size={16} /></button>
                   </td>
@@ -95,9 +93,12 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
   );
 }
 
-export function AddDelivery({ navigateTo, inventory, deliveries, setDeliveries, showModal }) {
+export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeliveries, orders = [], showModal }) {
   const [formData, setFormData] = useState({
-    product: '',
+    sourceType: record ? 'order' : 'product', // 'product' or 'order'
+    selectedOrderId: record?.id || '',
+    product: record ? `Order #${record.id.toString().slice(-6)} - ${record.customerName}` : '',
+    amount: record ? record.items.reduce((sum, item) => sum + item.quantity, 0) : '',
     location: '',
     status: 'Not Yet Delivered'
   });
@@ -110,22 +111,40 @@ export function AddDelivery({ navigateTo, inventory, deliveries, setDeliveries, 
       "Add Delivery",
       "Are you sure you want to add this new delivery record?",
       () => {
-        const sizeMatch = formData.product.match(/(\d+(?:\.\d+)?\s*\w+(?:\/\d+\s*\w+)?)$/);
-        const size = sizeMatch ? sizeMatch[1] : 'Standard';
+        let size = 'Standard';
+        if (formData.sourceType === 'product') {
+          const sizeMatch = formData.product.match(/(\d+(?:\.\d+)?\s*\w+(?:\/\d+\s*\w+)?)$/);
+          size = sizeMatch ? sizeMatch[1] : 'Standard';
+        } else {
+          size = 'Order Package';
+        }
 
         const newDel = {
           id: Date.now(),
           product: formData.product,
           size: size,
+          amount: Number(formData.amount),
           location: formData.location || 'Davao City',
           status: formData.status,
-          createdAt: 'Apr 16, 2026'
+          createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         };
 
         setDeliveries([newDel, ...deliveries]);
         navigateTo('deliveries');
       }
     );
+  };
+
+  const handleOrderChange = (orderId) => {
+    const order = orders.find(o => o.id === parseInt(orderId));
+    if (order) {
+      setFormData({
+        ...formData,
+        selectedOrderId: orderId,
+        product: `Order #${order.id.toString().slice(-6)} - ${order.customerName}`,
+        amount: order.items.reduce((sum, item) => sum + item.quantity, 0)
+      });
+    }
   };
 
   return (
@@ -144,37 +163,84 @@ export function AddDelivery({ navigateTo, inventory, deliveries, setDeliveries, 
 
         <div className="bg-zinc-50 dark:bg-[#181820] border border-zinc-200 dark:border-[#272730] rounded-xl p-4 md:p-6 mb-8">
           <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Add New Delivery</h3>
+          
+          <div className="flex gap-4 mb-6">
+            <button 
+              onClick={() => setFormData({...formData, sourceType: 'product', product: '', selectedOrderId: ''})}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${formData.sourceType === 'product' ? 'bg-blue-600 text-white' : 'bg-zinc-200 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400'}`}
+            >
+              From Product
+            </button>
+            <button 
+              onClick={() => setFormData({...formData, sourceType: 'order', product: '', selectedOrderId: ''})}
+              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${formData.sourceType === 'order' ? 'bg-blue-600 text-white' : 'bg-zinc-200 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400'}`}
+            >
+              From Order
+            </button>
+          </div>
+
           <form onSubmit={handleSubmit} className="flex flex-col lg:flex-row items-end gap-4 w-full">
-            <div className="flex-1 w-full space-y-2">
-              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Product <span className="text-red-500">*</span></label>
+            {formData.sourceType === 'product' ? (
+              <div className="flex-1 w-full space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Product <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select required value={formData.product} onChange={e => setFormData({...formData, product: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                    <option value="" disabled className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Select product</option>
+                    {inventory.map(i => <option key={i.id} value={i.name} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{i.name}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 w-full space-y-2">
+                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Order <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select required value={formData.selectedOrderId} onChange={e => handleOrderChange(e.target.value)} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
+                    <option value="" disabled className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Select order</option>
+                    {orders.map(o => (
+                      <option key={o.id} value={o.id} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">
+                        #{o.id.toString().slice(-6)} - {o.customerName} (₱{o.totalAmount.toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+                </div>
+              </div>
+            )}
+            <div className="w-full lg:w-32 space-y-2">
+              <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Amount <span className="text-red-500">*</span></label>
               <div className="relative">
-                <select required value={formData.product} onChange={e => setFormData({...formData, product: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
-                  <option value="" disabled>Select product</option>
-                  {inventory.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+                <input 
+                  required 
+                  type="number"
+                  min="1"
+                  value={formData.amount} 
+                  onChange={e => setFormData({...formData, amount: e.target.value})} 
+                  placeholder="0"
+                  className="w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                />
               </div>
             </div>
             <div className="flex-1 w-full space-y-2">
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Location <span className="text-red-500">*</span></label>
               <div className="relative">
-                <select required value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
-                  <option value="" disabled>Select location</option>
-                  <option value="Davao City">Davao City</option>
-                  <option value="Digos City">Digos City</option>
-                  <option value="General Santos">General Santos</option>
-                  <option value="Panabo City">Panabo City</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
+                <input 
+                  required 
+                  type="text"
+                  value={formData.location} 
+                  onChange={e => setFormData({...formData, location: e.target.value})} 
+                  placeholder="Enter location"
+                  className="w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50"
+                />
               </div>
             </div>
             <div className="flex-1 w-full space-y-2">
               <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">Initial Status</label>
               <div className="relative">
                 <select value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
-                  <option value="Not Yet Delivered">Not Yet Delivered</option>
-                  <option value="On The Way">On The Way</option>
-                  <option value="Delivered">Delivered</option>
+                  <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
+                  <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
+                  <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
               </div>
