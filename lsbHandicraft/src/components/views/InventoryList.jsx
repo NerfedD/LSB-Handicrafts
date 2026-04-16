@@ -82,7 +82,8 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                       <span className="text-zinc-700 dark:text-zinc-300 font-medium">{item.stock}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">${item.price.toFixed(2)}</td>
+                  {/* Changed $ to PHP here */}
+                  <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</td>
                   <td className="px-6 py-4 text-right space-x-3">
                     <button onClick={() => navigateTo('view-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Eye size={16} /></button>
                     <button onClick={() => navigateTo('edit-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Edit2 size={16} /></button>
@@ -93,7 +94,6 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
             </tbody>
           </table>
         </div>
-
       </div>
     </div>
   );

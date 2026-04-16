@@ -7,7 +7,7 @@ export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearch
     <header className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/60 dark:bg-[#0b0b0f]/60 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shrink-0 transition-colors duration-300 z-10 relative">
       <div className="md:hidden flex items-center gap-3">
          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white font-black shadow-md">L</div>
-         <h1 className="text-lg font-bold text-slate-900 dark:text-white">LSB</h1>
+         <h1 className="text-lg font-bold text-slate-900 dark:text-white">LSB Handicrafts</h1>
       </div>
 
       <div className="hidden md:flex items-center gap-4 w-full max-w-md">

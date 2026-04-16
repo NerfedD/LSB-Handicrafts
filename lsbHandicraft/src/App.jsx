@@ -71,7 +71,7 @@ export default function App() {
               >
                 <Menu size={24} />
               </button>
-              <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide">LSB</span>
+              <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide">LSB Handicrafts</span>
             </div>
 
             {/* Spacer */}

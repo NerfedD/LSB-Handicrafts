@@ -54,7 +54,8 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Price</p>
-                <p className="text-zinc-900 dark:text-zinc-200 font-medium">${record.price.toFixed(2)}</p>
+                {/* Changed $ to PHP here */}
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium">PHP {record.price.toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Size</p>
@@ -94,7 +95,7 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
             <div className="space-y-6 relative z-10">
               <div>
                 <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Total Value</p>
-                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">${(record.price * record.stock).toFixed(2)}</p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">PHP {(record.price * record.stock).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">Stock Turnover</p>

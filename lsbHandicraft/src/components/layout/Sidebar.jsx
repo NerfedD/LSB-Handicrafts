@@ -24,15 +24,15 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
       <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#09090B] border-r border-zinc-200 dark:border-[#1F1F2E] flex flex-col h-full shrink-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 rounded-md p-1.5 shadow-lg shadow-blue-600/20">
+            <div className="bg-blue-600 rounded-md p-1.5 shadow-lg shadow-blue-600/20 shrink-0">
               <LayoutDashboard size={20} className="text-white" />
             </div>
-            <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide">LSB</span>
+            <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide whitespace-nowrap">LSB Handicrafts</span>
           </div>
           {/* Mobile Close Button */}
           <button 
             onClick={() => setIsSidebarOpen(false)} 
-            className="md:hidden text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
+            className="md:hidden text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors shrink-0"
           >
             <X size={20} />
           </button>
