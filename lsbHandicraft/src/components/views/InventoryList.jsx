@@ -22,9 +22,6 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="mb-6">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Products</h1>
-      </div>
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         

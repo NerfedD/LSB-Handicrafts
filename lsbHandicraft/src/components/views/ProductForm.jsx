@@ -28,11 +28,7 @@ export default function ProductForm({ mode, record, navigateTo, inventory, setIn
 
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-300 w-full">
-      <div className="flex items-center gap-4 mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">
-          {mode === 'add' ? 'Add Product' : 'Edit Product'}
-        </h1>
-      </div>
+
 
       <button onClick={() => navigateTo('inventory')} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 flex items-center gap-2 mb-6 text-sm font-medium transition-colors w-fit">
         <ArrowLeft size={16} /> Back

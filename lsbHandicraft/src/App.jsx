@@ -50,6 +50,21 @@ export default function App() {
     closeModal();
   };
 
+  const getPageTitle = (tab) => {
+    switch (tab) {
+      case 'dashboard': return 'Dashboard';
+      case 'inventory': return 'Products'; /* In picture 1, Inventory nav leads to Products header */
+      case 'deliveries': return 'Delivery List';
+      case 'orders': return 'Orders';
+      case 'add-product': return 'Add Product';
+      case 'edit-product': return 'Edit Product';
+      case 'view-product': return 'View Product';
+      case 'add-delivery': return 'Add Delivery';
+      case 'create-order': return 'Create Order';
+      default: return 'Dashboard';
+    }
+  };
+
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden selection:bg-blue-500/30 transition-colors duration-200">
       
@@ -61,19 +76,23 @@ export default function App() {
       />
       
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
-        <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto flex flex-col min-h-full">
+        <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto flex flex-col min-h-full pb-20">
           
           {/* Top Header */}
-          <header className="flex justify-between items-center mb-6 lg:mb-8 shrink-0">
-            {/* Mobile Sidebar Toggle & Title */}
-            <div className="flex items-center gap-3 md:hidden">
+          <header className="flex justify-between items-center mb-6 lg:mb-8 shrink-0 pb-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
+            <div className="flex items-center gap-3">
               <button 
                 onClick={() => setIsSidebarOpen(true)} 
-                className="text-zinc-600 dark:text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-[#1A1A24] transition-colors"
+                className="text-zinc-600 dark:text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-[#1A1A24] transition-colors md:hidden"
               >
                 <Menu size={24} />
               </button>
-              <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide">LSB Handicrafts</span>
+              <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100 hidden md:block">
+                {getPageTitle(activeTab)}
+              </h1>
+              <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide md:hidden">
+                {getPageTitle(activeTab)}
+              </span>
             </div>
 
             {/* Spacer */}
@@ -104,6 +123,8 @@ export default function App() {
             {activeTab === 'create-order' && <CreateOrder navigateTo={navigateTo} inventory={inventory} orders={orders} setOrders={setOrders} showModal={showModal} />}
           </div>
 
+          {/* Spacer to prevent elements sticking to bottom */}
+          <div className="h-12 md:h-24 w-full shrink-0"></div>
         </div>
       </main>
 

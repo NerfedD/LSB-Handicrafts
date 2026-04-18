@@ -17,9 +17,6 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Delivery List</h1>
-      </div>
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 md:mb-0">
@@ -149,9 +146,6 @@ export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeli
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Delivery List</h1>
-      </div>
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">

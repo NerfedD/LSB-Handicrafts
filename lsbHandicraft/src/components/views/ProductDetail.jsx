@@ -17,9 +17,7 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 w-full">
-      <div className="flex justify-between items-center mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">View Product</h1>
-      </div>
+
 
       <div className="flex flex-col sm:flex-row justify-start sm:justify-between items-start sm:items-center gap-4 mb-6">
         <button onClick={() => navigateTo('inventory')} className="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-white flex items-center gap-3 font-semibold text-xl transition-colors">

@@ -16,9 +16,7 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Orders</h1>
-      </div>
+
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 md:mb-0">
@@ -175,9 +173,7 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-2xl font-medium text-zinc-900 dark:text-zinc-100">Create New Order</h1>
-      </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Customer & Item Selection */}
@@ -228,7 +224,7 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
               <button 
                 type="button"
                 onClick={handleAddItem}
-                className="w-full sm:w-auto bg-zinc-900 dark:bg-white dark:text-zinc-900 text-white px-6 py-3 rounded-xl text-sm font-medium hover:opacity-90 transition-opacity"
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white dark:bg-white dark:text-zinc-900 px-6 py-3 rounded-xl text-sm font-medium dark:hover:opacity-90 transition-all shadow-[0_0_15px_rgba(37,99,235,0.2)] dark:shadow-none"
               >
                 Add
               </button>
@@ -269,26 +265,26 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
 
         {/* Right Column: Order Summary */}
         <div className="space-y-6">
-          <div className="bg-zinc-900 dark:bg-[#1A1A24] text-white rounded-2xl p-6 shadow-xl sticky top-8">
+          <div className="bg-blue-50 dark:bg-[#1A1A24] dark:text-white rounded-2xl p-6 shadow-sm dark:shadow-xl sticky top-8 border border-blue-100 dark:border-transparent">
             <div className="flex items-center gap-3 mb-6">
               <div className="bg-blue-600 p-2 rounded-lg">
                 <Calculator size={20} className="text-white" />
               </div>
-              <h3 className="text-lg font-bold">Order Summary</h3>
+              <h3 className="text-lg font-bold text-blue-900 dark:text-white">Order Summary</h3>
             </div>
             
             <div className="space-y-4 mb-8">
-              <div className="flex justify-between text-zinc-400 text-sm">
+              <div className="flex justify-between text-blue-800/70 dark:text-zinc-400 text-sm font-medium">
                 <span>Subtotal</span>
                 <span>PHP {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between text-zinc-400 text-sm">
+              <div className="flex justify-between text-blue-800/70 dark:text-zinc-400 text-sm font-medium">
                 <span>Tax (0%)</span>
                 <span>PHP 0.00</span>
               </div>
-              <div className="border-t border-white/10 pt-4 flex justify-between items-end">
-                <span className="text-sm font-medium">Total Cost</span>
-                <span className="text-2xl font-bold text-blue-400">PHP {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+              <div className="border-t border-blue-900/10 dark:border-white/10 pt-4 flex justify-between items-end">
+                <span className="text-sm font-bold text-blue-900 dark:text-white">Total Cost</span>
+                <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">PHP {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -298,7 +294,7 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
                 disabled={selectedItems.length === 0}
                 className={`w-full flex items-center justify-center gap-2 py-4 rounded-xl font-bold transition-all ${
                   selectedItems.length === 0
-                    ? 'bg-white/5 text-white/20 cursor-not-allowed'
+                    ? 'bg-blue-900/5 text-blue-900/20 dark:bg-white/5 dark:text-white/20 cursor-not-allowed'
                     : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 active:scale-[0.98]'
                 }`}
               >
@@ -306,7 +302,7 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
               </button>
               <button 
                 onClick={() => navigateTo('orders')}
-                className="w-full py-4 rounded-xl font-medium text-zinc-400 hover:text-white transition-colors"
+                className="w-full py-4 rounded-xl font-medium text-blue-600 hover:text-blue-800 dark:text-zinc-400 dark:hover:text-white transition-colors"
               >
                 Cancel
               </button>

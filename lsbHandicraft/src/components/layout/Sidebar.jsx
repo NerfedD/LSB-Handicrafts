@@ -89,6 +89,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
               <div className={isOrdersGroup ? 'border-l-2 border-blue-600 dark:border-blue-500 h-4 absolute left-4' : 'hidden'}></div>
               <ShoppingCart size={18} /> <span className="font-medium text-sm">Orders</span>
             </button>
+
           </nav>
         </div>
 
