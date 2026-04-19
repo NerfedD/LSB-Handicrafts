@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ShoppingCart, Calculator, Truck } from 'lucide-react';
 
 export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal }) {
+  const [statusFilter, setStatusFilter] = useState('All Orders');
+
   const handleDelete = (id) => {
     showModal(
       "Delete Order",
@@ -14,25 +16,44 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
     setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
   };
 
+  const filteredOrders = statusFilter === 'All Orders' 
+    ? orders 
+    : orders.filter(order => order.status === statusFilter);
+
   return (
     <div className="animate-in fade-in duration-300 w-full">
 
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
-        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 md:mb-0">
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage customer orders and track sales</p>
-          <button 
-            onClick={() => navigateTo('create-order')}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-          >
-            <Plus size={16} /> Create Order
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="All Orders" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Orders</option>
+                <option value="Pending" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Pending</option>
+                <option value="Completed" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Completed</option>
+                <option value="Cancelled" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Cancelled</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
+            <button 
+              onClick={() => navigateTo('create-order')}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+            >
+              <Plus size={16} /> Create Order
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
-              <tr className="border-y border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
+              <tr className="border-b border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
                 <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase">Order ID</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Customer</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Items</th>
@@ -42,14 +63,14 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {orders.length === 0 ? (
+              {filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
                     No orders found. Create your first order!
                   </td>
                 </tr>
               ) : (
-                orders.map((order) => (
+                filteredOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/30 transition-colors">
                     <td className="px-4 md:px-6 py-5">
                       <span className="text-zinc-900 dark:text-zinc-100 font-medium">#{order.id.toString().slice(-6)}</span>
@@ -67,23 +88,23 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
                       PHP {order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-5">
-                      <div className="relative inline-block w-[130px]">
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
-                            order.status === 'Pending' 
-                              ? 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40' 
-                              : order.status === 'Completed'
-                              ? 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900/50 dark:text-emerald-500 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
-                              : 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40'
-                          }`}
-                        >
-                          <option value="Pending" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Pending</option>
-                          <option value="Completed" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Completed</option>
-                          <option value="Cancelled" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Cancelled</option>
-                        </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" />
+                      <div className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          order.status === 'Pending'
+                            ? 'bg-yellow-500'
+                            : order.status === 'Completed'
+                            ? 'bg-emerald-500'
+                            : 'bg-red-500'
+                        }`}></div>
+                        <span className={`font-medium text-xs ${
+                          order.status === 'Pending'
+                            ? 'text-yellow-600 dark:text-yellow-500'
+                            : order.status === 'Completed'
+                            ? 'text-emerald-600 dark:text-emerald-500'
+                            : 'text-red-600 dark:text-red-500'
+                        }`}>
+                          {order.status}
+                        </span>
                       </div>
                     </td>
                     <td className="px-4 md:px-6 py-5 text-right flex items-center justify-end gap-1">

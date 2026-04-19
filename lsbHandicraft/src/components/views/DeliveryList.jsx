@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, ChevronDown, Trash2 } from 'lucide-react';
 
 export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal }) {
+  const [statusFilter, setStatusFilter] = useState('All Status');
+  const [locationFilter, setLocationFilter] = useState('All Locations');
   
   const handleDelete = (id) => {
     showModal(
@@ -15,24 +17,60 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
     setDeliveries(deliveries.map(d => d.id === id ? { ...d, status: newStatus } : d));
   };
 
+  const filteredDeliveries = deliveries.filter(delivery => {
+    const matchesStatus = statusFilter === 'All Status' || delivery.status === statusFilter;
+    const matchesLocation = locationFilter === 'All Locations' || delivery.location === locationFilter;
+    return matchesStatus && matchesLocation;
+  });
+
+  const uniqueLocations = [...new Set(deliveries.map(d => d.location))];
+
   return (
     <div className="animate-in fade-in duration-300 w-full">
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
-        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2 md:mb-0">
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
-          <button 
-            onClick={() => navigateTo('add-delivery')}
-            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-[0_0_15px_rgba(37,99,235,0.2)]"
-          >
-            <Plus size={16} /> Add Delivery
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="All Status" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Status</option>
+                <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
+                <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
+                <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="All Locations" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Locations</option>
+                {uniqueLocations.map(location => (
+                  <option key={location} value={location} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{location}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
+            <button 
+              onClick={() => navigateTo('add-delivery')}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+            >
+              <Plus size={16} /> Add Delivery
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
-              <tr className="border-y border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
+              <tr className="border-b border-zinc-200 dark:border-[#1F1F2E] text-zinc-500 bg-zinc-50/50 dark:bg-transparent">
                 <th className="px-4 md:px-6 py-4 font-semibold text-xs tracking-wider uppercase">Product</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Size</th>
                 <th className="px-4 py-4 font-semibold text-xs tracking-wider uppercase">Amount</th>
@@ -42,7 +80,14 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {deliveries.map((delivery, i) => (
+              {filteredDeliveries.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
+                    No deliveries found. Create your first delivery!
+                  </td>
+                </tr>
+              ) : (
+                filteredDeliveries.map((delivery, i) => (
                 <tr key={delivery.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/30 transition-colors">
                   <td className="px-4 md:px-6 py-5 flex items-center gap-3">
                     <div className={`w-1.5 h-1.5 rounded-full ${i % 2 === 0 ? 'bg-red-500' : 'bg-yellow-500'} shrink-0`}></div>
@@ -50,38 +95,38 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
                   </td>
                   <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">{delivery.size}</td>
                   <td className="px-4 py-5 text-zinc-900 dark:text-zinc-100 font-medium">{delivery.amount || '-'}</td>
-                  <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
-                     <div className="flex items-center gap-2">
-                       <span className="text-zinc-400 dark:text-zinc-500">📍</span> {delivery.location}
-                     </div>
+                  <td className="px-4 py-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-400 dark:text-zinc-500">📍</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">{delivery.location}</span>
+                    </div>
                   </td>
                   <td className="px-4 py-5">
-                    <div className="relative inline-block w-[140px] md:w-[150px]">
-                      <select
-                        value={delivery.status}
-                        onChange={(e) => handleStatusChange(delivery.id, e.target.value)}
-                        className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
-                          delivery.status === 'Not Yet Delivered' 
-                            ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40' 
-                            : delivery.status === 'Delivered'
-                            ? 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900/50 dark:text-emerald-500 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
-                            : 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40'
-                        }`}
-                      >
-                        <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
-                        <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
-                        <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
-                      </select>
-                      <ChevronDown size={14} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70 ${
-                        delivery.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' : delivery.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' : 'text-yellow-600 dark:text-yellow-500'
-                      }`} />
+                    <div className="flex items-center gap-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${
+                        delivery.status === 'Not Yet Delivered'
+                          ? 'bg-red-500'
+                          : delivery.status === 'Delivered'
+                          ? 'bg-emerald-500'
+                          : 'bg-yellow-500'
+                      }`}></div>
+                      <span className={`font-medium text-xs ${
+                        delivery.status === 'Not Yet Delivered'
+                          ? 'text-red-600 dark:text-red-500'
+                          : delivery.status === 'Delivered'
+                          ? 'text-emerald-600 dark:text-emerald-500'
+                          : 'text-yellow-600 dark:text-yellow-500'
+                      }`}>
+                        {delivery.status}
+                      </span>
                     </div>
                   </td>
                   <td className="px-4 md:px-6 py-5 text-right">
                     <button onClick={() => handleDelete(delivery.id)} className="text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors inline-block p-2"><Trash2 size={16} /></button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
