@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Clock, Truck } from 'lucide-react';
+import { MoreHorizontal, Clock, Truck, History, X } from 'lucide-react';
 
-export default function Dashboard({ inventory, deliveries, orders = [] }) {
+export default function Dashboard({ inventory, deliveries, orders = [], activityLog = [] }) {
   const [invFilter, setInvFilter] = useState('All');
+  const [showHistory, setShowHistory] = useState(false);
 
   const totalProducts = inventory.length;
   const totalVolume = inventory.reduce((sum, item) => sum + Number(item.stock), 0);
@@ -76,7 +77,16 @@ export default function Dashboard({ inventory, deliveries, orders = [] }) {
         <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 shadow-sm dark:shadow-none w-full">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Recent Activity</h3>
-            <Clock size={16} className="text-zinc-400 dark:text-zinc-500" />
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowHistory(true)}
+                className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+              >
+                <History size={14} />
+                View History
+              </button>
+              <Clock size={16} className="text-zinc-400 dark:text-zinc-500" />
+            </div>
           </div>
           <div className="space-y-4">
             {recentActivities.length === 0 ? (
@@ -213,6 +223,51 @@ export default function Dashboard({ inventory, deliveries, orders = [] }) {
           ))}
         </div>
       </div>
+
+      {/* Activity History Modal */}
+      {showHistory && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl w-full max-w-lg max-h-[80vh] overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Activity History</h3>
+              <button 
+                onClick={() => setShowHistory(false)}
+                className="p-2 hover:bg-zinc-100 dark:hover:bg-[#1A1A24] rounded-lg transition-colors"
+              >
+                <X size={20} className="text-zinc-500" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto max-h-[60vh] space-y-3">
+              {activityLog.length === 0 ? (
+                <p className="text-sm text-zinc-500 text-center py-8">No activity history yet.</p>
+              ) : (
+                activityLog.map((activity) => (
+                  <div key={activity.id} className="flex gap-3 p-3 bg-zinc-50 dark:bg-[#09090B] rounded-xl">
+                    <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
+                      activity.type === 'Product' ? 'bg-red-500' : 
+                      activity.type === 'Delivery' ? 'bg-orange-500' : 'bg-blue-500'
+                    }`}></div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                          activity.type === 'Product' ? 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400' :
+                          activity.type === 'Delivery' ? 'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400' :
+                          'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'
+                        }`}>
+                          {activity.type}
+                        </span>
+                        <span className="text-xs text-zinc-500">{activity.action}</span>
+                      </div>
+                      <p className="text-sm text-zinc-700 dark:text-zinc-300">{activity.description}</p>
+                      <p className="text-xs text-zinc-500 mt-1">{activity.date}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

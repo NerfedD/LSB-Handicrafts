@@ -49,6 +49,12 @@ export default function LSBAdminSystem() {
   const [formData, setFormData] = useState(emptyFormData);
   const [formErrors, setFormErrors] = useState({});
 
+  // Activity log for tracking all actions
+  const [activityLog, setActivityLog] = useState(() => {
+    const saved = localStorage.getItem('activityLog');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Initialize state with localStorage using storageManager
   const [inventory, setInventory] = useState(() => {
     return loadInventory(initialInventory);
@@ -79,6 +85,23 @@ export default function LSBAdminSystem() {
   useEffect(() => {
     saveDeliveries(deliveries);
   }, [deliveries]);
+
+  // Save activity log to localStorage
+  useEffect(() => {
+    localStorage.setItem('activityLog', JSON.stringify(activityLog));
+  }, [activityLog]);
+
+  // Helper to add activity
+  const addActivity = (type, action, description) => {
+    const newActivity = {
+      id: Date.now(),
+      type,
+      action,
+      description,
+      date: new Date().toLocaleString(),
+    };
+    setActivityLog(prev => [newActivity, ...prev]);
+  };
 
   const toggleTheme = () => {
     if (isDarkMode) {
@@ -138,8 +161,12 @@ export default function LSBAdminSystem() {
   }); setActiveTab('edit'); };
   
   const handleDelete = (itemId) => {
+    const itemToDelete = inventory.find(item => item.id === itemId);
     const updatedInventory = deleteFromInventory(inventory, itemId);
     setInventory(updatedInventory);
+    if (itemToDelete) {
+      addActivity('Product', 'Deleted', `Deleted product: ${itemToDelete.name} (${itemToDelete.sku})`);
+    }
     setCurrentRecord(null);
     setActiveTab('inventory');
   };
@@ -155,8 +182,12 @@ export default function LSBAdminSystem() {
   };
 
   const handleDeleteDelivery = (deliveryId) => {
+    const deliveryToDelete = deliveries.find(d => d.id === deliveryId);
     const updatedDeliveries = deleteFromDeliveries(deliveries, deliveryId);
     setDeliveries(updatedDeliveries);
+    if (deliveryToDelete) {
+      addActivity('Delivery', 'Deleted', `Deleted delivery: ${deliveryToDelete.product} to ${deliveryToDelete.location}`);
+    }
   };
   
   const handleSaveCreate = (e) => {
@@ -228,7 +259,7 @@ export default function LSBAdminSystem() {
           <div className="max-w-6xl mx-auto space-y-6">
 
             {activeTab === 'dashboard' && (
-              <Dashboard inventory={inventory} />
+              <Dashboard inventory={inventory} activityLog={activityLog} />
             )}
 
             {activeTab === 'inventory' && (
