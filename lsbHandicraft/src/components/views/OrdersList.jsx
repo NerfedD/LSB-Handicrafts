@@ -22,8 +22,6 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-
-
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage customer orders and track sales</p>
@@ -88,23 +86,23 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
                       PHP {order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-5">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          order.status === 'Pending'
-                            ? 'bg-yellow-500'
-                            : order.status === 'Completed'
-                            ? 'bg-emerald-500'
-                            : 'bg-red-500'
-                        }`}></div>
-                        <span className={`font-medium text-xs ${
-                          order.status === 'Pending'
-                            ? 'text-yellow-600 dark:text-yellow-500'
-                            : order.status === 'Completed'
-                            ? 'text-emerald-600 dark:text-emerald-500'
-                            : 'text-red-600 dark:text-red-500'
-                        }`}>
-                          {order.status}
-                        </span>
+                      <div className="relative inline-block w-[130px]">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                          className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                            order.status === 'Pending' 
+                              ? 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40' 
+                              : order.status === 'Completed'
+                              ? 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900/50 dark:text-emerald-500 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
+                              : 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40'
+                          }`}
+                        >
+                          <option value="Pending" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Pending</option>
+                          <option value="Completed" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Completed</option>
+                          <option value="Cancelled" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Cancelled</option>
+                        </select>
+                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" />
                       </div>
                     </td>
                     <td className="px-4 md:px-6 py-5 text-right flex items-center justify-end gap-1">
@@ -194,8 +192,6 @@ export function CreateOrder({ navigateTo, inventory, orders, setOrders, showModa
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Customer & Item Selection */}
         <div className="lg:col-span-2 space-y-6">

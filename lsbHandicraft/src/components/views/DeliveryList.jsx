@@ -27,7 +27,6 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
@@ -102,23 +101,25 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
                     </div>
                   </td>
                   <td className="px-4 py-5">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${
-                        delivery.status === 'Not Yet Delivered'
-                          ? 'bg-red-500'
-                          : delivery.status === 'Delivered'
-                          ? 'bg-emerald-500'
-                          : 'bg-yellow-500'
-                      }`}></div>
-                      <span className={`font-medium text-xs ${
-                        delivery.status === 'Not Yet Delivered'
-                          ? 'text-red-600 dark:text-red-500'
-                          : delivery.status === 'Delivered'
-                          ? 'text-emerald-600 dark:text-emerald-500'
-                          : 'text-yellow-600 dark:text-yellow-500'
-                      }`}>
-                        {delivery.status}
-                      </span>
+                    <div className="relative inline-block w-[140px] md:w-[150px]">
+                      <select
+                        value={delivery.status}
+                        onChange={(e) => handleStatusChange(delivery.id, e.target.value)}
+                        className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                          delivery.status === 'Not Yet Delivered' 
+                            ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40' 
+                            : delivery.status === 'Delivered'
+                            ? 'border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 dark:border-emerald-900/50 dark:text-emerald-500 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40'
+                            : 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40'
+                        }`}
+                      >
+                        <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
+                        <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
+                        <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
+                      </select>
+                      <ChevronDown size={14} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70 ${
+                        delivery.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' : delivery.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' : 'text-yellow-600 dark:text-yellow-500'
+                      }`} />
                     </div>
                   </td>
                   <td className="px-4 md:px-6 py-5 text-right">
@@ -191,7 +192,6 @@ export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeli
 
   return (
     <div className="animate-in fade-in duration-300 w-full">
-
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
