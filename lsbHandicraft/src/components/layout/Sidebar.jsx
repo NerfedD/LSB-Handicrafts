@@ -1,5 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Package, Truck, ShoppingCart, X } from 'lucide-react';
+// Import your logo here
+import logoImg from '../../assets/Logo.png';
 
 export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSidebarOpen }) {
   const isInventoryGroup = ['inventory', 'add-product', 'edit-product', 'view-product'].includes(activeTab);
@@ -25,9 +27,12 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
       <aside className={`fixed md:static inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#09090B] border-r border-zinc-200 dark:border-[#1F1F2E] flex flex-col h-full shrink-0 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div className="p-6 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 rounded-md p-1.5 shadow-lg shadow-blue-600/20 shrink-0">
-              <LayoutDashboard size={20} className="text-white" />
-            </div>
+            {/* Replaced the icon with your logo image */}
+            <img 
+              src={logoImg} 
+              alt="LSB Handicrafts Logo" 
+              className="h-10 w-10 object-cover rounded-md shadow-sm shrink-0"
+            />
             <span className="font-bold text-zinc-900 dark:text-white text-lg tracking-wide whitespace-nowrap">LSB Handicrafts</span>
           </div>
           {/* Mobile Close Button */}
