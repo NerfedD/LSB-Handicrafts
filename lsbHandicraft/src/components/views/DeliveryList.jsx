@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { Plus, ChevronDown, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, Truck } from 'lucide-react';
+import EmptyState from '../shared/EmptyState';
+import StatusDotLabel from '../shared/StatusDotLabel';
+import ListHeaderBar from '../shared/ListHeaderBar';
 
 export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal }) {
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -28,8 +31,7 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
   return (
     <div className="animate-in fade-in duration-300 w-full">
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
-        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
+        <ListHeaderBar description="Manage product deliveries and track their status">
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <select 
@@ -64,7 +66,7 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
               <Plus size={16} /> Add Delivery
             </button>
           </div>
-        </div>
+        </ListHeaderBar>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -82,15 +84,23 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
               {filteredDeliveries.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
-                    No deliveries found. Create your first delivery!
+                    <EmptyState
+                      title="No deliveries found"
+                      description="Create your first delivery record to start tracking status."
+                      icon={<Truck size={22} />}
+                    />
                   </td>
                 </tr>
               ) : (
                 filteredDeliveries.map((delivery, i) => (
                 <tr key={delivery.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/30 transition-colors">
                   <td className="px-4 md:px-6 py-5 flex items-center gap-3">
-                    <div className={`w-1.5 h-1.5 rounded-full ${i % 2 === 0 ? 'bg-red-500' : 'bg-yellow-500'} shrink-0`}></div>
-                    <span className="text-zinc-900 dark:text-zinc-100 font-semibold">{delivery.product}</span>
+                    <StatusDotLabel
+                      label={delivery.product}
+                      ariaLabel={`Delivery product: ${delivery.product}`}
+                      dotClassName={i % 2 === 0 ? 'bg-red-500' : 'bg-yellow-500'}
+                      textClassName="text-zinc-900 dark:text-zinc-100"
+                    />
                   </td>
                   <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">{delivery.size}</td>
                   <td className="px-4 py-5 text-zinc-900 dark:text-zinc-100 font-medium">{delivery.amount || '-'}</td>
@@ -105,6 +115,8 @@ export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal 
                       <select
                         value={delivery.status}
                         onChange={(e) => handleStatusChange(delivery.id, e.target.value)}
+                        aria-label={`Delivery status for ${delivery.product}`}
+                        title={`Current status: ${delivery.status}`}
                         className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
                           delivery.status === 'Not Yet Delivered' 
                             ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40' 

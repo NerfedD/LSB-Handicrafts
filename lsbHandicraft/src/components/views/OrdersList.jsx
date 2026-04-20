@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, ChevronDown, ShoppingCart, Calculator, Truck } from 'lucide-react';
+import EmptyState from '../shared/EmptyState';
+import ListHeaderBar from '../shared/ListHeaderBar';
 
-export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal }) {
+export function OrdersList({ orders, setOrders, navigateTo, showModal }) {
   const [statusFilter, setStatusFilter] = useState('All Orders');
 
   const handleDelete = (id) => {
@@ -23,8 +25,7 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
   return (
     <div className="animate-in fade-in duration-300 w-full">
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
-        <div className="p-4 md:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
-          <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage customer orders and track sales</p>
+        <ListHeaderBar description="Manage customer orders and track sales">
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-auto">
               <select 
@@ -46,7 +47,7 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
               <Plus size={16} /> Create Order
             </button>
           </div>
-        </div>
+        </ListHeaderBar>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -64,7 +65,11 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
               {filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
-                    No orders found. Create your first order!
+                    <EmptyState
+                      title="No orders found"
+                      description="Create your first order to start tracking sales."
+                      icon={<ShoppingCart size={22} />}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -77,7 +82,10 @@ export function OrdersList({ orders, setOrders, inventory, navigateTo, showModal
                     <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
                       <div className="flex flex-col">
                         <span className="text-xs">{order.items.length} product(s)</span>
-                        <span className="text-[10px] opacity-60 truncate max-w-[150px]">
+                        <span
+                          className="text-[10px] opacity-60 truncate max-w-[90px] sm:max-w-[150px]"
+                          title={order.items.map(i => i.name).join(', ')}
+                        >
                           {order.items.map(i => i.name).join(', ')}
                         </span>
                       </div>

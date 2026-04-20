@@ -19,10 +19,10 @@ export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearch
       </div>
       
       <div className="flex items-center gap-2 md:gap-4">
-        <button onClick={toggleTheme} className="p-2.5 rounded-full bg-slate-100 dark:bg-[#121217] text-slate-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white transition-all shadow-sm dark:shadow-none">
+        <button aria-label="Toggle theme" onClick={toggleTheme} className="p-2.5 rounded-full bg-slate-100 dark:bg-[#121217] text-slate-600 dark:text-gray-400 hover:text-violet-600 dark:hover:text-white transition-all shadow-sm dark:shadow-none">
           {isDarkMode ? '☀️' : '🌙'}
         </button>
-        <button className="hidden md:block p-2 text-slate-400 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors relative" onClick={() => setShowNotifications(!showNotifications)}>
+        <button aria-label="Toggle notifications" aria-expanded={showNotifications} className="hidden md:block p-2 text-slate-400 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors relative" onClick={() => setShowNotifications(!showNotifications)}>
           <Icons.Bell />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-gradient-to-br from-violet-500 to-indigo-500 rounded-full border-2 border-white dark:border-[#0b0b0f]"></span>
         </button>

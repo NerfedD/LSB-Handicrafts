@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Plus, Eye, Edit2, Trash2, ChevronDown } from 'lucide-react';
+import EmptyState from '../shared/EmptyState';
+import StatusDotLabel from '../shared/StatusDotLabel';
+import ListHeaderBar from '../shared/ListHeaderBar';
 
 export default function InventoryList({ inventory, navigateTo, setInventory, showModal }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -25,7 +28,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
 
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
         
-        <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
+        <ListHeaderBar description="Manage product inventory and monitor stock levels">
           <div className="relative w-full md:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" size={16} />
             <input 
@@ -56,7 +59,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               <Plus size={16} /> Add Product
             </button>
           </div>
-        </div>
+        </ListHeaderBar>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
@@ -75,7 +78,11 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               {filteredInventory.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
-                    No products found matching your search.
+                    <EmptyState
+                      title="No products found"
+                      description="Try adjusting your search or category filter."
+                      icon={<Search size={22} />}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -85,18 +92,19 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                     <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{item.category}</td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                        <span className={`font-medium text-xs ${item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}`}>
-                          {item.status}
-                        </span>
-                      </div>
+                      <StatusDotLabel
+                        label={item.status}
+                        ariaLabel={`Status: ${item.status}`}
+                        dotClassName={item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}
+                        textClassName={item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}
+                      />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-1.5 h-1.5 rounded-full ${item.stock < 50 ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                        <span className="text-zinc-700 dark:text-zinc-300 font-medium">{item.stock}</span>
-                      </div>
+                      <StatusDotLabel
+                        label={String(item.stock)}
+                        ariaLabel={`Stock level: ${item.stock}`}
+                        dotClassName={item.stock < 50 ? 'bg-orange-500' : 'bg-blue-500'}
+                      />
                     </td>
                     <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</td>
                     <td className="px-6 py-4 text-right space-x-3">

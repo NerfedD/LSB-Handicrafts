@@ -37,6 +37,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
           </div>
           {/* Mobile Close Button */}
           <button 
+            aria-label="Close sidebar"
             onClick={() => setIsSidebarOpen(false)} 
             className="md:hidden text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors shrink-0"
           >
