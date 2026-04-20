@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sun, Moon, Menu } from 'lucide-react';
 
 import { initialInventory, initialDeliveries, initialOrders } from './utils/data';
+import { saveInventory, loadInventory, saveDeliveries, loadDeliveries, saveOrders, loadOrders } from './utils/storageManager';
 import ConfirmModal from './components/ConfirmModal';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/views/Dashboard';
@@ -10,12 +11,46 @@ import ProductForm from './components/views/ProductForm';
 import ProductDetail from './components/views/ProductDetail';
 import { DeliveryList, AddDelivery } from './components/views/DeliveryList';
 import { OrdersList, CreateOrder } from './components/views/OrdersList';
+import EditDelivery from './components/views/EditDelivery';
+import EditOrder from './components/views/EditOrder';
+import OrderDetail from './components/views/OrderDetail';
+import DeliveryDetail from './components/views/DeliveryDetail';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [inventory, setInventory] = useState(initialInventory);
-  const [deliveries, setDeliveries] = useState(initialDeliveries);
-  const [orders, setOrders] = useState(initialOrders);
+  const [inventory, setInventory] = useState(() => {
+    // Only clear on first app initialization (check if we've ever run before)
+    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
+    if (!hasRunBefore) {
+      // First run ever - clear old/corrupted data and start fresh
+      localStorage.removeItem('lsb_inventory');
+      localStorage.removeItem('lsb_inventory_version');
+      localStorage.removeItem('lsb_deliveries');
+      localStorage.removeItem('lsb_deliveries_version');
+      localStorage.removeItem('lsb_orders');
+      localStorage.removeItem('lsb_orders_version');
+      localStorage.setItem('lsb_app_has_run', 'true');
+      return initialInventory;
+    }
+    // On subsequent runs, load from localStorage
+    return loadInventory(initialInventory);
+  });
+  
+  const [deliveries, setDeliveries] = useState(() => {
+    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
+    if (!hasRunBefore) {
+      return initialDeliveries;
+    }
+    return loadDeliveries(initialDeliveries);
+  });
+  
+  const [orders, setOrders] = useState(() => {
+    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
+    if (!hasRunBefore) {
+      return initialOrders;
+    }
+    return loadOrders(initialOrders);
+  });
   const [currentRecord, setCurrentRecord] = useState(null);
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [activityLog, setActivityLog] = useState([]);
@@ -47,6 +82,21 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Persist Inventory to localStorage
+  useEffect(() => {
+    saveInventory(inventory);
+  }, [inventory]);
+
+  // Persist Deliveries to localStorage
+  useEffect(() => {
+    saveDeliveries(deliveries);
+  }, [deliveries]);
+
+  // Persist Orders to localStorage
+  useEffect(() => {
+    saveOrders(orders);
+  }, [orders]);
+
   const navigateTo = (tab, record = null) => {
     setCurrentRecord(record);
     setActiveTab(tab);
@@ -75,7 +125,11 @@ export default function App() {
       case 'edit-product': return 'Edit Product';
       case 'view-product': return 'View Product';
       case 'add-delivery': return 'Add Delivery';
+      case 'edit-delivery': return 'Edit Delivery';
       case 'create-order': return 'Create Order';
+      case 'edit-order': return 'Edit Order';
+      case 'order-detail': return 'Order Details';
+      case 'delivery-detail': return 'Delivery Details';
       default: return 'Dashboard';
     }
   };
@@ -128,14 +182,34 @@ export default function App() {
           <div className="flex-1 flex flex-col w-full">
             {activeTab === 'dashboard' && <Dashboard inventory={inventory} deliveries={deliveries} orders={orders} activityLog={activityLog} />}
             {activeTab === 'inventory' && <InventoryList inventory={inventory} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} inventory={inventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} orders={orders} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} inventory={inventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
             
             {activeTab === 'add-product' && <ProductForm mode="add" navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
             {activeTab === 'edit-product' && <ProductForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
             {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'add-delivery' && <AddDelivery record={currentRecord} navigateTo={navigateTo} inventory={inventory} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} />}
+            {activeTab === 'edit-delivery' && <EditDelivery data={currentRecord} navigateTo={navigateTo} onSave={(updatedDelivery) => {
+              setDeliveries(deliveries.map(d => d.id === updatedDelivery.id ? updatedDelivery : d));
+              addActivity({
+                type: 'Delivery',
+                title: 'Delivery Updated',
+                description: `Updated delivery: ${updatedDelivery.product}`,
+                color: 'bg-blue-500'
+              });
+            }} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'create-order' && <CreateOrder navigateTo={navigateTo} inventory={inventory} orders={orders} setOrders={setOrders} showModal={showModal} />}
+            {activeTab === 'order-detail' && <OrderDetail record={currentRecord} navigateTo={navigateTo} orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'delivery-detail' && <DeliveryDetail record={currentRecord} navigateTo={navigateTo} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'edit-order' && <EditOrder data={currentRecord} navigateTo={navigateTo} onSave={(updatedOrder) => {
+              setOrders(orders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
+              addActivity({
+                type: 'Order',
+                title: 'Order Updated',
+                description: `Updated order for ${updatedOrder.customerName}`,
+                color: 'bg-blue-500'
+              });
+            }} showModal={showModal} addActivity={addActivity} />}
           </div>
 
           {/* Spacer to prevent elements sticking to bottom */}

@@ -7,6 +7,30 @@ import ListHeaderBar from '../shared/ListHeaderBar';
 export default function InventoryList({ inventory, navigateTo, setInventory, showModal, addActivity }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [sortOption, setSortOption] = useState('name-az');
+
+  const sortInventory = (items) => {
+    return [...items].sort((a, b) => {
+      switch (sortOption) {
+        case 'name-az':
+          return a.name.localeCompare(b.name);
+        case 'name-za':
+          return b.name.localeCompare(a.name);
+        case 'price-low-high':
+          return a.price - b.price;
+        case 'price-high-low':
+          return b.price - a.price;
+        case 'stock-low-high':
+          return a.stock - b.stock;
+        case 'stock-high-low':
+          return b.stock - a.stock;
+        case 'category-az':
+          return a.category.localeCompare(b.category);
+        default:
+          return 0;
+      }
+    });
+  };
 
   const handleDelete = (id) => {
     const deletedItem = inventory.find(item => item.id === id);
@@ -33,6 +57,8 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
     const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const sortedInventory = sortInventory(filteredInventory);
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -63,6 +89,22 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="name-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (A → Z)</option>
+                <option value="name-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (Z → A)</option>
+                <option value="price-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (Low → High)</option>
+                <option value="price-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (High → Low)</option>
+                <option value="stock-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (Low → High)</option>
+                <option value="stock-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (High → Low)</option>
+                <option value="category-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Category (A → Z)</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
             <button 
               onClick={() => navigateTo('add-product')}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto"
@@ -86,7 +128,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {filteredInventory.length === 0 ? (
+              {sortedInventory.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
                     <EmptyState
@@ -97,7 +139,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                   </td>
                 </tr>
               ) : (
-                filteredInventory.map(item => (
+                sortedInventory.map(item => (
                   <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/50 transition-colors">
                     <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{item.sku}</td>
                     <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>

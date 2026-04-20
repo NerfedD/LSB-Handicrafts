@@ -4,9 +4,9 @@ import { LayoutDashboard, Package, Truck, ShoppingCart, X } from 'lucide-react';
 import logoImg from '../../assets/Logo.png';
 
 export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSidebarOpen }) {
-  const isInventoryGroup = ['inventory', 'add-product', 'edit-product', 'view-product'].includes(activeTab);
-  const isDeliveryGroup = ['deliveries', 'add-delivery'].includes(activeTab);
-  const isOrdersGroup = ['orders', 'create-order'].includes(activeTab);
+  const isInventoryGroup = ['inventory', 'add-product', 'edit-product', 'view-product', 'create', 'edit', 'detail'].includes(activeTab);
+  const isDeliveryGroup = ['deliveries', 'add-delivery', 'edit-delivery', 'delivery-detail'].includes(activeTab);
+  const isOrdersGroup = ['orders', 'create-order', 'edit-order', 'order-detail'].includes(activeTab);
 
   const handleNavigate = (tab) => {
     navigateTo(tab);

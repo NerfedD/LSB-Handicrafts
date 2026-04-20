@@ -105,7 +105,7 @@ export const loadDeliveries = (defaultDeliveries = []) => {
     }
     
     const parsed = JSON.parse(stored);
-    // Handle both old and new format
+    // Return stored data as-is (don't merge with initial data to preserve deletions)
     return parsed.data || parsed || defaultDeliveries;
   } catch (error) {
     console.error('Failed to load deliveries from localStorage:', error);
@@ -160,6 +160,7 @@ export const loadOrders = (defaultOrders = []) => {
     }
     
     const parsed = JSON.parse(stored);
+    // Return stored data as-is (don't merge with initial data to preserve deletions)
     return parsed.data || parsed || defaultOrders;
   } catch (error) {
     console.error('Failed to load orders from localStorage:', error);
@@ -203,6 +204,52 @@ export const clearInventory = () => {
     return true;
   } catch (error) {
     console.error('Failed to clear inventory from localStorage:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear all deliveries data from localStorage
+ * @returns {boolean} - Success status
+ */
+export const clearDeliveries = () => {
+  try {
+    localStorage.removeItem(DELIVERY_STORAGE_KEY);
+    localStorage.removeItem(DELIVERY_STORAGE_VERSION_KEY);
+    return true;
+  } catch (error) {
+    console.error('Failed to clear deliveries from localStorage:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear all orders data from localStorage
+ * @returns {boolean} - Success status
+ */
+export const clearOrders = () => {
+  try {
+    localStorage.removeItem(ORDER_STORAGE_KEY);
+    localStorage.removeItem(ORDER_STORAGE_VERSION_KEY);
+    return true;
+  } catch (error) {
+    console.error('Failed to clear orders from localStorage:', error);
+    return false;
+  }
+};
+
+/**
+ * Clear all data from localStorage (complete reset)
+ * @returns {boolean} - Success status
+ */
+export const clearAllStorage = () => {
+  try {
+    clearInventory();
+    clearDeliveries();
+    clearOrders();
+    return true;
+  } catch (error) {
+    console.error('Failed to clear all storage:', error);
     return false;
   }
 };

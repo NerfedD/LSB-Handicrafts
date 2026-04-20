@@ -4,11 +4,17 @@ import Sidebar from './layout/Sidebar';
 import Header from './layout/Header';
 import Dashboard from './views/Dashboard';
 import InventoryList from './views/InventoryList';
-import DeliveryList from './views/DeliveryList';
+import { DeliveryList } from './views/DeliveryList';
+import { OrdersList } from './views/OrdersList';
 import ProductForm from './views/ProductForm';
 import ProductDetail from './views/ProductDetail';
+import EditOrder from './views/EditOrder';
+import EditDelivery from './views/EditDelivery';
+import OrderDetail from './views/OrderDetail';
+import DeliveryDetail from './views/DeliveryDetail';
+import ConfirmModal from './ConfirmModal';
 import { saveInventory, loadInventory, deleteFromInventory, saveDeliveries, loadDeliveries, deleteFromDeliveries } from '../utils/storageManager';
-import { initialDeliveries } from '../utils/data';
+import { initialDeliveries, initialOrders } from '../utils/data';
 
 const initialInventory = [
   { id: 1, sku: 'SB-001', name: 'Styro Ball 2 inch', category: 'Styro Balls', price: 15, stock: 120, status: 'In Stock' },
@@ -40,14 +46,23 @@ const validateForm = (data, inventory, currentId = null) => {
 };
 
 export default function LSBAdminSystem() {
+  console.log('LSBAdminSystem RENDERING');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('All');
   const [sortBy, setSortBy] = useState('name-asc');
   const [currentRecord, setCurrentRecord] = useState(null);
   const [formData, setFormData] = useState(emptyFormData);
   const [formErrors, setFormErrors] = useState({});
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+  });
+
 
   // Activity log for tracking all actions
   const [activityLog, setActivityLog] = useState(() => {
@@ -62,8 +77,12 @@ export default function LSBAdminSystem() {
   const [deliveries, setDeliveries] = useState(() => {
     return loadDeliveries(initialDeliveries);
   });
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('orders');
+    return saved ? JSON.parse(saved) : initialOrders;
+  });
 
-  // Handle Dark Mode
+
   useEffect(() => {
     const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const hasDarkClass = document.documentElement.classList.contains('dark');
@@ -86,10 +105,19 @@ export default function LSBAdminSystem() {
     saveDeliveries(deliveries);
   }, [deliveries]);
 
+  // Save to localStorage whenever orders change
+  useEffect(() => {
+    localStorage.setItem('orders', JSON.stringify(orders));
+  }, [orders]);
+
   // Save activity log to localStorage
   useEffect(() => {
     localStorage.setItem('activityLog', JSON.stringify(activityLog));
   }, [activityLog]);
+
+  useEffect(() => {
+    console.log('STATE CHANGED - activeTab:', activeTab, 'currentRecord:', currentRecord);
+  }, [activeTab, currentRecord]);
 
   // Helper to add activity
   const addActivity = (type, action, description) => {
@@ -181,6 +209,16 @@ export default function LSBAdminSystem() {
     ));
   };
 
+  const handleSaveEditOrder = (updatedOrder) => {
+    setOrders(prev => prev.map(order =>
+      order.id === updatedOrder.id ? updatedOrder : order
+    ));
+  };
+
+  const handleSaveCreateOrder = (newOrder) => {
+    setOrders(prev => [...prev, { ...newOrder, id: Date.now() }]);
+  };
+
   const handleDeleteDelivery = (deliveryId) => {
     const deliveryToDelete = deliveries.find(d => d.id === deliveryId);
     const updatedDeliveries = deleteFromDeliveries(deliveries, deliveryId);
@@ -236,11 +274,96 @@ export default function LSBAdminSystem() {
     setActiveTab('inventory');
   };
 
+  const showModal = (title, message, onConfirm) => {
+    setModalState({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setModalState(prev => ({ ...prev, isOpen: false }));
+      },
+    });
+  };
+
+  const navigateTo = (route, record = null) => {
+    console.log('navigateTo called:', route, record);
+    switch (route) {
+      case 'dashboard':
+        setCurrentRecord(null);
+        setActiveTab('dashboard');
+        break;
+      case 'inventory':
+        setCurrentRecord(null);
+        setActiveTab('inventory');
+        break;
+      case 'deliveries':
+        setCurrentRecord(null);
+        setActiveTab('deliveries');
+        break;
+      case 'orders':
+        setCurrentRecord(null);
+        setActiveTab('orders');
+        break;
+
+      case 'create-order':
+        setCurrentRecord(null);
+        setActiveTab('create-order');
+        break;
+      case 'order-detail':
+        console.log('Setting order-detail view, record:', record);
+        setCurrentRecord(record);
+        setActiveTab('order-detail');
+        console.log('State should update to order-detail');
+        break;
+      case 'delivery-detail':
+        setCurrentRecord(record);
+        setActiveTab('delivery-detail');
+        break;
+      case 'edit-order':
+        setCurrentRecord(record);
+        setActiveTab('edit-order');
+        break;
+      case 'edit-delivery':
+        setCurrentRecord(record);
+        setActiveTab('edit-delivery');
+        break;
+      case 'add-delivery':
+        setCurrentRecord(record);
+        setActiveTab('add-delivery');
+        break;
+      case 'create':
+        resetForm();
+        setCurrentRecord(null);
+        setActiveTab('create');
+        break;
+      case 'edit':
+        setCurrentRecord(record);
+        setActiveTab('edit');
+        break;
+      case 'detail':
+        setCurrentRecord(record);
+        setActiveTab('detail');
+        break;
+      case 'create-product':
+        resetForm();
+        setCurrentRecord(null);
+        setActiveTab('create');
+        break;
+      case 'edit-product':
+        handleEdit(record);
+        break;
+      default:
+        setCurrentRecord(null);
+        setActiveTab(route);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-[#08080b] text-slate-800 dark:text-gray-300 font-sans overflow-hidden selection:bg-violet-500/30 transition-colors duration-300">
-      
+      {console.log('RENDER: activeTab is', activeTab, 'currentRecord is', currentRecord)}
       {/* DESKTOP SIDEBAR */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} navigateTo={navigateTo} isSidebarOpen={isSidebarOpen} setIsSidebarOpen={setIsSidebarOpen} />
 
       <main className="flex-1 flex flex-col h-full overflow-hidden relative">
         
@@ -250,7 +373,7 @@ export default function LSBAdminSystem() {
           toggleTheme={toggleTheme} 
           searchQuery={searchQuery} 
           setSearchQuery={setSearchQuery} 
-          setActiveTab={setActiveTab} 
+          navigateTo={navigateTo}
           onCreateClick={handleCreateClick}
         />
 
@@ -276,10 +399,24 @@ export default function LSBAdminSystem() {
             {activeTab === 'deliveries' && (
               <DeliveryList
                 deliveries={deliveries}
+                setDeliveries={setDeliveries}
+                orders={orders}
                 inventory={inventory}
-                handleAddDelivery={handleAddDelivery}
-                handleEditDelivery={handleEditDelivery}
-                handleDeleteDelivery={handleDeleteDelivery}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'orders' && (
+              <OrdersList
+                orders={orders}
+                setOrders={setOrders}
+                deliveries={deliveries}
+                setDeliveries={setDeliveries}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
               />
             )}
 
@@ -294,10 +431,77 @@ export default function LSBAdminSystem() {
 
             {activeTab === 'detail' && (
               <ProductDetail 
-                currentRecord={currentRecord} 
-                setActiveTab={setActiveTab} 
-                handleEdit={handleEdit}
-                handleDelete={handleDelete}
+                record={currentRecord} 
+                navigateTo={navigateTo}
+                inventory={inventory}
+                setInventory={setInventory}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'order-detail' && (
+              <OrderDetail 
+                record={currentRecord}
+                navigateTo={navigateTo}
+                orders={orders}
+                setOrders={setOrders}
+                deliveries={deliveries}
+                setDeliveries={setDeliveries}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'delivery-detail' && (
+              <DeliveryDetail 
+                record={currentRecord}
+                navigateTo={navigateTo}
+                deliveries={deliveries}
+                setDeliveries={setDeliveries}
+                orders={orders}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'edit-order' && (
+              <EditOrder
+                data={currentRecord}
+                onSave={handleSaveEditOrder}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'create-order' && (
+              <EditOrder
+                data={null}
+                onSave={handleSaveCreateOrder}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'edit-delivery' && (
+              <EditDelivery
+                data={currentRecord}
+                onSave={handleEditDelivery}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
+              />
+            )}
+
+            {activeTab === 'add-delivery' && (
+              <EditDelivery
+                data={currentRecord}
+                onSave={handleAddDelivery}
+                navigateTo={navigateTo}
+                showModal={showModal}
+                addActivity={addActivity}
               />
             )}
 
@@ -320,6 +524,14 @@ export default function LSBAdminSystem() {
           <Icons.Delivery />
         </button>
       </nav>
+
+      <ConfirmModal 
+        isOpen={modalState.isOpen}
+        title={modalState.title}
+        message={modalState.message}
+        onConfirm={modalState.onConfirm || (() => setModalState(prev => ({ ...prev, isOpen: false })))}
+        onCancel={() => setModalState(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
