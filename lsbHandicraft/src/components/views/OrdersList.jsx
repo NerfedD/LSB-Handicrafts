@@ -1,23 +1,58 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, ChevronDown, ShoppingCart, Calculator, Truck } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ShoppingCart, Calculator, Truck, Edit2, Eye } from 'lucide-react';
 import EmptyState from '../shared/EmptyState';
 import ListHeaderBar from '../shared/ListHeaderBar';
 
-export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivity }) {
+export function OrdersList({ orders, setOrders, deliveries, setDeliveries, navigateTo, showModal, addActivity }) {
   const [statusFilter, setStatusFilter] = useState('All Orders');
+  const [sortOption, setSortOption] = useState('date-newest');
+
+  const sortOrders = (items) => {
+    return [...items].sort((a, b) => {
+      switch (sortOption) {
+        case 'name-az':
+          return a.customerName.localeCompare(b.customerName);
+        case 'name-za':
+          return b.customerName.localeCompare(a.customerName);
+        case 'amount-low-high':
+          return a.totalAmount - b.totalAmount;
+        case 'amount-high-low':
+          return b.totalAmount - a.totalAmount;
+        case 'date-newest':
+          return Date.parse(b.createdAt) - Date.parse(a.createdAt);
+        case 'date-oldest':
+          return Date.parse(a.createdAt) - Date.parse(b.createdAt);
+        case 'status-priority': {
+          const statusOrder = { 'Pending': 0, 'Completed': 1, 'Cancelled': 2 };
+          return (statusOrder[a.status] || 3) - (statusOrder[b.status] || 3);
+        }
+        default:
+          return 0;
+      }
+    });
+  };
 
   const handleDelete = (id) => {
     const deletedOrder = orders.find(o => o.id === id);
     showModal(
       "Delete Order",
-      "Are you sure you want to remove this order record?",
+      "Are you sure you want to remove this order record? Associated deliveries will also be deleted.",
       () => {
+        // Delete the order
         setOrders(orders.filter(o => o.id !== id));
+        
+        // Delete associated deliveries for this order
+        // Search for the full order ID in the product field
+        if (deliveries && setDeliveries) {
+          const updatedDeliveries = deliveries.filter(d => !d.product.includes(`Order #${id}`));
+          setDeliveries(updatedDeliveries);
+        }
+        
         if (deletedOrder) {
           addActivity?.({
             type: 'Order',
             title: 'Order Deleted',
-            description: `Deleted order #${deletedOrder.id.toString().slice(-6)} for ${deletedOrder.customerName}`,
+            description: `Deleted order #${deletedOrder.id} for ${deletedOrder.customerName}`,
             amount: deletedOrder.totalAmount,
             color: 'bg-red-500'
           });
@@ -34,6 +69,8 @@ export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivi
     ? orders 
     : orders.filter(order => order.status === statusFilter);
 
+  const sortedOrders = sortOrders(filteredOrders);
+
   return (
     <div className="animate-in fade-in duration-300 w-full">
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg w-full">
@@ -49,6 +86,22 @@ export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivi
                 <option value="Pending" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Pending</option>
                 <option value="Completed" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Completed</option>
                 <option value="Cancelled" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Cancelled</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="date-newest" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Creation Date (Newest → Oldest)</option>
+                <option value="date-oldest" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Creation Date (Oldest → Newest)</option>
+                <option value="name-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Customer Name (A → Z)</option>
+                <option value="name-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Customer Name (Z → A)</option>
+                <option value="amount-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Total Amount (Low → High)</option>
+                <option value="amount-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Total Amount (High → Low)</option>
+                <option value="status-priority" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Status (Pending → Completed → Cancelled)</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>
@@ -74,7 +127,7 @@ export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivi
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {filteredOrders.length === 0 ? (
+              {sortedOrders.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
                     <EmptyState
@@ -85,10 +138,10 @@ export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivi
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((order) => (
+                sortedOrders.map((order) => (
                   <tr key={order.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/30 transition-colors">
                     <td className="px-4 md:px-6 py-5">
-                      <span className="text-zinc-900 dark:text-zinc-100 font-medium">#{order.id.toString().slice(-6)}</span>
+                      <span className="text-zinc-900 dark:text-zinc-100 font-medium">#{order.id}</span>
                     </td>
                     <td className="px-4 py-5 text-zinc-900 dark:text-zinc-100 font-semibold">{order.customerName}</td>
                     <td className="px-4 py-5 text-zinc-600 dark:text-zinc-400">
@@ -126,6 +179,30 @@ export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivi
                       </div>
                     </td>
                     <td className="px-4 md:px-6 py-5 text-right flex items-center justify-end gap-1">
+                      <button 
+                        onClick={() => {
+                          console.log('1. EYE BUTTON CLICKED');
+                          console.log('2. navigateTo is:', typeof navigateTo, navigateTo);
+                          console.log('3. About to call navigateTo');
+                          try {
+                            navigateTo('order-detail', order);
+                            console.log('4. navigateTo call completed');
+                          } catch (e) {
+                            console.error('5. navigateTo ERROR:', e);
+                          }
+                        }}
+                        title="View Order"
+                        className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors inline-block p-2"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        onClick={() => navigateTo('edit-order', order)}
+                        title="Edit Order"
+                        className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors inline-block p-2"
+                      >
+                        <Edit2 size={16} />
+                      </button>
                       <button 
                         onClick={() => navigateTo('add-delivery', order)} 
                         title="Create Delivery"

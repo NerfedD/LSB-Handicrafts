@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../Icons';
 
-export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearchQuery, setActiveTab, onCreateClick }) {
+export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearchQuery, navigateTo, onCreateClick }) {
   const [showNotifications, setShowNotifications] = useState(false);
   return (
     <header className="h-20 px-4 md:px-8 flex items-center justify-between bg-white/60 dark:bg-[#0b0b0f]/60 backdrop-blur-xl border-b border-slate-200/50 dark:border-white/5 shrink-0 transition-colors duration-300 z-10 relative">
@@ -13,7 +13,7 @@ export default function Header({ isDarkMode, toggleTheme, searchQuery, setSearch
       <div className="hidden md:flex items-center gap-4 w-full max-w-md">
         <div className="relative w-full flex items-center">
           <span className="absolute left-4 text-slate-400 dark:text-gray-500"><Icons.Search /></span>
-          <input type="text" placeholder="Search something..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setActiveTab('inventory'); }}
+          <input type="text" placeholder="Search something..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); navigateTo('inventory'); }}
             className="w-full bg-slate-100/80 dark:bg-[#121217] border border-transparent dark:border-white/5 rounded-full py-2.5 pl-12 pr-4 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/30 transition-colors" />
         </div>
       </div>
