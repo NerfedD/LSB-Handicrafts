@@ -8,14 +8,12 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
   const totalProducts = inventory.length;
   const totalVolume = inventory.reduce((sum, item) => sum + Number(item.stock), 0);
   const lowStockCount = inventory.filter(i => i.status === 'Low Stock').length;
-  
-  const totalOrders = orders.length;
   const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
 
   // Combine orders and deliveries into a single activity list
-  const recentActivities = [
+  const fallbackActivities = [
     ...orders.map(order => ({
-      id: order.id,
+      id: `order-${order.id}`,
       type: 'Order',
       title: 'Order Created',
       description: `Order #${order.id.toString().slice(-6)} for ${order.customerName}`,
@@ -24,7 +22,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
       color: 'bg-blue-500'
     })),
     ...deliveries.map(delivery => ({
-      id: delivery.id,
+      id: `delivery-${delivery.id}`,
       type: 'Delivery',
       title: 'Delivery Update',
       description: `${delivery.product} to ${delivery.location}`,
@@ -32,7 +30,10 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
       date: delivery.createdAt,
       color: delivery.status === 'Delivered' ? 'bg-emerald-500' : 'bg-yellow-500'
     }))
-  ].sort((a, b) => b.id - a.id).slice(0, 5); // Show latest 5
+  ];
+
+  const recentActivities = activityLog.length > 0 ? activityLog.slice(0, 5) : fallbackActivities.slice(0, 5);
+  const activityHistory = activityLog.length > 0 ? activityLog : fallbackActivities;
 
   const filteredInventory = inventory.filter(item => {
     if (invFilter === 'All') return true;
@@ -45,7 +46,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
         <p className="text-zinc-500 dark:text-zinc-400 text-sm">Here is today's report and performances</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 md:gap-6 mb-6">
         <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-none w-full">
           <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Products</h3>
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalProducts}</p>
@@ -60,6 +61,15 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalVolume}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
             <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+5%</span>
+            <span className="text-zinc-500">from last quarter</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl p-5 md:p-6 relative shadow-sm dark:shadow-none w-full">
+          <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Revenue</h3>
+          <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">PHP {totalRevenue.toLocaleString()}</p>
+          <div className="flex items-center gap-2 text-xs font-medium">
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+8%</span>
             <span className="text-zinc-500">from last quarter</span>
           </div>
         </div>
@@ -238,10 +248,10 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
               </button>
             </div>
             <div className="p-4 overflow-y-auto max-h-[60vh] space-y-3">
-              {activityLog.length === 0 ? (
+              {activityHistory.length === 0 ? (
                 <p className="text-sm text-zinc-500 text-center py-8">No activity history yet.</p>
               ) : (
-                activityLog.map((activity) => (
+                activityHistory.map((activity) => (
                   <div key={activity.id} className="flex gap-3 p-3 bg-zinc-50 dark:bg-[#09090B] rounded-xl">
                     <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
                       activity.type === 'Product' ? 'bg-red-500' : 
@@ -256,7 +266,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
                         }`}>
                           {activity.type}
                         </span>
-                        <span className="text-xs text-zinc-500">{activity.action}</span>
+                        <span className="text-xs text-zinc-500">{activity.title || activity.action}</span>
                       </div>
                       <p className="text-sm text-zinc-700 dark:text-zinc-300">{activity.description}</p>
                       <p className="text-xs text-zinc-500 mt-1">{activity.date}</p>

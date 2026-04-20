@@ -18,8 +18,23 @@ export default function App() {
   const [orders, setOrders] = useState(initialOrders);
   const [currentRecord, setCurrentRecord] = useState(null);
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [activityLog, setActivityLog] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
+
+  const addActivity = ({ type, title, description, amount, status, color }) => {
+    const newActivity = {
+      id: Date.now(),
+      type,
+      title,
+      description,
+      amount,
+      status,
+      color,
+      date: new Date().toLocaleString(),
+    };
+    setActivityLog(prev => [newActivity, ...prev]);
+  };
 
   // Manage Dark Mode Classes
   useEffect(() => {
@@ -111,14 +126,14 @@ export default function App() {
 
           {/* Views Layer */}
           <div className="flex-1 flex flex-col w-full">
-            {activeTab === 'dashboard' && <Dashboard inventory={inventory} deliveries={deliveries} orders={orders} />}
-            {activeTab === 'inventory' && <InventoryList inventory={inventory} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} />}
-            {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} />}
-            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} inventory={inventory} navigateTo={navigateTo} showModal={showModal} />}
+            {activeTab === 'dashboard' && <Dashboard inventory={inventory} deliveries={deliveries} orders={orders} activityLog={activityLog} />}
+            {activeTab === 'inventory' && <InventoryList inventory={inventory} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} inventory={inventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
             
             {activeTab === 'add-product' && <ProductForm mode="add" navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
             {activeTab === 'edit-product' && <ProductForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
-            {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
+            {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'add-delivery' && <AddDelivery record={currentRecord} navigateTo={navigateTo} inventory={inventory} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} />}
             {activeTab === 'create-order' && <CreateOrder navigateTo={navigateTo} inventory={inventory} orders={orders} setOrders={setOrders} showModal={showModal} />}
           </div>

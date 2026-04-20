@@ -4,15 +4,26 @@ import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';
 
-export default function InventoryList({ inventory, navigateTo, setInventory, showModal }) {
+export default function InventoryList({ inventory, navigateTo, setInventory, showModal, addActivity }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
 
   const handleDelete = (id) => {
+    const deletedItem = inventory.find(item => item.id === id);
     showModal(
       "Delete Product",
       "Are you sure you want to delete this product? This action cannot be undone.",
-      () => setInventory(inventory.filter(item => item.id !== id))
+      () => {
+        setInventory(inventory.filter(item => item.id !== id));
+        if (deletedItem) {
+          addActivity?.({
+            type: 'Product',
+            title: 'Product Deleted',
+            description: `Deleted product: ${deletedItem.name} (${deletedItem.sku})`,
+            color: 'bg-red-500'
+          });
+        }
+      }
     );
   };
 

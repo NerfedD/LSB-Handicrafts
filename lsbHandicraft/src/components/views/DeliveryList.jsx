@@ -4,15 +4,26 @@ import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';
 
-export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal }) {
+export function DeliveryList({ deliveries, setDeliveries, navigateTo, showModal, addActivity }) {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [locationFilter, setLocationFilter] = useState('All Locations');
   
   const handleDelete = (id) => {
+    const deletedDelivery = deliveries.find(d => d.id === id);
     showModal(
       "Delete Delivery",
       "Are you sure you want to remove this delivery record?",
-      () => setDeliveries(deliveries.filter(d => d.id !== id))
+      () => {
+        setDeliveries(deliveries.filter(d => d.id !== id));
+        if (deletedDelivery) {
+          addActivity?.({
+            type: 'Delivery',
+            title: 'Delivery Deleted',
+            description: `Deleted delivery: ${deletedDelivery.product} to ${deletedDelivery.location}`,
+            color: 'bg-orange-500'
+          });
+        }
+      }
     );
   };
 

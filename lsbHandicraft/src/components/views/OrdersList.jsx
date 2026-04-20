@@ -3,14 +3,26 @@ import { Plus, Trash2, ChevronDown, ShoppingCart, Calculator, Truck } from 'luci
 import EmptyState from '../shared/EmptyState';
 import ListHeaderBar from '../shared/ListHeaderBar';
 
-export function OrdersList({ orders, setOrders, navigateTo, showModal }) {
+export function OrdersList({ orders, setOrders, navigateTo, showModal, addActivity }) {
   const [statusFilter, setStatusFilter] = useState('All Orders');
 
   const handleDelete = (id) => {
+    const deletedOrder = orders.find(o => o.id === id);
     showModal(
       "Delete Order",
       "Are you sure you want to remove this order record?",
-      () => setOrders(orders.filter(o => o.id !== id))
+      () => {
+        setOrders(orders.filter(o => o.id !== id));
+        if (deletedOrder) {
+          addActivity?.({
+            type: 'Order',
+            title: 'Order Deleted',
+            description: `Deleted order #${deletedOrder.id.toString().slice(-6)} for ${deletedOrder.customerName}`,
+            amount: deletedOrder.totalAmount,
+            color: 'bg-red-500'
+          });
+        }
+      }
     );
   };
 
