@@ -87,7 +87,19 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Status</p>
-                <StatusDotLabel status={record.status} />
+                <StatusDotLabel 
+                  label={record.status}
+                  dotClassName={
+                    record.status === 'Pending' ? 'bg-yellow-500' :
+                    record.status === 'Completed' ? 'bg-emerald-500' :
+                    'bg-red-500'
+                  }
+                  textClassName={
+                    record.status === 'Pending' ? 'text-yellow-600 dark:text-yellow-500' :
+                    record.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-500' :
+                    'text-red-600 dark:text-red-500'
+                  }
+                />
               </div>
             </div>
           </div>

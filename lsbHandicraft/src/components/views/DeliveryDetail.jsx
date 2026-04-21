@@ -87,7 +87,19 @@ export default function DeliveryDetail({ record, navigateTo, deliveries, setDeli
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Status</p>
-                <StatusDotLabel status={record.status} />
+                <StatusDotLabel 
+                  label={record.status}
+                  dotClassName={
+                    record.status === 'Not Yet Delivered' ? 'bg-red-500' :
+                    record.status === 'Delivered' ? 'bg-emerald-500' :
+                    'bg-yellow-500'
+                  }
+                  textClassName={
+                    record.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' :
+                    record.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' :
+                    'text-yellow-600 dark:text-yellow-500'
+                  }
+                />
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Delivery Date</p>
@@ -164,7 +176,19 @@ export default function DeliveryDetail({ record, navigateTo, deliveries, setDeli
               </div>
               <div className="pt-4 border-t border-white/30 dark:border-white/10">
                 <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-3">Current Status</p>
-                <StatusDotLabel status={record.status} />
+                <StatusDotLabel 
+                  label={record.status}
+                  dotClassName={
+                    record.status === 'Not Yet Delivered' ? 'bg-red-500' :
+                    record.status === 'Delivered' ? 'bg-emerald-500' :
+                    'bg-yellow-500'
+                  }
+                  textClassName={
+                    record.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' :
+                    record.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' :
+                    'text-yellow-600 dark:text-yellow-500'
+                  }
+                />
               </div>
             </div>
           </div>

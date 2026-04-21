@@ -30,7 +30,19 @@ export default function DeliveryDetailModal({ isOpen, delivery, onClose, onDelet
             </div>
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Status</p>
-              <StatusDotLabel status={delivery.status} />
+              <StatusDotLabel 
+                label={delivery.status}
+                dotClassName={
+                  delivery.status === 'Not Yet Delivered' ? 'bg-red-500' :
+                  delivery.status === 'Delivered' ? 'bg-emerald-500' :
+                  'bg-yellow-500'
+                }
+                textClassName={
+                  delivery.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' :
+                  delivery.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' :
+                  'text-yellow-600 dark:text-yellow-500'
+                }
+              />
             </div>
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Location</p>

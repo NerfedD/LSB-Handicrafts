@@ -34,7 +34,19 @@ export default function OrderDetailModal({ isOpen, order, onClose, onDelete, nav
             </div>
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Status</p>
-              <StatusDotLabel status={order.status} />
+              <StatusDotLabel 
+                label={order.status}
+                dotClassName={
+                  order.status === 'Pending' ? 'bg-yellow-500' :
+                  order.status === 'Completed' ? 'bg-emerald-500' :
+                  'bg-red-500'
+                }
+                textClassName={
+                  order.status === 'Pending' ? 'text-yellow-600 dark:text-yellow-500' :
+                  order.status === 'Completed' ? 'text-emerald-600 dark:text-emerald-500' :
+                  'text-red-600 dark:text-red-500'
+                }
+              />
             </div>
             <div>
               <p className="text-sm text-slate-600 dark:text-slate-400">Total Items</p>
