@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock } from 'lucide-react';
 
-export default function ProductDetail({ record, navigateTo, inventory, setInventory, showModal }) {
+export default function ProductDetail({ record, navigateTo, inventory, setInventory, showModal, addActivity }) {
   if(!record) return null;
 
   const handleDelete = () => {
@@ -10,6 +10,12 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
       "Are you sure you want to delete this product? This action cannot be undone.",
       () => {
         setInventory(inventory.filter(item => item.id !== record.id));
+        addActivity?.({
+          type: 'Product',
+          title: 'Product Deleted',
+          description: `Deleted product: ${record.name} (${record.sku})`,
+          color: 'bg-red-500'
+        });
         navigateTo('inventory');
       }
     );

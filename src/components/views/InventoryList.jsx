@@ -4,15 +4,50 @@ import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';
 
-export default function InventoryList({ inventory, navigateTo, setInventory, showModal }) {
+export default function InventoryList({ inventory, navigateTo, setInventory, showModal, addActivity }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [sortOption, setSortOption] = useState('name-az');
+
+  const sortInventory = (items) => {
+    return [...items].sort((a, b) => {
+      switch (sortOption) {
+        case 'name-az':
+          return a.name.localeCompare(b.name);
+        case 'name-za':
+          return b.name.localeCompare(a.name);
+        case 'price-low-high':
+          return a.price - b.price;
+        case 'price-high-low':
+          return b.price - a.price;
+        case 'stock-low-high':
+          return a.stock - b.stock;
+        case 'stock-high-low':
+          return b.stock - a.stock;
+        case 'category-az':
+          return a.category.localeCompare(b.category);
+        default:
+          return 0;
+      }
+    });
+  };
 
   const handleDelete = (id) => {
+    const deletedItem = inventory.find(item => item.id === id);
     showModal(
       "Delete Product",
       "Are you sure you want to delete this product? This action cannot be undone.",
-      () => setInventory(inventory.filter(item => item.id !== id))
+      () => {
+        setInventory(inventory.filter(item => item.id !== id));
+        if (deletedItem) {
+          addActivity?.({
+            type: 'Product',
+            title: 'Product Deleted',
+            description: `Deleted product: ${deletedItem.name} (${deletedItem.sku})`,
+            color: 'bg-red-500'
+          });
+        }
+      }
     );
   };
 
@@ -22,6 +57,8 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
     const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
+
+  const sortedInventory = sortInventory(filteredInventory);
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -52,6 +89,22 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>
+            <div className="relative w-full sm:w-auto">
+              <select 
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="name-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (A → Z)</option>
+                <option value="name-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (Z → A)</option>
+                <option value="price-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (Low → High)</option>
+                <option value="price-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (High → Low)</option>
+                <option value="stock-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (Low → High)</option>
+                <option value="stock-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (High → Low)</option>
+                <option value="category-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Category (A → Z)</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
             <button 
               onClick={() => navigateTo('add-product')}
               className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto"
@@ -61,8 +114,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
           </div>
         </ListHeaderBar>
 
-        {/* //ALLU: Keep the table for medium+ screens where horizontal space is sufficient. */}
-        <div className="hidden md:block overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-[#1F1F2E] text-zinc-500">
@@ -76,7 +128,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
-              {filteredInventory.length === 0 ? (
+              {sortedInventory.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
                     <EmptyState
@@ -87,7 +139,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                   </td>
                 </tr>
               ) : (
-                filteredInventory.map(item => (
+                sortedInventory.map(item => (
                   <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/50 transition-colors">
                     <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{item.sku}</td>
                     <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>
@@ -118,46 +170,6 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* //ALLU: Add mobile card rows so small screens no longer rely on cramped horizontal table scrolling. */}
-        <div className="md:hidden p-4 space-y-3">
-          {filteredInventory.length === 0 ? (
-            <div className="px-2 py-8 text-center text-zinc-500 dark:text-zinc-400">
-              <EmptyState
-                title="No products found"
-                description="Try adjusting your search or category filter."
-                icon={<Search size={22} />}
-              />
-            </div>
-          ) : (
-            filteredInventory.map(item => (
-              <div key={item.id} className="rounded-xl border border-zinc-200 dark:border-[#1F1F2E] bg-zinc-50 dark:bg-[#09090B] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{item.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{item.sku}</p>
-                  </div>
-                  <StatusDotLabel
-                    label={item.status}
-                    ariaLabel={`Status: ${item.status}`}
-                    dotClassName={item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}
-                    textClassName={item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                  <p className="text-zinc-500 dark:text-zinc-400">Category: <span className="text-zinc-700 dark:text-zinc-300">{item.category}</span></p>
-                  <p className="text-zinc-500 dark:text-zinc-400">Stock: <span className="text-zinc-700 dark:text-zinc-300">{item.stock}</span></p>
-                  <p className="text-zinc-500 dark:text-zinc-400 col-span-2">Price: <span className="text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</span></p>
-                </div>
-                <div className="mt-4 flex items-center gap-2">
-                  <button onClick={() => navigateTo('view-product', item)} className="flex-1 rounded-lg border border-zinc-200 dark:border-[#272730] py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#1A1A24] transition-colors inline-flex items-center justify-center gap-1.5"><Eye size={14} /> View</button>
-                  <button onClick={() => navigateTo('edit-product', item)} className="flex-1 rounded-lg border border-zinc-200 dark:border-[#272730] py-2 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#1A1A24] transition-colors inline-flex items-center justify-center gap-1.5"><Edit2 size={14} /> Edit</button>
-                  <button onClick={() => handleDelete(item.id)} className="rounded-lg border border-red-200 dark:border-red-500/30 px-3 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors inline-flex items-center justify-center"><Trash2 size={14} /></button>
-                </div>
-              </div>
-            ))
-          )}
         </div>
       </div>
     </div>

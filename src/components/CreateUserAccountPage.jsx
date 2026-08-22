@@ -1,0 +1,249 @@
+import { useState } from "react";
+import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import AppShell from "./layout/AppShell";
+
+const ROLES = [
+  "Admin",
+  "Manager",
+  "Sales Staff",
+  "Production Staff",
+  "Delivery Staff",
+];
+
+const emptyForm = {
+  employeeName: "",
+  role: "",
+  contactNumber: "",
+  username: "",
+  email: "",
+  temporaryPassword: "",
+};
+
+/**
+ * LSB Handicrafts — Create User Account
+ * Figma: node 28:2 (form), 28:302 (success)
+ */
+export default function CreateUserAccountPage({
+  onNavigate,
+  onSignOut,
+  onCancel,
+}) {
+  const [form, setForm] = useState(emptyForm);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [succeeded, setSucceeded] = useState(false);
+
+  function update(field) {
+    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!res.ok) {
+        setError("Couldn't create the account. Please check the details and try again.");
+        return;
+      }
+      setSucceeded(true);
+      setForm(emptyForm);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (succeeded) {
+    return (
+      <AppShell activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
+        <div className="relative flex w-[720px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-16 py-13 text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+          <div className="flex size-[72px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
+            <CheckCircle2 className="h-9 w-9 text-[#287a55]" />
+          </div>
+          <h1 className="mt-7 text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
+            Account Created Successfully
+          </h1>
+          <p className="mt-3.5 text-base text-[#5f6875]">
+            The new user account has been created successfully.
+          </p>
+          <div className="mt-10 flex gap-3.5">
+            <button
+              type="button"
+              onClick={() => setSucceeded(false)}
+              className="h-14 rounded-[10px] bg-[#1b3a6b] px-10 text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
+            >
+              Done
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate?.("accounts")}
+              className="h-14 rounded-[10px] border border-[#17263a2e] px-7 text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
+            >
+              View User Accounts
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
+  return (
+    <AppShell activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
+      <div className="relative w-[720px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-[60px] py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="h-[2.5px] w-7 rounded bg-[#1b3a6b]" />
+        <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
+          Create User Account
+        </h1>
+        <p className="mt-2.5 text-base text-[#5f6875]">
+          Create an account for a new employee.
+        </p>
+
+        {error && (
+          <p className="mt-5 text-sm font-medium text-[#b54747]">{error}</p>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-9 flex flex-col">
+          <SectionLabel>Employee Information</SectionLabel>
+          <div className="mt-5 grid grid-cols-2 gap-6">
+            <Field label="Employee Name">
+              <input
+                type="text"
+                value={form.employeeName}
+                onChange={update("employeeName")}
+                placeholder="Enter employee name"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="Role">
+              <select
+                value={form.role}
+                onChange={update("role")}
+                className={`${inputClasses} appearance-none bg-white ${
+                  form.role ? "text-[#17263a]" : "text-[#9aa3ad]"
+                }`}
+              >
+                <option value="" disabled>
+                  Select role
+                </option>
+                {ROLES.map((role) => (
+                  <option key={role} value={role}>
+                    {role}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <Field label="Contact Number" className="mt-[22px]">
+            <input
+              type="tel"
+              value={form.contactNumber}
+              onChange={update("contactNumber")}
+              placeholder="Enter contact number"
+              className={inputClasses}
+            />
+          </Field>
+
+          <hr className="mt-7 border-[#17263a14]" />
+
+          <SectionLabel className="mt-6">Login Credentials</SectionLabel>
+          <div className="mt-5 grid grid-cols-2 gap-6">
+            <Field label="Username">
+              <input
+                type="text"
+                value={form.username}
+                onChange={update("username")}
+                placeholder="Enter username"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                type="email"
+                value={form.email}
+                onChange={update("email")}
+                placeholder="Enter email address"
+                className={inputClasses}
+              />
+            </Field>
+          </div>
+          <p className="mt-2 text-[13.5px] text-[#5f6875]">
+            Username must be unique across the system.
+          </p>
+
+          <Field label="Temporary Password" className="mt-[22px]">
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={form.temporaryPassword}
+                onChange={update("temporaryPassword")}
+                placeholder="Enter temporary password"
+                className={`${inputClasses} pr-[58px]`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-[#17263a99] hover:bg-[#17263a0d]"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </Field>
+
+          <div className="mt-9 flex gap-3.5">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="h-14 flex-1 rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
+            >
+              {isSubmitting ? "Creating…" : "Create Account"}
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              className="h-14 rounded-[10px] border border-[#17263a2e] px-7 text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </AppShell>
+  );
+}
+
+const inputClasses =
+  "h-14 w-full rounded-[10px] border border-[#17263a29] bg-white px-[18px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30";
+
+function SectionLabel({ children, className = "" }) {
+  return (
+    <div className={`flex items-center gap-3 ${className}`}>
+      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+        {children}
+      </span>
+      <span className="h-px flex-1 bg-[#17263a1a]" />
+    </div>
+  );
+}
+
+function Field({ label, children, className = "" }) {
+  return (
+    <div className={className}>
+      <label className="block text-base font-semibold text-[#17263a]">
+        {label}
+      </label>
+      <div className="mt-[9px]">{children}</div>
+    </div>
+  );
+}

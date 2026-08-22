@@ -1,61 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Menu } from 'lucide-react';
+import { Sun, Moon, Menu, LogOut } from 'lucide-react';
 
-import { initialInventory, initialDeliveries, initialOrders } from './utils/data';
-import { saveInventory, loadInventory, saveDeliveries, loadDeliveries, saveOrders, loadOrders } from './utils/storageManager';
-import ConfirmModal from './components/ConfirmModal';
-import Sidebar from './components/layout/Sidebar';
-import Dashboard from './components/views/Dashboard';
-import InventoryList from './components/views/InventoryList';
-import ProductForm from './components/views/ProductForm';
-import ProductDetail from './components/views/ProductDetail';
-import { DeliveryList, AddDelivery } from './components/views/DeliveryList';
-import { OrdersList, CreateOrder } from './components/views/OrdersList';
-import EditDelivery from './components/views/EditDelivery';
-import EditOrder from './components/views/EditOrder';
-import OrderDetail from './components/views/OrderDetail';
-import DeliveryDetail from './components/views/DeliveryDetail';
+import { initialInventory, initialDeliveries, initialOrders } from '../utils/data';
+import {
+  saveInventory, loadInventory,
+  saveDeliveries, loadDeliveries,
+  saveOrders, loadOrders,
+  saveActivityLog, loadActivityLog,
+} from '../utils/storageManager';
+import ConfirmModal from './ConfirmModal';
+import Sidebar from './layout/Sidebar';
+import Dashboard from './views/Dashboard';
+import InventoryList from './views/InventoryList';
+import ProductForm from './views/ProductForm';
+import ProductDetail from './views/ProductDetail';
+import { DeliveryList, AddDelivery } from './views/DeliveryList';
+import { OrdersList, CreateOrder } from './views/OrdersList';
+import EditDelivery from './views/EditDelivery';
+import EditOrder from './views/EditOrder';
+import OrderDetail from './views/OrderDetail';
+import DeliveryDetail from './views/DeliveryDetail';
 
-export default function App() {
+/**
+ * The actual admin workspace (Dashboard, Inventory, Deliveries, Orders),
+ * rendered once a login has passed the temporary admin-email gate. Data
+ * lives in Supabase — see src/utils/storageManager.js.
+ */
+export default function AdminDashboard({ onSignOut }) {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [inventory, setInventory] = useState(() => {
-    // Only clear on first app initialization (check if we've ever run before)
-    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
-    if (!hasRunBefore) {
-      // First run ever - clear old/corrupted data and start fresh
-      localStorage.removeItem('lsb_inventory');
-      localStorage.removeItem('lsb_inventory_version');
-      localStorage.removeItem('lsb_deliveries');
-      localStorage.removeItem('lsb_deliveries_version');
-      localStorage.removeItem('lsb_orders');
-      localStorage.removeItem('lsb_orders_version');
-      localStorage.setItem('lsb_app_has_run', 'true');
-      return initialInventory;
-    }
-    // On subsequent runs, load from localStorage
-    return loadInventory(initialInventory);
-  });
-  
-  const [deliveries, setDeliveries] = useState(() => {
-    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
-    if (!hasRunBefore) {
-      return initialDeliveries;
-    }
-    return loadDeliveries(initialDeliveries);
-  });
-  
-  const [orders, setOrders] = useState(() => {
-    const hasRunBefore = localStorage.getItem('lsb_app_has_run');
-    if (!hasRunBefore) {
-      return initialOrders;
-    }
-    return loadOrders(initialOrders);
-  });
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [inventory, setInventory] = useState(initialInventory);
+  const [deliveries, setDeliveries] = useState(initialDeliveries);
+  const [orders, setOrders] = useState(initialOrders);
   const [currentRecord, setCurrentRecord] = useState(null);
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [activityLog, setActivityLog] = useState([]);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
+
+  // Load everything from Supabase once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [inv, dels, ords, activity] = await Promise.all([
+        loadInventory(initialInventory),
+        loadDeliveries(initialDeliveries),
+        loadOrders(initialOrders),
+        loadActivityLog([]),
+      ]);
+      if (cancelled) return;
+      setInventory(inv);
+      setDeliveries(dels);
+      setOrders(ords);
+      setActivityLog(activity);
+      setIsDataLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const addActivity = ({ type, title, description, amount, status, color }) => {
     const newActivity = {
@@ -82,20 +83,27 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Persist Inventory to localStorage
+  // Persist to Supabase whenever data changes — skipped until the initial
+  // load finishes, so we don't overwrite real data with placeholder defaults.
   useEffect(() => {
+    if (!isDataLoaded) return;
     saveInventory(inventory);
-  }, [inventory]);
+  }, [inventory, isDataLoaded]);
 
-  // Persist Deliveries to localStorage
   useEffect(() => {
+    if (!isDataLoaded) return;
     saveDeliveries(deliveries);
-  }, [deliveries]);
+  }, [deliveries, isDataLoaded]);
 
-  // Persist Orders to localStorage
   useEffect(() => {
+    if (!isDataLoaded) return;
     saveOrders(orders);
-  }, [orders]);
+  }, [orders, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isDataLoaded) return;
+    saveActivityLog(activityLog);
+  }, [activityLog, isDataLoaded]);
 
   const navigateTo = (tab, record = null) => {
     setCurrentRecord(record);
@@ -118,7 +126,7 @@ export default function App() {
   const getPageTitle = (tab) => {
     switch (tab) {
       case 'dashboard': return 'Dashboard';
-      case 'inventory': return 'Products'; /* In picture 1, Inventory nav leads to Products header */
+      case 'inventory': return 'Products';
       case 'deliveries': return 'Delivery List';
       case 'orders': return 'Orders';
       case 'add-product': return 'Add Product';
@@ -134,24 +142,32 @@ export default function App() {
     }
   };
 
+  if (!isDataLoaded) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-zinc-50 dark:bg-[#09090B] text-zinc-500 dark:text-zinc-400 text-sm">
+        Loading workspace…
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen w-full bg-zinc-50 dark:bg-[#09090B] text-zinc-900 dark:text-zinc-100 font-sans overflow-hidden selection:bg-blue-500/30 transition-colors duration-200">
-      
-      <Sidebar 
-        activeTab={activeTab} 
-        navigateTo={navigateTo} 
-        isSidebarOpen={isSidebarOpen} 
-        setIsSidebarOpen={setIsSidebarOpen} 
+
+      <Sidebar
+        activeTab={activeTab}
+        navigateTo={navigateTo}
+        isSidebarOpen={isSidebarOpen}
+        setIsSidebarOpen={setIsSidebarOpen}
       />
-      
+
       <main className="flex-1 flex flex-col h-full overflow-y-auto">
         <div className="p-4 sm:p-6 lg:p-8 w-full max-w-[1600px] mx-auto flex flex-col min-h-full pb-20">
-          
+
           {/* Top Header */}
           <header className="flex justify-between items-center mb-6 lg:mb-8 shrink-0 pb-4 border-b border-zinc-200 dark:border-[#1F1F2E]">
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setIsSidebarOpen(true)} 
+              <button
+                onClick={() => setIsSidebarOpen(true)}
                 className="text-zinc-600 dark:text-zinc-400 p-2 -ml-2 rounded-lg hover:bg-zinc-200 dark:hover:bg-[#1A1A24] transition-colors md:hidden"
               >
                 <Menu size={24} />
@@ -166,14 +182,21 @@ export default function App() {
 
             {/* Spacer */}
             <div className="flex-1 hidden md:block"></div>
-            
+
             {/* Actions */}
             <div className="flex justify-end gap-3 ml-auto">
-              <button 
-                onClick={() => setIsDarkMode(!isDarkMode)} 
+              <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
                 className="w-10 h-10 rounded-full bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm dark:shadow-none"
               >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button
+                onClick={onSignOut}
+                title="Sign Out"
+                className="h-10 px-4 rounded-full bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-red-600 dark:hover:text-red-400 transition-colors shadow-sm dark:shadow-none text-sm font-medium"
+              >
+                <LogOut size={16} /> <span className="hidden sm:inline">Sign Out</span>
               </button>
             </div>
           </header>
@@ -184,7 +207,7 @@ export default function App() {
             {activeTab === 'inventory' && <InventoryList inventory={inventory} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} orders={orders} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} inventory={inventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
-            
+
             {activeTab === 'add-product' && <ProductForm mode="add" navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
             {activeTab === 'edit-product' && <ProductForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
             {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
@@ -217,12 +240,12 @@ export default function App() {
         </div>
       </main>
 
-      <ConfirmModal 
-        isOpen={modalConfig.isOpen} 
-        title={modalConfig.title} 
-        message={modalConfig.message} 
-        onConfirm={handleConfirm} 
-        onCancel={closeModal} 
+      <ConfirmModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={handleConfirm}
+        onCancel={closeModal}
       />
     </div>
   );

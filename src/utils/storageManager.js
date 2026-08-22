@@ -1,305 +1,148 @@
 /**
- * Local Storage Manager for LSB Handicrafts Admin System
- * Handles all inventory data persistence with error handling and versioning
+ * Supabase-backed data manager for LSB Handicrafts Admin System.
+ *
+ * Replaces the old localStorage persistence. The app keeps owning its
+ * in-memory arrays (inventory/deliveries/orders/activityLog) exactly as
+ * before — these functions just load them from Supabase on startup and
+ * push a reconciled copy (upsert changed rows, delete removed ones) back up
+ * whenever they change, so components didn't need to be rewritten around a
+ * per-action CRUD API.
  */
+import { supabase } from '../lib/supabaseClient';
 
-const STORAGE_KEY = 'lsb_inventory';
-const STORAGE_VERSION_KEY = 'lsb_inventory_version';
-const DELIVERY_STORAGE_KEY = 'lsb_deliveries';
-const DELIVERY_STORAGE_VERSION_KEY = 'lsb_deliveries_version';
-const ORDER_STORAGE_KEY = 'lsb_orders';
-const ORDER_STORAGE_VERSION_KEY = 'lsb_orders_version';
-//ALLU: Add dedicated storage keys for the activity timeline.
-const ACTIVITY_STORAGE_KEY = 'lsb_activity_log';
-const ACTIVITY_STORAGE_VERSION_KEY = 'lsb_activity_log_version';
-const CURRENT_VERSION = '1.0';
+// ---- row <-> app-object mapping -------------------------------------------
+// Inventory and activity_log columns already match the JS shape 1:1.
+// Deliveries/orders need camelCase <-> snake_case translation.
+
+const deliveryToRow = (d) => ({
+  id: d.id,
+  product: d.product,
+  size: d.size,
+  location: d.location,
+  amount: d.amount === '' || d.amount === undefined ? null : Number(d.amount),
+  status: d.status,
+  created_at: d.createdAt,
+});
+
+const deliveryFromRow = (r) => ({
+  id: r.id,
+  product: r.product,
+  size: r.size,
+  location: r.location,
+  amount: r.amount,
+  status: r.status,
+  createdAt: r.created_at,
+});
+
+const orderToRow = (o) => ({
+  id: o.id,
+  customer_name: o.customerName,
+  items: o.items || [],
+  total_amount: o.totalAmount,
+  status: o.status,
+  created_at: o.createdAt,
+});
+
+const orderFromRow = (r) => ({
+  id: r.id,
+  customerName: r.customer_name,
+  items: r.items || [],
+  totalAmount: r.total_amount,
+  status: r.status,
+  createdAt: r.created_at,
+});
+
+const identity = (x) => x;
+
+// ---- generic load/sync helpers --------------------------------------------
+
+const loadTable = async (table, defaultData, fromRow = identity) => {
+  try {
+    const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true });
+    if (error) throw error;
+    if (!data || data.length === 0) return defaultData;
+    return data.map(fromRow);
+  } catch (error) {
+    console.error(`Failed to load ${table} from Supabase:`, error);
+    return defaultData;
+  }
+};
 
 /**
- * Save inventory to localStorage with error handling
- * @param {Array} inventoryData - The inventory array to save
- * @returns {boolean} - Success status
+ * Reconciles a table with the given array: upserts every row, then deletes
+ * whatever's left in the table that isn't in the array anymore.
  */
-export const saveInventory = (inventoryData) => {
+const syncTable = async (table, rows, toRow = identity) => {
   try {
-    const dataToSave = {
-      version: CURRENT_VERSION,
-      timestamp: new Date().toISOString(),
-      data: inventoryData,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-    localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION);
+    const { data: existing, error: fetchError } = await supabase.from(table).select('id');
+    if (fetchError) throw fetchError;
+
+    const existingIds = new Set((existing || []).map((r) => r.id));
+    const currentIds = new Set(rows.map((r) => r.id));
+    const idsToDelete = [...existingIds].filter((id) => !currentIds.has(id));
+
+    if (idsToDelete.length > 0) {
+      const { error: deleteError } = await supabase.from(table).delete().in('id', idsToDelete);
+      if (deleteError) throw deleteError;
+    }
+
+    if (rows.length > 0) {
+      const { error: upsertError } = await supabase.from(table).upsert(rows.map(toRow), { onConflict: 'id' });
+      if (upsertError) throw upsertError;
+    }
+
     return true;
   } catch (error) {
-    console.error('Failed to save inventory to localStorage:', error);
-    // Handle quota exceeded error
-    if (error.name === 'QuotaExceededError') {
-      console.warn('Storage quota exceeded. Inventory may not be fully saved.');
-    }
+    console.error(`Failed to save ${table} to Supabase:`, error);
     return false;
   }
 };
 
-/**
- * Load inventory from localStorage with fallback
- * @param {Array} defaultInventory - Default inventory if nothing is saved
- * @returns {Array} - The loaded inventory data
- */
-export const loadInventory = (defaultInventory = []) => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return defaultInventory;
-    }
-    
-    const parsed = JSON.parse(stored);
-    // Handle both old and new format
-    return parsed.data || parsed || defaultInventory;
-  } catch (error) {
-    console.error('Failed to load inventory from localStorage:', error);
-    return defaultInventory;
-  }
-};
+// ---- inventory --------------------------------------------------------
+
+export const loadInventory = (defaultInventory = []) => loadTable('inventory', defaultInventory);
+export const saveInventory = (inventoryData) => syncTable('inventory', inventoryData);
+
+export const deleteFromInventory = (inventoryData, itemId) =>
+  inventoryData.filter((item) => item.id !== itemId);
+
+// ---- deliveries ---------------------------------------------------------
+
+export const loadDeliveries = (defaultDeliveries = []) =>
+  loadTable('deliveries', defaultDeliveries, deliveryFromRow);
+export const saveDeliveries = (deliveriesData) => syncTable('deliveries', deliveriesData, deliveryToRow);
+
+export const deleteFromDeliveries = (deliveriesData, deliveryId) =>
+  deliveriesData.filter((delivery) => delivery.id !== deliveryId);
+
+// ---- orders ---------------------------------------------------------------
+
+export const loadOrders = (defaultOrders = []) => loadTable('orders', defaultOrders, orderFromRow);
+export const saveOrders = (ordersData) => syncTable('orders', ordersData, orderToRow);
+
+export const deleteFromOrders = (ordersData, orderId) =>
+  ordersData.filter((order) => order.id !== orderId);
+
+// ---- activity log -----------------------------------------------------
+
+export const loadActivityLog = (defaultActivity = []) => loadTable('activity_log', defaultActivity);
+export const saveActivityLog = (activityData) => syncTable('activity_log', activityData);
+
+// ---- export / backup --------------------------------------------------
 
 /**
- * Delete an item from inventory
- * @param {Array} inventoryData - Current inventory array
- * @param {number} itemId - ID of the item to delete
- * @returns {Array} - Updated inventory array
- */
-export const deleteFromInventory = (inventoryData, itemId) => {
-  return inventoryData.filter(item => item.id !== itemId);
-};
-
-/**
- * Save deliveries to localStorage with error handling
- * @param {Array} deliveriesData - The deliveries array to save
- * @returns {boolean} - Success status
- */
-export const saveDeliveries = (deliveriesData) => {
-  try {
-    const dataToSave = {
-      version: CURRENT_VERSION,
-      timestamp: new Date().toISOString(),
-      data: deliveriesData,
-    };
-    localStorage.setItem(DELIVERY_STORAGE_KEY, JSON.stringify(dataToSave));
-    localStorage.setItem(DELIVERY_STORAGE_VERSION_KEY, CURRENT_VERSION);
-    return true;
-  } catch (error) {
-    console.error('Failed to save deliveries to localStorage:', error);
-    // Handle quota exceeded error
-    if (error.name === 'QuotaExceededError') {
-      console.warn('Storage quota exceeded. Deliveries may not be fully saved.');
-    }
-    return false;
-  }
-};
-
-/**
- * Load deliveries from localStorage with fallback
- * @param {Array} defaultDeliveries - Default deliveries if nothing is saved
- * @returns {Array} - The loaded deliveries data
- */
-export const loadDeliveries = (defaultDeliveries = []) => {
-  try {
-    const stored = localStorage.getItem(DELIVERY_STORAGE_KEY);
-    if (!stored) {
-      return defaultDeliveries;
-    }
-    
-    const parsed = JSON.parse(stored);
-    // Handle both old and new format
-    return parsed.data || parsed || defaultDeliveries;
-  } catch (error) {
-    console.error('Failed to load deliveries from localStorage:', error);
-    return defaultDeliveries;
-  }
-};
-
-/**
- * Delete a delivery from deliveries
- * @param {Array} deliveriesData - Current deliveries array
- * @param {number} deliveryId - ID of the delivery to delete
- * @returns {Array} - Updated inventory array
- */
-export const deleteFromDeliveries = (deliveriesData, deliveryId) => {
-  return deliveriesData.filter(delivery => delivery.id !== deliveryId);
-};
-
-/**
- * Save orders to localStorage with error handling
- * @param {Array} ordersData - The orders array to save
- * @returns {boolean} - Success status
- */
-export const saveOrders = (ordersData) => {
-  try {
-    const dataToSave = {
-      version: CURRENT_VERSION,
-      timestamp: new Date().toISOString(),
-      data: ordersData,
-    };
-    localStorage.setItem(ORDER_STORAGE_KEY, JSON.stringify(dataToSave));
-    localStorage.setItem(ORDER_STORAGE_VERSION_KEY, CURRENT_VERSION);
-    return true;
-  } catch (error) {
-    console.error('Failed to save orders to localStorage:', error);
-    if (error.name === 'QuotaExceededError') {
-      console.warn('Storage quota exceeded. Orders may not be fully saved.');
-    }
-    return false;
-  }
-};
-
-/**
- * Load orders from localStorage with fallback
- * @param {Array} defaultOrders - Default orders if nothing is saved
- * @returns {Array} - The loaded orders data
- */
-export const loadOrders = (defaultOrders = []) => {
-  try {
-    const stored = localStorage.getItem(ORDER_STORAGE_KEY);
-    if (!stored) {
-      return defaultOrders;
-    }
-    
-    const parsed = JSON.parse(stored);
-    return parsed.data || parsed || defaultOrders;
-  } catch (error) {
-    console.error('Failed to load orders from localStorage:', error);
-    return defaultOrders;
-  }
-};
-
-/**
- * Delete an order from orders
- * @param {Array} ordersData - Current orders array
- * @param {number} orderId - ID of the order to delete
- * @returns {Array} - Updated orders array
- */
-export const deleteFromOrders = (ordersData, orderId) => {
-  return ordersData.filter(order => order.id !== orderId);
-};
-
-/**
- * Export inventory as JSON (for backup/download)
- * @param {Array} inventoryData - The inventory to export
- * @returns {string} - JSON string of the inventory
- */
-export const exportInventory = (inventoryData) => {
-  const exportData = {
-    version: CURRENT_VERSION,
-    exportDate: new Date().toISOString(),
-    itemCount: inventoryData.length,
-    data: inventoryData,
-  };
-  return JSON.stringify(exportData, null, 2);
-};
-
-/**
- * Clear all inventory data from localStorage
- * @returns {boolean} - Success status
- */
-export const clearInventory = () => {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_VERSION_KEY);
-    return true;
-  } catch (error) {
-    console.error('Failed to clear inventory from localStorage:', error);
-    return false;
-  }
-};
-
-/**
- * Get storage info (size, version, etc.)
- * @returns {Object} - Storage information
- */
-export const getStorageInfo = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const size = stored ? new Blob([stored]).size : 0;
-    const version = localStorage.getItem(STORAGE_VERSION_KEY) || 'unknown';
-    
-    return {
-      hasData: !!stored,
-      sizeBytes: size,
-      sizeKB: (size / 1024).toFixed(2),
-      version,
-      timestamp: stored ? JSON.parse(stored).timestamp : null,
-    };
-  } catch (error) {
-    console.error('Failed to get storage info:', error);
-    return { hasData: false, error: error.message };
-  }
-};
-
-/**
- * Export the full admin workspace state as JSON
- * @param {Object} payload - Inventory, deliveries, and orders data
- * @returns {string} - JSON string of the backup payload
+ * Export the full admin workspace state as JSON (for a manual backup download).
  */
 export const exportBackupData = ({ inventory = [], deliveries = [], orders = [] } = {}) => {
   const exportData = {
-    version: CURRENT_VERSION,
     exportDate: new Date().toISOString(),
     counts: {
       inventory: inventory.length,
       deliveries: deliveries.length,
       orders: orders.length,
     },
-    data: {
-      inventory,
-      deliveries,
-      orders,
-    },
+    data: { inventory, deliveries, orders },
   };
 
   return JSON.stringify(exportData, null, 2);
 };
-
-/**
- * Save activity log to localStorage with error handling
- * @param {Array} activityData - Activity entries to save
- * @returns {boolean} - Success status
- */
-//ALLU: Persist activity timeline entries so audit data survives reloads.
-export const saveActivityLog = (activityData) => {
-  try {
-    const dataToSave = {
-      version: CURRENT_VERSION,
-      timestamp: new Date().toISOString(),
-      data: activityData,
-    };
-    localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(dataToSave));
-    localStorage.setItem(ACTIVITY_STORAGE_VERSION_KEY, CURRENT_VERSION);
-    return true;
-  } catch (error) {
-    console.error('Failed to save activity log to localStorage:', error);
-    if (error.name === 'QuotaExceededError') {
-      console.warn('Storage quota exceeded. Activity log may not be fully saved.');
-    }
-    return false;
-  }
-};
-
-/**
- * Load activity log from localStorage with fallback
- * @param {Array} defaultActivity - Default activity list if nothing is saved
- * @returns {Array} - Loaded activity entries
- */
-//ALLU: Restore activity timeline entries for dashboard history and tracing.
-export const loadActivityLog = (defaultActivity = []) => {
-  try {
-    const stored = localStorage.getItem(ACTIVITY_STORAGE_KEY);
-    if (!stored) {
-      return defaultActivity;
-    }
-
-    const parsed = JSON.parse(stored);
-    return parsed.data || parsed || defaultActivity;
-  } catch (error) {
-    console.error('Failed to load activity log from localStorage:', error);
-    return defaultActivity;
-  }
-};
-
