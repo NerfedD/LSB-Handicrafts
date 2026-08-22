@@ -1,0 +1,228 @@
+import { useMemo, useState } from "react";
+import AppShell from "./layout/AppShell";
+import { SAMPLE_STAFF, initialsOf } from "../utils/staffData";
+
+const ACTION_TYPES = ["Login", "Account Change", "Stock Edit", "Price Edit"];
+
+const ACTION_STYLES = {
+  Login: "bg-[#1b3a6b12] border-[#1b3a6b29] text-[#1b3a6b]",
+  "Account Change": "bg-[#653eb512] border-[#653eb52e] text-[#653eb5]",
+  "Stock Edit": "bg-[#9a610012] border-[#9a61002e] text-[#8a5600]",
+  "Price Edit": "bg-[#166b5912] border-[#166b592e] text-[#166b59]",
+};
+
+const SAMPLE_ENTRIES = [
+  { id: 1, staff: "Maria Santos", action: "Logged in", type: "Login", date: "August 22, 2026", time: "8:02 AM" },
+  { id: 2, staff: "Juan Dela Cruz", action: "Updated user account", type: "Account Change", date: "August 22, 2026", time: "8:15 AM" },
+  { id: 3, staff: "Ramon Garcia", action: "Edited stock information", type: "Stock Edit", date: "August 22, 2026", time: "9:04 AM" },
+  { id: 4, staff: "Ana Reyes", action: "Updated product price", type: "Price Edit", date: "August 22, 2026", time: "9:31 AM" },
+  { id: 5, staff: "Maria Santos", action: "Logged in", type: "Login", date: "August 21, 2026", time: "7:58 AM" },
+  { id: 6, staff: "Carlos Mendoza", action: "Updated product price", type: "Price Edit", date: "August 21, 2026", time: "10:22 AM" },
+  { id: 7, staff: "Liza Villanueva", action: "Logged in", type: "Login", date: "August 21, 2026", time: "11:05 AM" },
+  { id: 8, staff: "Juan Dela Cruz", action: "Edited stock information", type: "Stock Edit", date: "August 21, 2026", time: "2:14 PM" },
+  { id: 9, staff: "Maria Santos", action: "Updated user account", type: "Account Change", date: "August 20, 2026", time: "8:30 AM" },
+  { id: 10, staff: "Ramon Garcia", action: "Logged in", type: "Login", date: "August 20, 2026", time: "9:00 AM" },
+  { id: 11, staff: "Ana Reyes", action: "Edited stock information", type: "Stock Edit", date: "August 20, 2026", time: "3:45 PM" },
+  { id: 12, staff: "Carlos Mendoza", action: "Logged in", type: "Login", date: "August 20, 2026", time: "8:15 AM" },
+];
+
+const EMPTY_FILTERS = { staff: "", action: "", from: "", to: "" };
+
+/** "August 22, 2026" -> "2026-08-22" so it compares against <input type="date">. */
+function toISODate(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${parsed.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * LSB Handicrafts — Staff Activity Log
+ * Figma: Screen #8
+ */
+export default function StaffActivityLogPage({
+  entries = SAMPLE_ENTRIES,
+  staff = SAMPLE_STAFF,
+  onNavigate,
+  onSignOut,
+}) {
+  const [staffFilter, setStaffFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [applied, setApplied] = useState(EMPTY_FILTERS);
+
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      if (applied.staff && e.staff !== applied.staff) return false;
+      if (applied.action && e.type !== applied.action) return false;
+      if (applied.from || applied.to) {
+        const iso = toISODate(e.date);
+        if (!iso) return false;
+        if (applied.from && iso < applied.from) return false;
+        if (applied.to && iso > applied.to) return false;
+      }
+      return true;
+    });
+  }, [entries, applied]);
+
+  function applyFilters() {
+    setApplied({ staff: staffFilter, action: actionFilter, from: fromDate, to: toDate });
+  }
+
+  function clearFilters() {
+    setStaffFilter("");
+    setActionFilter("");
+    setFromDate("");
+    setToDate("");
+    setApplied(EMPTY_FILTERS);
+  }
+
+  return (
+    <AppShell activeTab="activity" onNavigate={onNavigate} onSignOut={onSignOut}>
+      <div className="w-[1040px] max-w-full">
+        <h1 className="text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
+          Staff Activity Log
+        </h1>
+        <p className="mt-2 text-base text-[#5f6875]">
+          View a record of staff actions and system activity.
+        </p>
+
+        <div className="mt-8 rounded-xl border border-[#17263a12] bg-white px-7 py-5 shadow-[0_2px_5px_rgba(17,30,50,0.05)]">
+          <div className="flex items-center gap-3">
+            <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+              Filter Activity
+            </span>
+            <span className="h-px flex-1 bg-[#17263a14]" />
+          </div>
+          <div className="mt-4 flex flex-wrap items-end gap-3.5">
+            <div className="w-[188px]">
+              <label className="block text-[13px] font-semibold text-[#17263a]">
+                Staff Member
+              </label>
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[15px] text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30"
+              >
+                <option value="">All Staff</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-[172px]">
+              <label className="block text-[13px] font-semibold text-[#17263a]">
+                Action Type
+              </label>
+              <select
+                value={actionFilter}
+                onChange={(e) => setActionFilter(e.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[15px] text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30"
+              >
+                <option value="">All Actions</option>
+                {ACTION_TYPES.map((a) => (
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="w-[152px]">
+              <label className="block text-[13px] font-semibold text-[#17263a]">From</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3 text-sm text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30"
+              />
+            </div>
+            <span className="pb-3 text-[#17263a4d]">→</span>
+            <div className="w-[152px]">
+              <label className="block text-[13px] font-semibold text-[#17263a]">To</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3 text-sm text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30"
+              />
+            </div>
+            <div className="flex gap-2.5">
+              <button
+                type="button"
+                onClick={applyFilters}
+                className="h-[46px] rounded-[10px] bg-[#1b3a6b] px-[22px] text-[15px] font-semibold tracking-[0.3px] text-white shadow-[0_2px_5px_rgba(27,58,107,0.26)] transition hover:bg-[#17263a]"
+              >
+                Apply Filters
+              </button>
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-[46px] rounded-[10px] border border-[#17263a1a] px-5 text-[15px] font-medium text-[#17263a59] transition hover:text-[#17263a]"
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-hidden rounded-2xl border border-[#17263a12] bg-white shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]">
+          <div className="grid grid-cols-[1fr_1.1fr_200px] border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+              Staff Member
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+              Action
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+              Timestamp
+            </span>
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="px-7 py-10 text-center text-sm text-[#5f6875]">
+              No activity matches the selected filters.
+            </div>
+          ) : (
+            filtered.map((entry) => (
+              <div
+                key={entry.id}
+                className="grid grid-cols-[1fr_1.1fr_200px] items-center border-t border-[#17263a0f] px-7 py-3.5 first:border-t-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex size-[34px] items-center justify-center rounded-full border border-[#17263a1a] bg-[#17263a12] text-[11.5px] font-bold tracking-[0.23px] text-[#17263a]">
+                    {initialsOf(entry.staff)}
+                  </div>
+                  <span className="text-[15.5px] font-medium text-[#17263a]">
+                    {entry.staff}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[15px] text-[#17263a]">{entry.action}</span>
+                  <span
+                    className={`rounded-md border px-2.5 py-0.5 text-[11.5px] font-semibold tracking-[0.23px] ${ACTION_STYLES[entry.type]}`}
+                  >
+                    {entry.type}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[14.5px] font-medium text-[#17263a]">{entry.date}</p>
+                  <p className="mt-0.5 text-[13px] text-[#5f6875]">{entry.time}</p>
+                </div>
+              </div>
+            ))
+          )}
+
+          <div className="border-t border-[#17263a0f] bg-[#fafaf8] px-7 py-3">
+            <span className="text-[13px] text-[#5f687599]">
+              {filtered.length} {filtered.length === 1 ? "entry" : "entries"} · Read-only
+            </span>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}

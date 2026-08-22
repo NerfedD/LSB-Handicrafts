@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Menu, LogOut } from 'lucide-react';
+import { Sun, Moon, Menu, LogOut, Users } from 'lucide-react';
 
 import { initialInventory, initialDeliveries, initialOrders } from '../utils/data';
 import {
@@ -26,7 +26,7 @@ import DeliveryDetail from './views/DeliveryDetail';
  * rendered once a login has passed the temporary admin-email gate. Data
  * lives in Supabase — see src/utils/storageManager.js.
  */
-export default function AdminDashboard({ onSignOut }) {
+export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [inventory, setInventory] = useState(initialInventory);
@@ -190,6 +190,13 @@ export default function AdminDashboard({ onSignOut }) {
                 className="w-10 h-10 rounded-full bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm dark:shadow-none"
               >
                 {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              <button
+                onClick={onOpenAdmin}
+                title="User accounts, staff directory and activity log"
+                className="h-10 px-4 rounded-full bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm dark:shadow-none text-sm font-medium"
+              >
+                <Users size={16} /> <span className="hidden sm:inline">Admin</span>
               </button>
               <button
                 onClick={onSignOut}

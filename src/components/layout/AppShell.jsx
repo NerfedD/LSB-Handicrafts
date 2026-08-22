@@ -13,15 +13,19 @@ export default function AppShell({
   children,
 }) {
   const tabs = [
+    { key: "dashboard", label: "Dashboard" },
     { key: "accounts", label: "User Accounts" },
     { key: "create", label: "Create User Account" },
+    { key: "activity", label: "Activity Log" },
+    { key: "directory", label: "Staff Directory" },
+    { key: "profile", label: "My Profile" },
     { key: "credentials", label: "Update Credentials" },
   ];
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[linear-gradient(158deg,#ddd8c8_8%,#e8e4d8_25%,#f0edE4_50%,#e9e5da_75%,#dfd9cb_92%)]">
-      <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#17263a] px-12">
-        <div className="flex items-center gap-3.5">
+      <header className="flex h-[62px] shrink-0 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#17263a] px-6 xl:px-12">
+        <div className="flex shrink-0 items-center gap-3.5">
           <div className="flex size-8 items-center justify-center rounded-md border border-white/[0.15] bg-white/10">
             <span className="text-[10px] font-bold tracking-[0.5px] text-white">
               LSB
@@ -37,7 +41,7 @@ export default function AppShell({
         </div>
 
         {onNavigate && (
-          <nav className="flex items-center gap-1">
+          <nav className="flex min-w-0 items-center gap-1 overflow-x-auto">
             {tabs.map((tab) => {
               const isActive = tab.key === activeTab;
               return (
@@ -45,7 +49,7 @@ export default function AppShell({
                   key={tab.key}
                   type="button"
                   onClick={() => onNavigate(tab.key)}
-                  className={`rounded-[7px] border px-[15px] py-[6px] text-[13px] tracking-[0.13px] transition ${
+                  className={`shrink-0 whitespace-nowrap rounded-[7px] border px-[15px] py-[6px] text-[13px] tracking-[0.13px] transition ${
                     isActive
                       ? "border-white/[0.16] bg-white/[0.11] font-semibold text-white/[0.92]"
                       : "border-transparent font-normal text-white/[0.46] hover:text-white/70"
@@ -61,7 +65,7 @@ export default function AppShell({
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded-[7px] border border-white/[0.15] px-4 py-[7px] text-[13px] font-medium text-white/60 transition hover:text-white/90"
+          className="shrink-0 whitespace-nowrap rounded-[7px] border border-white/[0.15] px-4 py-[7px] text-[13px] font-medium text-white/60 transition hover:text-white/90"
         >
           Sign Out
         </button>

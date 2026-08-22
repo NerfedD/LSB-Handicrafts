@@ -1,23 +1,7 @@
 import { useMemo, useState } from "react";
 import { Plus, MoreVertical } from "lucide-react";
 import AppShell from "./layout/AppShell";
-
-const ROLES = [
-  "Admin",
-  "Manager",
-  "Sales Staff",
-  "Production Staff",
-  "Delivery Staff",
-];
-
-const SAMPLE_USERS = [
-  { id: 1, name: "Maria Santos", role: "Admin", status: "Active" },
-  { id: 2, name: "Juan Dela Cruz", role: "Sales Staff", status: "Active" },
-  { id: 3, name: "Ramon Garcia", role: "Production Staff", status: "Blocked" },
-  { id: 4, name: "Ana Reyes", role: "Delivery Staff", status: "Active" },
-  { id: 5, name: "Carlos Mendoza", role: "Manager", status: "Active" },
-  { id: 6, name: "Liza Villanueva", role: "Sales Staff", status: "Blocked" },
-];
+import { ROLES, SAMPLE_STAFF } from "../utils/staffData";
 
 /**
  * LSB Handicrafts — User Accounts
@@ -27,7 +11,7 @@ const SAMPLE_USERS = [
  * your API once that's wired up.
  */
 export default function UserAccountsPage({
-  users = SAMPLE_USERS,
+  users = SAMPLE_STAFF,
   onNavigate,
   onSignOut,
   onCreateAccount,

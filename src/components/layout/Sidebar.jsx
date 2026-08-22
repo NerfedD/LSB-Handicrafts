@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutDashboard, Package, Truck, ShoppingCart, X } from 'lucide-react';
 // Import your logo here
-import logoImg from '../../assets/Logo.png';
+import logoImg from '../../assets/Logo-128.png';
 
 export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSidebarOpen }) {
   const isInventoryGroup = ['inventory', 'add-product', 'edit-product', 'view-product', 'create', 'edit', 'detail'].includes(activeTab);
