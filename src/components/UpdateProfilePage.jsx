@@ -37,7 +37,7 @@ export default function UpdateProfilePage({
           ← Back to My Profile
         </button>
 
-        <div className="mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
           <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
             Update Profile
           </h1>
@@ -45,7 +45,7 @@ export default function UpdateProfilePage({
             Update your personal information.
           </p>
 
-          <div className="mt-8 flex items-center gap-5 rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-6 py-5.5">
+          <div className="mt-8 flex items-center gap-5 rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-6 py-[22px]">
             <div className="flex size-16 items-center justify-center rounded-full bg-[#1b3a6b] text-xl font-bold tracking-[0.8px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.25)]">
               {initials}
             </div>

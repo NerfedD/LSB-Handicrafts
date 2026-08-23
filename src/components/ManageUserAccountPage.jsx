@@ -42,7 +42,7 @@ export default function ManageUserAccountPage({
           User Accounts
         </button>
 
-        <div className="relative mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="relative mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
           <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
             Manage User Account
           </h1>

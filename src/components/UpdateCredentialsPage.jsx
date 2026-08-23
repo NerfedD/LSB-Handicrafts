@@ -55,7 +55,7 @@ export default function UpdateCredentialsPage({
   if (succeeded) {
     return (
       <AppShell activeTab="credentials" onNavigate={onNavigate} onSignOut={onSignOut}>
-        <div className="relative flex w-[600px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-14 py-13 text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="relative flex w-[600px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
           <div className="flex size-[68px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
             <CheckCircle2 className="h-8 w-8 text-[#287a55]" />
           </div>
@@ -79,7 +79,7 @@ export default function UpdateCredentialsPage({
 
   return (
     <AppShell activeTab="credentials" onNavigate={onNavigate} onSignOut={onSignOut}>
-      <div className="relative w-[600px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+      <div className="relative w-[600px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
         <div className="h-[2.5px] w-7 rounded bg-[#1b3a6b]" />
         <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
           Update Credentials

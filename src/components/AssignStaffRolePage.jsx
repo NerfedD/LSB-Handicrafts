@@ -37,7 +37,7 @@ export default function AssignStaffRolePage({
           ← Manage User Account
         </button>
 
-        <div className="mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="mt-3 rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
           <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
             Staff Role
           </h1>
@@ -45,8 +45,8 @@ export default function AssignStaffRolePage({
             Assign or update the role of a staff member.
           </p>
 
-          <div className="mt-8 flex items-center gap-4.5 rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-5.5 py-5">
-            <div className="flex size-13 shrink-0 items-center justify-center rounded-full bg-[#1b3a6b] text-base font-bold tracking-[0.64px] text-white shadow-[0_2px_5px_rgba(27,58,107,0.22)]">
+          <div className="mt-8 flex items-center gap-[18px] rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-[22px] py-5">
+            <div className="flex size-[52px] shrink-0 items-center justify-center rounded-full bg-[#1b3a6b] text-base font-bold tracking-[0.64px] text-white shadow-[0_2px_5px_rgba(27,58,107,0.22)]">
               {initials}
             </div>
             <div>

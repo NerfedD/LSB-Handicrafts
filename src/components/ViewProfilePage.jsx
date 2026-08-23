@@ -17,7 +17,7 @@ export default function ViewProfilePage({
 
   return (
     <AppShell activeTab="profile" onNavigate={onNavigate} onSignOut={onSignOut}>
-      <div className="w-[520px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+      <div className="w-[520px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
         <h1 className="text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
           My Profile
         </h1>
@@ -25,7 +25,7 @@ export default function ViewProfilePage({
           View your registered account information.
         </p>
 
-        <div className="mt-8 flex items-center gap-5 rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-6 py-5.5">
+        <div className="mt-8 flex items-center gap-5 rounded-xl border border-[#17263a12] bg-[#f7f4ec] px-6 py-[22px]">
           <div className="flex size-16 items-center justify-center rounded-full bg-[#1b3a6b] text-xl font-bold tracking-[0.8px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.25)]">
             {initials}
           </div>
@@ -76,7 +76,7 @@ export default function ViewProfilePage({
           Update Profile
         </button>
 
-        <p className="mt-4.5 text-center text-[13.5px] text-[#5f687599]">
+        <p className="mt-[18px] text-center text-[13.5px] text-[#5f687599]">
           To update your username or password,{" "}
           <button
             type="button"
