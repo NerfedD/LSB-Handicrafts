@@ -71,7 +71,7 @@ export default function AppShell({
         </button>
       </header>
 
-      <main className="relative flex flex-1 items-center justify-center overflow-hidden px-16 py-10">
+      <main className="relative flex flex-1 items-start justify-center overflow-y-auto px-6 py-10 xl:px-16">
         <div
           className="pointer-events-none absolute size-[420px] rounded-full opacity-70"
           style={{

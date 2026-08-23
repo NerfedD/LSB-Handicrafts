@@ -83,6 +83,13 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
     }
   }, [isDarkMode]);
 
+  // The AppShell admin screens are light-themed. Drop the dashboard's dark
+  // class and body background on unmount so they don't leak into them.
+  useEffect(() => () => {
+    document.documentElement.classList.remove('dark');
+    document.body.style.backgroundColor = '';
+  }, []);
+
   // Persist to Supabase whenever data changes — skipped until the initial
   // load finishes, so we don't overwrite real data with placeholder defaults.
   useEffect(() => {
