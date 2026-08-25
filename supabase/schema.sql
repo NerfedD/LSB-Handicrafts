@@ -55,10 +55,34 @@ create table if not exists public.staff (
   email text unique
 );
 
--- Row Level Security: only signed-in users may read/write. The app also
--- enforces a temporary admin-email allowlist client-side (see
--- src/utils/adminAccess.js) — this RLS policy is the database-level backstop
--- so the anon key alone can never touch these tables without a session.
+-- Row Level Security.
+--
+-- The anon key is embedded in the published JavaScript bundle — that's normal
+-- and unavoidable for a browser app, so RLS is the only thing standing between
+-- a stranger and this data. "Signed in" is NOT a sufficient bar: Supabase
+-- signups are open (CreateUserAccountPage needs them), so anyone can create an
+-- auth user for themselves. Access is therefore gated on having an Active row
+-- in `staff`, which only an existing admin can hand out.
+--
+-- SECURITY DEFINER makes this function run as its owner, which bypasses RLS
+-- inside the function body. That's what lets the `staff` policy call it without
+-- recursing into itself. `set search_path` pins schema resolution so the
+-- elevated function can't be tricked into resolving `staff` elsewhere.
+create or replace function public.is_active_staff()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.staff
+    where email = auth.jwt() ->> 'email'
+      and status = 'Active'
+  );
+$$;
+
 alter table public.inventory enable row level security;
 alter table public.deliveries enable row level security;
 alter table public.orders enable row level security;
@@ -66,31 +90,64 @@ alter table public.activity_log enable row level security;
 alter table public.staff enable row level security;
 
 drop policy if exists "Authenticated users can manage inventory" on public.inventory;
-create policy "Authenticated users can manage inventory"
+drop policy if exists "Active staff can manage inventory" on public.inventory;
+create policy "Active staff can manage inventory"
   on public.inventory for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
 
 drop policy if exists "Authenticated users can manage deliveries" on public.deliveries;
-create policy "Authenticated users can manage deliveries"
+drop policy if exists "Active staff can manage deliveries" on public.deliveries;
+create policy "Active staff can manage deliveries"
   on public.deliveries for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
 
 drop policy if exists "Authenticated users can manage orders" on public.orders;
-create policy "Authenticated users can manage orders"
+drop policy if exists "Active staff can manage orders" on public.orders;
+create policy "Active staff can manage orders"
   on public.orders for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
 
 drop policy if exists "Authenticated users can manage activity_log" on public.activity_log;
-create policy "Authenticated users can manage activity_log"
+drop policy if exists "Active staff can manage activity_log" on public.activity_log;
+create policy "Active staff can manage activity_log"
   on public.activity_log for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
 
 drop policy if exists "Authenticated users can manage staff" on public.staff;
-create policy "Authenticated users can manage staff"
+drop policy if exists "Active staff can manage staff" on public.staff;
+create policy "Active staff can manage staff"
   on public.staff for all
-  using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
+
+-- ============================================================
+-- REQUIRED — bootstrap the first admin
+-- ============================================================
+-- The policies above gate everything on having an Active `staff` row, and only
+-- someone who already has one can create more. That leaves the first admin
+-- unable to create their own: signing in would appear to work, then every read
+-- would come back empty and every write would be rejected.
+--
+-- SQL run here in the editor executes as the table owner and bypasses RLS, so
+-- this is the way in. Do both steps:
+--
+-- 1) Authentication → Users → Add User
+--      Email:   your admin email
+--      Password: anything you'll remember
+--      ✅ Auto Confirm User   ← must be checked, or they can't sign in
+--
+-- 2) Edit the email/name below to match exactly, then run this file.
+--
+-- The app's VITE_ADMIN_EMAILS bootstrap path can no longer create this row —
+-- its INSERT is refused by the policies above. This is now the only route in.
+insert into public.staff (id, name, role, contact_number, status, email) values
+  (1, 'System Admin', 'Admin', '', 'Active', 'lsbhandicraft@email.com')
+on conflict (id) do update set
+  name = excluded.name,
+  role = excluded.role,
+  status = excluded.status,
+  email = excluded.email;

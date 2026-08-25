@@ -29,6 +29,7 @@ import DeliveryDetail from './views/DeliveryDetail';
 export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [inventory, setInventory] = useState(initialInventory);
   const [deliveries, setDeliveries] = useState(initialDeliveries);
   const [orders, setOrders] = useState(initialOrders);
@@ -49,11 +50,15 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
         loadActivityLog([]),
       ]);
       if (cancelled) return;
-      setInventory(inv);
-      setDeliveries(dels);
-      setOrders(ords);
-      setActivityLog(activity);
-      setIsDataLoaded(true);
+      setInventory(inv.data);
+      setDeliveries(dels.data);
+      setOrders(ords.data);
+      setActivityLog(activity.data);
+      // Only arm the persist effects below when every read succeeded. A failed
+      // read hands back placeholder defaults, and syncing those would delete
+      // the real rows they stood in for.
+      setIsDataLoaded(inv.ok && dels.ok && ords.ok && activity.ok);
+      setLoadFailed(!(inv.ok && dels.ok && ords.ok && activity.ok));
     })();
     return () => { cancelled = true; };
   }, []);
@@ -148,6 +153,32 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
       default: return 'Dashboard';
     }
   };
+
+  if (loadFailed) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-zinc-50 dark:bg-[#09090B] px-6 text-center">
+        <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+          Couldn&apos;t reach the database
+        </p>
+        <p className="max-w-md text-sm text-zinc-500 dark:text-zinc-400">
+          Your data hasn&apos;t been loaded, so the workspace is showing nothing rather
+          than risk overwriting it. Check your connection and try again.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+        >
+          Retry
+        </button>
+        <button
+          onClick={onSignOut}
+          className="text-sm font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:hover:text-zinc-200"
+        >
+          Sign out
+        </button>
+      </div>
+    );
+  }
 
   if (!isDataLoaded) {
     return (

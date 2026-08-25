@@ -102,8 +102,19 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([supabase.auth.getSession(), loadStaff([])]).then(
-      ([{ data: sessionData }, staffRows]) => {
+      ([{ data: sessionData }, staffResult]) => {
         if (cancelled) return;
+
+        // A failed read hands back the empty fallback, which is indistinguishable
+        // from a genuinely empty table. Leaving isStaffLoaded false keeps the
+        // persist effect below disarmed so it can't sync that emptiness back and
+        // delete every staff row.
+        if (!staffResult.ok) {
+          setView("login");
+          return;
+        }
+
+        const staffRows = staffResult.data;
         setStaff(staffRows);
         setIsStaffLoaded(true);
 
