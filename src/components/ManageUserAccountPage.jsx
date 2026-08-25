@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronLeft, AlertTriangle } from "lucide-react";
 import AppShell from "./layout/AppShell";
 const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
@@ -12,13 +12,17 @@ const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status:
  * Status is read straight off the prop — the caller owns the staff list, so a
  * block/unblock flows back down instead of being mirrored in local state.
  * Name/contact number are edited locally and only pushed up via
- * onSaveDetails on submit, same as UpdateProfilePage's own form.
+ * onSaveDetails on submit, same as UpdateProfilePage's own form. The caller
+ * renders this with `key={account.id}` (see src/App.jsx) so switching to a
+ * different account remounts the form fresh instead of needing an effect to
+ * reset it.
  * The default below is only a crash-guard for standalone rendering — the
  * real app (src/App.jsx) always supplies a Supabase-backed account and
  * falls back to the accounts list instead of rendering this with none.
  */
 export default function ManageUserAccountPage({
   account = EMPTY_ACCOUNT,
+  currentUserEmail,
   onBack,
   onNavigate,
   onSignOut,
@@ -30,13 +34,11 @@ export default function ManageUserAccountPage({
   const [name, setName] = useState(account.name);
   const [contactNumber, setContactNumber] = useState(account.contactNumber);
 
-  // Reset the editable fields whenever a different account is opened.
-  useEffect(() => {
-    setName(account.name);
-    setContactNumber(account.contactNumber);
-  }, [account.id]);
-
   const isActive = account.status === "Active";
+  // Blocking is now enforced at login (see src/App.jsx) — blocking your own
+  // account here would sign you out next time with no other way back in
+  // unless someone else already has access, so it's disabled outright.
+  const isSelf = Boolean(account.email) && account.email === currentUserEmail;
   const hasDetailChanges =
     name !== account.name || contactNumber !== account.contactNumber;
 
@@ -142,8 +144,9 @@ export default function ManageUserAccountPage({
           {isActive ? (
             <button
               type="button"
+              disabled={isSelf}
               onClick={() => setShowConfirm(true)}
-              className="mt-6 h-[52px] w-full rounded-[10px] border border-[#b5474733] text-base font-semibold text-[#b54747] transition hover:bg-[#b5474708]"
+              className="mt-6 h-[52px] w-full rounded-[10px] border border-[#b5474733] text-base font-semibold text-[#b54747] transition hover:bg-[#b5474708] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
             >
               Block Account
             </button>
@@ -158,7 +161,9 @@ export default function ManageUserAccountPage({
           )}
 
           <p className="mt-4 rounded-lg border border-[#17263a12] bg-[#f7f4ec] px-3.5 py-2.5 text-[13px] text-[#5f6875]">
-            This action will be recorded in the system log.
+            {isActive && isSelf
+              ? "You can't block your own account."
+              : "This action will be recorded in the system log."}
           </p>
 
           <hr className="my-8 border-[#17263a14]" />

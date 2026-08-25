@@ -23,6 +23,7 @@ const StaffDirectoryPage = lazy(() => import("./components/StaffDirectoryPage"))
 const ViewProfilePage = lazy(() => import("./components/ViewProfilePage"));
 const UpdateProfilePage = lazy(() => import("./components/UpdateProfilePage"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard.jsx"));
+const RoleDashboardPage = lazy(() => import("./components/RoleDashboardPage.jsx"));
 
 /** Shown while a route chunk is still downloading. */
 function RouteFallback() {
@@ -45,6 +46,13 @@ function RouteFallback() {
  * `staff` table — see src/utils/storageManager.js. Unlike inventory in
  * AdminDashboard, there's no placeholder fallback seeded into it when it's
  * empty — real rows come from the SQL Editor or the sign-in bootstrap below.
+ *
+ * Access is gated by having a `staff` row, not just a valid Supabase
+ * session: signing in successfully only gets someone past LoginPage, then
+ * handleLoginAttempt below looks them up by email and routes by role —
+ * Admin gets the full AdminDashboard, everyone else gets the temporary
+ * RoleDashboardPage placeholder. VITE_ADMIN_EMAILS survives only as the
+ * bootstrap path for the very first Admin, before any staff row exists.
  */
 export default function App() {
   const [view, setView] = useState("checking-session");
@@ -72,53 +80,62 @@ export default function App() {
     };
   }, [staff, sessionEmail]);
 
-  // On load, honor an existing Supabase session so an admin doesn't have to
-  // log in again on every refresh.
+  // A brand-new staff row for someone VITE_ADMIN_EMAILS bootstraps in with
+  // no `staff` row yet — used the moment we discover that, in both the
+  // returning-session check below and a fresh login (handleLoginAttempt).
+  function bootstrapAdminRow(email) {
+    return {
+      id: Date.now(),
+      name: nameFromEmail(email),
+      role: "Admin",
+      contactNumber: "",
+      status: "Active",
+      email,
+    };
+  }
+
+  // On load: check for an existing Supabase session (so someone doesn't
+  // have to log in again on every refresh) and load the staff directory,
+  // then decide the starting screen once both are in. Everything here runs
+  // inside the .then() callback, after the real async work, rather than
+  // synchronously in the effect body.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      const email = data.session?.user?.email;
-      if (isAdminEmail(email)) {
-        setSessionEmail(email);
-        setView("dashboard");
-      } else {
-        setView("login");
+    Promise.all([supabase.auth.getSession(), loadStaff([])]).then(
+      ([{ data: sessionData }, staffRows]) => {
+        if (cancelled) return;
+        setStaff(staffRows);
+        setIsStaffLoaded(true);
+
+        const email = sessionData.session?.user?.email ?? null;
+        if (!email) {
+          setView("login");
+          return;
+        }
+        const match = staffRows.find((s) => s.email === email);
+        if (match?.status === "Blocked") {
+          // A blocked account shouldn't stay signed in just because it has
+          // an old session lying around.
+          supabase.auth.signOut();
+          setView("login");
+        } else if (match) {
+          setSessionEmail(email);
+          setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
+        } else if (isAdminEmail(email)) {
+          setSessionEmail(email);
+          setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
+          setView("dashboard");
+        } else {
+          // A leftover session for an account nobody provisioned in
+          // `staff` (or removed from) — don't leave them signed in to
+          // nothing.
+          supabase.auth.signOut();
+          setView("login");
+        }
       }
-    });
+    );
     return () => { cancelled = true; };
   }, []);
-
-  // Load the staff directory from Supabase once on mount.
-  useEffect(() => {
-    let cancelled = false;
-    loadStaff([]).then((rows) => {
-      if (cancelled) return;
-      setStaff(rows);
-      setIsStaffLoaded(true);
-    });
-    return () => { cancelled = true; };
-  }, []);
-
-  // First sign-in for an email with no staff row yet: create one so their
-  // profile has somewhere real to live. Skipped until the initial load
-  // finishes, so it never races the load and duplicates a row.
-  useEffect(() => {
-    if (!isStaffLoaded || !sessionEmail) return;
-    const exists = staff.some((s) => s.email === sessionEmail);
-    if (exists) return;
-    setStaff((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name: nameFromEmail(sessionEmail),
-        role: "Admin",
-        contactNumber: "",
-        status: "Active",
-        email: sessionEmail,
-      },
-    ]);
-  }, [isStaffLoaded, sessionEmail, staff]);
 
   // Persist to Supabase whenever the staff list changes — skipped until the
   // initial load finishes, so it doesn't overwrite real data with the
@@ -127,6 +144,29 @@ export default function App() {
     if (!isStaffLoaded) return;
     saveStaff(staff);
   }, [staff, isStaffLoaded]);
+
+  // Called by LoginPage right after a successful signInWithPassword.
+  // Returns "ok" | "blocked" | "no-access" and routes by role when it's
+  // "ok". staff is normally already loaded well before someone finishes
+  // typing credentials, so this reads current state directly rather than
+  // re-awaiting the load.
+  function handleLoginAttempt(email) {
+    const match = staff.find((s) => s.email === email);
+    if (match?.status === "Blocked") return "blocked";
+    if (match) {
+      setSessionEmail(email);
+      setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
+      return "ok";
+    }
+    if (isAdminEmail(email)) {
+      // First-ever sign-in for the bootstrap admin — no staff row yet.
+      setSessionEmail(email);
+      setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
+      setView("dashboard");
+      return "ok";
+    }
+    return "no-access";
+  }
 
   async function handleSignOut() {
     await supabase.auth.signOut();
@@ -192,10 +232,7 @@ export default function App() {
       case "login":
         return (
           <LoginPage
-            onLoginSuccess={(email) => {
-              setSessionEmail(email);
-              setView("dashboard");
-            }}
+            onLoginAttempt={handleLoginAttempt}
             onForgotPassword={() => setView("forgot-password")}
           />
         );
@@ -207,6 +244,9 @@ export default function App() {
             onOpenAdmin={() => setView("accounts")}
           />
         );
+
+      case "role-dashboard":
+        return <RoleDashboardPage profile={profile} onSignOut={handleSignOut} />;
 
       case "forgot-password":
         return (
@@ -232,6 +272,7 @@ export default function App() {
         return (
           <UserAccountsPage
             users={staff}
+            currentUserEmail={sessionEmail}
             onNavigate={setView}
             onSignOut={handleSignOut}
             onCreateAccount={() => setView("create")}
@@ -244,7 +285,9 @@ export default function App() {
         if (!selectedAccount) return renderMissingAccount();
         return (
           <ManageUserAccountPage
+            key={selectedAccount.id}
             account={selectedAccount}
+            currentUserEmail={sessionEmail}
             onBack={() => setView("accounts")}
             onNavigate={setView}
             onSignOut={handleSignOut}

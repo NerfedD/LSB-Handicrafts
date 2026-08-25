@@ -2,17 +2,16 @@ import { useState } from "react";
 import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import AuthLayout from "./layout/AuthLayout";
 import { supabase } from "../lib/supabaseClient";
-import { isAdminEmail } from "../utils/adminAccess";
 
 /**
  * LSB Handicrafts — Login
  * Figma: State 1 (default), State 2 (invalid credentials), State 3 (account locked)
  */
-export default function LoginPage({ onLoginSuccess, onForgotPassword }) {
+export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [status, setStatus] = useState("idle"); // idle | error | locked
+  const [status, setStatus] = useState("idle"); // idle | error | locked | restricted | blocked
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e) {
@@ -27,16 +26,19 @@ export default function LoginPage({ onLoginSuccess, onForgotPassword }) {
         return;
       }
 
-      // Temporary gate: only allowlisted emails may reach the dashboard.
-      // Everyone else gets signed back out immediately.
-      if (!isAdminEmail(data.user?.email)) {
+      // App.jsx decides whether this email actually gets in — it looks for
+      // a matching row in the `staff` table (or the temporary admin
+      // allowlist for first-ever sign-in), checks it isn't Blocked, and
+      // routes by role. Anyone it doesn't grant access to is signed back
+      // out immediately: "ok" | "blocked" | "no-access".
+      const result = await onLoginAttempt?.(data.user.email);
+      if (result !== "ok") {
         await supabase.auth.signOut();
-        setStatus("restricted");
+        setStatus(result === "blocked" ? "blocked" : "restricted");
         return;
       }
 
       setStatus("idle");
-      onLoginSuccess?.(data.user.email);
     } catch {
       setStatus("error");
     } finally {
@@ -46,6 +48,7 @@ export default function LoginPage({ onLoginSuccess, onForgotPassword }) {
 
   const isLocked = status === "locked";
   const isRestricted = status === "restricted";
+  const isBlocked = status === "blocked";
 
   return (
     <AuthLayout>
@@ -91,8 +94,24 @@ export default function LoginPage({ onLoginSuccess, onForgotPassword }) {
               This account doesn't have dashboard access.
             </p>
             <p className="mt-1.5 text-sm leading-[23px] text-[#5f6875]">
-              Your credentials were correct, but this email isn't on the
-              admin list yet. Contact your system administrator.
+              Your credentials were correct, but this account isn't set up
+              in the system yet. Contact your system administrator.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isBlocked && (
+        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-[18px] py-[14px]">
+          <AlertCircle className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+          <div>
+            <p className="text-[15px] font-semibold text-[#17263a]">
+              This account has been blocked.
+            </p>
+            <p className="mt-1.5 text-sm leading-[23px] text-[#5f6875]">
+              Your credentials were correct, but an administrator has
+              blocked this account. Contact your system administrator to
+              restore access.
             </p>
           </div>
         </div>
