@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import AppShell from "./layout/AppShell";
-import { SAMPLE_STAFF, initialsOf } from "../utils/staffData";
+import { initialsOf } from "../utils/staffData";
 
 const ACTION_TYPES = ["Login", "Account Change", "Stock Edit", "Price Edit"];
 
@@ -43,7 +43,7 @@ function toISODate(value) {
  */
 export default function StaffActivityLogPage({
   entries = SAMPLE_ENTRIES,
-  staff = SAMPLE_STAFF,
+  staff = [],
   onNavigate,
   onSignOut,
 }) {

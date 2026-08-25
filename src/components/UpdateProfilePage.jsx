@@ -1,14 +1,15 @@
 import { useState } from "react";
 import AppShell from "./layout/AppShell";
-import { DEFAULT_PROFILE, initialsOf } from "../utils/staffData";
+import { initialsOf } from "../utils/staffData";
 
+const EMPTY_PROFILE = { name: "", role: "", contactNumber: "", status: "Active" };
 
 /**
  * LSB Handicrafts — Update Profile
  * Figma: Screen #10
  */
 export default function UpdateProfilePage({
-  profile = DEFAULT_PROFILE,
+  profile = EMPTY_PROFILE,
   onBack,
   onNavigate,
   onSignOut,

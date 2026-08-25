@@ -36,7 +36,7 @@ export default function LoginPage({ onLoginSuccess, onForgotPassword }) {
       }
 
       setStatus("idle");
-      onLoginSuccess?.();
+      onLoginSuccess?.(data.user.email);
     } catch {
       setStatus("error");
     } finally {

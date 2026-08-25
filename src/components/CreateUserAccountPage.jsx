@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import AppShell from "./layout/AppShell";
+import { createSignupClient } from "../lib/supabaseSignupClient";
 
 const ROLES = [
   "Admin",
@@ -22,17 +23,24 @@ const emptyForm = {
 /**
  * LSB Handicrafts — Create User Account
  * Figma: node 28:2 (form), 28:302 (success)
+ *
+ * `onAccountCreated` is called after a successful signup with
+ * { name, role, contactNumber, email } so the caller can add the person to
+ * the `staff` list right away (see src/App.jsx) — otherwise they'd only
+ * show up once they sign in themselves and the bootstrap effect runs.
  */
 export default function CreateUserAccountPage({
   onNavigate,
   onSignOut,
   onCancel,
+  onAccountCreated,
 }) {
   const [form, setForm] = useState(emptyForm);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -41,19 +49,42 @@ export default function CreateUserAccountPage({
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
+
+    if (!form.employeeName || !form.role || !form.email || !form.temporaryPassword) {
+      setError("Please fill in employee name, role, email, and a temporary password.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      // A separate client so this signup can't replace the admin's own
+      // session — see src/lib/supabaseSignupClient.js.
+      const signupClient = createSignupClient();
+      const { data, error: signUpError } = await signupClient.auth.signUp({
+        email: form.email,
+        password: form.temporaryPassword,
       });
-      if (!res.ok) {
-        setError("Couldn't create the account. Please check the details and try again.");
+
+      if (signUpError) {
+        setError(signUpError.message);
         return;
       }
+
+      // No session back means Supabase is waiting on an email confirmation
+      // link before this account can actually log in.
+      setConfirmationPending(!data.session);
+
+      onAccountCreated?.({
+        name: form.employeeName,
+        role: form.role,
+        contactNumber: form.contactNumber,
+        email: form.email,
+      });
+
       setSucceeded(true);
       setForm(emptyForm);
+    } catch {
+      setError("Couldn't create the account. Please check the details and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -70,7 +101,9 @@ export default function CreateUserAccountPage({
             Account Created Successfully
           </h1>
           <p className="mt-3.5 text-base text-[#5f6875]">
-            The new user account has been created successfully.
+            {confirmationPending
+              ? "They'll need to confirm their email before they can log in — check their inbox for a link from Supabase."
+              : "The new user account has been created successfully."}
           </p>
           <div className="mt-10 flex gap-3.5">
             <button
@@ -114,6 +147,7 @@ export default function CreateUserAccountPage({
             <Field label="Employee Name">
               <input
                 type="text"
+                required
                 value={form.employeeName}
                 onChange={update("employeeName")}
                 placeholder="Enter employee name"
@@ -122,6 +156,7 @@ export default function CreateUserAccountPage({
             </Field>
             <Field label="Role">
               <select
+                required
                 value={form.role}
                 onChange={update("role")}
                 className={`${inputClasses} appearance-none bg-white ${
@@ -154,18 +189,19 @@ export default function CreateUserAccountPage({
 
           <SectionLabel className="mt-6">Login Credentials</SectionLabel>
           <div className="mt-5 grid grid-cols-2 gap-6">
-            <Field label="Username">
+            <Field label="Username (display only)">
               <input
                 type="text"
                 value={form.username}
                 onChange={update("username")}
-                placeholder="Enter username"
+                placeholder="Optional — not used to sign in"
                 className={inputClasses}
               />
             </Field>
             <Field label="Email">
               <input
                 type="email"
+                required
                 value={form.email}
                 onChange={update("email")}
                 placeholder="Enter email address"
@@ -174,16 +210,19 @@ export default function CreateUserAccountPage({
             </Field>
           </div>
           <p className="mt-2 text-[13.5px] text-[#5f6875]">
-            Username must be unique across the system.
+            Sign-in uses email + password. Username isn't stored — this
+            field is a placeholder for now.
           </p>
 
           <Field label="Temporary Password" className="mt-[22px]">
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                required
+                minLength={6}
                 value={form.temporaryPassword}
                 onChange={update("temporaryPassword")}
-                placeholder="Enter temporary password"
+                placeholder="At least 6 characters"
                 className={`${inputClasses} pr-[58px]`}
               />
               <button

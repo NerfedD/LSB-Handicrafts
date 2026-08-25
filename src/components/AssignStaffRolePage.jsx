@@ -1,13 +1,18 @@
 import { useState } from "react";
 import AppShell from "./layout/AppShell";
-import { ROLES, SAMPLE_STAFF, initialsOf } from "../utils/staffData";
+import { ROLES, initialsOf } from "../utils/staffData";
+
+const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
 
 /**
  * LSB Handicrafts — Assign / Update Staff Role
  * Figma: Screen #11
+ *
+ * The default below is only a crash-guard for standalone rendering — the
+ * real app (src/App.jsx) always supplies a Supabase-backed account.
  */
 export default function AssignStaffRolePage({
-  account = SAMPLE_STAFF[1],
+  account = EMPTY_ACCOUNT,
   onBack,
   onNavigate,
   onSignOut,

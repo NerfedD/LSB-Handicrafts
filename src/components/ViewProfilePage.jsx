@@ -1,13 +1,14 @@
 import AppShell from "./layout/AppShell";
-import { DEFAULT_PROFILE, initialsOf } from "../utils/staffData";
+import { initialsOf } from "../utils/staffData";
 
+const EMPTY_PROFILE = { name: "", role: "", contactNumber: "", status: "Active" };
 
 /**
  * LSB Handicrafts — My Profile (view)
  * Figma: Screen #9
  */
 export default function ViewProfilePage({
-  profile = DEFAULT_PROFILE,
+  profile = EMPTY_PROFILE,
   onNavigate,
   onSignOut,
   onUpdateProfile,

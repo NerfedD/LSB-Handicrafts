@@ -1,7 +1,8 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
-import { SAMPLE_STAFF, DEFAULT_PROFILE } from "./utils/staffData";
+import { nameFromEmail } from "./utils/staffData";
+import { loadStaff, saveStaff } from "./utils/storageManager";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
 // behind it is split out and fetched on first navigation — the dashboard
@@ -38,20 +39,38 @@ function RouteFallback() {
  * added to the project. Each screen's callback props (onNavigate, onBack,
  * etc.) just call setView here.
  *
- * The staff list and signed-in profile live here rather than inside each
- * screen so an edit made on one page (block an account, change a role,
- * update your profile) is visible on the others. They are still placeholder
- * records — see src/utils/staffData.js — and reset on reload until a real
- * `staff` table exists in Supabase.
+ * The staff list lives here rather than inside each screen so an edit made
+ * on one page (block an account, change a role, update a profile) is
+ * visible on the others. It's loaded from and persisted to Supabase's
+ * `staff` table — see src/utils/storageManager.js. Unlike inventory in
+ * AdminDashboard, there's no placeholder fallback seeded into it when it's
+ * empty — real rows come from the SQL Editor or the sign-in bootstrap below.
  */
 export default function App() {
   const [view, setView] = useState("checking-session");
-  const [staff, setStaff] = useState(SAMPLE_STAFF);
+  const [staff, setStaff] = useState([]);
+  const [isStaffLoaded, setIsStaffLoaded] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
-  const [profile, setProfile] = useState(DEFAULT_PROFILE);
+  const [sessionEmail, setSessionEmail] = useState(null);
 
   // Derived so it always reflects the latest edit rather than a stale copy.
   const selectedAccount = staff.find((s) => s.id === selectedAccountId);
+
+  // The signed-in admin's own staff row, matched by email. Falls back to a
+  // synthesized record (from the email itself) for the brief window before
+  // the bootstrap effect below has created their row in Supabase.
+  const profile = useMemo(() => {
+    const match = staff.find((s) => s.email && s.email === sessionEmail);
+    if (match) return match;
+    return {
+      id: null,
+      name: nameFromEmail(sessionEmail),
+      role: "Admin",
+      contactNumber: "",
+      status: "Active",
+      email: sessionEmail,
+    };
+  }, [staff, sessionEmail]);
 
   // On load, honor an existing Supabase session so an admin doesn't have to
   // log in again on every refresh.
@@ -60,23 +79,81 @@ export default function App() {
     supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
       const email = data.session?.user?.email;
-      setView(isAdminEmail(email) ? "dashboard" : "login");
+      if (isAdminEmail(email)) {
+        setSessionEmail(email);
+        setView("dashboard");
+      } else {
+        setView("login");
+      }
     });
     return () => { cancelled = true; };
   }, []);
 
+  // Load the staff directory from Supabase once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    loadStaff([]).then((rows) => {
+      if (cancelled) return;
+      setStaff(rows);
+      setIsStaffLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // First sign-in for an email with no staff row yet: create one so their
+  // profile has somewhere real to live. Skipped until the initial load
+  // finishes, so it never races the load and duplicates a row.
+  useEffect(() => {
+    if (!isStaffLoaded || !sessionEmail) return;
+    const exists = staff.some((s) => s.email === sessionEmail);
+    if (exists) return;
+    setStaff((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        name: nameFromEmail(sessionEmail),
+        role: "Admin",
+        contactNumber: "",
+        status: "Active",
+        email: sessionEmail,
+      },
+    ]);
+  }, [isStaffLoaded, sessionEmail, staff]);
+
+  // Persist to Supabase whenever the staff list changes — skipped until the
+  // initial load finishes, so it doesn't overwrite real data with the
+  // placeholder defaults on first render.
+  useEffect(() => {
+    if (!isStaffLoaded) return;
+    saveStaff(staff);
+  }, [staff, isStaffLoaded]);
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     setSelectedAccountId(null);
+    setSessionEmail(null);
     setView("login");
+  }
+
+  function updateProfile(changes) {
+    setStaff((prev) =>
+      prev.map((s) => (s.email === sessionEmail ? { ...s, ...changes } : s))
+    );
   }
 
   function handleRowAction(action, user) {
     if (action === "edit" || action === "block" || action === "unblock") {
       setSelectedAccountId(user.id);
       setView("manage-account");
+      return;
     }
-    // "delete" is handled by the table's own confirm flow.
+    if (action === "delete") {
+      // UserAccountsPage already confirmed and hides this for the
+      // signed-in admin's own row, but never delete your own login here.
+      if (user.email && user.email === sessionEmail) return;
+      setStaff((prev) => prev.filter((s) => s.id !== user.id));
+      if (selectedAccountId === user.id) setSelectedAccountId(null);
+    }
   }
 
   function updateSelectedAccount(changes) {
@@ -85,12 +162,20 @@ export default function App() {
     );
   }
 
+  function handleAccountCreated({ name, role, contactNumber, email }) {
+    setStaff((prev) => [
+      ...prev,
+      { id: Date.now(), name, role, contactNumber, status: "Active", email },
+    ]);
+  }
+
   // Guard for deep-linked/stale account views: show the list instead of
   // rendering a screen with no record behind it.
   function renderMissingAccount() {
     return (
       <UserAccountsPage
         users={staff}
+        currentUserEmail={sessionEmail}
         onNavigate={setView}
         onSignOut={handleSignOut}
         onCreateAccount={() => setView("create")}
@@ -107,7 +192,10 @@ export default function App() {
       case "login":
         return (
           <LoginPage
-            onLoginSuccess={() => setView("dashboard")}
+            onLoginSuccess={(email) => {
+              setSessionEmail(email);
+              setView("dashboard");
+            }}
             onForgotPassword={() => setView("forgot-password")}
           />
         );
@@ -161,6 +249,7 @@ export default function App() {
             onNavigate={setView}
             onSignOut={handleSignOut}
             onStatusChange={(status) => updateSelectedAccount({ status })}
+            onSaveDetails={(changes) => updateSelectedAccount(changes)}
             onChangeRole={() => setView("assign-role")}
           />
         );
@@ -186,6 +275,7 @@ export default function App() {
             onNavigate={setView}
             onSignOut={handleSignOut}
             onCancel={() => setView("accounts")}
+            onAccountCreated={handleAccountCreated}
           />
         );
 
@@ -235,7 +325,7 @@ export default function App() {
             onNavigate={setView}
             onSignOut={handleSignOut}
             onSaved={(changes) => {
-              setProfile((prev) => ({ ...prev, ...changes }));
+              updateProfile(changes);
               setView("profile");
             }}
           />

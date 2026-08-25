@@ -52,6 +52,24 @@ const orderFromRow = (r) => ({
   createdAt: r.created_at,
 });
 
+const staffToRow = (s) => ({
+  id: s.id,
+  name: s.name,
+  role: s.role,
+  contact_number: s.contactNumber,
+  status: s.status,
+  email: s.email || null,
+});
+
+const staffFromRow = (r) => ({
+  id: r.id,
+  name: r.name,
+  role: r.role,
+  contactNumber: r.contact_number,
+  status: r.status,
+  email: r.email,
+});
+
 const identity = (x) => x;
 
 // ---- generic load/sync helpers --------------------------------------------
@@ -127,6 +145,11 @@ export const deleteFromOrders = (ordersData, orderId) =>
 
 export const loadActivityLog = (defaultActivity = []) => loadTable('activity_log', defaultActivity);
 export const saveActivityLog = (activityData) => syncTable('activity_log', activityData);
+
+// ---- staff / user accounts ---------------------------------------------
+
+export const loadStaff = (defaultStaff = []) => loadTable('staff', defaultStaff, staffFromRow);
+export const saveStaff = (staffData) => syncTable('staff', staffData, staffToRow);
 
 // ---- export / backup --------------------------------------------------
 

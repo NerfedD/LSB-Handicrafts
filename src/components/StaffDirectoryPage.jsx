@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import AppShell from "./layout/AppShell";
-import { SAMPLE_STAFF, initialsOf } from "../utils/staffData";
+import { initialsOf } from "../utils/staffData";
 
 const AVATAR_COLORS = [
   "#653eb5",
@@ -17,7 +17,7 @@ const AVATAR_COLORS = [
  * Figma: Screen #12
  */
 export default function StaffDirectoryPage({
-  staff = SAMPLE_STAFF,
+  staff = [],
   onNavigate,
   onSignOut,
 }) {

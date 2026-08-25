@@ -1,11 +1,17 @@
 /**
- * Single source of truth for the sample staff/user records the admin screens
- * render (User Accounts, Staff Directory, Manage Account, Assign Role,
- * Activity Log).
+ * Shared shape/helpers for the staff records the admin screens render (User
+ * Accounts, Staff Directory, Manage Account, Assign Role, Activity Log).
+ * The records themselves live in Supabase's `staff` table — src/App.jsx
+ * loads them on startup (see src/utils/storageManager.js) and passes them
+ * down as props. Every screen reads the same shape — { id, name, role,
+ * contactNumber, status, email } — so a row clicked in one screen carries
+ * complete data into the next.
  *
- * These are placeholder records standing in for a real `staff` table. Every
- * screen reads the same shape — { id, name, role, contactNumber, status } —
- * so a row clicked in one screen carries complete data into the next.
+ * No sample/placeholder records live here anymore: they used to double as
+ * seed data the app would write into Supabase the first time the table was
+ * empty, which meant fake employees ended up in the real database. Add real
+ * seed rows straight in Supabase instead — ask your assistant for an INSERT
+ * script, or use the SQL Editor directly.
  */
 
 export const ROLES = [
@@ -16,21 +22,6 @@ export const ROLES = [
   "Delivery Staff",
 ];
 
-export const SAMPLE_STAFF = [
-  { id: 1, name: "Maria Santos", role: "Admin", contactNumber: "09171234567", status: "Active" },
-  { id: 2, name: "Juan Dela Cruz", role: "Sales Staff", contactNumber: "09281234567", status: "Active" },
-  { id: 3, name: "Ramon Garcia", role: "Production Staff", contactNumber: "09391234567", status: "Blocked" },
-  { id: 4, name: "Ana Reyes", role: "Delivery Staff", contactNumber: "09451234567", status: "Active" },
-  { id: 5, name: "Carlos Mendoza", role: "Manager", contactNumber: "09561234567", status: "Active" },
-  { id: 6, name: "Liza Villanueva", role: "Sales Staff", contactNumber: "09672345678", status: "Blocked" },
-];
-
-/**
- * Stand-in for the signed-in admin until profiles are backed by the Supabase
- * user. Same record as the first staff row.
- */
-export const DEFAULT_PROFILE = SAMPLE_STAFF[0];
-
 /** "Maria Santos" -> "MS" */
 export function initialsOf(name) {
   return String(name || "")
@@ -40,4 +31,20 @@ export function initialsOf(name) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
+}
+
+/**
+ * Best-effort display name for a staff row created the first time someone
+ * signs in with an email that isn't in the `staff` table yet (see
+ * src/App.jsx). "jane.doe@example.com" -> "Jane Doe". They can rename
+ * themselves properly via Update Profile afterward.
+ */
+export function nameFromEmail(email) {
+  const local = String(email || "").split("@")[0];
+  const name = local
+    .split(/[._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ");
+  return name || "Admin";
 }

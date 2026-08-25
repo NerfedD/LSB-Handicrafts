@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, AlertTriangle } from "lucide-react";
 import AppShell from "./layout/AppShell";
-import { SAMPLE_STAFF } from "../utils/staffData";
+const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
 
 /**
  * LSB Handicrafts — Manage User Account
@@ -11,23 +11,44 @@ import { SAMPLE_STAFF } from "../utils/staffData";
  * `account` shape: { id, name, role, contactNumber, status: "Active"|"Blocked" }
  * Status is read straight off the prop — the caller owns the staff list, so a
  * block/unblock flows back down instead of being mirrored in local state.
+ * Name/contact number are edited locally and only pushed up via
+ * onSaveDetails on submit, same as UpdateProfilePage's own form.
+ * The default below is only a crash-guard for standalone rendering — the
+ * real app (src/App.jsx) always supplies a Supabase-backed account and
+ * falls back to the accounts list instead of rendering this with none.
  */
 export default function ManageUserAccountPage({
-  account = SAMPLE_STAFF[1],
+  account = EMPTY_ACCOUNT,
   onBack,
   onNavigate,
   onSignOut,
   onChangeRole,
   onStatusChange, // (nextStatus) => void
+  onSaveDetails, // ({ name, contactNumber }) => void
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [name, setName] = useState(account.name);
+  const [contactNumber, setContactNumber] = useState(account.contactNumber);
+
+  // Reset the editable fields whenever a different account is opened.
+  useEffect(() => {
+    setName(account.name);
+    setContactNumber(account.contactNumber);
+  }, [account.id]);
 
   const isActive = account.status === "Active";
+  const hasDetailChanges =
+    name !== account.name || contactNumber !== account.contactNumber;
 
-  // TODO(backend): persist to Supabase once a `staff` table exists.
   function confirmToggle() {
     onStatusChange?.(isActive ? "Blocked" : "Active");
     setShowConfirm(false);
+  }
+
+  function handleSaveDetails(e) {
+    e.preventDefault();
+    if (!hasDetailChanges) return;
+    onSaveDetails?.({ name, contactNumber });
   }
 
   return (
@@ -51,32 +72,55 @@ export default function ManageUserAccountPage({
           </p>
 
           <SectionLabel className="mt-8">Employee Information</SectionLabel>
-          <div className="mt-5 grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
-                Full Name
-              </p>
-              <p className="mt-2 text-[17px] font-medium text-[#17263a]">
-                {account.name}
-              </p>
+          <form onSubmit={handleSaveDetails}>
+            <div className="mt-5 grid grid-cols-2 gap-8">
+              <div>
+                <label
+                  htmlFor="account-name"
+                  className="block text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]"
+                >
+                  Full Name
+                </label>
+                <input
+                  id="account-name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="mt-2 h-12 w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[17px] font-medium text-[#17263a] outline-none transition focus:ring-2 focus:ring-[#1b3a6b]/30"
+                />
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+                  Role
+                </p>
+                <p className="mt-2 flex h-12 items-center text-[17px] font-medium text-[#17263a]">
+                  {account.role}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
-                Role
-              </p>
-              <p className="mt-2 text-[17px] font-medium text-[#17263a]">
-                {account.role}
-              </p>
+            <div className="mt-6">
+              <label
+                htmlFor="account-contact"
+                className="block text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]"
+              >
+                Contact Number
+              </label>
+              <input
+                id="account-contact"
+                type="tel"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                className="mt-2 h-12 w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[17px] font-medium text-[#17263a] outline-none transition focus:ring-2 focus:ring-[#1b3a6b]/30"
+              />
             </div>
-          </div>
-          <div className="mt-6">
-            <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
-              Contact Number
-            </p>
-            <p className="mt-2 text-[17px] font-medium text-[#17263a]">
-              {account.contactNumber}
-            </p>
-          </div>
+            <button
+              type="submit"
+              disabled={!hasDetailChanges}
+              className="mt-4 h-[46px] rounded-[10px] bg-[#1b3a6b] px-6 text-[15px] font-semibold text-white shadow-[0_2px_5px_rgba(27,58,107,0.26)] transition hover:bg-[#17263a] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Save Changes
+            </button>
+          </form>
 
           <hr className="my-8 border-[#17263a14]" />
 
