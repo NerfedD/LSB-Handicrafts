@@ -11,7 +11,6 @@ import { loadStaff, saveStaff } from "./utils/storageManager";
 import LoginPage from "./components/LoginPage.jsx";
 
 const ForgotPasswordPage = lazy(() => import("./components/ForgotPasswordPage"));
-const VerifyIdentityPage = lazy(() => import("./components/VerifyIdentityPage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 const UpdateCredentialsPage = lazy(() => import("./components/UpdateCredentialsPage"));
 const CreateUserAccountPage = lazy(() => import("./components/CreateUserAccountPage"));
@@ -137,6 +136,20 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  // Clicking the link from ForgotPasswordPage's email brings someone back
+  // here already signed into a temporary recovery session — Supabase fires
+  // this event when that happens. Jump straight to the reset-password
+  // screen regardless of whatever the mount-time check above decided,
+  // since a recovery session isn't a normal login.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setView("reset-password");
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   // Persist to Supabase whenever the staff list changes — skipped until the
   // initial load finishes, so it doesn't overwrite real data with the
   // placeholder defaults on first render.
@@ -249,24 +262,19 @@ export default function App() {
         return <RoleDashboardPage profile={profile} onSignOut={handleSignOut} />;
 
       case "forgot-password":
-        return (
-          <ForgotPasswordPage
-            onBack={() => setView("login")}
-            onContinue={() => setView("verify-identity")}
-          />
-        );
-
-      case "verify-identity":
-        return (
-          <VerifyIdentityPage
-            onBack={() => setView("forgot-password")}
-            onVerified={() => setView("reset-password")}
-            onRequestAdminAssistance={() => setView("login")}
-          />
-        );
+        return <ForgotPasswordPage onBack={() => setView("login")} />;
 
       case "reset-password":
-        return <ResetPasswordPage onReturnToLogin={() => setView("login")} />;
+        return (
+          <ResetPasswordPage
+            onReturnToLogin={() => {
+              // They're sitting on a temporary recovery session — sign out
+              // so "Return to Login" means a deliberate fresh sign-in with
+              // the new password, not a silent slide into the dashboard.
+              handleSignOut();
+            }}
+          />
+        );
 
       case "accounts":
         return (
@@ -325,6 +333,7 @@ export default function App() {
       case "credentials":
         return (
           <UpdateCredentialsPage
+            currentUserEmail={sessionEmail}
             onNavigate={setView}
             onSignOut={handleSignOut}
             onCancel={() => setView("accounts")}
