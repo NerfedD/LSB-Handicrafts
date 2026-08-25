@@ -50,8 +50,17 @@ function RouteFallback() {
  * session: signing in successfully only gets someone past LoginPage, then
  * handleLoginAttempt below looks them up by email and routes by role —
  * Admin gets the full AdminDashboard, everyone else gets the temporary
- * RoleDashboardPage placeholder. VITE_ADMIN_EMAILS survives only as the
- * bootstrap path for the very first Admin, before any staff row exists.
+ * RoleDashboardPage placeholder.
+ *
+ * VITE_ADMIN_EMAILS + bootstrapAdminRow below used to be how the very
+ * first Admin got their row created automatically on first sign-in. RLS
+ * (see supabase/schema.sql) now requires an existing active `staff` row
+ * to insert one at all, so that self-service path can't actually write
+ * anything anymore — the first Admin's row has to be seeded by hand via
+ * the SQL block at the bottom of schema.sql instead. This path is left in
+ * as a harmless fallback (it fails closed: the insert is rejected by RLS,
+ * not silently allowed) rather than ripped out, in case a future policy
+ * change reopens it.
  */
 export default function App() {
   const [view, setView] = useState("checking-session");
@@ -79,9 +88,8 @@ export default function App() {
     };
   }, [staff, sessionEmail]);
 
-  // A brand-new staff row for someone VITE_ADMIN_EMAILS bootstraps in with
-  // no `staff` row yet — used the moment we discover that, in both the
-  // returning-session check below and a fresh login (handleLoginAttempt).
+  // See the class doc comment above: this no longer actually persists
+  // anything under the current RLS policies. Kept as a harmless fallback.
   function bootstrapAdminRow(email) {
     return {
       id: Date.now(),
@@ -101,8 +109,19 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([supabase.auth.getSession(), loadStaff([])]).then(
-      ([{ data: sessionData }, staffRows]) => {
+      ([{ data: sessionData }, staffResult]) => {
         if (cancelled) return;
+
+        // A failed read hands back the empty fallback, which is indistinguishable
+        // from a genuinely empty table. Leaving isStaffLoaded false keeps the
+        // persist effect below disarmed so it can't sync that emptiness back and
+        // delete every staff row.
+        if (!staffResult.ok) {
+          setView("login");
+          return;
+        }
+
+        const staffRows = staffResult.data;
         setStaff(staffRows);
         setIsStaffLoaded(true);
 
@@ -172,7 +191,10 @@ export default function App() {
       return "ok";
     }
     if (isAdminEmail(email)) {
-      // First-ever sign-in for the bootstrap admin — no staff row yet.
+      // See bootstrapAdminRow above — this optimistically shows the
+      // dashboard, but the row it tries to create won't actually save
+      // under the current RLS unless it already existed (seeded via
+      // schema.sql). Left in as a harmless fallback, not the real path in.
       setSessionEmail(email);
       setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
       setView("dashboard");

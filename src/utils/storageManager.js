@@ -74,15 +74,22 @@ const identity = (x) => x;
 
 // ---- generic load/sync helpers --------------------------------------------
 
+/**
+ * Reads a table. Returns { ok, data } rather than a bare array so callers can
+ * tell "the table is legitimately empty" apart from "the read failed" — they
+ * look identical otherwise, and a caller that treats a failed read as real
+ * state will happily sync that emptiness back and delete the table. See the
+ * isDataLoaded / isStaffLoaded guards in AdminDashboard.jsx and App.jsx.
+ */
 const loadTable = async (table, defaultData, fromRow = identity) => {
   try {
     const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true });
     if (error) throw error;
-    if (!data || data.length === 0) return defaultData;
-    return data.map(fromRow);
+    const rows = !data || data.length === 0 ? defaultData : data.map(fromRow);
+    return { ok: true, data: rows };
   } catch (error) {
     console.error(`Failed to load ${table} from Supabase:`, error);
-    return defaultData;
+    return { ok: false, data: defaultData };
   }
 };
 
@@ -96,6 +103,17 @@ const syncTable = async (table, rows, toRow = identity) => {
     if (fetchError) throw fetchError;
 
     const existingIds = new Set((existing || []).map((r) => r.id));
+
+    // Independent backstop against wiping a table. Emptying every row is
+    // never something the UI asks for, so an empty array here means state was
+    // lost (a failed load, a bad render) rather than a real deletion.
+    if (rows.length === 0 && existingIds.size > 0) {
+      console.warn(
+        `Refusing to clear ${table}: in-memory state is empty but the table has ${existingIds.size} row(s).`
+      );
+      return false;
+    }
+
     const currentIds = new Set(rows.map((r) => r.id));
     const idsToDelete = [...existingIds].filter((id) => !currentIds.has(id));
 
