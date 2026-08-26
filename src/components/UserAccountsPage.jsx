@@ -1,7 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, MoreVertical, AlertTriangle } from "./icons";
 import AppShell from "./layout/AppShell";
 import { ROLES } from "../utils/staffData";
+
+// Roughly the tallest the row menu gets (three items plus its border). Used
+// only to decide whether it still fits below the button before flipping it.
+const ROW_MENU_HEIGHT = 160;
 
 /**
  * LSB Handicrafts — User Accounts
@@ -22,8 +26,37 @@ export default function UserAccountsPage({
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({ role: "", status: "" });
-  const [openMenuId, setOpenMenuId] = useState(null);
+  // { id, drop } — `drop` is "up" for rows near the bottom of the window, so
+  // the last row's menu doesn't open off the end of the page.
+  const [openMenu, setOpenMenu] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+
+  // Close the row menu on an outside click or Escape. The button and the menu
+  // itself both stop pointerdown from reaching this, so clicking the button
+  // still toggles and clicking an item still registers before it unmounts.
+  useEffect(() => {
+    if (!openMenu) return;
+    const close = () => setOpenMenu(null);
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setOpenMenu(null);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [openMenu]);
+
+  function toggleRowMenu(user, event) {
+    const { bottom } = event.currentTarget.getBoundingClientRect();
+    const roomBelow = window.innerHeight - bottom;
+    setOpenMenu((current) =>
+      current?.id === user.id
+        ? null
+        : { id: user.id, drop: roomBelow < ROW_MENU_HEIGHT ? "up" : "down" }
+    );
+  }
 
   const filtered = useMemo(() => {
     return users.filter((u) => {
@@ -156,8 +189,12 @@ export default function UserAccountsPage({
         )}
 
         {/* Table */}
-        <div className="mt-4 overflow-hidden rounded-2xl border border-[#17263a12] bg-white shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]">
-          <div className="grid grid-cols-[1fr_284px_178px_48px] border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
+        {/* No overflow-hidden here: it used to clip the row menu the moment
+            the menu extended past the card, which is every time you opened
+            the last row's. The header and footer round their own outer
+            corners instead, so the card keeps its shape without clipping. */}
+        <div className="mt-4 rounded-2xl border border-[#17263a12] bg-white shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]">
+          <div className="grid grid-cols-[1fr_284px_178px_48px] rounded-t-2xl border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
             <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
               Name
             </span>
@@ -188,16 +225,23 @@ export default function UserAccountsPage({
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() =>
-                      setOpenMenuId((id) => (id === user.id ? null : user.id))
-                    }
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => toggleRowMenu(user, e)}
                     className="rounded p-1 text-[#5f6875] hover:bg-[#17263a0d]"
                     aria-label={`Actions for ${user.name}`}
+                    aria-haspopup="menu"
+                    aria-expanded={openMenu?.id === user.id}
                   >
                     <MoreVertical className="h-[18px] w-[18px]" />
                   </button>
-                  {openMenuId === user.id && (
-                    <div className="absolute right-7 top-12 z-10 w-40 overflow-hidden rounded-lg border border-[#17263a1a] bg-white shadow-lg">
+                  {openMenu?.id === user.id && (
+                    <div
+                      role="menu"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      className={`absolute right-7 z-20 w-40 overflow-hidden rounded-lg border border-[#17263a1a] bg-white shadow-lg ${
+                        openMenu.drop === "up" ? "bottom-12" : "top-12"
+                      }`}
+                    >
                       {[
                         "Edit",
                         user.status === "Active" ? "Block" : "Unblock",
@@ -207,7 +251,7 @@ export default function UserAccountsPage({
                           key={action}
                           type="button"
                           onClick={() => {
-                            setOpenMenuId(null);
+                            setOpenMenu(null);
                             if (action === "Delete") {
                               setPendingDelete(user);
                             } else {
@@ -230,7 +274,7 @@ export default function UserAccountsPage({
             ))
           )}
 
-          <div className="flex items-center justify-between border-t border-[#17263a0f] bg-[#fafaf8] px-7 py-3">
+          <div className="flex items-center justify-between rounded-b-2xl border-t border-[#17263a0f] bg-[#fafaf8] px-7 py-3">
             <span className="text-[13px] text-[#5f687599]">
               {filtered.length} account{filtered.length === 1 ? "" : "s"}{" "}
               registered
