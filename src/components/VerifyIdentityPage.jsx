@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, AlertCircle } from "lucide-react";
+import { ChevronLeft, AlertCircle } from "./icons";
 import AuthLayout from "./layout/AuthLayout";
 
 /**

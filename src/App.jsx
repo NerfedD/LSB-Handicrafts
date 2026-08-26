@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
 import { nameFromEmail } from "./utils/staffData";
 import { loadStaff, saveStaff } from "./utils/storageManager";
+import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
 // behind it is split out and fetched on first navigation — the dashboard
@@ -34,6 +35,11 @@ function RouteFallback() {
   );
 }
 
+
+// How long a signed-in session survives with no interaction. Tunable per
+// deployment via .env; 30 minutes if unset.
+const IDLE_TIMEOUT_MS =
+  (Number(import.meta.env.VITE_IDLE_TIMEOUT_MINUTES) || 30) * 60_000;
 
 /**
  * Simple view-state "router" — swap this for react-router-dom once that's
@@ -94,75 +100,121 @@ export default function App() {
     };
   }
 
-  // On load: check for an existing Supabase session (so someone doesn't
-  // have to log in again on every refresh) and load the staff directory,
-  // then decide the starting screen once both are in. Everything here runs
-  // inside the .then() callback, after the real async work, rather than
-  // synchronously in the effect body.
+  // The in-flight staff read, started at mount. Held here rather than
+  // awaited alongside getSession(), because the login form doesn't need it —
+  // blocking first paint on that Supabase round trip meant a blank white
+  // page for as long as the query took.
+  const staffPromiseRef = useRef(null);
+  // The exact array that read handed back, so the persist effect below can
+  // tell "freshly loaded" from "actually edited" by identity.
+  const loadedStaffRef = useRef(null);
+
+  // Resolves to the staff rows, priming component state the first time it's
+  // called. Returns null if the read failed — callers fall back to whatever
+  // is already in state rather than treating a failure as an empty table.
+  async function resolveStaff() {
+    if (isStaffLoaded) return staff;
+    staffPromiseRef.current ??= loadStaff([]);
+    const result = await staffPromiseRef.current;
+
+    // A failed read hands back the empty fallback, which is indistinguishable
+    // from a genuinely empty table. Leaving isStaffLoaded false keeps the
+    // persist effect below disarmed so it can't sync that emptiness back and
+    // delete every staff row.
+    if (!result.ok) return null;
+
+    loadedStaffRef.current = result.data;
+    setStaff(result.data);
+    setIsStaffLoaded(true);
+    return result.data;
+  }
+
+  // On load: check for an existing Supabase session, so someone doesn't have
+  // to log in again on every refresh. The staff read is kicked off in
+  // parallel but only awaited when there IS a session to route — a signed-out
+  // visitor gets the login form as soon as getSession() comes back (a
+  // localStorage read, unless the stored token needs refreshing).
   useEffect(() => {
     let cancelled = false;
-    Promise.all([supabase.auth.getSession(), loadStaff([])]).then(
-      ([{ data: sessionData }, staffResult]) => {
-        if (cancelled) return;
+    staffPromiseRef.current ??= loadStaff([]);
 
-        // A failed read hands back the empty fallback, which is indistinguishable
-        // from a genuinely empty table. Leaving isStaffLoaded false keeps the
-        // persist effect below disarmed so it can't sync that emptiness back and
-        // delete every staff row.
-        if (!staffResult.ok) {
-          setView("login");
-          return;
-        }
+    (async () => {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (cancelled) return;
 
-        const staffRows = staffResult.data;
-        setStaff(staffRows);
-        setIsStaffLoaded(true);
-
-        const email = sessionData.session?.user?.email ?? null;
-        if (!email) {
-          setView("login");
-          return;
-        }
-        const match = staffRows.find((s) => s.email === email);
-        if (match?.status === "Blocked") {
-          // A blocked account shouldn't stay signed in just because it has
-          // an old session lying around.
-          supabase.auth.signOut();
-          setView("login");
-        } else if (match) {
-          setSessionEmail(email);
-          setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
-        } else if (isAdminEmail(email)) {
-          setSessionEmail(email);
-          setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
-          setView("dashboard");
-        } else {
-          // A leftover session for an account nobody provisioned in
-          // `staff` (or removed from) — don't leave them signed in to
-          // nothing.
-          supabase.auth.signOut();
-          setView("login");
-        }
+      const email = sessionData.session?.user?.email ?? null;
+      if (!email) {
+        clearIdleStamp();
+        setView("login");
+        return;
       }
-    );
+
+      const staffRows = await resolveStaff();
+      if (cancelled) return;
+      if (staffRows === null) {
+        setView("login");
+        return;
+      }
+
+      const match = staffRows.find((s) => s.email === email);
+      if (match?.status === "Blocked") {
+        // A blocked account shouldn't stay signed in just because it has
+        // an old session lying around.
+        clearIdleStamp();
+        supabase.auth.signOut();
+        setView("login");
+      } else if (match) {
+        setSessionEmail(email);
+        setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
+      } else if (isAdminEmail(email)) {
+        setSessionEmail(email);
+        setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
+        setView("dashboard");
+      } else {
+        // A leftover session for an account nobody provisioned in
+        // `staff` (or removed from) — don't leave them signed in to
+        // nothing.
+        clearIdleStamp();
+        supabase.auth.signOut();
+        setView("login");
+      }
+    })();
+
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sign out after a stretch of inactivity. Armed only while signed in.
+  useIdleTimeout({
+    enabled: !!sessionEmail,
+    timeoutMs: IDLE_TIMEOUT_MS,
+    onIdle: handleSignOut,
+  });
 
   // Persist to Supabase whenever the staff list changes — skipped until the
   // initial load finishes, so it doesn't overwrite real data with the
-  // placeholder defaults on first render.
+  // placeholder defaults on first render, and skipped while `staff` is still
+  // the very array the load returned. Without that second guard, every page
+  // load wrote the freshly-read rows straight back — a SELECT plus a full
+  // upsert — for no reason.
   useEffect(() => {
     if (!isStaffLoaded) return;
+    if (staff === loadedStaffRef.current) return;
     saveStaff(staff);
   }, [staff, isStaffLoaded]);
 
   // Called by LoginPage right after a successful signInWithPassword.
   // Returns "ok" | "blocked" | "no-access" and routes by role when it's
-  // "ok". staff is normally already loaded well before someone finishes
-  // typing credentials, so this reads current state directly rather than
-  // re-awaiting the load.
-  function handleLoginAttempt(email) {
-    const match = staff.find((s) => s.email === email);
+  // "ok". Awaits the staff read started at mount — normally long since
+  // settled by the time someone finishes typing credentials, but this no
+  // longer assumes it, since the login screen now paints without waiting.
+  async function handleLoginAttempt(email) {
+    // A fresh sign-in always starts a fresh idle window, whatever a previous
+    // session left behind.
+    clearIdleStamp();
+
+    const rows = (await resolveStaff()) ?? staff;
+    const match = rows.find((s) => s.email === email);
     if (match?.status === "Blocked") return "blocked";
     if (match) {
       setSessionEmail(email);
@@ -180,6 +232,7 @@ export default function App() {
   }
 
   async function handleSignOut() {
+    clearIdleStamp();
     await supabase.auth.signOut();
     setSelectedAccountId(null);
     setSessionEmail(null);
@@ -238,7 +291,7 @@ export default function App() {
   function renderView() {
     switch (view) {
       case "checking-session":
-        return null;
+        return <RouteFallback />;
 
       case "login":
         return (

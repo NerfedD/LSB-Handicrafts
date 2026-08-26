@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, Info, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, Info, CheckCircle2 } from "./icons";
 import AuthLayout from "./layout/AuthLayout";
 
 /**

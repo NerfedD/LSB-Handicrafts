@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft } from '../icons';
 
 export default function EditOrder({ data, onSave, navigateTo, addActivity, showModal }) {
   const order = data || { items: [] };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Clock, Truck, History, X } from 'lucide-react';
+import { MoreHorizontal, Clock, Truck, History, X } from '../icons';
 
 export default function Dashboard({ inventory, deliveries, orders = [], activityLog = [] }) {
   const [invFilter, setInvFilter] = useState('All');

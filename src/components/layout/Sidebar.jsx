@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Package, Truck, ShoppingCart, X } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, ShoppingCart, X } from '../icons';
 // Import your logo here
 import logoImg from '../../assets/Logo-128.png';
 

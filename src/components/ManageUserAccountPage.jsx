@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft, AlertTriangle } from "lucide-react";
+import { ChevronLeft, AlertTriangle } from "./icons";
 import AppShell from "./layout/AppShell";
 const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
 

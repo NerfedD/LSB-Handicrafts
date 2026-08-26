@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "./icons";
 import AuthLayout from "./layout/AuthLayout";
 import { supabase } from "../lib/supabaseClient";
 

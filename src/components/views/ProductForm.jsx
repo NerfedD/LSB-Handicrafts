@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, Lightbulb } from 'lucide-react';
+import { ArrowLeft, Save, Lightbulb } from '../icons';
 
 export default function ProductForm({ mode, record, navigateTo, inventory, setInventory, showModal }) {
   const [formData, setFormData] = useState(

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, CheckCircle2 } from "./icons";
 import AppShell from "./layout/AppShell";
 import { createSignupClient } from "../lib/supabaseSignupClient";
 

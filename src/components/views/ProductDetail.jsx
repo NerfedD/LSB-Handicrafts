@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock } from '../icons';
 
 export default function ProductDetail({ record, navigateTo, inventory, setInventory, showModal, addActivity }) {
   if(!record) return null;

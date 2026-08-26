@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "./icons";
 import AuthLayout from "./layout/AuthLayout";
 
 /**

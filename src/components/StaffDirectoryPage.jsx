@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search } from "./icons";
 import AppShell from "./layout/AppShell";
 import { initialsOf } from "../utils/staffData";
 

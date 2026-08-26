@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ArrowLeft } from 'lucide-react';
+import { ChevronDown, ArrowLeft } from '../icons';
 
 export default function EditDelivery({ data, onSave, navigateTo, addActivity, showModal }) {
   const delivery = data || {};

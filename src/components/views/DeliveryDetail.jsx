@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Edit2, Trash2, MapPin, Clock, Truck } from 'lucide-react';
+import { ArrowLeft, Edit2, Trash2, MapPin, Clock, Truck } from '../icons';
 import StatusDotLabel from '../shared/StatusDotLabel';
 
 export default function DeliveryDetail({ record, navigateTo, deliveries, setDeliveries, orders = [], showModal, addActivity }) {

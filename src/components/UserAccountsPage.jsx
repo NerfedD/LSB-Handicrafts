@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, MoreVertical, AlertTriangle } from "lucide-react";
+import { Plus, MoreVertical, AlertTriangle } from "./icons";
 import AppShell from "./layout/AppShell";
 import { ROLES } from "../utils/staffData";
 

@@ -1,4 +1,4 @@
-import { LogOut } from "lucide-react";
+import { LogOut } from "./icons";
 import { initialsOf } from "../utils/staffData";
 
 // A rough preview of what each role will eventually be able to do, just so

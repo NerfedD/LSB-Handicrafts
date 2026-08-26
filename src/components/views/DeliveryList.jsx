@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, ChevronDown, Trash2, Truck, Edit2, Eye } from 'lucide-react';
+import { Plus, ChevronDown, Trash2, Truck, Edit2, Eye } from '../icons';
 import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sun, Moon, Menu, LogOut, Users } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sun, Moon, Menu, LogOut, Users } from './icons';
 
 import { initialInventory, initialDeliveries, initialOrders } from '../utils/data';
 import {
@@ -39,6 +39,11 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar state
 
+  // The exact arrays the initial load handed back. The persist effects below
+  // compare against these by identity to tell "freshly loaded" from "actually
+  // edited" — see the comment on those effects.
+  const loaded = useRef({});
+
   // Load everything from Supabase once on mount.
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +55,12 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
         loadActivityLog([]),
       ]);
       if (cancelled) return;
+      loaded.current = {
+        inventory: inv.data,
+        deliveries: dels.data,
+        orders: ords.data,
+        activityLog: activity.data,
+      };
       setInventory(inv.data);
       setDeliveries(dels.data);
       setOrders(ords.data);
@@ -97,23 +108,29 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
 
   // Persist to Supabase whenever data changes — skipped until the initial
   // load finishes, so we don't overwrite real data with placeholder defaults.
+  //
+  // The second guard in each effect skips the write while the state is still
+  // the very array the load returned. isDataLoaded flipping true used to fire
+  // all four of these at once, and each syncTable call is a SELECT plus a
+  // full upsert — eight Supabase round trips per page load, writing back data
+  // identical to what had just been read.
   useEffect(() => {
-    if (!isDataLoaded) return;
+    if (!isDataLoaded || inventory === loaded.current.inventory) return;
     saveInventory(inventory);
   }, [inventory, isDataLoaded]);
 
   useEffect(() => {
-    if (!isDataLoaded) return;
+    if (!isDataLoaded || deliveries === loaded.current.deliveries) return;
     saveDeliveries(deliveries);
   }, [deliveries, isDataLoaded]);
 
   useEffect(() => {
-    if (!isDataLoaded) return;
+    if (!isDataLoaded || orders === loaded.current.orders) return;
     saveOrders(orders);
   }, [orders, isDataLoaded]);
 
   useEffect(() => {
-    if (!isDataLoaded) return;
+    if (!isDataLoaded || activityLog === loaded.current.activityLog) return;
     saveActivityLog(activityLog);
   }, [activityLog, isDataLoaded]);
 
