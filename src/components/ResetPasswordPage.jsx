@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { Eye, EyeOff, Info, CheckCircle2 } from "./icons";
 import AuthLayout from "./layout/AuthLayout";
+import { supabase } from "../lib/supabaseClient";
 
 /**
  * LSB Handicrafts — Create a New Password + success confirmation
  * Figma: node 10:1525 (form), 11:1733 (success)
+ *
+ * Only reachable with a valid Supabase recovery session already
+ * established — see the PASSWORD_RECOVERY listener in src/App.jsx, which
+ * is what lands someone here after they click the link from
+ * ForgotPasswordPage's email.
  */
 export default function ResetPasswordPage({ onReturnToLogin }) {
   const [password, setPassword] = useState("");
@@ -26,16 +32,14 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      if (!res.ok) {
-        setError("Couldn't reset your password. Please try again.");
+      const { error: updateError } = await supabase.auth.updateUser({ password });
+      if (updateError) {
+        setError(updateError.message);
         return;
       }
       setSucceeded(true);
+    } catch {
+      setError("Couldn't reset your password. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -112,9 +116,11 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
           <input
             id="new-password"
             type={showPassword ? "text" : "password"}
+            required
+            minLength={6}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter new password"
+            placeholder="At least 6 characters"
             className="h-14 w-full rounded-[10px] border border-[#17263a29] bg-white pl-[18px] pr-[58px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
           />
           <button
@@ -141,6 +147,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
           <input
             id="confirm-password"
             type={showConfirm ? "text" : "password"}
+            required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Re-enter new password"

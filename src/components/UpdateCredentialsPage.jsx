@@ -1,18 +1,24 @@
 import { useState } from "react";
 import { Eye, EyeOff, Info, CheckCircle2 } from "./icons";
 import AppShell from "./layout/AppShell";
+import { supabase } from "../lib/supabaseClient";
 
 /**
  * LSB Handicrafts — Update Credentials
  * Figma: node 14:2040 (form), 14:2328 (success)
+ *
+ * There's no username system in this app — Supabase Auth identifies people
+ * by email, and nothing stores a separate username anywhere (see the same
+ * note on CreateUserAccountPage) — so that section of the original design
+ * was dropped rather than kept as a field that silently does nothing.
  */
 export default function UpdateCredentialsPage({
+  currentUserEmail,
   onNavigate,
   onSignOut,
   onCancel,
 }) {
   const [currentPassword, setCurrentPassword] = useState("");
-  const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
@@ -26,27 +32,34 @@ export default function UpdateCredentialsPage({
     e.preventDefault();
     setError(null);
 
-    if (newPassword && newPassword !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       setError("New password and confirmation don't match.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/account/credentials", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword,
-          newUsername: newUsername || undefined,
-          newPassword: newPassword || undefined,
-        }),
+      // Re-authenticating with the current password is how this proves
+      // it's really them before changing anything — supabase.auth.updateUser
+      // doesn't ask for it itself, it just trusts the active session.
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email: currentUserEmail,
+        password: currentPassword,
       });
-      if (!res.ok) {
-        setError("Couldn't update your credentials. Please try again.");
+      if (verifyError) {
+        setError("Current password is incorrect.");
         return;
       }
+
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setError(updateError.message);
+        return;
+      }
+
       setSucceeded(true);
+    } catch {
+      setError("Couldn't update your credentials. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -85,7 +98,7 @@ export default function UpdateCredentialsPage({
           Update Credentials
         </h1>
         <p className="mt-2.5 text-base text-[#5f6875]">
-          Update your username or password to keep your account secure.
+          Update your password to keep your account secure.
         </p>
 
         {error && (
@@ -102,6 +115,7 @@ export default function UpdateCredentialsPage({
           </label>
           <PasswordField
             id="current-password"
+            required
             value={currentPassword}
             onChange={setCurrentPassword}
             show={showCurrent}
@@ -110,27 +124,6 @@ export default function UpdateCredentialsPage({
           />
 
           <hr className="mt-7 border-[#17263a14]" />
-
-          <SectionLabel className="mt-6">Update Username</SectionLabel>
-          <label
-            htmlFor="new-username"
-            className="mt-5 block text-base font-semibold text-[#17263a]"
-          >
-            New Username
-          </label>
-          <input
-            id="new-username"
-            type="text"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            placeholder="Enter your new username"
-            className="mt-[9px] h-14 w-full rounded-[10px] border border-[#17263a29] bg-white px-[18px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
-          />
-          <p className="mt-2 text-[13.5px] text-[#5f6875]">
-            Username must be unique across the system.
-          </p>
-
-          <hr className="mt-6 border-[#17263a14]" />
 
           <SectionLabel className="mt-6">Update Password</SectionLabel>
           <div className="mt-5 flex items-start gap-2.5 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
@@ -148,11 +141,13 @@ export default function UpdateCredentialsPage({
           </label>
           <PasswordField
             id="new-password"
+            required
+            minLength={6}
             value={newPassword}
             onChange={setNewPassword}
             show={showNew}
             onToggle={() => setShowNew((v) => !v)}
-            placeholder="Enter your new password"
+            placeholder="At least 6 characters"
           />
 
           <label
@@ -163,6 +158,7 @@ export default function UpdateCredentialsPage({
           </label>
           <PasswordField
             id="confirm-password"
+            required
             value={confirmPassword}
             onChange={setConfirmPassword}
             show={showConfirm}
@@ -203,12 +199,14 @@ function SectionLabel({ children, className = "" }) {
   );
 }
 
-function PasswordField({ id, value, onChange, show, onToggle, placeholder }) {
+function PasswordField({ id, value, onChange, show, onToggle, placeholder, required, minLength }) {
   return (
     <div className="relative mt-[9px]">
       <input
         id={id}
         type={show ? "text" : "password"}
+        required={required}
+        minLength={minLength}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

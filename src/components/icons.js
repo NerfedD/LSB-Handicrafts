@@ -24,6 +24,7 @@ export { default as Info } from "lucide-react/dist/esm/icons/info.js";
 export { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard.js";
 export { default as Lightbulb } from "lucide-react/dist/esm/icons/lightbulb.js";
 export { default as LogOut } from "lucide-react/dist/esm/icons/log-out.js";
+export { default as Mail } from "lucide-react/dist/esm/icons/mail.js";
 export { default as MapPin } from "lucide-react/dist/esm/icons/map-pin.js";
 export { default as Menu } from "lucide-react/dist/esm/icons/menu.js";
 export { default as Moon } from "lucide-react/dist/esm/icons/moon.js";

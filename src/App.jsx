@@ -12,7 +12,6 @@ import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import LoginPage from "./components/LoginPage.jsx";
 
 const ForgotPasswordPage = lazy(() => import("./components/ForgotPasswordPage"));
-const VerifyIdentityPage = lazy(() => import("./components/VerifyIdentityPage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 const UpdateCredentialsPage = lazy(() => import("./components/UpdateCredentialsPage"));
 const CreateUserAccountPage = lazy(() => import("./components/CreateUserAccountPage"));
@@ -57,8 +56,17 @@ const IDLE_TIMEOUT_MS =
  * session: signing in successfully only gets someone past LoginPage, then
  * handleLoginAttempt below looks them up by email and routes by role —
  * Admin gets the full AdminDashboard, everyone else gets the temporary
- * RoleDashboardPage placeholder. VITE_ADMIN_EMAILS survives only as the
- * bootstrap path for the very first Admin, before any staff row exists.
+ * RoleDashboardPage placeholder.
+ *
+ * VITE_ADMIN_EMAILS + bootstrapAdminRow below used to be how the very
+ * first Admin got their row created automatically on first sign-in. RLS
+ * (see supabase/schema.sql) now requires an existing active `staff` row
+ * to insert one at all, so that self-service path can't actually write
+ * anything anymore — the first Admin's row has to be seeded by hand via
+ * the SQL block at the bottom of schema.sql instead. This path is left in
+ * as a harmless fallback (it fails closed: the insert is rejected by RLS,
+ * not silently allowed) rather than ripped out, in case a future policy
+ * change reopens it.
  */
 export default function App() {
   const [view, setView] = useState("checking-session");
@@ -86,9 +94,8 @@ export default function App() {
     };
   }, [staff, sessionEmail]);
 
-  // A brand-new staff row for someone VITE_ADMIN_EMAILS bootstraps in with
-  // no `staff` row yet — used the moment we discover that, in both the
-  // returning-session check below and a fresh login (handleLoginAttempt).
+  // See the class doc comment above: this no longer actually persists
+  // anything under the current RLS policies. Kept as a harmless fallback.
   function bootstrapAdminRow(email) {
     return {
       id: Date.now(),
@@ -184,6 +191,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Clicking the link from ForgotPasswordPage's email brings someone back
+  // here already signed into a temporary recovery session — Supabase fires
+  // this event when that happens. Jump straight to the reset-password
+  // screen regardless of whatever the mount-time check above decided,
+  // since a recovery session isn't a normal login.
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setView("reset-password");
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
   // Sign out after a stretch of inactivity. Armed only while signed in.
   useIdleTimeout({
     enabled: !!sessionEmail,
@@ -222,7 +243,10 @@ export default function App() {
       return "ok";
     }
     if (isAdminEmail(email)) {
-      // First-ever sign-in for the bootstrap admin — no staff row yet.
+      // See bootstrapAdminRow above — this optimistically shows the
+      // dashboard, but the row it tries to create won't actually save
+      // under the current RLS unless it already existed (seeded via
+      // schema.sql). Left in as a harmless fallback, not the real path in.
       setSessionEmail(email);
       setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
       setView("dashboard");
@@ -313,24 +337,19 @@ export default function App() {
         return <RoleDashboardPage profile={profile} onSignOut={handleSignOut} />;
 
       case "forgot-password":
-        return (
-          <ForgotPasswordPage
-            onBack={() => setView("login")}
-            onContinue={() => setView("verify-identity")}
-          />
-        );
-
-      case "verify-identity":
-        return (
-          <VerifyIdentityPage
-            onBack={() => setView("forgot-password")}
-            onVerified={() => setView("reset-password")}
-            onRequestAdminAssistance={() => setView("login")}
-          />
-        );
+        return <ForgotPasswordPage onBack={() => setView("login")} />;
 
       case "reset-password":
-        return <ResetPasswordPage onReturnToLogin={() => setView("login")} />;
+        return (
+          <ResetPasswordPage
+            onReturnToLogin={() => {
+              // They're sitting on a temporary recovery session — sign out
+              // so "Return to Login" means a deliberate fresh sign-in with
+              // the new password, not a silent slide into the dashboard.
+              handleSignOut();
+            }}
+          />
+        );
 
       case "accounts":
         return (
@@ -389,6 +408,7 @@ export default function App() {
       case "credentials":
         return (
           <UpdateCredentialsPage
+            currentUserEmail={sessionEmail}
             onNavigate={setView}
             onSignOut={handleSignOut}
             onCancel={() => setView("accounts")}
