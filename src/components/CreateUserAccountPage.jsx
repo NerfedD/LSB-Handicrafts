@@ -40,7 +40,6 @@ export default function CreateUserAccountPage({
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
-  const [confirmationPending, setConfirmationPending] = useState(false);
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -60,7 +59,7 @@ export default function CreateUserAccountPage({
       // A separate client so this signup can't replace the admin's own
       // session — see src/lib/supabaseSignupClient.js.
       const signupClient = createSignupClient();
-      const { data, error: signUpError } = await signupClient.auth.signUp({
+      const { error: signUpError } = await signupClient.auth.signUp({
         email: form.email,
         password: form.temporaryPassword,
       });
@@ -69,10 +68,6 @@ export default function CreateUserAccountPage({
         setError(signUpError.message);
         return;
       }
-
-      // No session back means Supabase is waiting on an email confirmation
-      // link before this account can actually log in.
-      setConfirmationPending(!data.session);
 
       onAccountCreated?.({
         name: form.employeeName,
@@ -101,9 +96,7 @@ export default function CreateUserAccountPage({
             Account Created Successfully
           </h1>
           <p className="mt-3.5 text-base text-[#5f6875]">
-            {confirmationPending
-              ? "They'll need to confirm their email before they can log in — check their inbox for a link from Supabase."
-              : "The new user account has been created successfully."}
+            The new user account has been created successfully.
           </p>
           <div className="mt-10 flex gap-3.5">
             <button
