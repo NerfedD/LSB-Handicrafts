@@ -1,30 +1,11 @@
 import { useMemo, useState } from "react";
 import AppShell from "./layout/AppShell";
 import { initialsOf } from "../utils/staffData";
-
-const ACTION_TYPES = ["Login", "Account Change", "Stock Edit", "Price Edit"];
-
-const ACTION_STYLES = {
-  Login: "bg-[#1b3a6b12] border-[#1b3a6b29] text-[#1b3a6b]",
-  "Account Change": "bg-[#653eb512] border-[#653eb52e] text-[#653eb5]",
-  "Stock Edit": "bg-[#9a610012] border-[#9a61002e] text-[#8a5600]",
-  "Price Edit": "bg-[#166b5912] border-[#166b592e] text-[#166b59]",
-};
-
-const SAMPLE_ENTRIES = [
-  { id: 1, staff: "Maria Santos", action: "Logged in", type: "Login", date: "August 22, 2026", time: "8:02 AM" },
-  { id: 2, staff: "Juan Dela Cruz", action: "Updated user account", type: "Account Change", date: "August 22, 2026", time: "8:15 AM" },
-  { id: 3, staff: "Ramon Garcia", action: "Edited stock information", type: "Stock Edit", date: "August 22, 2026", time: "9:04 AM" },
-  { id: 4, staff: "Ana Reyes", action: "Updated product price", type: "Price Edit", date: "August 22, 2026", time: "9:31 AM" },
-  { id: 5, staff: "Maria Santos", action: "Logged in", type: "Login", date: "August 21, 2026", time: "7:58 AM" },
-  { id: 6, staff: "Carlos Mendoza", action: "Updated product price", type: "Price Edit", date: "August 21, 2026", time: "10:22 AM" },
-  { id: 7, staff: "Liza Villanueva", action: "Logged in", type: "Login", date: "August 21, 2026", time: "11:05 AM" },
-  { id: 8, staff: "Juan Dela Cruz", action: "Edited stock information", type: "Stock Edit", date: "August 21, 2026", time: "2:14 PM" },
-  { id: 9, staff: "Maria Santos", action: "Updated user account", type: "Account Change", date: "August 20, 2026", time: "8:30 AM" },
-  { id: 10, staff: "Ramon Garcia", action: "Logged in", type: "Login", date: "August 20, 2026", time: "9:00 AM" },
-  { id: 11, staff: "Ana Reyes", action: "Edited stock information", type: "Stock Edit", date: "August 20, 2026", time: "3:45 PM" },
-  { id: 12, staff: "Carlos Mendoza", action: "Logged in", type: "Login", date: "August 20, 2026", time: "8:15 AM" },
-];
+import {
+  ACTION_TYPES,
+  ACTION_STYLES,
+  SAMPLE_ENTRIES,
+} from "../utils/activityData";
 
 const EMPTY_FILTERS = { staff: "", action: "", from: "", to: "" };
 

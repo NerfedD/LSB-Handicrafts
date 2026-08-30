@@ -70,6 +70,76 @@ const staffFromRow = (r) => ({
   email: r.email,
 });
 
+const customerToRow = (c) => ({
+  id: c.id,
+  name: c.name,
+  contact_number: c.contactNumber,
+  email: c.email || null,
+  address: c.address,
+  created_at: c.createdAt,
+  updated_at: c.updatedAt,
+});
+
+const customerFromRow = (r) => ({
+  id: r.id,
+  name: r.name,
+  contactNumber: r.contact_number,
+  email: r.email,
+  address: r.address,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+const productToRow = (p) => ({
+  id: p.id,
+  item_code: p.itemCode,
+  name: p.name,
+  size: p.size,
+  unit_price:
+    p.unitPrice === '' || p.unitPrice === undefined ? null : Number(p.unitPrice),
+  low_stock_threshold:
+    p.lowStockThreshold === '' || p.lowStockThreshold === undefined
+      ? null
+      : Number(p.lowStockThreshold),
+  status: p.status,
+  created_at: p.createdAt,
+  updated_at: p.updatedAt,
+});
+
+const productFromRow = (r) => ({
+  id: r.id,
+  itemCode: r.item_code,
+  name: r.name,
+  size: r.size,
+  unitPrice: r.unit_price,
+  lowStockThreshold: r.low_stock_threshold,
+  status: r.status,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
+const supplierToRow = (s) => ({
+  id: s.id,
+  name: s.name,
+  contact_person: s.contactPerson,
+  contact_number: s.contactNumber,
+  email: s.email || null,
+  address: s.address,
+  created_at: s.createdAt,
+  updated_at: s.updatedAt,
+});
+
+const supplierFromRow = (r) => ({
+  id: r.id,
+  name: r.name,
+  contactPerson: r.contact_person,
+  contactNumber: r.contact_number,
+  email: r.email,
+  address: r.address,
+  createdAt: r.created_at,
+  updatedAt: r.updated_at,
+});
+
 const identity = (x) => x;
 
 // ---- generic load/sync helpers --------------------------------------------
@@ -168,6 +238,25 @@ export const saveActivityLog = (activityData) => syncTable('activity_log', activ
 
 export const loadStaff = (defaultStaff = []) => loadTable('staff', defaultStaff, staffFromRow);
 export const saveStaff = (staffData) => syncTable('staff', staffData, staffToRow);
+
+// ---- customer / product / supplier profiles ----------------------------
+// Figma screens #14-#22. Same whole-table load + reconciling sync as
+// everything above; see useSupabaseCollection for the wiring on the app side.
+
+export const loadCustomers = (defaultCustomers = []) =>
+  loadTable('customers', defaultCustomers, customerFromRow);
+export const saveCustomers = (customerData) =>
+  syncTable('customers', customerData, customerToRow);
+
+export const loadProducts = (defaultProducts = []) =>
+  loadTable('products', defaultProducts, productFromRow);
+export const saveProducts = (productData) =>
+  syncTable('products', productData, productToRow);
+
+export const loadSuppliers = (defaultSuppliers = []) =>
+  loadTable('suppliers', defaultSuppliers, supplierFromRow);
+export const saveSuppliers = (supplierData) =>
+  syncTable('suppliers', supplierData, supplierToRow);
 
 // ---- export / backup --------------------------------------------------
 

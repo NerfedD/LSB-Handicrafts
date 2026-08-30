@@ -4,6 +4,13 @@ import { isAdminEmail } from "./utils/adminAccess";
 import { nameFromEmail } from "./utils/staffData";
 import { loadStaff, saveStaff } from "./utils/storageManager";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
+import useSupabaseCollection from "./hooks/useSupabaseCollection";
+import { todayLongDate } from "./utils/profileFormat";
+import {
+  loadCustomers, saveCustomers,
+  loadProducts, saveProducts,
+  loadSuppliers, saveSuppliers,
+} from "./utils/storageManager";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
 // behind it is split out and fetched on first navigation — the dashboard
@@ -23,7 +30,16 @@ const StaffDirectoryPage = lazy(() => import("./components/StaffDirectoryPage"))
 const ViewProfilePage = lazy(() => import("./components/ViewProfilePage"));
 const UpdateProfilePage = lazy(() => import("./components/UpdateProfilePage"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard.jsx"));
-const RoleDashboardPage = lazy(() => import("./components/RoleDashboardPage.jsx"));
+const DashboardPage = lazy(() => import("./components/DashboardPage.jsx"));
+const CustomerListPage = lazy(() => import("./components/profiles/CustomerListPage"));
+const CustomerDetailPage = lazy(() => import("./components/profiles/CustomerDetailPage"));
+const CustomerFormPage = lazy(() => import("./components/profiles/CustomerFormPage"));
+const ProductListPage = lazy(() => import("./components/profiles/ProductListPage"));
+const ProductDetailPage = lazy(() => import("./components/profiles/ProductDetailPage"));
+const ProductFormPage = lazy(() => import("./components/profiles/ProductFormPage"));
+const SupplierListPage = lazy(() => import("./components/profiles/SupplierListPage"));
+const SupplierDetailPage = lazy(() => import("./components/profiles/SupplierDetailPage"));
+const SupplierFormPage = lazy(() => import("./components/profiles/SupplierFormPage"));
 
 /** Shown while a route chunk is still downloading. */
 function RouteFallback() {
@@ -54,9 +70,11 @@ const IDLE_TIMEOUT_MS =
  *
  * Access is gated by having a `staff` row, not just a valid Supabase
  * session: signing in successfully only gets someone past LoginPage, then
- * handleLoginAttempt below looks them up by email and routes by role —
- * Admin gets the full AdminDashboard, everyone else gets the temporary
- * RoleDashboardPage placeholder.
+ * handleLoginAttempt below looks them up by email. Every role now lands on
+ * the same DashboardPage (Figma #13); what differs is the sidebar, which
+ * hides User Management and the Staff Activity Log from non-Admins (see
+ * layout/ManagementShell). The inventory/deliveries/orders workspace moved
+ * to the "workspace" view key and is reached from the dashboard.
  *
  * VITE_ADMIN_EMAILS + bootstrapAdminRow below used to be how the very
  * first Admin got their row created automatically on first sign-in. RLS
@@ -75,8 +93,34 @@ export default function App() {
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [sessionEmail, setSessionEmail] = useState(null);
 
+  // The customer / product / supplier profile records (Figma #14-#22). Unlike
+  // `staff` below — which the sign-in path has to read before it can route —
+  // nothing depends on these being loaded, so they go through the shared hook
+  // and only start reading once someone is actually signed in.
+  const isSignedIn = !!sessionEmail;
+  const [customers, setCustomers] = useSupabaseCollection(
+    loadCustomers, saveCustomers, { enabled: isSignedIn }
+  );
+  const [products, setProducts] = useSupabaseCollection(
+    loadProducts, saveProducts, { enabled: isSignedIn }
+  );
+  const [suppliers, setSuppliers] = useSupabaseCollection(
+    loadSuppliers, saveSuppliers, { enabled: isSignedIn }
+  );
+
+  // Which record a detail/form screen is looking at, and whether that form is
+  // adding or editing. One set per collection so navigating between sections
+  // doesn't drag the previous section's selection along.
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(null);
+  const [formMode, setFormMode] = useState("add");
+
   // Derived so it always reflects the latest edit rather than a stale copy.
   const selectedAccount = staff.find((s) => s.id === selectedAccountId);
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+  const selectedProduct = products.find((p) => p.id === selectedProductId);
+  const selectedSupplier = suppliers.find((s) => s.id === selectedSupplierId);
 
   // The signed-in admin's own staff row, matched by email. Falls back to a
   // synthesized record (from the email itself) for the brief window before
@@ -172,7 +216,7 @@ export default function App() {
         setView("login");
       } else if (match) {
         setSessionEmail(email);
-        setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
+        setView("dashboard");
       } else if (isAdminEmail(email)) {
         setSessionEmail(email);
         setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
@@ -239,7 +283,7 @@ export default function App() {
     if (match?.status === "Blocked") return "blocked";
     if (match) {
       setSessionEmail(email);
-      setView(match.role === "Admin" ? "dashboard" : "role-dashboard");
+      setView("dashboard");
       return "ok";
     }
     if (isAdminEmail(email)) {
@@ -259,6 +303,9 @@ export default function App() {
     clearIdleStamp();
     await supabase.auth.signOut();
     setSelectedAccountId(null);
+    setSelectedCustomerId(null);
+    setSelectedProductId(null);
+    setSelectedSupplierId(null);
     setSessionEmail(null);
     setView("login");
   }
@@ -297,6 +344,55 @@ export default function App() {
     ]);
   }
 
+  // ---- customer / product / supplier profiles ----------------------------
+
+  /**
+   * Builds the save handler a profile form calls on submit. Adding stamps a
+   * fresh id and both dates; editing merges into the selected record and
+   * touches `updatedAt` only. Returns the saved record's id so the form's
+   * success panel knows which record "View X" should open.
+   *
+   * Ids are Date.now() to match handleAccountCreated above — the tables use a
+   * plain bigint primary key with no sequence, so the client picks them.
+   */
+  function makeSaveHandler(records, setRecords, selectedId, setSelectedId) {
+    return (values) => {
+      const now = todayLongDate();
+
+      if (formMode === "edit" && selectedId !== null) {
+        setRecords((prev) =>
+          prev.map((record) =>
+            record.id === selectedId
+              ? { ...record, ...values, updatedAt: now }
+              : record
+          )
+        );
+        return selectedId;
+      }
+
+      const id = Date.now();
+      setRecords((prev) => [
+        ...prev,
+        { ...values, id, createdAt: now, updatedAt: now },
+      ]);
+      setSelectedId(id);
+      return id;
+    };
+  }
+
+  /** Opens a profile form. `id` is null when adding. */
+  function openProfileForm(view, setSelectedId, id = null) {
+    setSelectedId(id);
+    setFormMode(id === null ? "add" : "edit");
+    setView(view);
+  }
+
+  /** Opens a profile detail screen. */
+  function openProfileDetail(view, setSelectedId, id) {
+    setSelectedId(id);
+    setView(view);
+  }
+
   // Guard for deep-linked/stale account views: show the list instead of
   // rendering a screen with no record behind it.
   function renderMissingAccount() {
@@ -327,14 +423,21 @@ export default function App() {
 
       case "dashboard":
         return (
-          <AdminDashboard
+          <DashboardPage
+            staff={staff}
+            profile={profile}
+            onNavigate={setView}
             onSignOut={handleSignOut}
-            onOpenAdmin={() => setView("accounts")}
           />
         );
 
-      case "role-dashboard":
-        return <RoleDashboardPage profile={profile} onSignOut={handleSignOut} />;
+      case "workspace":
+        return (
+          <AdminDashboard
+            onSignOut={handleSignOut}
+            onOpenAdmin={() => setView("dashboard")}
+          />
+        );
 
       case "forgot-password":
         return <ForgotPasswordPage onBack={() => setView("login")} />;
@@ -455,6 +558,166 @@ export default function App() {
               updateProfile(changes);
               setView("profile");
             }}
+          />
+        );
+
+      case "customers":
+        return (
+          <CustomerListPage
+            customers={customers}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onView={(id) =>
+              openProfileDetail("customer-detail", setSelectedCustomerId, id)
+            }
+            onEdit={(id) =>
+              openProfileForm("customer-form", setSelectedCustomerId, id)
+            }
+            onAdd={() => openProfileForm("customer-form", setSelectedCustomerId)}
+          />
+        );
+
+      case "customer-detail":
+        return (
+          <CustomerDetailPage
+            customer={selectedCustomer}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onBack={() => setView("customers")}
+            onEdit={(id) =>
+              openProfileForm("customer-form", setSelectedCustomerId, id)
+            }
+          />
+        );
+
+      case "customer-form":
+        return (
+          <CustomerFormPage
+            key={selectedCustomerId ?? "new"}
+            mode={formMode}
+            customer={selectedCustomer}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onCancel={() => setView("customers")}
+            onSave={makeSaveHandler(
+              customers,
+              setCustomers,
+              selectedCustomerId,
+              setSelectedCustomerId
+            )}
+            onView={(id) =>
+              openProfileDetail("customer-detail", setSelectedCustomerId, id)
+            }
+          />
+        );
+
+      case "products":
+        return (
+          <ProductListPage
+            products={products}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onView={(id) =>
+              openProfileDetail("product-detail", setSelectedProductId, id)
+            }
+            onEdit={(id) =>
+              openProfileForm("product-form", setSelectedProductId, id)
+            }
+            onAdd={() => openProfileForm("product-form", setSelectedProductId)}
+          />
+        );
+
+      case "product-detail":
+        return (
+          <ProductDetailPage
+            product={selectedProduct}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onBack={() => setView("products")}
+            onEdit={(id) =>
+              openProfileForm("product-form", setSelectedProductId, id)
+            }
+          />
+        );
+
+      case "product-form":
+        return (
+          <ProductFormPage
+            key={selectedProductId ?? "new"}
+            mode={formMode}
+            product={selectedProduct}
+            products={products}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onCancel={() => setView("products")}
+            onSave={makeSaveHandler(
+              products,
+              setProducts,
+              selectedProductId,
+              setSelectedProductId
+            )}
+            onView={(id) =>
+              openProfileDetail("product-detail", setSelectedProductId, id)
+            }
+          />
+        );
+
+      case "suppliers":
+        return (
+          <SupplierListPage
+            suppliers={suppliers}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onView={(id) =>
+              openProfileDetail("supplier-detail", setSelectedSupplierId, id)
+            }
+            onEdit={(id) =>
+              openProfileForm("supplier-form", setSelectedSupplierId, id)
+            }
+            onAdd={() => openProfileForm("supplier-form", setSelectedSupplierId)}
+          />
+        );
+
+      case "supplier-detail":
+        return (
+          <SupplierDetailPage
+            supplier={selectedSupplier}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onBack={() => setView("suppliers")}
+            onEdit={(id) =>
+              openProfileForm("supplier-form", setSelectedSupplierId, id)
+            }
+          />
+        );
+
+      case "supplier-form":
+        return (
+          <SupplierFormPage
+            key={selectedSupplierId ?? "new"}
+            mode={formMode}
+            supplier={selectedSupplier}
+            profile={profile}
+            onNavigate={setView}
+            onSignOut={handleSignOut}
+            onCancel={() => setView("suppliers")}
+            onSave={makeSaveHandler(
+              suppliers,
+              setSuppliers,
+              selectedSupplierId,
+              setSelectedSupplierId
+            )}
+            onView={(id) =>
+              openProfileDetail("supplier-detail", setSelectedSupplierId, id)
+            }
           />
         );
 

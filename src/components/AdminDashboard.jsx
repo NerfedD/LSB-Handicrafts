@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sun, Moon, Menu, LogOut, Users } from './icons';
+import { Sun, Moon, Menu, LogOut, LayoutDashboard } from './icons';
 
 import { initialInventory, initialDeliveries, initialOrders } from '../utils/data';
 import {
@@ -22,9 +22,10 @@ import OrderDetail from './views/OrderDetail';
 import DeliveryDetail from './views/DeliveryDetail';
 
 /**
- * The actual admin workspace (Dashboard, Inventory, Deliveries, Orders),
- * rendered once a login has passed the temporary admin-email gate. Data
- * lives in Supabase — see src/utils/storageManager.js.
+ * The inventory/deliveries/orders workspace. No longer the landing screen —
+ * DashboardPage (Figma #13) is, and this is reached from its Inventory
+ * Workspace quick action. `onOpenAdmin` is the way back out to it. Data lives
+ * in Supabase — see src/utils/storageManager.js.
  */
 export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -248,10 +249,10 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
               </button>
               <button
                 onClick={onOpenAdmin}
-                title="User accounts, staff directory and activity log"
+                title="Back to the management dashboard"
                 className="h-10 px-4 rounded-full bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm dark:shadow-none text-sm font-medium"
               >
-                <Users size={16} /> <span className="hidden sm:inline">Admin</span>
+                <LayoutDashboard size={16} /> <span className="hidden sm:inline">Dashboard</span>
               </button>
               <button
                 onClick={onSignOut}

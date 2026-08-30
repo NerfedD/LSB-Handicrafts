@@ -55,6 +55,46 @@ create table if not exists public.staff (
   email text unique
 );
 
+-- Customer / product / supplier profile directories (Figma screens #14-#22).
+-- These are reference records: name, how to reach them, and when the row last
+-- changed. `created_at` / `updated_at` are text for the same reason the columns
+-- above are — the app formats dates for display and never sorts on them in SQL.
+create table if not exists public.customers (
+  id bigint primary key,
+  name text not null,
+  contact_number text,
+  email text,
+  address text,
+  created_at text,
+  updated_at text
+);
+
+-- Distinct from `inventory`: that table tracks stock levels for the dashboard
+-- workspace, this one is the catalog entry a staff member maintains by hand.
+-- `low_stock_threshold` is the level at which inventory should raise an alert.
+create table if not exists public.products (
+  id bigint primary key,
+  item_code text not null unique,
+  name text not null,
+  size text,
+  unit_price numeric,
+  low_stock_threshold integer,
+  status text not null default 'Active',
+  created_at text,
+  updated_at text
+);
+
+create table if not exists public.suppliers (
+  id bigint primary key,
+  name text not null,
+  contact_person text,
+  contact_number text,
+  email text,
+  address text,
+  created_at text,
+  updated_at text
+);
+
 -- Row Level Security.
 --
 -- The anon key is embedded in the published JavaScript bundle — that's normal
@@ -88,6 +128,9 @@ alter table public.deliveries enable row level security;
 alter table public.orders enable row level security;
 alter table public.activity_log enable row level security;
 alter table public.staff enable row level security;
+alter table public.customers enable row level security;
+alter table public.products enable row level security;
+alter table public.suppliers enable row level security;
 
 drop policy if exists "Authenticated users can manage inventory" on public.inventory;
 drop policy if exists "Active staff can manage inventory" on public.inventory;
@@ -121,6 +164,24 @@ drop policy if exists "Authenticated users can manage staff" on public.staff;
 drop policy if exists "Active staff can manage staff" on public.staff;
 create policy "Active staff can manage staff"
   on public.staff for all
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
+
+drop policy if exists "Active staff can manage customers" on public.customers;
+create policy "Active staff can manage customers"
+  on public.customers for all
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
+
+drop policy if exists "Active staff can manage products" on public.products;
+create policy "Active staff can manage products"
+  on public.products for all
+  using (public.is_active_staff())
+  with check (public.is_active_staff());
+
+drop policy if exists "Active staff can manage suppliers" on public.suppliers;
+create policy "Active staff can manage suppliers"
+  on public.suppliers for all
   using (public.is_active_staff())
   with check (public.is_active_staff());
 
