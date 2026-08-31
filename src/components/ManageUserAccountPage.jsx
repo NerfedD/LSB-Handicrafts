@@ -26,6 +26,7 @@ export default function ManageUserAccountPage({
   onBack,
   onNavigate,
   onSignOut,
+  isAdmin = false,
   onChangeRole,
   onStatusChange, // (nextStatus) => void
   onSaveDetails, // ({ name, contactNumber }) => void
@@ -54,7 +55,7 @@ export default function ManageUserAccountPage({
   }
 
   return (
-    <AppShell activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[600px] max-w-full">
         <button
           type="button"

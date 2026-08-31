@@ -5,11 +5,21 @@
  *
  * `nav` items only render when provided, so screens that don't need the
  * admin nav (e.g. a plain single-purpose page) can omit it.
+ *
+ * `isAdmin` gates the four user-management tabs. It defaults to false so a
+ * screen that forgets to pass it shows the safe subset rather than the
+ * privileged one — this header used to render every tab to everyone, which is
+ * how a Production Staff account could walk from My Profile into User
+ * Accounts. The tabs are only the door, though: App.jsx's renderView is what
+ * actually refuses those screens.
  */
+const ADMIN_TABS = new Set(["accounts", "create", "activity", "directory"]);
+
 export default function AppShell({
   activeTab,
   onNavigate,
   onSignOut,
+  isAdmin = false,
   children,
 }) {
   const tabs = [
@@ -20,7 +30,7 @@ export default function AppShell({
     { key: "directory", label: "Staff Directory" },
     { key: "profile", label: "My Profile" },
     { key: "credentials", label: "Update Credentials" },
-  ];
+  ].filter((tab) => isAdmin || !ADMIN_TABS.has(tab.key));
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-hidden bg-[linear-gradient(158deg,#ddd8c8_8%,#e8e4d8_25%,#f0edE4_50%,#e9e5da_75%,#dfd9cb_92%)]">

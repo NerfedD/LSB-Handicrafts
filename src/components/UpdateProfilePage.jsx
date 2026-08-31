@@ -13,6 +13,7 @@ export default function UpdateProfilePage({
   onBack,
   onNavigate,
   onSignOut,
+  isAdmin = false,
   onSaved,
 }) {
   const [name, setName] = useState(profile.name);
@@ -28,7 +29,7 @@ export default function UpdateProfilePage({
   }
 
   return (
-    <AppShell activeTab="profile" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="profile" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[520px] max-w-full">
         <button
           type="button"

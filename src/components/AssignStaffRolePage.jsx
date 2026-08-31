@@ -16,6 +16,7 @@ export default function AssignStaffRolePage({
   onBack,
   onNavigate,
   onSignOut,
+  isAdmin = false,
   onSaved,
 }) {
   const [newRole, setNewRole] = useState("");
@@ -32,7 +33,7 @@ export default function AssignStaffRolePage({
   const initials = initialsOf(account.name);
 
   return (
-    <AppShell activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[520px] max-w-full">
         <button
           type="button"

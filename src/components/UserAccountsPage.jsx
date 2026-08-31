@@ -20,6 +20,7 @@ export default function UserAccountsPage({
   currentUserEmail,
   onNavigate,
   onSignOut,
+  isAdmin = false,
   onCreateAccount,
   onRowAction,
 }) {
@@ -80,7 +81,7 @@ export default function UserAccountsPage({
   const hasActiveFilters = appliedFilters.role || appliedFilters.status;
 
   return (
-    <AppShell activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="accounts" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[960px] max-w-full">
         <div className="flex items-start justify-between">
           <div>

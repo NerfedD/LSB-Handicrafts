@@ -27,6 +27,7 @@ export default function StaffActivityLogPage({
   staff = [],
   onNavigate,
   onSignOut,
+  isAdmin = false,
 }) {
   const [staffFilter, setStaffFilter] = useState("");
   const [actionFilter, setActionFilter] = useState("");
@@ -61,7 +62,7 @@ export default function StaffActivityLogPage({
   }
 
   return (
-    <AppShell activeTab="activity" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="activity" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[1040px] max-w-full">
         <h1 className="text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
           Staff Activity Log

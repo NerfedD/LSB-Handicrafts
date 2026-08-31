@@ -35,6 +35,7 @@ const emptyForm = {
 export default function CreateUserAccountPage({
   onNavigate,
   onSignOut,
+  isAdmin = false,
   onCancel,
   onAccountCreated,
 }) {
@@ -91,7 +92,7 @@ export default function CreateUserAccountPage({
 
   if (succeeded) {
     return (
-      <AppShell activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
+      <AppShell isAdmin={isAdmin} activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
         <div className="relative flex w-[720px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-16 py-[52px] text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
           <div className="flex size-[72px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
             <CheckCircle2 className="h-9 w-9 text-[#287a55]" />
@@ -124,7 +125,7 @@ export default function CreateUserAccountPage({
   }
 
   return (
-    <AppShell activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="create" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="relative w-[720px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-[60px] py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
         <div className="h-[2.5px] w-7 rounded bg-[#1b3a6b]" />
         <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
@@ -207,8 +208,8 @@ export default function CreateUserAccountPage({
             </Field>
           </div>
           <p className="mt-2 text-[13.5px] text-[#5f6875]">
-            Sign-in uses email + password. Username isn't stored — this
-            field is a placeholder for now.
+            They can sign in with either the username or the email. Leave the
+            username blank to use email only.
           </p>
 
           <Field label="Temporary Password" className="mt-[22px]">

@@ -53,6 +53,51 @@ function RouteFallback() {
   );
 }
 
+/**
+ * Screens only an Admin may open. Enforced in renderView, not by hiding links
+ * — a hidden link is not a permission.
+ */
+const ADMIN_ONLY_VIEWS = new Set([
+  "accounts",
+  "manage-account",
+  "assign-role",
+  "create",
+  "activity",
+  "directory",
+]);
+
+/** Shown when someone reaches an admin screen their role doesn't allow. */
+function NotAuthorized({ role, onBack, onSignOut }) {
+  return (
+    <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-[#f7f4ec] px-6 text-center">
+      <p className="text-base font-semibold text-[#17263a]">
+        You don&rsquo;t have access to this screen.
+      </p>
+      <p className="max-w-md text-sm text-[#5f6875]">
+        {role
+          ? `The ${role} role can't open user management screens. Contact your system administrator if you need access.`
+          : "Your account's role couldn't be confirmed, so access is restricted. Try signing in again."}
+      </p>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-lg bg-[#1b3a6b] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#17263a]"
+        >
+          Back to Dashboard
+        </button>
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="rounded-lg border border-[#17263a29] px-4 py-2.5 text-sm font-medium text-[#17263a] transition hover:bg-[#17263a08]"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 // How long a signed-in session survives with no interaction. Tunable per
 // deployment via .env; 30 minutes if unset.
@@ -133,21 +178,28 @@ export default function App() {
   const selectedProduct = products.find((p) => p.id === selectedProductId);
   const selectedSupplier = suppliers.find((s) => s.id === selectedSupplierId);
 
-  // The signed-in admin's own staff row, matched by email. Falls back to a
+  // The signed-in person's own staff row, matched by email. Falls back to a
   // synthesized record (from the email itself) for the brief window before
-  // the bootstrap effect below has created their row in Supabase.
+  // their row has been read.
+  //
+  // That fallback is deliberately NOT an Admin. It used to be, which meant any
+  // moment the staff row couldn't be found — a slow read, a missing row, a
+  // failed query — silently promoted whoever was signed in to full admin
+  // rights. An unknown role has to be the least privileged one, not the most.
   const profile = useMemo(() => {
     const match = staff.find((s) => s.email && s.email === sessionEmail);
     if (match) return match;
     return {
       id: null,
       name: nameFromEmail(sessionEmail),
-      role: "Admin",
+      role: null,
       contactNumber: "",
       status: "Active",
       email: sessionEmail,
     };
   }, [staff, sessionEmail]);
+
+  const isAdmin = profile?.role === "Admin";
 
   // See the class doc comment above: this no longer actually persists
   // anything under the current RLS policies. Kept as a harmless fallback.
@@ -427,6 +479,7 @@ export default function App() {
   function renderMissingAccount() {
     return (
       <UserAccountsPage
+        isAdmin={isAdmin}
         users={staff}
         currentUserEmail={sessionEmail}
         onNavigate={setView}
@@ -438,6 +491,20 @@ export default function App() {
   }
 
   function renderView() {
+    // Authorization, not decoration. Hiding a nav link only hides the link —
+    // the view still renders for anyone who reaches it another way, and every
+    // one of these screens was reachable by a non-admin through the shared
+    // AppShell header. This is the check that actually stops them.
+    if (ADMIN_ONLY_VIEWS.has(view) && !isAdmin) {
+      return (
+        <NotAuthorized
+          role={profile?.role}
+          onBack={() => setView("dashboard")}
+          onSignOut={handleSignOut}
+        />
+      );
+    }
+
     switch (view) {
       case "checking-session":
         return <RouteFallback />;
@@ -521,6 +588,7 @@ export default function App() {
       case "accounts":
         return (
           <UserAccountsPage
+            isAdmin={isAdmin}
             users={staff}
             currentUserEmail={sessionEmail}
             onNavigate={setView}
@@ -535,6 +603,7 @@ export default function App() {
         if (!selectedAccount) return renderMissingAccount();
         return (
           <ManageUserAccountPage
+            isAdmin={isAdmin}
             key={selectedAccount.id}
             account={selectedAccount}
             currentUserEmail={sessionEmail}
@@ -551,6 +620,7 @@ export default function App() {
         if (!selectedAccount) return renderMissingAccount();
         return (
           <AssignStaffRolePage
+            isAdmin={isAdmin}
             account={selectedAccount}
             onBack={() => setView("manage-account")}
             onNavigate={setView}
@@ -565,6 +635,7 @@ export default function App() {
       case "create":
         return (
           <CreateUserAccountPage
+            isAdmin={isAdmin}
             onNavigate={setView}
             onSignOut={handleSignOut}
             onCancel={() => setView("accounts")}
@@ -575,6 +646,7 @@ export default function App() {
       case "credentials":
         return (
           <UpdateCredentialsPage
+            isAdmin={isAdmin}
             currentUserEmail={sessionEmail}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -585,6 +657,7 @@ export default function App() {
       case "activity":
         return (
           <StaffActivityLogPage
+            isAdmin={isAdmin}
             staff={staff}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -594,6 +667,7 @@ export default function App() {
       case "directory":
         return (
           <StaffDirectoryPage
+            isAdmin={isAdmin}
             staff={staff}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -603,6 +677,7 @@ export default function App() {
       case "profile":
         return (
           <ViewProfilePage
+            isAdmin={isAdmin}
             profile={profile}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -614,6 +689,7 @@ export default function App() {
       case "update-profile":
         return (
           <UpdateProfilePage
+            isAdmin={isAdmin}
             profile={profile}
             onBack={() => setView("profile")}
             onNavigate={setView}

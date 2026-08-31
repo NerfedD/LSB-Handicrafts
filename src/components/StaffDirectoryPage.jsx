@@ -20,6 +20,7 @@ export default function StaffDirectoryPage({
   staff = [],
   onNavigate,
   onSignOut,
+  isAdmin = false,
 }) {
   const [query, setQuery] = useState("");
 
@@ -30,7 +31,7 @@ export default function StaffDirectoryPage({
   }, [staff, query]);
 
   return (
-    <AppShell activeTab="directory" onNavigate={onNavigate} onSignOut={onSignOut}>
+    <AppShell isAdmin={isAdmin} activeTab="directory" onNavigate={onNavigate} onSignOut={onSignOut}>
       <div className="w-[860px] max-w-full">
         <h1 className="text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
           Staff Directory
