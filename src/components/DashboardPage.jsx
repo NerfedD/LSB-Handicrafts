@@ -11,8 +11,15 @@ import {
 } from "./icons";
 import ManagementShell from "./layout/ManagementShell";
 import StatusPill from "./shared/StatusPill";
+import {
+  Panel,
+  QuickAction,
+  QuickActionsCard,
+  StatCard,
+} from "./shared/DashboardCards";
 import { avatarColorOf } from "./shared/avatarColors";
 import { initialsOf } from "../utils/staffData";
+import { greeting } from "../utils/profileFormat";
 import { ACTION_PILL_STYLES, SAMPLE_ENTRIES } from "../utils/activityData";
 
 /**
@@ -25,65 +32,6 @@ import { ACTION_PILL_STYLES, SAMPLE_ENTRIES } from "../utils/activityData";
  */
 
 const PANEL_ROWS = 5;
-
-/** Time-of-day greeting, matching the design's "Good morning, Administrator." */
-function greeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-function StatCard({ icon, tone, value, label, description }) {
-  return (
-    <div className="rounded-xl border border-[#17263a14] bg-white px-6 pb-[22px] pt-6 shadow-[0_1px_2px_rgba(23,38,58,0.05)]">
-      <div className={`flex size-[42px] items-center justify-center rounded-[10px] ${tone}`}>
-        {icon}
-      </div>
-      <p className="pt-4 text-[32px] font-bold leading-8 tracking-[-0.96px] text-[#17263a]">
-        {value}
-      </p>
-      <p className="pt-1.5 text-[14px] font-semibold text-[#17263a]">{label}</p>
-      <p className="pt-1 text-[12.5px] text-[#5f6875]">{description}</p>
-    </div>
-  );
-}
-
-function Panel({ title, onViewAll, footer, children }) {
-  return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-[#17263a14] bg-white shadow-[0_1px_4px_rgba(23,38,58,0.05)]">
-      <div className="flex items-center justify-between border-b border-[#17263a12] px-5 pb-3.5 pt-[18px]">
-        <h3 className="text-[14.5px] font-bold tracking-[-0.145px] text-[#17263a]">
-          {title}
-        </h3>
-        <button
-          type="button"
-          onClick={onViewAll}
-          className="rounded-md px-2 py-1 text-[12.5px] font-semibold text-[#1746d1] transition hover:bg-[#1746d10f]"
-        >
-          View All →
-        </button>
-      </div>
-      <div className="flex-1">{children}</div>
-      <p className="border-t border-[#17263a0f] bg-[#fafaf8] px-5 py-3 text-[12px] text-[#5f6875]/60">
-        {footer}
-      </p>
-    </div>
-  );
-}
-
-function QuickAction({ icon, label, onClick }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex h-[42px] items-center gap-2 rounded-[9px] border border-[#17263a2e] px-[18px] text-[13.5px] font-semibold text-[#17263a] transition hover:bg-[#17263a08]"
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
 
 export default function DashboardPage({
   staff = [],
@@ -235,11 +183,8 @@ export default function DashboardPage({
           </Panel>
         </div>
 
-        <div className="mt-5 rounded-xl border border-[#17263a14] bg-white px-6 py-5 shadow-[0_1px_2px_rgba(23,38,58,0.05)]">
-          <h3 className="text-[14.5px] font-bold tracking-[-0.145px] text-[#17263a]">
-            Quick Actions
-          </h3>
-          <div className="flex flex-wrap gap-3 pt-4">
+        <div className="mt-5">
+          <QuickActionsCard>
             {isAdmin && (
               <>
                 <QuickAction
@@ -272,7 +217,7 @@ export default function DashboardPage({
               label="Inventory Workspace"
               onClick={() => onNavigate("workspace")}
             />
-          </div>
+          </QuickActionsCard>
         </div>
       </div>
     </ManagementShell>

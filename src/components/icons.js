@@ -14,6 +14,7 @@
 // and run `npm run build` before pushing.
 //
 // Adding an icon: find its kebab-case file in that directory and add a line.
+export { default as Activity }        from "lucide-react/dist/esm/icons/activity.mjs";
 export { default as AlertCircle }     from "lucide-react/dist/esm/icons/alert-circle.mjs";
 export { default as AlertTriangle }   from "lucide-react/dist/esm/icons/alert-triangle.mjs";
 export { default as ArrowLeft }       from "lucide-react/dist/esm/icons/arrow-left.mjs";
@@ -39,6 +40,7 @@ export { default as LogOut }          from "lucide-react/dist/esm/icons/log-out.
 export { default as Mail }            from "lucide-react/dist/esm/icons/mail.mjs";
 export { default as MapPin }          from "lucide-react/dist/esm/icons/map-pin.mjs";
 export { default as Menu }            from "lucide-react/dist/esm/icons/menu.mjs";
+export { default as MinusCircle }     from "lucide-react/dist/esm/icons/minus-circle.mjs";
 export { default as Moon }            from "lucide-react/dist/esm/icons/moon.mjs";
 export { default as MoreHorizontal }  from "lucide-react/dist/esm/icons/more-horizontal.mjs";
 export { default as MoreVertical }    from "lucide-react/dist/esm/icons/more-vertical.mjs";

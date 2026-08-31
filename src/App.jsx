@@ -10,6 +10,7 @@ import {
   loadCustomers, saveCustomers,
   loadProducts, saveProducts,
   loadSuppliers, saveSuppliers,
+  loadInventory, saveInventory,
 } from "./utils/storageManager";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
@@ -31,6 +32,8 @@ const ViewProfilePage = lazy(() => import("./components/ViewProfilePage"));
 const UpdateProfilePage = lazy(() => import("./components/UpdateProfilePage"));
 const AdminDashboard = lazy(() => import("./components/AdminDashboard.jsx"));
 const DashboardPage = lazy(() => import("./components/DashboardPage.jsx"));
+const SalesDashboard = lazy(() => import("./components/SalesDashboard.jsx"));
+const ProductionDashboard = lazy(() => import("./components/ProductionDashboard.jsx"));
 const CustomerListPage = lazy(() => import("./components/profiles/CustomerListPage"));
 const CustomerDetailPage = lazy(() => import("./components/profiles/CustomerDetailPage"));
 const CustomerFormPage = lazy(() => import("./components/profiles/CustomerFormPage"));
@@ -106,6 +109,14 @@ export default function App() {
   );
   const [suppliers, setSuppliers] = useSupabaseCollection(
     loadSuppliers, saveSuppliers, { enabled: isSignedIn }
+  );
+
+  // Read-only here. The inventory workspace owns this table and holds its own
+  // copy; the Production dashboard only needs stock levels to tell which
+  // catalog entries are running low (see ProductionDashboard's join on item
+  // code). Nothing on this side writes to it.
+  const [inventory] = useSupabaseCollection(
+    loadInventory, saveInventory, { enabled: isSignedIn }
   );
 
   // Which record a detail/form screen is looking at, and whether that form is
@@ -421,7 +432,42 @@ export default function App() {
           />
         );
 
+      // Each role lands on the dashboard designed for it. Sales Staff and
+      // Production Staff have their own (Figma #23 / #24); Admin keeps #13, and
+      // roles with no design of their own (Manager, Delivery Staff) stay on it
+      // too rather than being shown a screen built for someone else's job.
       case "dashboard":
+        if (profile?.role === "Sales Staff") {
+          return (
+            <SalesDashboard
+              customers={customers}
+              products={products}
+              suppliers={suppliers}
+              profile={profile}
+              onNavigate={setView}
+              onSignOut={handleSignOut}
+              onAddCustomer={() =>
+                openProfileForm("customer-form", setSelectedCustomerId)
+              }
+            />
+          );
+        }
+
+        if (profile?.role === "Production Staff") {
+          return (
+            <ProductionDashboard
+              products={products}
+              inventory={inventory}
+              profile={profile}
+              onNavigate={setView}
+              onSignOut={handleSignOut}
+              onAddProduct={() =>
+                openProfileForm("product-form", setSelectedProductId)
+              }
+            />
+          );
+        }
+
         return (
           <DashboardPage
             staff={staff}

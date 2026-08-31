@@ -53,12 +53,16 @@ const SECTION_OF = {
 // `adminOnly` items are hidden from everyone else; `staffOnly` is the reverse.
 // Admins reach their own record through User Management instead, which is why
 // they don't get a My Profile entry (Figma 158:22 vs 164:8).
+//
+// `hideFrom` narrows an item further, for roles whose designed dashboard shows
+// a shorter sidebar: Production Staff (Figma #24) get Dashboard, Product / Item
+// Profiles and My Profile only. Roles not listed keep the full staff nav.
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", Icon: LayoutDashboard },
   { key: "accounts", label: "User Management", Icon: Users, adminOnly: true },
-  { key: "customers", label: "Customer Profiles", Icon: UserRound },
+  { key: "customers", label: "Customer Profiles", Icon: UserRound, hideFrom: ["Production Staff"] },
   { key: "products", label: "Product / Item Profiles", Icon: Package },
-  { key: "suppliers", label: "Supplier Profiles", Icon: Truck },
+  { key: "suppliers", label: "Supplier Profiles", Icon: Truck, hideFrom: ["Production Staff"] },
   { key: "activity", label: "Staff Activity Log", Icon: History, adminOnly: true },
   { key: "profile", label: "My Profile", Icon: UserRound, staffOnly: true },
 ];
@@ -75,7 +79,10 @@ export default function ManagementShell({
   const isAdmin = profile?.role === "Admin";
   const section = SECTION_OF[active] ?? active;
   const items = NAV_ITEMS.filter(
-    (item) => !(item.adminOnly && !isAdmin) && !(item.staffOnly && isAdmin)
+    (item) =>
+      !(item.adminOnly && !isAdmin) &&
+      !(item.staffOnly && isAdmin) &&
+      !item.hideFrom?.includes(profile?.role)
   );
 
   // Admins are labelled "Administrator" throughout the design rather than by
