@@ -348,10 +348,18 @@ export default function App() {
     );
   }
 
-  function handleAccountCreated({ name, role, contactNumber, email }) {
+  function handleAccountCreated({ name, role, contactNumber, email, username }) {
     setStaff((prev) => [
       ...prev,
-      { id: Date.now(), name, role, contactNumber, status: "Active", email },
+      {
+        id: Date.now(),
+        name,
+        role,
+        contactNumber,
+        status: "Active",
+        email,
+        username: username?.trim() || null,
+      },
     ]);
   }
 

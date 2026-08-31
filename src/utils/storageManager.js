@@ -136,6 +136,9 @@ const orderFromRow = (r) => ({
   stockCommittedAt: r.stock_committed_at,
 });
 
+// `username` is nullable and uniquely indexed (case-insensitively), so an empty
+// form field has to go up as null rather than '' — otherwise the second account
+// saved without a username collides with the first.
 const staffToRow = (s) => ({
   id: s.id,
   name: s.name,
@@ -143,6 +146,7 @@ const staffToRow = (s) => ({
   contact_number: s.contactNumber,
   status: s.status,
   email: s.email || null,
+  username: s.username?.trim() || null,
 });
 
 const staffFromRow = (r) => ({
@@ -152,6 +156,7 @@ const staffFromRow = (r) => ({
   contactNumber: r.contact_number,
   status: r.status,
   email: r.email,
+  username: r.username,
 });
 
 const customerToRow = (c) => ({

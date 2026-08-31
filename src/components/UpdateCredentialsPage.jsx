@@ -7,10 +7,12 @@ import { supabase } from "../lib/supabaseClient";
  * LSB Handicrafts — Update Credentials
  * Figma: node 14:2040 (form), 14:2328 (success)
  *
- * There's no username system in this app — Supabase Auth identifies people
- * by email, and nothing stores a separate username anywhere (see the same
- * note on CreateUserAccountPage) — so that section of the original design
- * was dropped rather than kept as a field that silently does nothing.
+ * Password only, for now. Usernames do exist since sign-in started accepting
+ * them (`staff.username`, traded for an email by LoginPage), but changing one
+ * is not wired up here yet — it needs the same case-insensitive uniqueness
+ * check the database index enforces, or the save fails silently. The design's
+ * username half stays out until that's built rather than shipping a field that
+ * looks like it works.
  */
 export default function UpdateCredentialsPage({
   currentUserEmail,

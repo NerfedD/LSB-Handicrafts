@@ -8,17 +8,44 @@ import { supabase } from "../lib/supabaseClient";
  * Figma: State 1 (default), State 2 (invalid credentials), State 3 (account locked)
  */
 export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("idle"); // idle | error | locked | restricted | blocked
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  /**
+   * Supabase Auth only authenticates on email, so a username has to be traded
+   * for one first. `email_for_username` is a SECURITY DEFINER function — see
+   * supabase/schema.sql — because at this point nobody is signed in yet and the
+   * staff policies deny every ordinary read.
+   *
+   * Anything containing "@" is taken as an email and passed straight through,
+   * so this costs a round trip only for people who actually type a username.
+   */
+  async function resolveEmail(value) {
+    if (value.includes("@")) return value;
+
+    const { data, error } = await supabase.rpc("email_for_username", {
+      p_username: value,
+    });
+    // A username nobody holds is a failed sign-in, not a distinct error — it
+    // would otherwise tell a stranger which usernames exist.
+    if (error || !data) return null;
+    return data;
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      const email = await resolveEmail(identifier.trim());
+      if (!email) {
+        setStatus("error");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
@@ -130,9 +157,9 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
             type="text"
             autoComplete="username"
             disabled={isLocked}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="jdelacruz or you@example.com"
             className={`mt-[9px] h-14 w-full rounded-[10px] border px-[18px] text-[17px] text-[#17263a] outline-none transition focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60 ${
               status === "error"
                 ? "border-[#b5474780] bg-white"

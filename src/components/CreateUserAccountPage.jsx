@@ -25,9 +25,12 @@ const emptyForm = {
  * Figma: node 28:2 (form), 28:302 (success)
  *
  * `onAccountCreated` is called after a successful signup with
- * { name, role, contactNumber, email } so the caller can add the person to
- * the `staff` list right away (see src/App.jsx) — otherwise they'd only
- * show up once they sign in themselves and the bootstrap effect runs.
+ * { name, role, contactNumber, email, username } so the caller can add the
+ * person to the `staff` list right away (see src/App.jsx) — otherwise they'd
+ * only show up once they sign in themselves and the bootstrap effect runs.
+ *
+ * The username is optional and lives on the `staff` row, not in Supabase Auth,
+ * which only knows emails. LoginPage trades one for the other at sign-in.
  */
 export default function CreateUserAccountPage({
   onNavigate,
@@ -74,6 +77,7 @@ export default function CreateUserAccountPage({
         role: form.role,
         contactNumber: form.contactNumber,
         email: form.email,
+        username: form.username,
       });
 
       setSucceeded(true);
@@ -182,12 +186,12 @@ export default function CreateUserAccountPage({
 
           <SectionLabel className="mt-6">Login Credentials</SectionLabel>
           <div className="mt-5 grid grid-cols-2 gap-6">
-            <Field label="Username (display only)">
+            <Field label="Username">
               <input
                 type="text"
                 value={form.username}
                 onChange={update("username")}
-                placeholder="Optional — not used to sign in"
+                placeholder="Optional — they can sign in with this or their email"
                 className={inputClasses}
               />
             </Field>

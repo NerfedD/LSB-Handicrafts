@@ -121,8 +121,20 @@ create table if not exists public.staff (
   role text not null,
   contact_number text,
   status text not null default 'Active',
-  email text unique
+  email text unique,
+  username text
 );
+
+alter table public.staff
+  add column if not exists username text;
+
+-- Usernames are compared case-insensitively at sign-in, so uniqueness has to be
+-- enforced the same way — otherwise "JDelaCruz" and "jdelacruz" could both
+-- exist and the lookup would have to pick one arbitrarily. Partial, because
+-- accounts without a username are fine and shouldn't collide with each other.
+create unique index if not exists staff_username_lower_idx
+  on public.staff (lower(username))
+  where username is not null;
 
 -- Customer / product / supplier profile directories (Figma screens #14-#22).
 -- These are reference records: name, how to reach them, and when the row last
@@ -212,6 +224,41 @@ as $$
       and status = 'Active'
   );
 $$;
+
+-- Sign-in by username.
+--
+-- Supabase Auth only ever authenticates on email, so a username has to be
+-- turned into one BEFORE the password is checked — at which point the caller is
+-- still anonymous and the staff policies below deny every read. This function
+-- is the narrow hole that makes it possible: SECURITY DEFINER, so it runs as
+-- its owner and sees the table, but it returns a single email and nothing else.
+--
+-- Worth being clear about the trade: the anon key is public (it ships in the JS
+-- bundle), so anyone can call this and learn the email behind a username they
+-- guess correctly. That is the cost of username login on Supabase. It reveals
+-- no password and grants no access — signing in still requires the password —
+-- but if staff emails are meant to stay private, this should move to an Edge
+-- Function that does the whole sign-in server-side instead.
+--
+-- Deliberately does NOT filter on status: a Blocked user must still resolve, so
+-- they reach the app's "this account has been blocked" screen rather than being
+-- told their username is wrong.
+create or replace function public.email_for_username(p_username text)
+returns text
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select email
+  from public.staff
+  where username is not null
+    and lower(username) = lower(trim(p_username))
+  limit 1;
+$$;
+
+revoke all on function public.email_for_username(text) from public;
+grant execute on function public.email_for_username(text) to anon, authenticated;
 
 alter table public.inventory enable row level security;
 alter table public.deliveries enable row level security;
