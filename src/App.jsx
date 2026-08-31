@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
 import { nameFromEmail } from "./utils/staffData";
-import { loadStaff, saveStaff } from "./utils/storageManager";
+import { loadStaff, saveStaff, saveOwnProfile } from "./utils/storageManager";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection from "./hooks/useSupabaseCollection";
 import { todayLongDate } from "./utils/profileFormat";
@@ -333,11 +333,18 @@ export default function App() {
   // the very array the load returned. Without that second guard, every page
   // load wrote the freshly-read rows straight back — a SELECT plus a full
   // upsert — for no reason.
+  //
+  // Admins only. This reconciles the entire table — upserting every row and
+  // deleting any that vanished — which is exactly the permission non-admins
+  // no longer have. Their one legitimate write, editing their own profile,
+  // goes through saveOwnProfile instead. Without this guard a staff member
+  // opening a screen that nudges the array would fire a table-wide write that
+  // the database rejects in full, silently.
   useEffect(() => {
-    if (!isStaffLoaded) return;
+    if (!isStaffLoaded || !isAdmin) return;
     if (staff === loadedStaffRef.current) return;
     saveStaff(staff);
-  }, [staff, isStaffLoaded]);
+  }, [staff, isStaffLoaded, isAdmin]);
 
   // Called by LoginPage right after a successful signInWithPassword.
   // Returns "ok" | "blocked" | "no-access" and routes by role when it's
@@ -383,10 +390,17 @@ export default function App() {
     setView("login");
   }
 
+  /**
+   * My Profile's save. Writes the one row directly rather than letting the
+   * whole-table persist effect below pick the change up — that effect
+   * reconciles every staff row, which a non-admin has no permission to do.
+   */
   function updateProfile(changes) {
+    const next = { ...profile, ...changes };
     setStaff((prev) =>
       prev.map((s) => (s.email === sessionEmail ? { ...s, ...changes } : s))
     );
+    saveOwnProfile(next);
   }
 
   function handleRowAction(action, user) {

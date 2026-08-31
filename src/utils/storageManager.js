@@ -365,6 +365,29 @@ export const saveActivityLog = (activityData) => syncTable('activity_log', activ
 export const loadStaff = (defaultStaff = []) => loadTable('staff', defaultStaff, staffFromRow);
 export const saveStaff = (staffData) => syncTable('staff', staffData, staffToRow);
 
+/**
+ * Saves the signed-in person's own name and contact number.
+ *
+ * Deliberately not routed through saveStaff: that reconciles the WHOLE table,
+ * so a non-admin editing their profile would try to write every colleague's
+ * row too, and the admin-only update policy would reject the lot. This touches
+ * one row — the caller's, decided server-side from their token, not from
+ * anything passed in here.
+ */
+export const saveOwnProfile = async ({ name, contactNumber }) => {
+  try {
+    const { error } = await supabase.rpc('update_own_profile', {
+      p_name: name ?? '',
+      p_contact_number: contactNumber ?? '',
+    });
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Failed to save your profile to Supabase:', error);
+    return false;
+  }
+};
+
 // ---- customer / product / supplier profiles ----------------------------
 // Figma screens #14-#22. Same whole-table load + reconciling sync as
 // everything above; see useSupabaseCollection for the wiring on the app side.

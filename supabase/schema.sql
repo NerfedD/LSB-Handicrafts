@@ -297,12 +297,80 @@ create policy "Active staff can manage activity_log"
   using (public.is_active_staff())
   with check (public.is_active_staff());
 
+-- Staff is the one table where "any active staff member" is too broad a write
+-- rule: it let a Sales Staff account change another person's role, block them,
+-- or delete them outright. The UI stops that now, but the UI is not the only
+-- way in — the anon key is public, so anyone holding a valid session could
+-- call the API directly. Reads stay open to all active staff (the dashboards
+-- and directory list colleagues); writes are admin-only.
+create or replace function public.is_admin_staff()
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.staff
+    where email = auth.jwt() ->> 'email'
+      and status = 'Active'
+      and role = 'Admin'
+  );
+$$;
+
 drop policy if exists "Authenticated users can manage staff" on public.staff;
 drop policy if exists "Active staff can manage staff" on public.staff;
-create policy "Active staff can manage staff"
-  on public.staff for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
+drop policy if exists "Active staff can read staff" on public.staff;
+drop policy if exists "Admins can insert staff" on public.staff;
+drop policy if exists "Admins can update staff" on public.staff;
+drop policy if exists "Admins can delete staff" on public.staff;
+
+create policy "Active staff can read staff"
+  on public.staff for select
+  using (public.is_active_staff());
+
+create policy "Admins can insert staff"
+  on public.staff for insert
+  with check (public.is_admin_staff());
+
+create policy "Admins can update staff"
+  on public.staff for update
+  using (public.is_admin_staff())
+  with check (public.is_admin_staff());
+
+create policy "Admins can delete staff"
+  on public.staff for delete
+  using (public.is_admin_staff());
+
+-- The one write a non-admin still needs: editing their own name and contact
+-- number on My Profile.
+--
+-- It goes through a function rather than a self-update policy on purpose. A
+-- policy permissive enough to let someone edit their own row would also let
+-- them set their own role to 'Admin' — RLS gates which ROWS you may write, not
+-- which COLUMNS, and both admins and staff are the same `authenticated`
+-- database role, so column grants can't separate them either. This function
+-- updates exactly two columns on exactly the caller's own row, so there is no
+-- path from it to a privilege change.
+create or replace function public.update_own_profile(
+  p_name text,
+  p_contact_number text
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  update public.staff
+  set name = coalesce(nullif(trim(p_name), ''), name),
+      contact_number = p_contact_number
+  where email = auth.jwt() ->> 'email'
+    and status = 'Active';
+$$;
+
+revoke all on function public.update_own_profile(text, text) from public;
+grant execute on function public.update_own_profile(text, text) to authenticated;
 
 drop policy if exists "Active staff can manage customers" on public.customers;
 create policy "Active staff can manage customers"
