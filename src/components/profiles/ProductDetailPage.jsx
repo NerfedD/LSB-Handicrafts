@@ -14,6 +14,7 @@ import {
   formatProductType,
   formatUnit,
 } from "../../utils/productFormat";
+import { stockForProduct } from "../../utils/productStock";
 
 /**
  * LSB Handicrafts — Product / Item Details
@@ -21,12 +22,15 @@ import {
  */
 export default function ProductDetailPage({
   product,
+  inventory = [],
   profile,
   onNavigate,
   onSignOut,
   onBack,
   onEdit,
 }) {
+  // Read-only: this screen reports stock, the inventory workspace owns it.
+  const stock = product ? stockForProduct(product, inventory) : { tracked: false };
   return (
     <ManagementShell
       active="product-detail"
@@ -92,6 +96,58 @@ export default function ProductDetailPage({
                   <StatusPill status={product.status} />
                 </DetailField>
               </div>
+            </DetailCard>
+
+            <DetailCard
+              className="mt-5"
+              icon={<Package className="h-4 w-4" />}
+              title="Stock on Hand"
+            >
+              {!stock.tracked ? (
+                <p className="text-[13px] text-[#5f6875]">
+                  This product has no matching inventory record, so its stock
+                  isn&rsquo;t being tracked. Stock is kept against the item code{" "}
+                  <span className="font-semibold text-[#17263a]">
+                    {product.itemCode}
+                  </span>{" "}
+                  in the inventory workspace.
+                </p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
+                    <DetailField label="Available">
+                      <span
+                        className={`text-[15px] font-bold ${
+                          stock.isOut
+                            ? "text-[#b54747]"
+                            : stock.isLow
+                              ? "text-[#8a5600]"
+                              : "text-[#17263a]"
+                        }`}
+                      >
+                        {stock.available}
+                      </span>
+                    </DetailField>
+                    <DetailField label="On Hand">{stock.onHand}</DetailField>
+                    <DetailField label="Reserved">
+                      {stock.reserved}
+                      {stock.reserved > 0 && (
+                        <span className="block text-[11.5px] text-[#5f6875]">
+                          Promised to pending orders
+                        </span>
+                      )}
+                    </DetailField>
+                  </div>
+                  <p className="mt-4 text-[12.5px] text-[#5f6875]">
+                    Counted {formatUnit({ unit: stock.unit, packSize: stock.packSize })}.
+                    {stock.isOut
+                      ? " Nothing available to sell."
+                      : stock.isLow
+                        ? ` At or below the ${stock.threshold} low-stock threshold.`
+                        : ` Threshold is ${stock.threshold}.`}
+                  </p>
+                </>
+              )}
             </DetailCard>
           </>
         )}

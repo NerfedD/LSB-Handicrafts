@@ -7,6 +7,7 @@ import StatusPill from "../shared/StatusPill";
 import { ProfileEmptyState } from "../shared/ProfilePanels";
 import { formatPeso } from "../../utils/profileFormat";
 import { formatDimensions, formatProductType } from "../../utils/productFormat";
+import { stockFor, stockIndex } from "../../utils/productStock";
 
 /**
  * LSB Handicrafts — Product / Item Profiles
@@ -24,6 +25,7 @@ const COLUMNS = [
   { key: "productType", label: "Type", className: "w-[92px]" },
   { key: "size", label: "Size", className: "w-[120px]" },
   { key: "unitPrice", label: "Unit Price", className: "w-[100px]" },
+  { key: "stock", label: "In Stock", className: "w-[112px]" },
   { key: "lowStockThreshold", label: "Low-Stock Threshold", className: "w-[124px]" },
   { key: "status", label: "Status", className: "w-[100px]" },
   { key: "actions", label: "Actions", className: "w-[112px] text-right" },
@@ -34,6 +36,7 @@ const rowAction =
 
 export default function ProductListPage({
   products = [],
+  inventory = [],
   profile,
   onNavigate,
   onSignOut,
@@ -42,6 +45,10 @@ export default function ProductListPage({
   onAdd,
 }) {
   const [query, setQuery] = useState("");
+
+  // Built once per render rather than per row — renderCell runs for every
+  // product and rebuilding the map each time would be quadratic.
+  const stockByCode = useMemo(() => stockIndex(inventory), [inventory]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -88,6 +95,34 @@ export default function ProductListPage({
             {formatPeso(product.unitPrice)}
           </span>
         );
+      // Stock lives in the inventory table, not here — see utils/productStock.
+      // "Not tracked" is shown as a dash rather than 0, because a product with
+      // no inventory row isn't out of stock, it's unknown.
+      case "stock": {
+        const stock = stockFor(product, stockByCode);
+        if (!stock.tracked) {
+          return (
+            <span className="text-[12.5px] text-[#9aa3ad]" title="No matching inventory record">
+              Not tracked
+            </span>
+          );
+        }
+        const tone = stock.isOut
+          ? "text-[#b54747]"
+          : stock.isLow
+            ? "text-[#8a5600]"
+            : "text-[#17263a]";
+        return (
+          <span className={`text-[12.5px] font-semibold ${tone}`}>
+            {stock.available}
+            {stock.reserved > 0 && (
+              <span className="block text-[11px] font-normal text-[#5f6875]">
+                {stock.onHand} on hand
+              </span>
+            )}
+          </span>
+        );
+      }
       case "lowStockThreshold":
         return (
           <span className="text-[12.5px] text-[#5f6875]">

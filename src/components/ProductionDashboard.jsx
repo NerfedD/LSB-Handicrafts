@@ -22,7 +22,7 @@ import {
   activityFrom,
   relativeDay,
 } from "../utils/recordActivity";
-import { availableOf } from "../utils/stockLedger";
+import { lowStockProducts } from "../utils/productStock";
 
 /**
  * LSB Handicrafts — Production Staff Dashboard
@@ -40,40 +40,6 @@ import { availableOf } from "../utils/stockLedger";
  */
 
 const PANEL_ROWS = 5;
-
-/**
- * Catalog entries whose matching inventory row has fallen to or below its
- * threshold. Availability (on hand minus what pending orders have reserved) is
- * what matters here, not the raw shelf count.
- */
-function nearLowStock(products, inventory) {
-  const bySku = new Map(
-    inventory.map((item) => [String(item.sku || "").toLowerCase(), item])
-  );
-
-  return products
-    .map((product) => {
-      const stockRow = bySku.get(String(product.itemCode || "").toLowerCase());
-      if (!stockRow) return null;
-
-      const available = availableOf(stockRow);
-      const threshold = Number(
-        stockRow.lowStockThreshold ?? product.lowStockThreshold ?? 0
-      );
-      if (available > threshold) return null;
-
-      return {
-        id: product.id,
-        itemCode: product.itemCode,
-        name: product.name,
-        available,
-        threshold,
-        isOut: available <= 0,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.available - b.available);
-}
 
 export default function ProductionDashboard({
   products = [],
@@ -98,7 +64,7 @@ export default function ProductionDashboard({
   );
 
   const lowStock = useMemo(
-    () => nearLowStock(products, inventory),
+    () => lowStockProducts(products, inventory),
     [products, inventory]
   );
 
@@ -249,33 +215,38 @@ export default function ProductionDashboard({
                     Status
                   </span>
                 </div>
-                {lowStock.slice(0, PANEL_ROWS).map((item, index) => (
+                {lowStock.slice(0, PANEL_ROWS).map(({ product, stock }, index) => (
                   <div
-                    key={item.id}
+                    key={product.id}
                     className={`flex items-center gap-4 px-5 py-3 ${
                       index > 0 ? "border-t border-[#17263a0d]" : ""
                     }`}
                   >
                     <span className="w-[76px] font-mono text-[11.5px] text-[#5f6875]">
-                      {item.itemCode}
+                      {product.itemCode}
                     </span>
-                    <span className="flex-1 truncate text-[13.5px] text-[#17263a]">
-                      {item.name}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13.5px] text-[#17263a]">
+                        {product.name}
+                      </span>
+                      <span className="block text-[11.5px] text-[#5f6875]">
+                        {stock.available} of {stock.threshold} left
+                      </span>
                     </span>
                     <span className="w-[124px] text-right">
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] text-[11.5px] font-semibold ${
-                          item.isOut
+                          stock.isOut
                             ? "bg-[#b5474714] text-[#b54747]"
                             : "bg-[#9a610014] text-[#8a5600]"
                         }`}
                       >
                         <span
                           className={`size-[5px] rounded-full ${
-                            item.isOut ? "bg-[#b54747]" : "bg-[#8a5600]"
+                            stock.isOut ? "bg-[#b54747]" : "bg-[#8a5600]"
                           }`}
                         />
-                        {item.isOut ? "Out of Stock" : "Near Threshold"}
+                        {stock.isOut ? "Out of Stock" : "Near Threshold"}
                       </span>
                     </span>
                   </div>

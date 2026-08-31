@@ -757,6 +757,7 @@ export default function App() {
       case "products":
         return (
           <ProductListPage
+            inventory={inventory}
             products={products}
             profile={profile}
             onNavigate={setView}
@@ -774,6 +775,7 @@ export default function App() {
       case "product-detail":
         return (
           <ProductDetailPage
+            inventory={inventory}
             product={selectedProduct}
             profile={profile}
             onNavigate={setView}
