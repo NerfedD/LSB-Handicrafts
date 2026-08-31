@@ -162,10 +162,13 @@ export default function App() {
     };
   }
 
-  // The in-flight staff read, started at mount. Held here rather than
-  // awaited alongside getSession(), because the login form doesn't need it —
-  // blocking first paint on that Supabase round trip meant a blank white
-  // page for as long as the query took.
+  // The in-flight staff read. Deliberately NOT started until there's a
+  // session: `staff` is gated by is_active_staff(), so an anonymous read
+  // succeeds and returns zero rows. That empty result is indistinguishable
+  // from a genuinely empty table, and caching it here used to poison
+  // everything downstream — sign-in found no matching row and reported "this
+  // account doesn't have dashboard access", and the persist effect, armed by
+  // the same read, then wrote that emptiness back over the real rows.
   const staffPromiseRef = useRef(null);
   // The exact array that read handed back, so the persist effect below can
   // tell "freshly loaded" from "actually edited" by identity.
@@ -174,8 +177,13 @@ export default function App() {
   // Resolves to the staff rows, priming component state the first time it's
   // called. Returns null if the read failed — callers fall back to whatever
   // is already in state rather than treating a failure as an empty table.
-  async function resolveStaff() {
-    if (isStaffLoaded) return staff;
+  //
+  // `force` re-reads even if a previous call already resolved. Signing in
+  // changes what RLS will return, so anything cached from before the session
+  // existed has to be thrown away rather than reused.
+  async function resolveStaff({ force = false } = {}) {
+    if (isStaffLoaded && !force) return staff;
+    if (force) staffPromiseRef.current = null;
     staffPromiseRef.current ??= loadStaff([]);
     const result = await staffPromiseRef.current;
 
@@ -192,13 +200,13 @@ export default function App() {
   }
 
   // On load: check for an existing Supabase session, so someone doesn't have
-  // to log in again on every refresh. The staff read is kicked off in
-  // parallel but only awaited when there IS a session to route — a signed-out
-  // visitor gets the login form as soon as getSession() comes back (a
-  // localStorage read, unless the stored token needs refreshing).
+  // to log in again on every refresh. The staff read only starts once that
+  // session is confirmed — see the note on staffPromiseRef for why reading it
+  // while signed out is worse than not reading it at all. A signed-out visitor
+  // gets the login form as soon as getSession() comes back (a localStorage
+  // read, unless the stored token needs refreshing).
   useEffect(() => {
     let cancelled = false;
-    staffPromiseRef.current ??= loadStaff([]);
 
     (async () => {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -289,7 +297,9 @@ export default function App() {
     // session left behind.
     clearIdleStamp();
 
-    const rows = (await resolveStaff()) ?? staff;
+    // Forced: anything read before this sign-in was read as an anonymous
+    // caller, which RLS answers with zero rows.
+    const rows = (await resolveStaff({ force: true })) ?? staff;
     const match = rows.find((s) => s.email === email);
     if (match?.status === "Blocked") return "blocked";
     if (match) {

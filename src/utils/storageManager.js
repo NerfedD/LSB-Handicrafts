@@ -293,6 +293,24 @@ const syncTable = async (table, rows, toRow = identity) => {
     const currentIds = new Set(rows.map((r) => r.id));
     const idsToDelete = [...existingIds].filter((id) => !currentIds.has(id));
 
+    // The same backstop, for the case the empty check above misses: state that
+    // was mostly lost rather than entirely lost. A read that comes back empty
+    // because RLS denied it, followed by the app appending a single row, gives
+    // an array of one that would otherwise delete every other row in the table
+    // — which is exactly how the staff table got wiped once.
+    //
+    // Deletions in this UI are one row at a time, so removing most of a table
+    // in a single sync is not something the screens can legitimately ask for.
+    // The >2 floor keeps small tables editable (clearing 2 of 3 rows is fine).
+    if (idsToDelete.length > 2 && idsToDelete.length > existingIds.size / 2) {
+      console.warn(
+        `Refusing to sync ${table}: it would delete ${idsToDelete.length} of ` +
+          `${existingIds.size} row(s), leaving ${rows.length}. That looks like ` +
+          `lost state rather than an edit.`
+      );
+      return false;
+    }
+
     if (idsToDelete.length > 0) {
       const { error: deleteError } = await supabase.from(table).delete().in('id', idsToDelete);
       if (deleteError) throw deleteError;
