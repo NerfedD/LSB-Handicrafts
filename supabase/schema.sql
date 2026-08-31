@@ -2,6 +2,9 @@
 -- Run this once in the Supabase SQL Editor (Project → SQL Editor → New query).
 -- Safe to re-run: every statement is guarded with IF NOT EXISTS / OR REPLACE.
 
+-- `max_stock` is the per-product ceiling ProductForm collects as a required
+-- field. It also gives the low-stock threshold a home for the Sprint 2
+-- "Flag Low Stock" story.
 create table if not exists public.inventory (
   id bigint primary key,
   sku text not null,
@@ -9,8 +12,14 @@ create table if not exists public.inventory (
   category text not null,
   price numeric not null default 0,
   stock integer not null default 0,
+  max_stock integer not null default 0,
   status text not null default 'In Stock'
 );
+
+-- For databases created before max_stock existed. `create table if not exists`
+-- above is a no-op on them, so the column has to be added separately.
+alter table public.inventory
+  add column if not exists max_stock integer not null default 0;
 
 create table if not exists public.deliveries (
   id bigint primary key,
