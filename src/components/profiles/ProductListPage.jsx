@@ -6,6 +6,7 @@ import ProfileTable from "../shared/ProfileTable";
 import StatusPill from "../shared/StatusPill";
 import { ProfileEmptyState } from "../shared/ProfilePanels";
 import { formatPeso } from "../../utils/profileFormat";
+import { formatDimensions, formatProductType } from "../../utils/productFormat";
 
 /**
  * LSB Handicrafts — Product / Item Profiles
@@ -20,7 +21,8 @@ import { formatPeso } from "../../utils/profileFormat";
 const COLUMNS = [
   { key: "itemCode", label: "Item Code", className: "w-[92px]" },
   { key: "name", label: "Product Name", className: "flex-[1.7]" },
-  { key: "size", label: "Size", className: "w-[86px]" },
+  { key: "productType", label: "Type", className: "w-[92px]" },
+  { key: "size", label: "Size", className: "w-[120px]" },
   { key: "unitPrice", label: "Unit Price", className: "w-[100px]" },
   { key: "lowStockThreshold", label: "Low-Stock Threshold", className: "w-[124px]" },
   { key: "status", label: "Status", className: "w-[100px]" },
@@ -63,6 +65,21 @@ export default function ProductListPage({
         return (
           <span className="block truncate text-[13.5px] font-semibold text-[#17263a]">
             {product.name}
+          </span>
+        );
+      case "productType":
+        return (
+          <span className="block truncate text-[12.5px] text-[#5f6875]">
+            {formatProductType(product.productType)}
+          </span>
+        );
+      // Rendered from the dimension columns rather than the stored `size`
+      // label, so a row stays right even if the label was written by an older
+      // version of the form.
+      case "size":
+        return (
+          <span className="block truncate text-[12.5px] text-[#5f6875]">
+            {formatDimensions(product)}
           </span>
         );
       case "unitPrice":

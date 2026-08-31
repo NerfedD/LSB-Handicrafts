@@ -2,9 +2,21 @@
 -- Run this once in the Supabase SQL Editor (Project → SQL Editor → New query).
 -- Safe to re-run: every statement is guarded with IF NOT EXISTS / OR REPLACE.
 
--- `max_stock` is the per-product ceiling ProductForm collects as a required
--- field. It also gives the low-stock threshold a home for the Sprint 2
--- "Flag Low Stock" story.
+-- The styro catalog: one row per size, so a 2" ball and a 4" ball are separate
+-- rows with their own SKU, price and stock.
+--
+-- `product_type` decides which dimension columns mean anything — 'ball' uses
+-- diameter_in, 'sheet'/'block' use thickness_in + length_ft + width_ft. The
+-- unused ones stay null rather than 0, so "no width" never reads as "zero
+-- width". `category` stays the free-text merchandising label the list filter
+-- groups on.
+--
+-- `stock` and `reserved` count SELLING units, not pieces: a sheet sold by the
+-- bundle stores 25 to mean 25 bundles. `pack_size` converts back to pieces for
+-- display.
+--
+-- `max_stock` is the storage ceiling. `low_stock_threshold` is the reorder
+-- floor the "Flag Low Stock" story alerts on — different numbers, both needed.
 create table if not exists public.inventory (
   id bigint primary key,
   sku text not null,
@@ -13,13 +25,48 @@ create table if not exists public.inventory (
   price numeric not null default 0,
   stock integer not null default 0,
   max_stock integer not null default 0,
-  status text not null default 'In Stock'
+  status text not null default 'In Stock',
+  product_type text not null default 'other',
+  diameter_in numeric,
+  thickness_in numeric,
+  length_ft numeric,
+  width_ft numeric,
+  unit text not null default 'piece',
+  pack_size integer not null default 1,
+  low_stock_threshold integer not null default 50,
+  reserved integer not null default 0,
+  is_cuttable boolean not null default false
 );
 
--- For databases created before max_stock existed. `create table if not exists`
--- above is a no-op on them, so the column has to be added separately.
+-- For databases created before these columns existed. `create table if not
+-- exists` above is a no-op on them, so the columns have to be added separately.
+--
+-- Every default below is chosen to leave existing rows behaving exactly as they
+-- did: low_stock_threshold defaults to 50 because that was the hardcoded
+-- threshold in ProductForm, and product_type defaults to 'other' so the four
+-- pre-styro rows stay valid and simply show no dimension fields until edited.
+--
+-- These are NOT NULL with defaults on purpose. syncTable upserts whole rows, so
+-- a NOT NULL column with no default would reject every write from a client that
+-- predates it — silently, because syncTable only logs the failure.
 alter table public.inventory
-  add column if not exists max_stock integer not null default 0;
+  add column if not exists max_stock integer not null default 0,
+  add column if not exists product_type text not null default 'other',
+  add column if not exists diameter_in numeric,
+  add column if not exists thickness_in numeric,
+  add column if not exists length_ft numeric,
+  add column if not exists width_ft numeric,
+  add column if not exists unit text not null default 'piece',
+  add column if not exists pack_size integer not null default 1,
+  add column if not exists low_stock_threshold integer not null default 50,
+  add column if not exists reserved integer not null default 0,
+  add column if not exists is_cuttable boolean not null default false;
+
+-- Deliberately NOT added: `check (product_type in (...))` and `unique (sku)`.
+-- A rejected upsert is invisible in this app (storageManager.syncTable catches
+-- and logs it, and the caller discards the result), so one bad field would cost
+-- the entire inventory write with nothing on screen. SKU duplicates are caught
+-- client-side in ProductForm instead. Revisit once write failures surface.
 
 create table if not exists public.deliveries (
   id bigint primary key,
@@ -31,14 +78,27 @@ create table if not exists public.deliveries (
   created_at text
 );
 
+-- `items` is deliberately untyped jsonb: a line can be a catalog product, a
+-- sheet cut to a customer's size, a carved custom shape, or a catalog product
+-- at a negotiated price. They share the fields every reader needs (name,
+-- quantity, unitPrice, lineTotal, stockUnits) and differ below that, so the
+-- shape can grow without a migration. See src/utils/orderItems.js.
+--
+-- `stock_committed_at` is stamped when a Pending order is marked Completed and
+-- its stock is actually deducted. Its presence is what stops a second
+-- Pending -> Completed flip from deducting the same goods twice.
 create table if not exists public.orders (
   id bigint primary key,
   customer_name text not null,
   items jsonb not null default '[]'::jsonb,
   total_amount numeric not null default 0,
   status text not null default 'Pending',
-  created_at text
+  created_at text,
+  stock_committed_at text
 );
+
+alter table public.orders
+  add column if not exists stock_committed_at text;
 
 create table if not exists public.activity_log (
   id bigint primary key,
@@ -81,6 +141,11 @@ create table if not exists public.customers (
 -- Distinct from `inventory`: that table tracks stock levels for the dashboard
 -- workspace, this one is the catalog entry a staff member maintains by hand.
 -- `low_stock_threshold` is the level at which inventory should raise an alert.
+--
+-- Carries the same styro dimension/unit columns as `inventory` so a catalog
+-- entry can describe a real product, but no `stock`/`reserved` — this table has
+-- no stock concept. `size` is no longer typed by hand; it holds a label derived
+-- from the dimensions, kept as a column so existing readers keep working.
 create table if not exists public.products (
   id bigint primary key,
   item_code text not null unique,
@@ -90,8 +155,24 @@ create table if not exists public.products (
   low_stock_threshold integer,
   status text not null default 'Active',
   created_at text,
-  updated_at text
+  updated_at text,
+  product_type text not null default 'other',
+  diameter_in numeric,
+  thickness_in numeric,
+  length_ft numeric,
+  width_ft numeric,
+  unit text not null default 'piece',
+  pack_size integer not null default 1
 );
+
+alter table public.products
+  add column if not exists product_type text not null default 'other',
+  add column if not exists diameter_in numeric,
+  add column if not exists thickness_in numeric,
+  add column if not exists length_ft numeric,
+  add column if not exists width_ft numeric,
+  add column if not exists unit text not null default 'piece',
+  add column if not exists pack_size integer not null default 1;
 
 create table if not exists public.suppliers (
   id bigint primary key,

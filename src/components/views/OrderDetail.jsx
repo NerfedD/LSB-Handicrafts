@@ -1,11 +1,25 @@
 import React from 'react';
 import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock, ShoppingCart } from '../icons';
 import StatusDotLabel from '../shared/StatusDotLabel';
+import { LINE_KIND, LINE_KIND_OPTIONS } from '../../utils/constants';
+import { normalizeItems } from '../../utils/orderItems';
+
+const KIND_BADGE = {
+  [LINE_KIND.CATALOG]: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-500/10 dark:text-zinc-400',
+  [LINE_KIND.NEGOTIATED]: 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400',
+  [LINE_KIND.CUT]: 'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400',
+  [LINE_KIND.CUSTOM]: 'bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400',
+};
+
+const kindLabel = (kind) =>
+  LINE_KIND_OPTIONS.find((o) => o.value === kind)?.label || 'Catalog';
+
+/** See the matching helper in OrdersList — the trailing " - " keeps #12 from matching #1234. */
+const deliveryBelongsToOrder = (delivery, orderId) =>
+  String(delivery.product || '').startsWith(`Order #${orderId} - `);
 
 export default function OrderDetail({ record, navigateTo, orders, setOrders, deliveries, setDeliveries, showModal, addActivity }) {
-  console.log('OrderDetail component RENDERED with record:', record);
   if(!record) {
-    console.error('OrderDetail: record is null/undefined!', { record, navigateTo });
     return (
       <div className="p-8 text-center">
         <p className="text-red-500 font-bold">Error: No order selected. Please go back and try again.</p>
@@ -16,16 +30,18 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
   const handleDelete = () => {
     showModal(
       "Delete Order",
-      "Are you sure you want to remove this order record? Associated deliveries will also be deleted.",
+      record.stockCommittedAt
+        ? "Are you sure you want to remove this order record? Associated deliveries will also be deleted. Stock already deducted for it will NOT be restored."
+        : "Are you sure you want to remove this order record? Associated deliveries will also be deleted.",
       () => {
         setOrders(orders.filter(o => o.id !== record.id));
-        
+
         // Delete associated deliveries for this order
         if (deliveries && setDeliveries) {
-          const updatedDeliveries = deliveries.filter(d => !d.product.includes(`Order #${record.id}`));
+          const updatedDeliveries = deliveries.filter(d => !deliveryBelongsToOrder(d, record.id));
           setDeliveries(updatedDeliveries);
         }
-        
+
         addActivity?.({
           type: 'Order',
           title: 'Order Deleted',
@@ -108,15 +124,40 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 mb-6">Order Items ({itemCount})</h3>
             {record.items && record.items.length > 0 ? (
               <div className="space-y-3">
-                {record.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-start p-4 bg-zinc-50 dark:bg-[#1A1A24] rounded-lg border border-zinc-200 dark:border-[#272730]">
-                    <div className="flex-1">
-                      <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">SKU: {item.sku}</p>
+                {normalizeItems(record.items).map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-start gap-4 p-4 bg-zinc-50 dark:bg-[#1A1A24] rounded-lg border border-zinc-200 dark:border-[#272730]">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${KIND_BADGE[item.kind] || KIND_BADGE[LINE_KIND.CATALOG]}`}>
+                          {kindLabel(item.kind)}
+                        </span>
+                      </div>
+                      {item.sku && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">SKU: {item.sku}</p>
+                      )}
+                      {item.cut && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                          Cut to {item.cut.lengthFt}ft × {item.cut.widthFt}ft
+                          {item.stockUnits > 0 && ` · uses ${item.stockUnits} sheet${item.stockUnits === 1 ? '' : 's'}`}
+                        </p>
+                      )}
+                      {item.description && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{item.description}</p>
+                      )}
+                      {item.notes && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{item.notes}</p>
+                      )}
+                      {item.reason && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          {item.reason}
+                          {item.listPrice ? ` (list PHP ${Number(item.listPrice).toFixed(2)})` : ''}
+                        </p>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-zinc-900 dark:text-zinc-100 font-semibold">PHP {(item.price * (item.quantity || 1)).toFixed(2)}</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Qty: {item.quantity || 1} × PHP {item.price.toFixed(2)}</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-zinc-900 dark:text-zinc-100 font-semibold">PHP {item.lineTotal.toFixed(2)}</p>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">Qty: {item.quantity} × PHP {item.unitPrice.toFixed(2)}</p>
                     </div>
                   </div>
                 ))}

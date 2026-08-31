@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
 import { MoreHorizontal, Clock, Truck, History, X } from '../icons';
+import { ORDER_STATUS, STOCK_STATUS } from '../../utils/constants';
+import { availableOf } from '../../utils/stockLedger';
+
+/** Orange for low, red for out, blue otherwise. */
+const stockTone = (status) => {
+  if (status === STOCK_STATUS.OUT) {
+    return { dot: 'bg-red-500', pill: 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-500/10' };
+  }
+  if (status === STOCK_STATUS.LOW) {
+    return { dot: 'bg-orange-500', pill: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-500/10' };
+  }
+  return { dot: 'bg-blue-500', pill: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10' };
+};
 
 export default function Dashboard({ inventory, deliveries, orders = [], activityLog = [] }) {
   const [invFilter, setInvFilter] = useState('All');
@@ -7,8 +20,14 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
 
   const totalProducts = inventory.length;
   const totalVolume = inventory.reduce((sum, item) => sum + Number(item.stock), 0);
-  const lowStockCount = inventory.filter(i => i.status === 'Low Stock').length;
-  const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+  // Anything not comfortably in stock — low and out both need attention.
+  const lowStockCount = inventory.filter(
+    i => i.status === STOCK_STATUS.LOW || i.status === STOCK_STATUS.OUT
+  ).length;
+  // Cancelled orders were never earned, so they don't count toward revenue.
+  const totalRevenue = orders
+    .filter(order => order.status !== ORDER_STATUS.CANCELLED)
+    .reduce((sum, order) => sum + Number(order.totalAmount || 0), 0);
 
   // Combine orders and deliveries into a single activity list
   const fallbackActivities = [
@@ -139,29 +158,38 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
             >
               In Stock
             </button>
-            <button 
-              onClick={() => setInvFilter('Low Stock')} 
+            <button
+              onClick={() => setInvFilter('Low Stock')}
               className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'Low Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
             >
               Low Stock
             </button>
+            <button
+              onClick={() => setInvFilter('Out of Stock')}
+              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'Out of Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
+            >
+              Out of Stock
+            </button>
           </div>
           
           <div className="space-y-3">
-            {filteredInventory.map(item => (
+            {filteredInventory.map(item => {
+              const tone = stockTone(item.status);
+              return (
               <div key={item.id} className="bg-zinc-50 dark:bg-[#09090B] border border-zinc-200 dark:border-[#1F1F2E] p-4 rounded-xl flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
-                  <div className={`w-1.5 h-1.5 rounded-full ${item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'} shrink-0`}></div>
+                  <div className={`w-1.5 h-1.5 rounded-full ${tone.dot} shrink-0`}></div>
                   <div>
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200 line-clamp-1">{item.name}</p>
                     <p className="text-xs text-zinc-500">{item.sku}</p>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${item.status === 'Low Stock' ? 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-500/10' : 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-500/10'}`}>
-                  {item.stock} units
+                <span className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${tone.pill}`}>
+                  {availableOf(item)} available
                 </span>
               </div>
-            ))}
+              );
+            })}
             {filteredInventory.length === 0 && (
               <p className="text-sm text-zinc-500 text-center py-4">No items found for this filter.</p>
             )}

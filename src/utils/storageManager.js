@@ -11,8 +11,86 @@
 import { supabase } from '../lib/supabaseClient';
 
 // ---- row <-> app-object mapping -------------------------------------------
-// Inventory and activity_log columns already match the JS shape 1:1.
-// Deliveries/orders need camelCase <-> snake_case translation.
+// activity_log columns already match the JS shape 1:1. Every other table needs
+// camelCase <-> snake_case translation.
+//
+// These mappers enumerate their keys by hand, which means a field missing from
+// one is dropped silently — on read AND on write. Whenever a column is added to
+// schema.sql, both directions here have to gain it too.
+
+/**
+ * Numeric columns that are nullable in Postgres. An empty form field arrives
+ * here as '', which PostgREST rejects for a numeric column — and syncTable only
+ * console.errors that rejection, so the whole table's write is lost with nothing
+ * on screen to show for it. Send an explicit null instead.
+ */
+const numOrNull = (v) =>
+  v === '' || v === undefined || v === null || Number.isNaN(Number(v))
+    ? null
+    : Number(v);
+
+/**
+ * Integer columns that are NOT NULL with a default in Postgres. The fallback
+ * passed here must match that column's SQL default exactly: syncTable upserts
+ * whole rows, so a mismatch quietly overwrites real values with the wrong
+ * number on the next save.
+ */
+const intOr = (v, fallback) =>
+  v === '' || v === undefined || v === null || Number.isNaN(Number(v))
+    ? fallback
+    : Math.trunc(Number(v));
+
+/**
+ * Inventory is the styro catalog: one row per size. `productType` decides which
+ * dimension fields are meaningful — a ball has a diameter and no length/width,
+ * a sheet has thickness/length/width and no diameter — so the unused ones go to
+ * the database as null rather than 0.
+ *
+ * `stock` and `reserved` count SELLING units, not pieces: a sheet sold by the
+ * bundle stores 25 to mean 25 bundles. `packSize` is what turns that back into
+ * pieces for display.
+ */
+const inventoryToRow = (i) => ({
+  id: i.id,
+  sku: i.sku,
+  name: i.name,
+  category: i.category,
+  price: numOrNull(i.price) ?? 0,
+  stock: intOr(i.stock, 0),
+  max_stock: intOr(i.maxStock, 0),
+  status: i.status || 'In Stock',
+  product_type: i.productType || 'other',
+  diameter_in: numOrNull(i.diameterIn),
+  thickness_in: numOrNull(i.thicknessIn),
+  length_ft: numOrNull(i.lengthFt),
+  width_ft: numOrNull(i.widthFt),
+  unit: i.unit || 'piece',
+  pack_size: intOr(i.packSize, 1),
+  low_stock_threshold: intOr(i.lowStockThreshold, 50),
+  reserved: intOr(i.reserved, 0),
+  is_cuttable: !!i.isCuttable,
+});
+
+const inventoryFromRow = (r) => ({
+  id: r.id,
+  sku: r.sku,
+  name: r.name,
+  category: r.category,
+  price: r.price,
+  stock: r.stock,
+  maxStock: r.max_stock,
+  status: r.status,
+  productType: r.product_type,
+  diameterIn: r.diameter_in,
+  thicknessIn: r.thickness_in,
+  lengthFt: r.length_ft,
+  widthFt: r.width_ft,
+  unit: r.unit,
+  packSize: r.pack_size,
+  lowStockThreshold: r.low_stock_threshold,
+  reserved: r.reserved,
+  isCuttable: r.is_cuttable,
+});
 
 const deliveryToRow = (d) => ({
   id: d.id,
@@ -34,6 +112,10 @@ const deliveryFromRow = (r) => ({
   createdAt: r.created_at,
 });
 
+// `items` is untyped jsonb, so line-item shape changes need no migration here —
+// but a new top-level order field does. stockCommittedAt is stamped when a
+// Pending order is marked Completed and its stock is actually deducted; its
+// presence is what keeps that deduction from happening twice.
 const orderToRow = (o) => ({
   id: o.id,
   customer_name: o.customerName,
@@ -41,6 +123,7 @@ const orderToRow = (o) => ({
   total_amount: o.totalAmount,
   status: o.status,
   created_at: o.createdAt,
+  stock_committed_at: o.stockCommittedAt || null,
 });
 
 const orderFromRow = (r) => ({
@@ -50,6 +133,7 @@ const orderFromRow = (r) => ({
   totalAmount: r.total_amount,
   status: r.status,
   createdAt: r.created_at,
+  stockCommittedAt: r.stock_committed_at,
 });
 
 const staffToRow = (s) => ({
@@ -90,6 +174,9 @@ const customerFromRow = (r) => ({
   updatedAt: r.updated_at,
 });
 
+// The catalog twin of `inventory`: same styro shape, no stock columns. `size`
+// is no longer typed by hand — it's a label derived from the dimensions, kept
+// as a column so anything already reading it keeps working.
 const productToRow = (p) => ({
   id: p.id,
   item_code: p.itemCode,
@@ -104,6 +191,13 @@ const productToRow = (p) => ({
   status: p.status,
   created_at: p.createdAt,
   updated_at: p.updatedAt,
+  product_type: p.productType || 'other',
+  diameter_in: numOrNull(p.diameterIn),
+  thickness_in: numOrNull(p.thicknessIn),
+  length_ft: numOrNull(p.lengthFt),
+  width_ft: numOrNull(p.widthFt),
+  unit: p.unit || 'piece',
+  pack_size: intOr(p.packSize, 1),
 });
 
 const productFromRow = (r) => ({
@@ -116,6 +210,13 @@ const productFromRow = (r) => ({
   status: r.status,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
+  productType: r.product_type,
+  diameterIn: r.diameter_in,
+  thicknessIn: r.thickness_in,
+  lengthFt: r.length_ft,
+  widthFt: r.width_ft,
+  unit: r.unit,
+  packSize: r.pack_size,
 });
 
 const supplierToRow = (s) => ({
@@ -206,8 +307,10 @@ const syncTable = async (table, rows, toRow = identity) => {
 
 // ---- inventory --------------------------------------------------------
 
-export const loadInventory = (defaultInventory = []) => loadTable('inventory', defaultInventory);
-export const saveInventory = (inventoryData) => syncTable('inventory', inventoryData);
+export const loadInventory = (defaultInventory = []) =>
+  loadTable('inventory', defaultInventory, inventoryFromRow);
+export const saveInventory = (inventoryData) =>
+  syncTable('inventory', inventoryData, inventoryToRow);
 
 export const deleteFromInventory = (inventoryData, itemId) =>
   inventoryData.filter((item) => item.id !== itemId);

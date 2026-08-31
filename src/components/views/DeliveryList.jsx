@@ -3,6 +3,8 @@ import { Plus, ChevronDown, Trash2, Truck, Edit2, Eye } from '../icons';
 import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';
+import { normalizeItems } from '../../utils/orderItems';
+import { formatDimensions } from '../../utils/productFormat';
 
 export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateTo, showModal, addActivity }) {
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -300,14 +302,14 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
                             <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#272730] rounded-lg p-4 max-w-2xl">
                               <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Order Items for {order.customerName}</h4>
                               <div className="space-y-3">
-                                {order.items.map((item, idx) => (
+                                {normalizeItems(order.items).map((item, idx) => (
                                   <div key={idx} className="flex justify-between items-start p-3 bg-zinc-50 dark:bg-[#1A1A24] rounded-lg border border-zinc-200 dark:border-[#272730]">
                                     <div className="flex-1">
                                       <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
-                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Qty: {item.quantity} × PHP {item.price.toFixed(2)}</p>
+                                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Qty: {item.quantity} × PHP {item.unitPrice.toFixed(2)}</p>
                                     </div>
                                     <div className="text-right">
-                                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">PHP {(item.quantity * item.price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                                      <p className="font-semibold text-zinc-900 dark:text-zinc-100">PHP {item.lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                     </div>
                                   </div>
                                 ))}
@@ -350,10 +352,14 @@ export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeli
       "Add Delivery",
       "Are you sure you want to add this new delivery record?",
       () => {
+        // Size used to be scraped off the end of the product name with a
+        // regex. Products carry real dimensions now, so read them instead and
+        // only fall back for a product that has none recorded yet.
         let size = 'Standard';
         if (formData.sourceType === 'product') {
-          const sizeMatch = formData.product.match(/(\d+(?:\.\d+)?\s*\w+(?:\/\d+\s*\w+)?)$/);
-          size = sizeMatch ? sizeMatch[1] : 'Standard';
+          const product = inventory.find((i) => i.name === formData.product);
+          const dimensions = product ? formatDimensions(product) : '—';
+          size = dimensions === '—' ? 'Standard' : dimensions;
         } else {
           size = 'Order Package';
         }
@@ -421,7 +427,7 @@ export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeli
                 <div className="relative">
                   <select required value={formData.product} onChange={e => setFormData({...formData, product: e.target.value})} className="appearance-none w-full bg-white dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500/50 cursor-pointer">
                     <option value="" disabled className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Select product</option>
-                    {inventory.map(i => <option key={i.id} value={i.name} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{i.name}</option>)}
+                    {inventory.map(i => <option key={i.id} value={i.name} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{i.name} · {formatDimensions(i)}</option>)}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none" size={16} />
                 </div>

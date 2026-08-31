@@ -1,8 +1,21 @@
 import React from 'react';
 import { ArrowLeft, Edit2, Trash2, LayoutDashboard, Clock } from '../icons';
+import { STOCK_STATUS } from '../../utils/constants';
+import { formatDimensions, formatProductType, formatUnit } from '../../utils/productFormat';
+import { availableOf } from '../../utils/stockLedger';
 
 export default function ProductDetail({ record, navigateTo, inventory, setInventory, showModal, addActivity }) {
   if(!record) return null;
+
+  const available = availableOf(record);
+  const isOut = record.status === STOCK_STATUS.OUT;
+  const isLow = record.status === STOCK_STATUS.LOW;
+  const statusDot = isOut ? 'bg-red-500' : isLow ? 'bg-orange-500' : 'bg-blue-500';
+  const statusText = isOut
+    ? 'text-red-600 dark:text-red-500'
+    : isLow
+      ? 'text-orange-600 dark:text-orange-500'
+      : 'text-blue-600 dark:text-blue-500';
 
   const handleDelete = () => {
     showModal(
@@ -59,11 +72,19 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Price</p>
                 {/* Changed $ to PHP here */}
-                <p className="text-zinc-900 dark:text-zinc-200 font-medium">PHP {record.price.toFixed(2)}</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium">PHP {Number(record.price).toFixed(2)}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-500">{formatUnit(record)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Product Type</p>
+                <p className="text-zinc-900 dark:text-zinc-200">{formatProductType(record.productType)}</p>
               </div>
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Size</p>
-                <p className="text-zinc-900 dark:text-zinc-200">{record.name.split(' ').slice(-2).join(' ')}</p>
+                <p className="text-zinc-900 dark:text-zinc-200">{formatDimensions(record)}</p>
+                {record.isCuttable && (
+                  <p className="text-xs text-zinc-500 dark:text-zinc-500">Can be cut to size</p>
+                )}
               </div>
             </div>
           </div>
@@ -74,15 +95,32 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Status</p>
                 <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${record.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                  <span className={`font-medium text-sm ${record.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></div>
+                  <span className={`font-medium text-sm ${statusText}`}>
                     {record.status}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Current Stock</p>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">On Hand</p>
                 <p className="text-zinc-900 dark:text-zinc-200 font-medium text-xl">{record.stock}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Reserved</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium text-xl">{record.reserved || 0}</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-500">Promised to pending orders</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Available</p>
+                <p className={`font-medium text-xl ${statusText}`}>{available}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Low-Stock Threshold</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium text-xl">{record.lowStockThreshold ?? 50}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Maximum Stock</p>
+                <p className="text-zinc-900 dark:text-zinc-200 font-medium text-xl">{record.maxStock || 0}</p>
               </div>
             </div>
           </div>

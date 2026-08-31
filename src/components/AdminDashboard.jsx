@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Sun, Moon, Menu, LogOut, LayoutDashboard } from './icons';
 
 import { initialInventory, initialDeliveries, initialOrders } from '../utils/data';
@@ -8,6 +8,7 @@ import {
   saveOrders, loadOrders,
   saveActivityLog, loadActivityLog,
 } from '../utils/storageManager';
+import { applyReservations } from '../utils/stockLedger';
 import ConfirmModal from './ConfirmModal';
 import Sidebar from './layout/Sidebar';
 import Dashboard from './views/Dashboard';
@@ -15,9 +16,9 @@ import InventoryList from './views/InventoryList';
 import ProductForm from './views/ProductForm';
 import ProductDetail from './views/ProductDetail';
 import { DeliveryList, AddDelivery } from './views/DeliveryList';
-import { OrdersList, CreateOrder } from './views/OrdersList';
+import { OrdersList } from './views/OrdersList';
 import EditDelivery from './views/EditDelivery';
-import EditOrder from './views/EditOrder';
+import OrderForm from './views/OrderForm';
 import OrderDetail from './views/OrderDetail';
 import DeliveryDetail from './views/DeliveryDetail';
 
@@ -31,6 +32,7 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const [inventory, setInventory] = useState(initialInventory);
   const [deliveries, setDeliveries] = useState(initialDeliveries);
   const [orders, setOrders] = useState(initialOrders);
@@ -115,25 +117,47 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   // all four of these at once, and each syncTable call is a SELECT plus a
   // full upsert — eight Supabase round trips per page load, writing back data
   // identical to what had just been read.
+  // A save that fails only reaches the console — that is exactly how a column
+  // name mismatch went unnoticed while every inventory edit was being rejected.
+  // Surface it instead.
+  const reportSave = (label) => (ok) => {
+    if (!ok) setSaveError(`${label} changes couldn't be saved. Check your connection — reload before making more edits.`);
+  };
+
+  // Reserved stock is derived, never incremented: it's recomputed from the
+  // pending orders every time they change. That's what makes it correct across
+  // create/edit/delete/cancel/re-open without any one of those needing to
+  // remember to adjust it. See src/utils/stockLedger.js.
+  //
+  // Layered on with a memo rather than written back into state, so there's no
+  // cascading render. `inventory` stays the raw rows a person edited; this is
+  // what every consumer sees and what gets persisted. applyReservations returns
+  // the same array when nothing moved, so the save below stays quiet on a no-op.
+  const inventoryWithReservations = useMemo(
+    () => applyReservations(inventory, orders),
+    [inventory, orders]
+  );
+
   useEffect(() => {
-    if (!isDataLoaded || inventory === loaded.current.inventory) return;
-    saveInventory(inventory);
-  }, [inventory, isDataLoaded]);
+    if (!isDataLoaded || inventoryWithReservations === loaded.current.inventory) return;
+    saveInventory(inventoryWithReservations).then(reportSave('Inventory'));
+  }, [inventoryWithReservations, isDataLoaded]);
 
   useEffect(() => {
     if (!isDataLoaded || deliveries === loaded.current.deliveries) return;
-    saveDeliveries(deliveries);
+    saveDeliveries(deliveries).then(reportSave('Delivery'));
   }, [deliveries, isDataLoaded]);
 
   useEffect(() => {
     if (!isDataLoaded || orders === loaded.current.orders) return;
-    saveOrders(orders);
+    saveOrders(orders).then(reportSave('Order'));
   }, [orders, isDataLoaded]);
 
   useEffect(() => {
     if (!isDataLoaded || activityLog === loaded.current.activityLog) return;
-    saveActivityLog(activityLog);
+    saveActivityLog(activityLog).then(reportSave('Activity log'));
   }, [activityLog, isDataLoaded]);
+
 
   const navigateTo = (tab, record = null) => {
     setCurrentRecord(record);
@@ -264,17 +288,29 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
             </div>
           </header>
 
+          {saveError && (
+            <div className="mb-4 flex items-start justify-between gap-4 rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
+              <button
+                onClick={() => setSaveError('')}
+                className="shrink-0 text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           {/* Views Layer */}
           <div className="flex-1 flex flex-col w-full">
-            {activeTab === 'dashboard' && <Dashboard inventory={inventory} deliveries={deliveries} orders={orders} activityLog={activityLog} />}
-            {activeTab === 'inventory' && <InventoryList inventory={inventory} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'dashboard' && <Dashboard inventory={inventoryWithReservations} deliveries={deliveries} orders={orders} activityLog={activityLog} />}
+            {activeTab === 'inventory' && <InventoryList inventory={inventoryWithReservations} navigateTo={navigateTo} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'deliveries' && <DeliveryList deliveries={deliveries} orders={orders} setDeliveries={setDeliveries} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} inventory={inventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'orders' && <OrdersList orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} inventory={inventoryWithReservations} setInventory={setInventory} navigateTo={navigateTo} showModal={showModal} addActivity={addActivity} />}
 
-            {activeTab === 'add-product' && <ProductForm mode="add" navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
-            {activeTab === 'edit-product' && <ProductForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} />}
-            {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventory} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'add-delivery' && <AddDelivery record={currentRecord} navigateTo={navigateTo} inventory={inventory} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} />}
+            {activeTab === 'add-product' && <ProductForm mode="add" navigateTo={navigateTo} inventory={inventoryWithReservations} setInventory={setInventory} showModal={showModal} />}
+            {activeTab === 'edit-product' && <ProductForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventoryWithReservations} setInventory={setInventory} showModal={showModal} />}
+            {activeTab === 'view-product' && <ProductDetail record={currentRecord} navigateTo={navigateTo} inventory={inventoryWithReservations} setInventory={setInventory} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'add-delivery' && <AddDelivery record={currentRecord} navigateTo={navigateTo} inventory={inventoryWithReservations} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} />}
             {activeTab === 'edit-delivery' && <EditDelivery data={currentRecord} navigateTo={navigateTo} onSave={(updatedDelivery) => {
               setDeliveries(deliveries.map(d => d.id === updatedDelivery.id ? updatedDelivery : d));
               addActivity({
@@ -284,18 +320,10 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
                 color: 'bg-blue-500'
               });
             }} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'create-order' && <CreateOrder navigateTo={navigateTo} inventory={inventory} orders={orders} setOrders={setOrders} showModal={showModal} />}
-            {activeTab === 'order-detail' && <OrderDetail record={currentRecord} navigateTo={navigateTo} orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'create-order' && <OrderForm mode="add" navigateTo={navigateTo} inventory={inventoryWithReservations} orders={orders} setOrders={setOrders} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'order-detail' && <OrderDetail record={currentRecord} navigateTo={navigateTo} orders={orders} setOrders={setOrders} deliveries={deliveries} setDeliveries={setDeliveries} inventory={inventoryWithReservations} showModal={showModal} addActivity={addActivity} />}
             {activeTab === 'delivery-detail' && <DeliveryDetail record={currentRecord} navigateTo={navigateTo} deliveries={deliveries} setDeliveries={setDeliveries} orders={orders} showModal={showModal} addActivity={addActivity} />}
-            {activeTab === 'edit-order' && <EditOrder data={currentRecord} navigateTo={navigateTo} onSave={(updatedOrder) => {
-              setOrders(orders.map(o => o.id === updatedOrder.id ? updatedOrder : o));
-              addActivity({
-                type: 'Order',
-                title: 'Order Updated',
-                description: `Updated order for ${updatedOrder.customerName}`,
-                color: 'bg-blue-500'
-              });
-            }} showModal={showModal} addActivity={addActivity} />}
+            {activeTab === 'edit-order' && <OrderForm mode="edit" record={currentRecord} navigateTo={navigateTo} inventory={inventoryWithReservations} orders={orders} setOrders={setOrders} showModal={showModal} addActivity={addActivity} />}
           </div>
 
           {/* Spacer to prevent elements sticking to bottom */}

@@ -8,14 +8,18 @@ import ProfileFormCard, {
   TextInput,
 } from "../shared/ProfileForm";
 import { ProfileSaved } from "../shared/ProfilePanels";
+import {
+  PRODUCT_TYPE,
+  PRODUCT_TYPE_OPTIONS,
+  SELL_UNIT_OPTIONS,
+} from "../../utils/constants";
+import { formatDimensions } from "../../utils/productFormat";
 
 /**
  * LSB Handicrafts — Add / Edit Product
  * Figma: Screen #19, nodes 177:3392 (add), 177:3627 (edit / validation),
  * 177:3906 (saved)
  */
-
-const PRODUCT_SIZES = ["Small", "Medium", "Large"];
 
 const EMPTY = {
   itemCode: "",
@@ -24,7 +28,17 @@ const EMPTY = {
   unitPrice: "",
   lowStockThreshold: "",
   status: "Active",
+  productType: PRODUCT_TYPE.BALL,
+  diameterIn: "",
+  thicknessIn: "",
+  lengthFt: "",
+  widthFt: "",
+  unit: "piece",
+  packSize: "1",
 };
+
+const isFlatType = (productType) =>
+  productType === PRODUCT_TYPE.SHEET || productType === PRODUCT_TYPE.BLOCK;
 
 /**
  * `takenCodes` is every other product's item code — the column is unique in
@@ -40,7 +54,23 @@ function validate(values, takenCodes) {
     errors.itemCode = "That item code is already in use.";
 
   if (!values.name.trim()) errors.name = "Product name is required.";
-  if (!values.size) errors.size = "Size is required.";
+
+  // Which dimensions are required depends on the type — a ball has a diameter
+  // and no width, a sheet the other way round.
+  const positive = (v) => v !== "" && !Number.isNaN(Number(v)) && Number(v) > 0;
+  if (values.productType === PRODUCT_TYPE.BALL) {
+    if (!positive(values.diameterIn)) errors.diameterIn = "Enter the diameter in inches.";
+  } else if (isFlatType(values.productType)) {
+    if (!positive(values.thicknessIn)) errors.thicknessIn = "Enter the thickness in inches.";
+    if (!positive(values.lengthFt)) errors.lengthFt = "Enter the length in feet.";
+    if (!positive(values.widthFt)) errors.widthFt = "Enter the width in feet.";
+  }
+
+  if (values.unit !== "piece") {
+    const packSize = Number(values.packSize);
+    if (!Number.isInteger(packSize) || packSize < 1)
+      errors.packSize = "Enter a whole number of pieces per unit.";
+  }
 
   const price = Number(values.unitPrice);
   if (values.unitPrice === "") errors.unitPrice = "Unit price is required.";
@@ -84,6 +114,13 @@ export default function ProductFormPage({
               ? ""
               : String(product.lowStockThreshold),
           status: product.status ?? "Active",
+          productType: product.productType ?? PRODUCT_TYPE.OTHER,
+          diameterIn: product.diameterIn == null ? "" : String(product.diameterIn),
+          thicknessIn: product.thicknessIn == null ? "" : String(product.thicknessIn),
+          lengthFt: product.lengthFt == null ? "" : String(product.lengthFt),
+          widthFt: product.widthFt == null ? "" : String(product.widthFt),
+          unit: product.unit ?? "piece",
+          packSize: product.packSize == null ? "1" : String(product.packSize),
         }
       : EMPTY
   );
@@ -107,12 +144,24 @@ export default function ProductFormPage({
       setErrors(found);
       return;
     }
+    const isBall = values.productType === PRODUCT_TYPE.BALL;
+    const isFlat = isFlatType(values.productType);
+    const numOrNull = (v) => (v === "" || v === null ? null : Number(v));
+
     setSavedId(
       onSave({
         ...values,
         itemCode: values.itemCode.trim(),
         unitPrice: Number(values.unitPrice),
         lowStockThreshold: Number(values.lowStockThreshold),
+        diameterIn: isBall ? numOrNull(values.diameterIn) : null,
+        thicknessIn: isFlat ? numOrNull(values.thicknessIn) : null,
+        lengthFt: isFlat ? numOrNull(values.lengthFt) : null,
+        widthFt: isFlat ? numOrNull(values.widthFt) : null,
+        packSize: values.unit === "piece" ? 1 : Number(values.packSize),
+        // `size` is no longer typed by hand — it's the dimensions rendered as a
+        // label, kept on the row so anything still reading that column works.
+        size: formatDimensions(values),
       })
     );
   }
@@ -161,20 +210,111 @@ export default function ProductFormPage({
                 />
               </FormField>
 
-              <FormField label="Size" required error={errors.size}>
+              <FormField label="Product Type" required>
                 <SelectInput
-                  value={values.size}
-                  onChange={(e) => setField("size", e.target.value)}
-                  error={errors.size}
+                  value={values.productType}
+                  onChange={(e) => setField("productType", e.target.value)}
                 >
-                  <option value="">Select size</option>
-                  {PRODUCT_SIZES.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
+                  {PRODUCT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </SelectInput>
               </FormField>
+
+              {values.productType === PRODUCT_TYPE.BALL && (
+                <FormField
+                  label="Diameter (inches)"
+                  required
+                  error={errors.diameterIn}
+                  hint={`Size: ${formatDimensions(values)}`}
+                >
+                  <TextInput
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={values.diameterIn}
+                    onChange={(e) => setField("diameterIn", e.target.value)}
+                    placeholder="4"
+                    error={errors.diameterIn}
+                  />
+                </FormField>
+              )}
+
+              {isFlatType(values.productType) && (
+                <>
+                  <FormField
+                    label="Thickness (inches)"
+                    required
+                    error={errors.thicknessIn}
+                    hint={`Size: ${formatDimensions(values)}`}
+                  >
+                    <TextInput
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={values.thicknessIn}
+                      onChange={(e) => setField("thicknessIn", e.target.value)}
+                      placeholder="1"
+                      error={errors.thicknessIn}
+                    />
+                  </FormField>
+                  <FormField label="Length (feet)" required error={errors.lengthFt}>
+                    <TextInput
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={values.lengthFt}
+                      onChange={(e) => setField("lengthFt", e.target.value)}
+                      placeholder="8"
+                      error={errors.lengthFt}
+                    />
+                  </FormField>
+                  <FormField label="Width (feet)" required error={errors.widthFt}>
+                    <TextInput
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={values.widthFt}
+                      onChange={(e) => setField("widthFt", e.target.value)}
+                      placeholder="4"
+                      error={errors.widthFt}
+                    />
+                  </FormField>
+                </>
+              )}
+
+              <FormField label="Unit of Sale" required>
+                <SelectInput
+                  value={values.unit}
+                  onChange={(e) => setField("unit", e.target.value)}
+                >
+                  {SELL_UNIT_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </SelectInput>
+              </FormField>
+
+              {values.unit !== "piece" && (
+                <FormField
+                  label={`Pieces per ${values.unit}`}
+                  required
+                  error={errors.packSize}
+                >
+                  <TextInput
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={values.packSize}
+                    onChange={(e) => setField("packSize", e.target.value)}
+                    placeholder="25"
+                    error={errors.packSize}
+                  />
+                </FormField>
+              )}
 
               <FormField label="Unit Price" required error={errors.unitPrice}>
                 <TextInput

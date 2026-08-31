@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Plus, Eye, Edit2, Trash2, ChevronDown } from '../icons';
 import EmptyState from '../shared/EmptyState';
 import StatusDotLabel from '../shared/StatusDotLabel';
 import ListHeaderBar from '../shared/ListHeaderBar';
+import { PRODUCT_TYPE_OPTIONS, STOCK_STATUS } from '../../utils/constants';
+import { formatDimensions, formatUnit, sizeSortKey } from '../../utils/productFormat';
+import { availableOf } from '../../utils/stockLedger';
+
+/** Orange for low, red for out, blue otherwise. */
+const statusTone = (status) => {
+  if (status === STOCK_STATUS.OUT) {
+    return { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-500' };
+  }
+  if (status === STOCK_STATUS.LOW) {
+    return { dot: 'bg-orange-500', text: 'text-orange-600 dark:text-orange-500' };
+  }
+  return { dot: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-500' };
+};
 
 export default function InventoryList({ inventory, navigateTo, setInventory, showModal, addActivity }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
+  const [typeFilter, setTypeFilter] = useState('All Types');
   const [sortOption, setSortOption] = useState('name-az');
+
+  // Derived from the data rather than hardcoded, so a new category shows up in
+  // the filter the moment a product uses it.
+  const categories = useMemo(
+    () => [...new Set(inventory.map((item) => item.category).filter(Boolean))].sort(),
+    [inventory]
+  );
+
+  // Rows with nothing to sort on (no dimensions recorded yet) go last rather
+  // than sorting as zero and crowding the top.
+  const byNullableNumber = (a, b, pick, descending) => {
+    const av = pick(a);
+    const bv = pick(b);
+    if (av === null && bv === null) return 0;
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return descending ? bv - av : av - bv;
+  };
 
   const sortInventory = (items) => {
     return [...items].sort((a, b) => {
@@ -21,9 +54,15 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
         case 'price-high-low':
           return b.price - a.price;
         case 'stock-low-high':
-          return a.stock - b.stock;
+          return availableOf(a) - availableOf(b);
         case 'stock-high-low':
-          return b.stock - a.stock;
+          return availableOf(b) - availableOf(a);
+        case 'size-small-large':
+          return byNullableNumber(a, b, sizeSortKey, false);
+        case 'size-large-small':
+          return byNullableNumber(a, b, sizeSortKey, true);
+        case 'thickness-thin-thick':
+          return byNullableNumber(a, b, (i) => (i.thicknessIn ?? null), false);
         case 'category-az':
           return a.category.localeCompare(b.category);
         default:
@@ -52,10 +91,13 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
   };
 
   const filteredInventory = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.sku.toLowerCase().includes(searchTerm.toLowerCase());
+    const needle = searchTerm.toLowerCase();
+    const matchesSearch = item.name.toLowerCase().includes(needle) ||
+                          item.sku.toLowerCase().includes(needle) ||
+                          formatDimensions(item).toLowerCase().includes(needle);
     const matchesCategory = categoryFilter === 'All Categories' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesType = typeFilter === 'All Types' || item.productType === typeFilter;
+    return matchesSearch && matchesCategory && matchesType;
   });
 
   const sortedInventory = sortInventory(filteredInventory);
@@ -84,8 +126,22 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                 className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Categories" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Categories</option>
-                <option value="Styro Balls" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Balls</option>
-                <option value="Styro Sheets" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Styro Sheets</option>
+                {categories.map(category => (
+                  <option key={category} value={category} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{category}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
+            </div>
+            <div className="relative w-full sm:w-auto">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+              >
+                <option value="All Types" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Types</option>
+                {PRODUCT_TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value} className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">{o.label}</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
             </div>
@@ -99,8 +155,11 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                 <option value="name-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (Z → A)</option>
                 <option value="price-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (Low → High)</option>
                 <option value="price-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Price (High → Low)</option>
-                <option value="stock-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (Low → High)</option>
-                <option value="stock-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Stock (High → Low)</option>
+                <option value="stock-low-high" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Available (Low → High)</option>
+                <option value="stock-high-low" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Available (High → Low)</option>
+                <option value="size-small-large" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Size (Small → Large)</option>
+                <option value="size-large-small" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Size (Large → Small)</option>
+                <option value="thickness-thin-thick" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Thickness (Thin → Thick)</option>
                 <option value="category-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Category (A → Z)</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" size={16} />
@@ -120,9 +179,10 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               <tr className="border-b border-zinc-200 dark:border-[#1F1F2E] text-zinc-500">
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">SKU</th>
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Product Description</th>
+                <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Size</th>
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Category</th>
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Status</th>
-                <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Stock Level</th>
+                <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Available</th>
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase">Price</th>
                 <th className="px-6 py-4 font-semibold text-xs tracking-wider uppercase text-right">Actions</th>
               </tr>
@@ -130,7 +190,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
             <tbody className="divide-y divide-zinc-100 dark:divide-[#1F1F2E]">
               {sortedInventory.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
+                  <td colSpan="8" className="px-6 py-10 text-center text-zinc-500 dark:text-zinc-400">
                     <EmptyState
                       title="No products found"
                       description="Try adjusting your search or category filter."
@@ -139,34 +199,47 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                   </td>
                 </tr>
               ) : (
-                sortedInventory.map(item => (
+                sortedInventory.map(item => {
+                  const available = availableOf(item);
+                  const tone = statusTone(item.status);
+                  return (
                   <tr key={item.id} className="hover:bg-zinc-50 dark:hover:bg-[#1A1A24]/50 transition-colors">
                     <td className="px-6 py-4 text-zinc-500 dark:text-zinc-400 font-mono text-xs">{item.sku}</td>
                     <td className="px-6 py-4 text-zinc-900 dark:text-zinc-200 font-medium">{item.name}</td>
+                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">{formatDimensions(item)}</td>
                     <td className="px-6 py-4 text-zinc-600 dark:text-zinc-400">{item.category}</td>
                     <td className="px-6 py-4">
                       <StatusDotLabel
                         label={item.status}
                         ariaLabel={`Status: ${item.status}`}
-                        dotClassName={item.status === 'Low Stock' ? 'bg-orange-500' : 'bg-blue-500'}
-                        textClassName={item.status === 'Low Stock' ? 'text-orange-600 dark:text-orange-500' : 'text-blue-600 dark:text-blue-500'}
+                        dotClassName={tone.dot}
+                        textClassName={tone.text}
                       />
                     </td>
                     <td className="px-6 py-4">
                       <StatusDotLabel
-                        label={String(item.stock)}
-                        ariaLabel={`Stock level: ${item.stock}`}
-                        dotClassName={item.stock < 50 ? 'bg-orange-500' : 'bg-blue-500'}
+                        label={String(available)}
+                        ariaLabel={`Available: ${available}`}
+                        dotClassName={tone.dot}
                       />
+                      {item.reserved > 0 && (
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-500 mt-0.5">
+                          {item.stock} on hand · {item.reserved} reserved
+                        </span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">PHP {item.price.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-zinc-700 dark:text-zinc-300">
+                      PHP {Number(item.price).toFixed(2)}
+                      <span className="block text-xs text-zinc-500 dark:text-zinc-500">{formatUnit(item)}</span>
+                    </td>
                     <td className="px-6 py-4 text-right space-x-3">
                       <button onClick={() => navigateTo('view-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Eye size={16} /></button>
                       <button onClick={() => navigateTo('edit-product', item)} className="text-zinc-400 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors inline-block"><Edit2 size={16} /></button>
                       <button onClick={() => handleDelete(item.id)} className="text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400 transition-colors inline-block"><Trash2 size={16} /></button>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

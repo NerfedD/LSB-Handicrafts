@@ -9,6 +9,11 @@ import {
 import { ProfileNotFound } from "../shared/ProfilePanels";
 import StatusPill from "../shared/StatusPill";
 import { formatPeso } from "../../utils/profileFormat";
+import {
+  formatDimensions,
+  formatProductType,
+  formatUnit,
+} from "../../utils/productFormat";
 
 /**
  * LSB Handicrafts — Product / Item Details
@@ -72,10 +77,14 @@ export default function ProductDetailPage({
               <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
                 <DetailField label="Item Code">{product.itemCode}</DetailField>
                 <DetailField label="Product Name">{product.name}</DetailField>
-                <DetailField label="Size">{product.size}</DetailField>
+                <DetailField label="Product Type">
+                  {formatProductType(product.productType)}
+                </DetailField>
+                <DetailField label="Size">{formatDimensions(product)}</DetailField>
                 <DetailField label="Unit Price">
                   {formatPeso(product.unitPrice)}
                 </DetailField>
+                <DetailField label="Sold">{formatUnit(product)}</DetailField>
                 <DetailField label="Low-Stock Threshold">
                   {product.lowStockThreshold ?? "—"} units
                 </DetailField>
