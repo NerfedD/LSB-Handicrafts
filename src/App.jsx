@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
+import { canAccess, isAdminRole } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import { loadStaff, saveStaff, saveOwnProfile } from "./utils/storageManager";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
@@ -30,7 +31,9 @@ const StaffActivityLogPage = lazy(() => import("./components/StaffActivityLogPag
 const StaffDirectoryPage = lazy(() => import("./components/StaffDirectoryPage"));
 const ViewProfilePage = lazy(() => import("./components/ViewProfilePage"));
 const UpdateProfilePage = lazy(() => import("./components/UpdateProfilePage"));
-const AdminDashboard = lazy(() => import("./components/AdminDashboard.jsx"));
+const InventoryWorkspacePlaceholder = lazy(() =>
+  import("./components/InventoryWorkspacePlaceholder.jsx")
+);
 const DashboardPage = lazy(() => import("./components/DashboardPage.jsx"));
 const SalesDashboard = lazy(() => import("./components/SalesDashboard.jsx"));
 const ProductionDashboard = lazy(() => import("./components/ProductionDashboard.jsx"));
@@ -53,20 +56,7 @@ function RouteFallback() {
   );
 }
 
-/**
- * Screens only an Admin may open. Enforced in renderView, not by hiding links
- * — a hidden link is not a permission.
- */
-const ADMIN_ONLY_VIEWS = new Set([
-  "accounts",
-  "manage-account",
-  "assign-role",
-  "create",
-  "activity",
-  "directory",
-]);
-
-/** Shown when someone reaches an admin screen their role doesn't allow. */
+/** Shown when someone reaches a screen their role doesn't allow. */
 function NotAuthorized({ role, onBack, onSignOut }) {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-[#f7f4ec] px-6 text-center">
@@ -75,7 +65,7 @@ function NotAuthorized({ role, onBack, onSignOut }) {
       </p>
       <p className="max-w-md text-sm text-[#5f6875]">
         {role
-          ? `The ${role} role can't open user management screens. Contact your system administrator if you need access.`
+          ? `The ${role} role can't open this screen. Contact your system administrator if you need access.`
           : "Your account's role couldn't be confirmed, so access is restricted. Try signing in again."}
       </p>
       <div className="flex gap-3">
@@ -199,7 +189,7 @@ export default function App() {
     };
   }, [staff, sessionEmail]);
 
-  const isAdmin = profile?.role === "Admin";
+  const isAdmin = isAdminRole(profile?.role);
 
   // See the class doc comment above: this no longer actually persists
   // anything under the current RLS policies. Kept as a harmless fallback.
@@ -509,7 +499,17 @@ export default function App() {
     // the view still renders for anyone who reaches it another way, and every
     // one of these screens was reachable by a non-admin through the shared
     // AppShell header. This is the check that actually stops them.
-    if (ADMIN_ONLY_VIEWS.has(view) && !isAdmin) {
+    //
+    // Resolved through utils/permissions, which covers both halves of the
+    // sidebar's filter: the admin-only screens, and the per-role denials that
+    // ManagementShell's `hideFrom` was enforcing on the nav entry alone (a
+    // Production Staff account could still land on the customer and supplier
+    // screens the design omits from their sidebar).
+    //
+    // Guarded on sessionEmail so it only applies once someone is signed in —
+    // the pre-auth views (login, password reset, checking-session) have no role
+    // to check against and must stay reachable.
+    if (sessionEmail && !canAccess(profile?.role, view)) {
       return (
         <NotAuthorized
           role={profile?.role}
@@ -576,11 +576,17 @@ export default function App() {
           />
         );
 
+      // The inventory/deliveries/orders workspace is being rebuilt. The old
+      // screen (components/AdminDashboard.jsx + layout/Sidebar + views/) is
+      // still on disk but no longer routed — it was the last thing using the
+      // pre-Figma chrome, and it showed the same admin-looking shell to every
+      // role. See components/InventoryWorkspacePlaceholder.jsx.
       case "workspace":
         return (
-          <AdminDashboard
+          <InventoryWorkspacePlaceholder
+            profile={profile}
+            onNavigate={setView}
             onSignOut={handleSignOut}
-            onOpenAdmin={() => setView("dashboard")}
           />
         );
 

@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import {
   BookUser,
+  Box,
   CheckCircle2,
   CircleSlash,
   FileText,
   History,
   Package,
+  Truck,
   UserPlus,
+  UserRound,
   Users,
 } from "./icons";
 import ManagementShell from "./layout/ManagementShell";
@@ -26,9 +29,17 @@ import { ACTION_PILL_STYLES, SAMPLE_ENTRIES } from "../utils/activityData";
  * LSB Handicrafts — Dashboard
  * Figma: Screen #13, node 158:2
  *
- * Landing screen for every signed-in role. The four counters and both panels
- * are derived from the `staff` rows App.jsx already holds plus the activity
- * entries in utils/activityData — nothing here fetches on its own.
+ * Landing screen for Admin, and for the roles with no dashboard of their own
+ * (Manager, Delivery Staff). The four counters and both panels are derived from
+ * the `staff` rows App.jsx already holds plus the activity entries in
+ * utils/activityData — nothing here fetches on its own.
+ *
+ * All of that is administrator data: headcount, who is blocked, the staff
+ * roster, the activity feed. It used to render for whoever landed here, so a
+ * Manager or Delivery Staff account saw the whole directory and a "View All"
+ * into User Management. It's behind `isAdmin` now, and non-admins get the
+ * profile-section actions instead — otherwise the page is a greeting and
+ * nothing else.
  */
 
 const PANEL_ROWS = 5;
@@ -69,6 +80,7 @@ export default function DashboardPage({
           Here&rsquo;s an overview of LSB Handicrafts.
         </p>
 
+        {isAdmin && (
         <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             icon={<Users className="h-5 w-5 text-[#1b3a6b]" />}
@@ -99,7 +111,9 @@ export default function DashboardPage({
             description="Total recorded actions"
           />
         </div>
+        )}
 
+        {isAdmin && (
         <div className="grid grid-cols-1 gap-5 pt-7 lg:grid-cols-2">
           <Panel
             title="User Management"
@@ -182,6 +196,7 @@ export default function DashboardPage({
             ))}
           </Panel>
         </div>
+        )}
 
         <div className="mt-5">
           <QuickActionsCard>
@@ -206,6 +221,29 @@ export default function DashboardPage({
                   icon={<BookUser className="h-[15px] w-[15px]" />}
                   label="Staff Directory"
                   onClick={() => onNavigate("directory")}
+                />
+              </>
+            )}
+            {/* With the panels above gated, a Manager or Delivery Staff account
+                would otherwise be left with a greeting and one tile. These are
+                the sections they can actually open — same set SalesDashboard
+                offers. */}
+            {!isAdmin && (
+              <>
+                <QuickAction
+                  icon={<UserRound className="h-[15px] w-[15px]" />}
+                  label="View Customers"
+                  onClick={() => onNavigate("customers")}
+                />
+                <QuickAction
+                  icon={<Box className="h-[15px] w-[15px]" />}
+                  label="View Products"
+                  onClick={() => onNavigate("products")}
+                />
+                <QuickAction
+                  icon={<Truck className="h-[15px] w-[15px]" />}
+                  label="View Suppliers"
+                  onClick={() => onNavigate("suppliers")}
                 />
               </>
             )}
