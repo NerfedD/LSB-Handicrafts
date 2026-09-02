@@ -1,10 +1,15 @@
 /**
  * Display helpers for the profile screens.
  *
- * Dates are stored as the long human string ("August 30, 2026") rather than an
- * ISO timestamp, matching how `deliveries` / `orders` / `activity_log` already
- * store theirs. These functions only reformat for display — they never parse a
- * stored value back into something the database sorts on.
+ * Dates USED to be stored as the long human string ("August 30, 2026"), in two
+ * different formats across tables, which made chronological ordering in SQL
+ * impossible — every "recent activity" panel was effectively sorting
+ * alphabetically by month name. The columns are real `timestamptz` now, so
+ * these functions format an ISO value for display and the database does the
+ * sorting.
+ *
+ * `parse` still accepts the old long-form strings, so a value read from a
+ * record written before the migration renders rather than showing a dash.
  */
 
 const LONG = { year: "numeric", month: "long", day: "numeric" };
@@ -28,9 +33,14 @@ export function formatLongDate(value) {
   return date ? date.toLocaleDateString("en-US", LONG) : value || "—";
 }
 
-/** Today, in the same long format new records are stamped with. */
-export function todayLongDate() {
-  return new Date().toLocaleDateString("en-US", LONG);
+/**
+ * Now, as an ISO timestamp — what gets WRITTEN to created_at / updated_at.
+ *
+ * Display formatting is the job of formatShortDate / formatLongDate above.
+ * Storing a formatted string is what broke sorting in the first place.
+ */
+export function nowIso() {
+  return new Date().toISOString();
 }
 
 /** Time-of-day greeting, matching the dashboards' "Good morning, Maria." */

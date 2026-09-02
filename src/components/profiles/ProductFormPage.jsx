@@ -126,6 +126,7 @@ export default function ProductFormPage({
   );
   const [errors, setErrors] = useState({});
   const [savedId, setSavedId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const title = isEdit ? "Edit Product" : "Add Product";
   const takenCodes = products
@@ -137,7 +138,7 @@ export default function ProductFormPage({
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const found = validate(values, takenCodes);
     if (Object.keys(found).length > 0) {
@@ -148,22 +149,27 @@ export default function ProductFormPage({
     const isFlat = isFlatType(values.productType);
     const numOrNull = (v) => (v === "" || v === null ? null : Number(v));
 
-    setSavedId(
-      onSave({
-        ...values,
-        itemCode: values.itemCode.trim(),
-        unitPrice: Number(values.unitPrice),
-        lowStockThreshold: Number(values.lowStockThreshold),
-        diameterIn: isBall ? numOrNull(values.diameterIn) : null,
-        thicknessIn: isFlat ? numOrNull(values.thicknessIn) : null,
-        lengthFt: isFlat ? numOrNull(values.lengthFt) : null,
-        widthFt: isFlat ? numOrNull(values.widthFt) : null,
-        packSize: values.unit === "piece" ? 1 : Number(values.packSize),
-        // `size` is no longer typed by hand — it's the dimensions rendered as a
-        // label, kept on the row so anything still reading that column works.
-        size: formatDimensions(values),
-      })
-    );
+    setSaving(true);
+    const id = await onSave({
+      ...values,
+      itemCode: values.itemCode.trim(),
+      unitPrice: Number(values.unitPrice),
+      lowStockThreshold: Number(values.lowStockThreshold),
+      diameterIn: isBall ? numOrNull(values.diameterIn) : null,
+      thicknessIn: isFlat ? numOrNull(values.thicknessIn) : null,
+      lengthFt: isFlat ? numOrNull(values.lengthFt) : null,
+      widthFt: isFlat ? numOrNull(values.widthFt) : null,
+      packSize: values.unit === "piece" ? 1 : Number(values.packSize),
+      // `size` is no longer typed by hand — it's the dimensions rendered as a
+      // label, kept on the row so anything still reading that column works.
+      size: formatDimensions(values),
+    });
+    setSaving(false);
+    // onSave resolves to null when the database rejected the write; a toast has
+    // already said why. Staying on the form keeps the user's input, instead of
+    // showing the "saved successfully" panel over a record that was never
+    // stored -- which is exactly what this screen used to do.
+    if (id !== null && id !== undefined) setSavedId(id);
   }
 
   return (
@@ -191,6 +197,7 @@ export default function ProductFormPage({
               saveLabel="Save Product"
               onSubmit={handleSubmit}
               onCancel={onCancel}
+              saving={saving}
             >
               <FormField label="Item Code" required error={errors.itemCode}>
                 <TextInput

@@ -11,3 +11,12 @@ export const primaryButton =
 
 export const secondaryButton =
   "flex h-[38px] items-center gap-2 rounded-lg border border-[#17263a2e] bg-white px-[18px] text-[13.5px] font-semibold text-[#17263a] transition hover:bg-[#17263a08]";
+
+/**
+ * The small bordered View / Edit buttons in a list row.
+ *
+ * Was declared identically in CustomerListPage, SupplierListPage and
+ * ProductListPage.
+ */
+export const rowAction =
+  "rounded-md border border-[#17263a26] px-2.5 py-1 text-[12px] font-semibold transition";

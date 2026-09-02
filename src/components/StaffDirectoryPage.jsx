@@ -2,15 +2,15 @@ import { useMemo, useState } from "react";
 import { Search } from "./icons";
 import AppShell from "./layout/AppShell";
 import { initialsOf } from "../utils/staffData";
+import { avatarColorOf } from "./shared/avatarColors";
+import { SuperAdminPill } from "./shared/StatusPill";
+import { Card } from "@/components/ui/card";
 
-const AVATAR_COLORS = [
-  "#653eb5",
-  "#166b59",
-  "#8a5600",
-  "#1746d1",
-  "#1b3a6b",
-  "#653eb5",
-];
+// This screen used to keep its own array of hex avatar colours and apply them
+// by ROW INDEX. Two consequences: the same person had a different colour here
+// than on every other screen, and their colour changed as soon as the list was
+// filtered. shared/avatarColors picks from the name instead, so it is stable.
+// (That private array also listed #653eb5 twice and dropped #b54747.)
 
 /**
  * LSB Handicrafts — Staff Directory
@@ -18,6 +18,7 @@ const AVATAR_COLORS = [
  */
 export default function StaffDirectoryPage({
   staff = [],
+  isLoaded = true,
   onNavigate,
   onSignOut,
   isAdmin = false,
@@ -53,7 +54,7 @@ export default function StaffDirectoryPage({
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-[14px] border border-[#17263a1a] bg-white shadow-[0_1px_4px_rgba(23,38,58,0.06)]">
+        <Card className="mt-6">
           <div className="grid grid-cols-[1.3fr_1fr_1fr] border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
             <span className="text-[11px] font-bold uppercase tracking-[1.1px] text-[#5f6875]">
               Name
@@ -68,23 +69,31 @@ export default function StaffDirectoryPage({
 
           {filtered.length === 0 ? (
             <div className="px-7 py-10 text-center text-sm text-[#5f6875]">
-              No staff members match &quot;{query}&quot;.
+              {/* The only branch here used to be the search one, so an empty
+                  directory rendered the literal text: No staff members match "". */}
+              {!isLoaded
+                ? "Loading staff…"
+                : query.trim()
+                  ? `No staff members match “${query}”.`
+                  : "No staff members yet."}
             </div>
           ) : (
-            filtered.map((member, i) => (
+            filtered.map((member) => (
               <div
                 key={member.id}
                 className="grid grid-cols-[1.3fr_1fr_1fr] items-center border-t border-[#17263a0f] px-7 py-4 first:border-t-0"
               >
                 <div className="flex items-center gap-3.5">
                   <div
-                    className="flex size-10 items-center justify-center rounded-full text-[13px] font-bold tracking-[0.52px] text-white"
-                    style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}
+                    className={`flex size-10 items-center justify-center rounded-full text-[13px] font-bold tracking-[0.52px] text-white ${avatarColorOf(
+                      member.name
+                    )}`}
                   >
                     {initialsOf(member.name)}
                   </div>
-                  <span className="text-[15.5px] font-semibold tracking-[-0.0775px] text-[#17263a]">
+                  <span className="flex items-center gap-2 text-[15.5px] font-semibold tracking-[-0.0775px] text-[#17263a]">
                     {member.name}
+                    {member.isSuperAdmin && <SuperAdminPill />}
                   </span>
                 </div>
                 <span className="text-[15px] font-medium text-[#5f6875]">
@@ -102,7 +111,7 @@ export default function StaffDirectoryPage({
               {filtered.length} staff member{filtered.length === 1 ? "" : "s"}
             </span>
           </div>
-        </div>
+        </Card>
       </div>
     </AppShell>
   );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppShell from "./layout/AppShell";
 import { ROLES, initialsOf } from "../utils/staffData";
+import StatusPill from "./shared/StatusPill";
 
 const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
 
@@ -23,11 +24,15 @@ export default function AssignStaffRolePage({
 
   const canSave = newRole && newRole !== account.role;
 
-  // TODO(backend): persist to Supabase once a `staff` table exists. The change
-  // is handed to the caller, which holds the staff list in app state.
-  function handleSave() {
-    if (!canSave) return;
-    onSaved?.(newRole);
+  // Persisted through App's updateSelectedAccount, which writes the single row
+  // and reports a rejection rather than navigating away regardless.
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!canSave || saving) return;
+    setSaving(true);
+    await onSaved?.(newRole);
+    setSaving(false);
   }
 
   const initials = initialsOf(account.name);
@@ -62,7 +67,7 @@ export default function AssignStaffRolePage({
               <p className="mt-1 text-sm text-[#5f6875]">
                 {account.contactNumber}
               </p>
-              <StatusBadge status={account.status} className="mt-1.5" />
+              <StatusPill status={account.status} variant="badge" className="mt-1.5" />
             </div>
           </div>
 
@@ -110,11 +115,11 @@ export default function AssignStaffRolePage({
           <div className="mt-6 flex flex-col gap-3">
             <button
               type="button"
-              disabled={!canSave}
+              disabled={!canSave || saving}
               onClick={handleSave}
               className="h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-45"
             >
-              Save Role Change
+              {saving ? "Saving…" : "Save Role Change"}
             </button>
             <button
               type="button"
@@ -130,18 +135,3 @@ export default function AssignStaffRolePage({
   );
 }
 
-function StatusBadge({ status, className = "" }) {
-  const isActive = status === "Active";
-  return (
-    <span
-      className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1 text-[13.5px] font-medium ${
-        isActive
-          ? "border-[#287a5538] bg-[#287a5517] text-[#287a55]"
-          : "border-[#b5474733] bg-[#b5474714] text-[#b54747]"
-      } ${className}`}
-    >
-      <span className={`size-1.5 rounded-full ${isActive ? "bg-[#287a55]" : "bg-[#b54747]"}`} />
-      {status}
-    </span>
-  );
-}

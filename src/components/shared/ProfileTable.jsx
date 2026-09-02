@@ -7,9 +7,11 @@
  * and any alignment, and is applied to both the header cell and the body cell
  * so the two can't drift. `renderCell(row, key)` returns the cell contents.
  */
+
+import { Card } from "@/components/ui/card";
 export default function ProfileTable({ columns, rows, rowKey, renderCell, footer }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[#17263a14] bg-white shadow-[0_1px_4px_rgba(23,38,58,0.05)]">
+    <Card>
       <div className="overflow-x-auto">
         <div className="min-w-[860px]">
           <div className="flex items-center gap-4 border-b border-[#17263a12] bg-[#fafaf8] px-6 py-2.5">
@@ -45,6 +47,6 @@ export default function ProfileTable({ columns, rows, rowKey, renderCell, footer
           {footer}
         </p>
       ) : null}
-    </div>
+    </Card>
   );
 }

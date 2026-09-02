@@ -46,6 +46,11 @@ const PANEL_ROWS = 5;
 
 export default function DashboardPage({
   staff = [],
+  // The fast-path login renders this screen from the JWT claims and fetches the
+  // staff list in the background, so `staff` is legitimately empty for the first
+  // few frames. Without this flag the panel below would announce "No staff
+  // accounts yet" to every admin on every sign-in.
+  isLoaded = true,
   activityEntries = SAMPLE_ENTRIES,
   profile,
   onNavigate,
@@ -133,6 +138,16 @@ export default function DashboardPage({
                 Status
               </span>
             </div>
+            {!isLoaded && (
+              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+                Loading staff…
+              </p>
+            )}
+            {isLoaded && staff.length === 0 && (
+              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+                No staff accounts yet.
+              </p>
+            )}
             {staff.slice(0, PANEL_ROWS).map((member, index) => (
               <div
                 key={member.id}
@@ -169,6 +184,11 @@ export default function DashboardPage({
               activityEntries.length === 1 ? "entry" : "entries"
             } recorded`}
           >
+            {activityEntries.length === 0 && (
+              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+                No recent activity.
+              </p>
+            )}
             {activityEntries.slice(0, PANEL_ROWS).map((entry, index) => (
               <div
                 key={entry.id}

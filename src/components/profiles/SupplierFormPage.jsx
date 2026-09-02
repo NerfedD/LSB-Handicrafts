@@ -60,6 +60,7 @@ export default function SupplierFormPage({
   );
   const [errors, setErrors] = useState({});
   const [savedId, setSavedId] = useState(null);
+  const [saving, setSaving] = useState(false);
 
   const title = isEdit ? "Edit Supplier" : "Add Supplier";
 
@@ -68,14 +69,21 @@ export default function SupplierFormPage({
     setErrors((prev) => (prev[field] ? { ...prev, [field]: undefined } : prev));
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const found = validate(values);
     if (Object.keys(found).length > 0) {
       setErrors(found);
       return;
     }
-    setSavedId(onSave(values));
+    setSaving(true);
+    const id = await onSave(values);
+    setSaving(false);
+    // onSave resolves to null when the database rejected the write; a toast has
+    // already said why. Staying on the form keeps the user's input, instead of
+    // showing the "saved successfully" panel over a record that was never
+    // stored -- which is exactly what this screen used to do.
+    if (id !== null && id !== undefined) setSavedId(id);
   }
 
   return (
@@ -103,6 +111,7 @@ export default function SupplierFormPage({
               saveLabel="Save Supplier"
               onSubmit={handleSubmit}
               onCancel={onCancel}
+              saving={saving}
             >
               <FormField label="Supplier Name" required error={errors.name} wide>
                 <TextInput

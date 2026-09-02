@@ -1,4 +1,5 @@
 import { Activity } from "../icons";
+import { Card } from "@/components/ui/card";
 
 /**
  * The building blocks every role dashboard is made of — Figma screens #13
@@ -37,7 +38,7 @@ export function StatCard({ icon, tone, value, label, description, onView }) {
 
 export function Panel({ title, icon, onViewAll, footer, children }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-[#17263a14] bg-white shadow-[0_1px_4px_rgba(23,38,58,0.05)]">
+    <Card className="flex flex-col">
       <div className="flex items-center justify-between border-b border-[#17263a12] px-5 pb-3.5 pt-[18px]">
         <div className="flex items-center gap-2.5">
           {icon}
@@ -59,7 +60,7 @@ export function Panel({ title, icon, onViewAll, footer, children }) {
       <p className="border-t border-[#17263a0f] bg-[#fafaf8] px-5 py-3 text-[12px] text-[#5f6875]/60">
         {footer}
       </p>
-    </div>
+    </Card>
   );
 }
 

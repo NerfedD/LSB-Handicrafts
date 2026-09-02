@@ -2,7 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------------------------------------------------------------------------
+   shadcn/ui token layer.
+
+   These are the handful of variables the generated primitives reference. They
+   are bound to the palette this app already uses (see tailwind.config.js), so
+   a shadcn Button or Dialog renders in the existing colours rather than
+   shadcn's default slate theme. Adding these changes nothing on screen; it
+   only gives the primitives something to inherit.
+
+   HSL triplets without the hsl() wrapper is shadcn's convention -- it lets a
+   component write `hsl(var(--ring) / 0.4)` for an alpha variant.
+   --------------------------------------------------------------------------- */
 :root {
+  --radius: 10px;              /* the rounding already used across the app */
+  --border: 213 42% 16% / 16%; /* #17263a29 -- the hairline used everywhere */
+  --input:  213 42% 16% / 16%;
+  --ring:   225 80% 46%;       /* #1746d1 -- focus ring on ManagementShell */
+
   /* FLUID TYPOGRAPHY CORE */
   /* This scales the base font size from 14px on small phones up to 18px on 1080p+ displays. */
   /* Because Tailwind uses 'rem', ALL text, padding, and margins will now seamlessly adjust! */

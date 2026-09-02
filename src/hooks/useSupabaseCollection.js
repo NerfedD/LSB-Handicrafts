@@ -1,48 +1,64 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Loads a Supabase-backed collection once and keeps it synced on change.
+ * Loads a Supabase-backed collection and mutates it one row at a time.
  *
- * This packages the load/persist dance App.jsx already does by hand for
- * `staff` (see the isStaffLoaded / loadedStaffRef guards there), because the
- * customer, product and supplier collections all need exactly the same thing:
+ * WHAT CHANGED AND WHY
+ * This hook used to hold the rows in state and persist the WHOLE array back to
+ * Supabase whenever its identity changed, via a reconciling upsert that also
+ * deleted any row missing from memory. That effect was the single biggest
+ * source of the bugs found in class testing:
  *
- *   - Read once, on mount, and don't block first paint on it.
- *   - Distinguish "the table is empty" from "the read failed". `loadTable`
- *     returns { ok, data } for this reason; a failed read leaves `isLoaded`
- *     false, which disarms the persist effect so it can't sync that emptiness
- *     back up and delete every row.
- *   - Don't write the freshly-read rows straight back. The array identity
- *     check against `loadedRef` tells "just loaded" apart from "actually
- *     edited" — without it every page load costs a SELECT plus a full upsert.
+ *   - A read denied by RLS came back empty. The app appended one row to that
+ *     emptiness, and the sync deleted every other row in the table. That is how
+ *     the staff table was wiped, and how the owner account disappeared.
+ *   - Nothing awaited the write or looked at its result, so a rejected save
+ *     still rendered "saved successfully".
+ *   - Editing one field re-uploaded every row in the table.
  *
- * `enabled` gates the whole thing, so a signed-out visitor doesn't pay for
- * three table reads they can't see the results of.
+ * So the effect is gone. Callers now mutate through `create`, `update` and
+ * `remove`, each of which touches exactly one row, awaits the result, and only
+ * updates local state once the database has confirmed the change. A failure
+ * leaves the UI showing what is actually stored.
  *
- * @returns {[Array, Function, boolean]} [rows, setRows, isLoaded]
+ * `enabled` gates the read, so a signed-out visitor doesn't pay for table reads
+ * they can't see the results of — and, more importantly, so an anonymous read
+ * can't be mistaken for real state.
+ *
+ * @param {{load:Function, create:Function, update:Function, remove:Function}} col
+ *   a collection from utils/storageManager (e.g. `customersCollection`)
+ * @returns {{rows, isLoaded, error, create, update, remove, reload, setRows}}
  */
-export default function useSupabaseCollection(load, save, { enabled = true } = {}) {
+export default function useSupabaseCollection(col, { enabled = true } = {}) {
   const [rows, setRows] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
-  const loadedRef = useRef(null);
+  const [error, setError] = useState(null);
 
-  // `load` and `save` are module-level functions in practice, but pin them in
-  // refs anyway so an inline arrow at a call site can't re-trigger the read.
-  const loadRef = useRef(load);
-  const saveRef = useRef(save);
+  // `col` is a module-level object in practice, but pin it so an inline literal
+  // at a call site can't re-trigger the read on every render.
+  const colRef = useRef(col);
   useEffect(() => {
-    loadRef.current = load;
-    saveRef.current = save;
+    colRef.current = col;
   });
 
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken((n) => n + 1), []);
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) return undefined;
     let cancelled = false;
 
     (async () => {
-      const result = await loadRef.current([]);
-      if (cancelled || !result.ok) return;
-      loadedRef.current = result.data;
+      const result = await colRef.current.load([]);
+      if (cancelled) return;
+      if (!result.ok) {
+        // Leave isLoaded false so the screen can show a retry affordance rather
+        // than an empty list. A failed read and an empty table used to be
+        // indistinguishable, permanently.
+        setError(result.error || new Error("Could not reach the database."));
+        return;
+      }
+      setError(null);
       setRows(result.data);
       setIsLoaded(true);
     })();
@@ -50,13 +66,35 @@ export default function useSupabaseCollection(load, save, { enabled = true } = {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, reloadToken]);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (rows === loadedRef.current) return;
-    saveRef.current(rows);
-  }, [rows, isLoaded]);
+  const create = useCallback(async (row) => {
+    const result = await colRef.current.create(row);
+    if (result.ok) {
+      // Prefer the row the database returned: it carries server defaults and
+      // any value a trigger rewrote.
+      const saved = result.data ? colRef.current.fromRow(result.data) : row;
+      setRows((prev) => [...prev, saved]);
+    }
+    return result;
+  }, []);
 
-  return [rows, setRows, isLoaded];
+  const update = useCallback(async (id, patch) => {
+    const result = await colRef.current.update(id, patch);
+    if (result.ok) {
+      const saved = result.data ? colRef.current.fromRow(result.data) : patch;
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...saved } : r)));
+    }
+    return result;
+  }, []);
+
+  const remove = useCallback(async (id) => {
+    const result = await colRef.current.remove(id);
+    if (result.ok) {
+      setRows((prev) => prev.filter((r) => r.id !== id));
+    }
+    return result;
+  }, []);
+
+  return { rows, isLoaded, error, create, update, remove, reload, setRows };
 }

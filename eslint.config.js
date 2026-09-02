@@ -26,4 +26,15 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  {
+    // The shadcn/ui primitives export a component alongside its cva variant
+    // definition (Button + buttonVariants), which react-refresh flags. That
+    // pairing is the library's own convention and splitting it would mean
+    // hand-editing every component on every future `shadcn add`. Scoped to
+    // components/ui so the rule keeps applying to our own screens.
+    files: ['src/components/ui/**/*.{js,jsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { ChevronLeft, AlertTriangle } from "./icons";
+import { ChevronLeft } from "./icons";
 import AppShell from "./layout/AppShell";
+import StatusPill from "./shared/StatusPill";
+import ConfirmDialog from "./shared/ConfirmDialog";
 const EMPTY_ACCOUNT = { id: null, name: "", role: "", contactNumber: "", status: "Active" };
 
 /**
@@ -32,6 +34,7 @@ export default function ManageUserAccountPage({
   onSaveDetails, // ({ name, contactNumber }) => void
 }) {
   const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [name, setName] = useState(account.name);
   const [contactNumber, setContactNumber] = useState(account.contactNumber);
 
@@ -43,15 +46,20 @@ export default function ManageUserAccountPage({
   const hasDetailChanges =
     name !== account.name || contactNumber !== account.contactNumber;
 
-  function confirmToggle() {
-    onStatusChange?.(isActive ? "Blocked" : "Active");
+  // Both handlers await their write. They used to fire and forget, so a change
+  // the database rejected still closed the dialog and left the screen showing a
+  // status the server never accepted.
+  async function confirmToggle() {
+    await onStatusChange?.(isActive ? "Blocked" : "Active");
     setShowConfirm(false);
   }
 
-  function handleSaveDetails(e) {
+  async function handleSaveDetails(e) {
     e.preventDefault();
-    if (!hasDetailChanges) return;
-    onSaveDetails?.({ name, contactNumber });
+    if (!hasDetailChanges || saving) return;
+    setSaving(true);
+    await onSaveDetails?.({ name, contactNumber });
+    setSaving(false);
   }
 
   return (
@@ -118,10 +126,10 @@ export default function ManageUserAccountPage({
             </div>
             <button
               type="submit"
-              disabled={!hasDetailChanges}
+              disabled={!hasDetailChanges || saving}
               className="mt-4 h-[46px] rounded-[10px] bg-[#1b3a6b] px-6 text-[15px] font-semibold text-white shadow-[0_2px_5px_rgba(27,58,107,0.26)] transition hover:bg-[#17263a] disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Save Changes
+              {saving ? "Saving…" : "Save Changes"}
             </button>
           </form>
 
@@ -133,7 +141,7 @@ export default function ManageUserAccountPage({
               <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
                 Current Status
               </p>
-              <StatusBadge status={account.status} className="mt-2" />
+              <StatusPill status={account.status} variant="badge" className="mt-2" />
             </div>
             <p className="max-w-[220px] text-right text-[13.5px] text-[#5f6875]">
               {isActive
@@ -190,64 +198,24 @@ export default function ManageUserAccountPage({
         </div>
       </div>
 
-      {showConfirm && (
-        <BlockAccountModal
-          isActive={isActive}
-          name={account.name}
-          onCancel={() => setShowConfirm(false)}
-          onConfirm={confirmToggle}
-        />
-      )}
+      <ConfirmDialog
+        open={showConfirm}
+        onOpenChange={(open) => !open && setShowConfirm(false)}
+        title={isActive ? "Block this account?" : "Unblock this account?"}
+        subject={account.name}
+        description={
+          isActive
+            ? "They will be signed out and won't be able to sign in again until unblocked."
+            : "They will be able to sign in again straight away."
+        }
+        confirmLabel={isActive ? "Block Account" : "Unblock Account"}
+        variant={isActive ? "destructive" : "default"}
+        onConfirm={confirmToggle}
+      />
     </AppShell>
   );
 }
 
-function BlockAccountModal({ isActive, name, onCancel, onConfirm }) {
-  return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-[#111e3273] p-10">
-      <div className="w-full max-w-[460px] rounded-2xl border border-[#17263a12] bg-white px-12 py-11 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
-        <div className="flex justify-center">
-          <div className="flex size-14 items-center justify-center rounded-full border border-[#b5474733] bg-[#b5474712]">
-            <AlertTriangle className="h-6 w-6 text-[#b54747]" />
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-2xl font-bold tracking-tight text-[#17263a]">
-          {isActive ? "Block User Account?" : "Unblock User Account?"}
-        </h2>
-        <div className="mt-3 flex justify-center">
-          <span className="rounded-md border border-[#17263a17] bg-[#f7f4ec] px-4 py-1.5 text-sm font-semibold text-[#17263a]">
-            {name}
-          </span>
-        </div>
-        <p className="mt-4 text-center text-[15.5px] leading-relaxed text-[#5f6875]">
-          {isActive
-            ? "Blocking this account will prevent the user from logging in."
-            : "Unblocking this account will restore login access for the user."}
-        </p>
-        <div className="mt-8 flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-[52px] flex-1 rounded-[10px] border border-[#17263a2e] text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className={`h-[52px] flex-1 rounded-[10px] text-base font-semibold text-white transition ${
-              isActive
-                ? "bg-[#b54747] shadow-[0_2px_5px_rgba(181,71,71,0.3)] hover:bg-[#a03e3e]"
-                : "bg-[#1b3a6b] shadow-[0_2px_5px_rgba(27,58,107,0.3)] hover:bg-[#17263a]"
-            }`}
-          >
-            {isActive ? "Block Account" : "Unblock Account"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function SectionLabel({ children, className = "" }) {
   return (
@@ -260,22 +228,3 @@ function SectionLabel({ children, className = "" }) {
   );
 }
 
-function StatusBadge({ status, className = "" }) {
-  const isActive = status === "Active";
-  return (
-    <span
-      className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13.5px] font-medium ${
-        isActive
-          ? "border-[#287a5538] bg-[#287a5517] text-[#287a55]"
-          : "border-[#b5474733] bg-[#b5474714] text-[#b54747]"
-      } ${className}`}
-    >
-      <span
-        className={`size-1.5 rounded-full ${
-          isActive ? "bg-[#287a55]" : "bg-[#b54747]"
-        }`}
-      />
-      {status}
-    </span>
-  );
-}

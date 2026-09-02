@@ -4,10 +4,15 @@ import ManagementShell from "../layout/ManagementShell";
 import ProfileSearchBar from "../shared/ProfileSearchBar";
 import ProfileTable from "../shared/ProfileTable";
 import StatusPill from "../shared/StatusPill";
-import { ProfileEmptyState } from "../shared/ProfilePanels";
+import {
+  ProfileEmptyState,
+  ProfileLoadingState,
+  ProfileErrorState,
+} from "../shared/ProfilePanels";
 import { formatPeso } from "../../utils/profileFormat";
 import { formatDimensions, formatProductType } from "../../utils/productFormat";
 import { stockFor, stockIndex } from "../../utils/productStock";
+import { rowAction } from "../shared/profileButtonStyles";
 
 /**
  * LSB Handicrafts — Product / Item Profiles
@@ -31,10 +36,11 @@ const COLUMNS = [
   { key: "actions", label: "Actions", className: "w-[112px] text-right" },
 ];
 
-const rowAction =
-  "rounded-md border border-[#17263a26] px-2.5 py-1 text-[12px] font-semibold transition";
 
 export default function ProductListPage({
+  isLoaded = true,
+  loadError = null,
+  onRetry,
   products = [],
   inventory = [],
   profile,
@@ -179,7 +185,14 @@ export default function ProductListPage({
         />
 
         <div className="pt-6">
-          {filtered.length === 0 ? (
+          {/* Three distinct states, not one. Loading is a skeleton, a failed
+              read offers a retry, and only a genuinely empty result gets the
+              empty panel. */}
+          {loadError ? (
+            <ProfileErrorState onRetry={onRetry} />
+          ) : !isLoaded ? (
+            <ProfileLoadingState />
+          ) : filtered.length === 0 ? (
             <ProfileEmptyState
               icon={<Box className="h-5 w-5" />}
               title="product"

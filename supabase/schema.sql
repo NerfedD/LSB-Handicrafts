@@ -75,7 +75,7 @@ create table if not exists public.deliveries (
   location text not null,
   amount numeric,
   status text not null default 'Not Yet Delivered',
-  created_at text
+    created_at timestamptz default now()
 );
 
 -- `items` is deliberately untyped jsonb: a line can be a catalog product, a
@@ -93,12 +93,12 @@ create table if not exists public.orders (
   items jsonb not null default '[]'::jsonb,
   total_amount numeric not null default 0,
   status text not null default 'Pending',
-  created_at text,
-  stock_committed_at text
+  created_at timestamptz default now(),
+  stock_committed_at timestamptz
 );
 
 alter table public.orders
-  add column if not exists stock_committed_at text;
+  add column if not exists stock_committed_at timestamptz;
 
 create table if not exists public.activity_log (
   id bigint primary key,
@@ -121,12 +121,45 @@ create table if not exists public.staff (
   role text not null,
   contact_number text,
   status text not null default 'Active',
-  email text unique,
-  username text
+  email text,
+  username text,
+  -- Marks the permanent owner account. Deliberately NOT a sixth `role` value:
+  -- role stays 'Admin', so every isAdminRole(role) === 'Admin' check in the
+  -- client and every is_admin() check below keeps working untouched. What the
+  -- flag adds is protection -- see the staff policies and guard trigger.
+  is_super_admin boolean not null default false
 );
 
 alter table public.staff
   add column if not exists username text;
+
+alter table public.staff
+  add column if not exists is_super_admin boolean not null default false;
+
+-- Supabase Auth stores and returns emails lowercased. This column was compared
+-- with a plain `=`, so a row saved as 'FinalTest@gmail.com' never matched its
+-- own JWT and that account was locked out of everything. Uniqueness is enforced
+-- case-insensitively for the same reason.
+alter table public.staff drop constraint if exists staff_email_key;
+create unique index if not exists staff_email_lower_idx
+  on public.staff (lower(email));
+
+-- role and status were free text, so the client could persist any string.
+alter table public.staff drop constraint if exists staff_role_check;
+alter table public.staff add constraint staff_role_check
+  check (role in ('Admin','Manager','Sales Staff','Production Staff','Delivery Staff'));
+
+alter table public.staff drop constraint if exists staff_status_check;
+alter table public.staff add constraint staff_status_check
+  check (status in ('Active','Blocked'));
+
+alter table public.staff drop constraint if exists staff_contact_number_len;
+alter table public.staff add constraint staff_contact_number_len
+  check (contact_number is null or char_length(contact_number) <= 32);
+
+alter table public.staff drop constraint if exists staff_name_len;
+alter table public.staff add constraint staff_name_len
+  check (char_length(trim(name)) between 1 and 120);
 
 -- Usernames are compared case-insensitively at sign-in, so uniqueness has to be
 -- enforced the same way — otherwise "JDelaCruz" and "jdelacruz" could both
@@ -138,16 +171,18 @@ create unique index if not exists staff_username_lower_idx
 
 -- Customer / product / supplier profile directories (Figma screens #14-#22).
 -- These are reference records: name, how to reach them, and when the row last
--- changed. `created_at` / `updated_at` are text for the same reason the columns
--- above are — the app formats dates for display and never sorts on them in SQL.
+-- changed. These are real timestamptz columns: they used to be text holding
+-- DISPLAY strings in two different formats ("Apr 17, 2026" and "August 17,
+-- 2026"), which made chronological ordering impossible -- every "recent
+-- activity" panel was sorting alphabetically by month name.
 create table if not exists public.customers (
   id bigint primary key,
   name text not null,
   contact_number text,
   email text,
   address text,
-  created_at text,
-  updated_at text
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
 -- Distinct from `inventory`: that table tracks stock levels for the dashboard
@@ -166,8 +201,8 @@ create table if not exists public.products (
   unit_price numeric,
   low_stock_threshold integer,
   status text not null default 'Active',
-  created_at text,
-  updated_at text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
   product_type text not null default 'other',
   diameter_in numeric,
   thickness_in numeric,
@@ -193,52 +228,222 @@ create table if not exists public.suppliers (
   contact_number text,
   email text,
   address text,
-  created_at text,
-  updated_at text
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
--- Row Level Security.
+-- ============================================================
+-- text -> timestamptz migration
+-- ============================================================
+-- The `create table if not exists` blocks above declare these columns as
+-- timestamptz, but that only helps a FRESH database. On one that already ran an
+-- earlier version of this file, `create table if not exists` is a no-op and so
+-- is `add column if not exists` — neither reconciles a column's TYPE. Without
+-- the block below, an existing install keeps its `text` columns, the
+-- `(created_at desc)` indexes further down get built over text, and the sort is
+-- still lexicographic: 'August 30, 2026' outranks '2026-09-01T...' because
+-- 'A' > '2'. That is the exact bug the timestamptz change was meant to fix.
 --
--- The anon key is embedded in the published JavaScript bundle — that's normal
+-- Guarded on the current data_type so the file stays safe to re-run: on a
+-- database where the columns are already timestamptz this whole block does
+-- nothing (an unguarded `using nullif(col, '')` would fail there, because ''
+-- is not a valid timestamptz).
+
+-- Existing rows hold display strings in two formats ("Apr 17, 2026" and
+-- "August 17, 2026"), both of which Postgres parses. Anything it can't parse
+-- becomes null rather than aborting the migration on one bad row.
+create or replace function public.try_timestamptz(value text)
+returns timestamptz language plpgsql stable as $$
+begin
+  return nullif(btrim(value), '')::timestamptz;
+exception when others then
+  return null;
+end $$;
+
+do $$
+declare
+  target record;
+begin
+  for target in
+    select * from (values
+      ('deliveries', 'created_at'),
+      ('orders',     'created_at'),
+      ('orders',     'stock_committed_at'),
+      ('customers',  'created_at'),
+      ('customers',  'updated_at'),
+      ('products',   'created_at'),
+      ('products',   'updated_at'),
+      ('suppliers',  'created_at'),
+      ('suppliers',  'updated_at')
+    ) as t(tbl, col)
+  loop
+    if exists (
+      select 1
+      from information_schema.columns c
+      where c.table_schema = 'public'
+        and c.table_name = target.tbl
+        and c.column_name = target.col
+        and c.data_type in ('text', 'character varying')
+    ) then
+      -- Drop the old default first: a text default like ''::text can't be cast
+      -- to timestamptz, and would take the ALTER down with it.
+      execute format('alter table public.%I alter column %I drop default', target.tbl, target.col);
+      execute format(
+        'alter table public.%I alter column %I type timestamptz using public.try_timestamptz(%I)',
+        target.tbl, target.col, target.col
+      );
+      -- stock_committed_at is deliberately left with no default: null is what
+      -- means "stock has not been deducted for this order yet".
+      if target.col <> 'stock_committed_at' then
+        execute format('alter table public.%I alter column %I set default now()', target.tbl, target.col);
+      end if;
+      raise notice 'Migrated public.%.% to timestamptz', target.tbl, target.col;
+    end if;
+  end loop;
+end $$;
+
+drop function if exists public.try_timestamptz(text);
+
+-- ============================================================
+-- Numeric and integrity bounds
+-- ============================================================
+-- The class-test logs recorded: value "1213123213123" is out of range for type
+-- integer. Nothing bounded the numeric form fields, so a typo in a quantity box
+-- reached Postgres and rejected the entire write. 2,000,000,000 stays inside
+-- int4; the money ceilings are simply larger than any real order.
+
+alter table public.inventory drop constraint if exists inventory_stock_check;
+alter table public.inventory add constraint inventory_stock_check
+  check (stock >= 0 and stock <= 2000000000);
+
+alter table public.inventory drop constraint if exists inventory_reserved_check;
+alter table public.inventory add constraint inventory_reserved_check
+  check (reserved >= 0 and reserved <= 2000000000);
+
+alter table public.inventory drop constraint if exists inventory_max_stock_check;
+alter table public.inventory add constraint inventory_max_stock_check
+  check (max_stock >= 0 and max_stock <= 2000000000);
+
+alter table public.inventory drop constraint if exists inventory_price_check;
+alter table public.inventory add constraint inventory_price_check
+  check (price >= 0 and price <= 100000000);
+
+alter table public.inventory drop constraint if exists inventory_pack_size_check;
+alter table public.inventory add constraint inventory_pack_size_check
+  check (pack_size >= 1 and pack_size <= 100000);
+
+alter table public.products drop constraint if exists products_unit_price_check;
+alter table public.products add constraint products_unit_price_check
+  check (unit_price is null or (unit_price >= 0 and unit_price <= 100000000));
+
+alter table public.products drop constraint if exists products_pack_size_check;
+alter table public.products add constraint products_pack_size_check
+  check (pack_size >= 1 and pack_size <= 100000);
+
+alter table public.products drop constraint if exists products_low_stock_check;
+alter table public.products add constraint products_low_stock_check
+  check (low_stock_threshold is null
+         or (low_stock_threshold >= 0 and low_stock_threshold <= 2000000000));
+
+alter table public.orders drop constraint if exists orders_total_amount_check;
+alter table public.orders add constraint orders_total_amount_check
+  check (total_amount >= 0 and total_amount <= 1000000000);
+
+-- ============================================================
+-- Indexes
+-- ============================================================
+-- staff_email_lower_idx (declared with the table above) is the hottest index in
+-- this database: every RLS check on every table calls is_active_staff(), which
+-- looks staff up by email. These support the list screens and the "most recent
+-- first" ordering every dashboard panel does.
+create index if not exists inventory_sku_idx        on public.inventory (sku);
+create index if not exists products_status_idx      on public.products (status);
+create index if not exists orders_created_at_idx    on public.orders    (created_at desc);
+create index if not exists customers_created_at_idx on public.customers (created_at desc);
+create index if not exists products_created_at_idx  on public.products  (created_at desc);
+create index if not exists suppliers_created_at_idx on public.suppliers (created_at desc);
+
+-- ============================================================
+-- Row Level Security
+-- ============================================================
+-- The anon key is embedded in the published JavaScript bundle - that's normal
 -- and unavoidable for a browser app, so RLS is the only thing standing between
 -- a stranger and this data. "Signed in" is NOT a sufficient bar: Supabase
 -- signups are open (CreateUserAccountPage needs them), so anyone can create an
--- auth user for themselves. Access is therefore gated on having an Active row
--- in `staff`, which only an existing admin can hand out.
+-- auth user for themselves. Access is gated on having an Active row in `staff`,
+-- which only an existing admin can hand out.
 --
--- SECURITY DEFINER makes this function run as its owner, which bypasses RLS
--- inside the function body. That's what lets the `staff` policy call it without
--- recursing into itself. `set search_path` pins schema resolution so the
+-- WHY THESE LIVE IN A `private` SCHEMA
+-- RLS policy expressions are evaluated as the QUERYING user, so `authenticated`
+-- must hold EXECUTE on every function a policy calls. A function in `public`
+-- with that grant is also published at /rest/v1/rpc/<name> - which the Supabase
+-- security advisor flags, and which revoking the grant would "fix" only by
+-- breaking RLS outright. PostgREST does not expose `private`, so these stay
+-- reachable from policies but not over HTTP.
+--
+-- SECURITY DEFINER makes them run as their owner, which bypasses RLS inside the
+-- function body. That is what lets the `staff` policies call them without
+-- recursing into themselves. `set search_path` pins schema resolution so an
 -- elevated function can't be tricked into resolving `staff` elsewhere.
-create or replace function public.is_active_staff()
-returns boolean
-language sql
-security definer
-stable
-set search_path = public
-as $$
+--
+-- Each one wraps the JWT read as `(select auth.jwt())`. The scalar subselect is
+-- evaluated once per statement instead of once per row - the fix for Supabase's
+-- auth_rls_initplan performance warning.
+--
+-- All three compare on lower(email): Supabase returns lowercased emails, and a
+-- plain `=` silently locked out every mixed-case staff row.
+create schema if not exists private;
+grant usage on schema private to authenticated;
+
+create or replace function private.is_active_staff()
+returns boolean language sql stable security definer set search_path = public as $fn$
   select exists (
-    select 1
-    from public.staff
-    where email = auth.jwt() ->> 'email'
+    select 1 from public.staff
+    where lower(email) = lower((select auth.jwt()) ->> 'email')
       and status = 'Active'
   );
-$$;
+$fn$;
 
--- Sign-in by username.
---
+create or replace function private.is_admin()
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select exists (
+    select 1 from public.staff
+    where lower(email) = lower((select auth.jwt()) ->> 'email')
+      and status = 'Active' and role = 'Admin'
+  );
+$fn$;
+
+-- Named for the CALLER, not the row, so it can never be confused with the
+-- staff.is_super_admin column inside a policy expression.
+create or replace function private.caller_is_super_admin()
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select exists (
+    select 1 from public.staff
+    where lower(email) = lower((select auth.jwt()) ->> 'email')
+      and status = 'Active' and is_super_admin
+  );
+$fn$;
+
+revoke all on function private.is_active_staff()       from public;
+revoke all on function private.is_admin()              from public;
+revoke all on function private.caller_is_super_admin() from public;
+grant execute on function private.is_active_staff()       to authenticated;
+grant execute on function private.is_admin()              to authenticated;
+grant execute on function private.caller_is_super_admin() to authenticated;
+
 -- Supabase Auth only ever authenticates on email, so a username has to be
--- turned into one BEFORE the password is checked — at which point the caller is
+-- turned into one BEFORE the password is checked - at which point the caller is
 -- still anonymous and the staff policies below deny every read. This function
 -- is the narrow hole that makes it possible: SECURITY DEFINER, so it runs as
 -- its owner and sees the table, but it returns a single email and nothing else.
 --
--- Worth being clear about the trade: the anon key is public (it ships in the JS
--- bundle), so anyone can call this and learn the email behind a username they
--- guess correctly. That is the cost of username login on Supabase. It reveals
--- no password and grants no access — signing in still requires the password —
--- but if staff emails are meant to stay private, this should move to an Edge
--- Function that does the whole sign-in server-side instead.
+-- Worth being clear about the trade: the anon key is public, so anyone can call
+-- this and learn the email behind a username they guess correctly. That is the
+-- cost of username login on Supabase. It reveals no password and grants no
+-- access - signing in still requires the password - but if staff emails are
+-- meant to stay private, this should move to an Edge Function that does the
+-- whole sign-in server-side instead. This is why it stays in `public`, and why
+-- it is the one remaining entry in the security advisor's report.
 --
 -- Deliberately does NOT filter on status: a Blocked user must still resolve, so
 -- they reach the app's "this account has been blocked" screen rather than being
@@ -246,113 +451,166 @@ $$;
 create or replace function public.email_for_username(p_username text)
 returns text
 language sql
-security definer
 stable
+security definer
 set search_path = public
-as $$
+as $fn$
   select email
   from public.staff
   where username is not null
     and lower(username) = lower(trim(p_username))
   limit 1;
-$$;
+$fn$;
 
 revoke all on function public.email_for_username(text) from public;
 grant execute on function public.email_for_username(text) to anon, authenticated;
 
-alter table public.inventory enable row level security;
-alter table public.deliveries enable row level security;
-alter table public.orders enable row level security;
+alter table public.inventory    enable row level security;
+alter table public.deliveries   enable row level security;
+alter table public.orders       enable row level security;
 alter table public.activity_log enable row level security;
-alter table public.staff enable row level security;
-alter table public.customers enable row level security;
-alter table public.products enable row level security;
-alter table public.suppliers enable row level security;
+alter table public.staff        enable row level security;
+alter table public.customers    enable row level security;
+alter table public.products     enable row level security;
+alter table public.suppliers    enable row level security;
 
-drop policy if exists "Authenticated users can manage inventory" on public.inventory;
-drop policy if exists "Active staff can manage inventory" on public.inventory;
-create policy "Active staff can manage inventory"
-  on public.inventory for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
-
-drop policy if exists "Authenticated users can manage deliveries" on public.deliveries;
-drop policy if exists "Active staff can manage deliveries" on public.deliveries;
-create policy "Active staff can manage deliveries"
-  on public.deliveries for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
-
-drop policy if exists "Authenticated users can manage orders" on public.orders;
-drop policy if exists "Active staff can manage orders" on public.orders;
-create policy "Active staff can manage orders"
-  on public.orders for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
-
+-- Legacy policy names, dropped so this file stays re-runnable.
+drop policy if exists "Authenticated users can manage inventory"    on public.inventory;
+drop policy if exists "Authenticated users can manage deliveries"   on public.deliveries;
+drop policy if exists "Authenticated users can manage orders"       on public.orders;
 drop policy if exists "Authenticated users can manage activity_log" on public.activity_log;
+drop policy if exists "Authenticated users can manage staff"        on public.staff;
+drop policy if exists "Active staff can manage staff"               on public.staff;
+drop policy if exists "Admins can update staff"                     on public.staff;
+drop policy if exists "Admins can delete staff"                     on public.staff;
+
+drop policy if exists "Active staff can manage inventory"    on public.inventory;
+drop policy if exists "Active staff can manage deliveries"   on public.deliveries;
+drop policy if exists "Active staff can manage orders"       on public.orders;
 drop policy if exists "Active staff can manage activity_log" on public.activity_log;
-create policy "Active staff can manage activity_log"
-  on public.activity_log for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
+drop policy if exists "Active staff can manage customers"    on public.customers;
+drop policy if exists "Active staff can manage products"     on public.products;
+drop policy if exists "Active staff can manage suppliers"    on public.suppliers;
 
--- Staff is the one table where "any active staff member" is too broad a write
--- rule: it let a Sales Staff account change another person's role, block them,
--- or delete them outright. The UI stops that now, but the UI is not the only
--- way in — the anon key is public, so anyone holding a valid session could
--- call the API directly. Reads stay open to all active staff (the dashboards
--- and directory list colleagues); writes are admin-only.
-create or replace function public.is_admin_staff()
-returns boolean
-language sql
-security definer
-stable
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.staff
-    where email = auth.jwt() ->> 'email'
-      and status = 'Active'
-      and role = 'Admin'
+create policy "Active staff can manage inventory"    on public.inventory    for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage deliveries"   on public.deliveries   for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage orders"       on public.orders       for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage activity_log" on public.activity_log for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage customers"    on public.customers    for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage products"     on public.products     for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Active staff can manage suppliers"    on public.suppliers    for all
+  using (private.is_active_staff()) with check (private.is_active_staff());
+
+-- ------------------------------------------------------------
+-- staff: the one table where "any active staff member" is too broad
+-- ------------------------------------------------------------
+-- Writing was letting a Sales Staff account change another person's role, block
+-- them, or delete them outright. The UI stops that, but the UI is not the only
+-- way in - the anon key is public, so anyone holding a valid session could call
+-- the API directly. Reads stay open to all active staff (the dashboards and
+-- directory list colleagues); writes are admin-only.
+--
+-- THE SUPERADMIN RULE. During class testing a lower admin deleted the owner
+-- account outright, because the DELETE policy was a bare is_admin(). These
+-- policies make that structurally impossible rather than merely hidden in the
+-- UI: a superadmin cannot be deleted by anyone, cannot be created through an
+-- INSERT, and (see the trigger below) cannot be modified or demoted except by
+-- another superadmin. Admins also cannot delete their own account, which is how
+-- an installation could otherwise be left with no administrator at all.
+drop policy if exists "Active staff can read staff"                   on public.staff;
+drop policy if exists "Admins can insert staff"                       on public.staff;
+drop policy if exists "Admins update anyone, staff update themselves" on public.staff;
+drop policy if exists "Admins delete non-superadmins"                 on public.staff;
+
+create policy "Active staff can read staff" on public.staff for select
+  using (private.is_active_staff());
+
+create policy "Admins can insert staff" on public.staff for insert
+  with check (private.is_admin() and not is_super_admin);
+
+-- One UPDATE policy, not two. An earlier pair overlapped on every role and
+-- action, which Supabase's multiple_permissive_policies advisor flagged: each
+-- permissive policy has to be evaluated for every candidate row. Row-level
+-- access only - which COLUMNS may change is the trigger's job.
+create policy "Admins update anyone, staff update themselves" on public.staff for update
+  using      (private.is_admin() or lower(email) = lower((select auth.jwt()) ->> 'email'))
+  with check (private.is_admin() or lower(email) = lower((select auth.jwt()) ->> 'email'));
+
+create policy "Admins delete non-superadmins" on public.staff for delete
+  using (
+    private.is_admin()
+    and not is_super_admin
+    and lower(email) is distinct from lower((select auth.jwt()) ->> 'email')
   );
-$$;
 
-drop policy if exists "Authenticated users can manage staff" on public.staff;
-drop policy if exists "Active staff can manage staff" on public.staff;
-drop policy if exists "Active staff can read staff" on public.staff;
-drop policy if exists "Admins can insert staff" on public.staff;
-drop policy if exists "Admins can update staff" on public.staff;
-drop policy if exists "Admins can delete staff" on public.staff;
+-- Column-level guard.
+--
+-- RLS decides which ROWS you may write; this decides which COLUMNS, which RLS
+-- cannot express - admins and ordinary staff are the same `authenticated`
+-- database role, so column grants cannot separate them either. The UPDATE
+-- policy above is deliberately permissive enough to let someone edit their own
+-- row; without this trigger that same permission would let them set their own
+-- role to 'Admin'.
+create or replace function public.staff_guard_self_update()
+returns trigger language plpgsql security definer set search_path = public as $fn$
+begin
+  -- No JWT at all means the table owner or the service role: SQL editor,
+  -- migrations, seeds. Those bypass RLS already, so guarding them here only
+  -- blocks legitimate maintenance - including running this very file.
+  if (select auth.jwt()) is null then return new; end if;
 
-create policy "Active staff can read staff"
-  on public.staff for select
-  using (public.is_active_staff());
+  -- A superadmin may change anything, including another superadmin.
+  if private.caller_is_super_admin() then return new; end if;
 
-create policy "Admins can insert staff"
-  on public.staff for insert
-  with check (public.is_admin_staff());
+  -- Nobody else may touch a superadmin's row at all: not the role, not the
+  -- status, not the name. This is what stops a lower admin from blocking or
+  -- demoting the owner account instead of deleting it.
+  if old.is_super_admin then
+    raise exception 'Only a super administrator can modify the super administrator account';
+  end if;
 
-create policy "Admins can update staff"
-  on public.staff for update
-  using (public.is_admin_staff())
-  with check (public.is_admin_staff());
+  -- Nobody else may promote anyone, themselves included, to superadmin.
+  if new.is_super_admin and not old.is_super_admin then
+    raise exception 'Only a super administrator can grant super administrator access';
+  end if;
 
-create policy "Admins can delete staff"
-  on public.staff for delete
-  using (public.is_admin_staff());
+  -- Ordinary admins keep their existing powers over ordinary staff.
+  if private.is_admin() then return new; end if;
+
+  -- Everyone else may edit only their own name and contact number.
+  if new.role      is distinct from old.role
+     or new.status is distinct from old.status
+     or new.email  is distinct from old.email
+     or new.id     is distinct from old.id then
+    raise exception 'Only an administrator can change a staff role, status, email or id';
+  end if;
+
+  return new;
+end;
+$fn$;
+
+revoke all on function public.staff_guard_self_update() from public, anon, authenticated;
+
+drop trigger if exists staff_guard_self_update on public.staff;
+create trigger staff_guard_self_update
+  before update on public.staff
+  for each row execute function public.staff_guard_self_update();
 
 -- The one write a non-admin still needs: editing their own name and contact
 -- number on My Profile.
 --
 -- It goes through a function rather than a self-update policy on purpose. A
 -- policy permissive enough to let someone edit their own row would also let
--- them set their own role to 'Admin' — RLS gates which ROWS you may write, not
--- which COLUMNS, and both admins and staff are the same `authenticated`
--- database role, so column grants can't separate them either. This function
--- updates exactly two columns on exactly the caller's own row, so there is no
--- path from it to a privilege change.
+-- them set their own role to 'Admin' - RLS gates which ROWS you may write, not
+-- which COLUMNS. This updates exactly two columns on exactly the caller's own
+-- row, decided server-side from their token, so there is no path from it to a
+-- privilege change.
 create or replace function public.update_own_profile(
   p_name text,
   p_contact_number text
@@ -361,37 +619,93 @@ returns void
 language sql
 security definer
 set search_path = public
-as $$
+as $fn$
   update public.staff
   set name = coalesce(nullif(trim(p_name), ''), name),
       contact_number = p_contact_number
-  where email = auth.jwt() ->> 'email'
+  where lower(email) = lower((select auth.jwt()) ->> 'email')
     and status = 'Active';
-$$;
+$fn$;
 
-revoke all on function public.update_own_profile(text, text) from public;
+revoke all on function public.update_own_profile(text, text) from public, anon;
 grant execute on function public.update_own_profile(text, text) to authenticated;
 
-drop policy if exists "Active staff can manage customers" on public.customers;
-create policy "Active staff can manage customers"
-  on public.customers for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
+-- ============================================================
+-- Auth hook: staff claims on the access token
+-- ============================================================
+-- Stamps the signed-in person's staff role onto their JWT.
+--
+-- WHY. App.jsx used to block its first paint on a network read of this table
+-- just to learn the caller's role: getSession(), then a full read of `staff`,
+-- and only then could it decide which screen to show. The user saw nothing
+-- until that landed, and because `profile.role` fell back to null meanwhile, a
+-- slow read could flash "You don't have access to this screen" at a legitimate
+-- admin. Signing in paid the same cost a second time. With these claims the
+-- role arrives WITH the session and routing happens on the first frame.
+--
+-- SCOPE, DELIBERATELY NARROW. Claims are frozen when the token is minted and
+-- only change when it refreshes (~1 hour), so they are for ROUTING AND UI ONLY
+-- and never an access decision. The RLS predicates above keep reading this
+-- table on every statement, so blocking someone still takes effect instantly at
+-- the data layer; the app additionally re-checks the live row once it loads and
+-- signs out anyone a stale claim flattered. The worst a stale claim buys is a
+-- moment of empty dashboard chrome -- never data.
+--
+-- CLAIM NAMES MATTER. `role` is reserved: PostgREST reads it to pick the
+-- database role for the request, so overwriting it would break every query.
+-- Hence staff_role / staff_status / is_super_admin.
+--
+-- ENABLING IT IS A DASHBOARD STEP, not a SQL one:
+--   Authentication -> Hooks -> Customize Access Token (JWT) Claims
+--   -> select public.custom_access_token_hook
+-- Until that is switched on the claims are simply absent, and the app falls
+-- back to its original read-then-route path. Nothing breaks either way.
+create or replace function public.custom_access_token_hook(event jsonb)
+returns jsonb
+language plpgsql
+stable
+as $fn$
+declare
+  claims   jsonb;
+  v_email  text;
+  v_role   text;
+  v_status text;
+  v_super  boolean;
+begin
+  claims  := event->'claims';
+  v_email := lower(trim(claims->>'email'));
 
-drop policy if exists "Active staff can manage products" on public.products;
-create policy "Active staff can manage products"
-  on public.products for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
+  if v_email is not null and v_email <> '' then
+    select s.role, s.status, s.is_super_admin
+      into v_role, v_status, v_super
+    from public.staff s
+    where lower(s.email) = v_email
+    limit 1;
+  end if;
 
-drop policy if exists "Active staff can manage suppliers" on public.suppliers;
-create policy "Active staff can manage suppliers"
-  on public.suppliers for all
-  using (public.is_active_staff())
-  with check (public.is_active_staff());
+  claims := jsonb_set(claims, '{staff_role}',     coalesce(to_jsonb(v_role),   'null'::jsonb));
+  claims := jsonb_set(claims, '{staff_status}',   coalesce(to_jsonb(v_status), 'null'::jsonb));
+  claims := jsonb_set(claims, '{is_super_admin}', to_jsonb(coalesce(v_super, false)));
+
+  return jsonb_set(event, '{claims}', claims);
+end;
+$fn$;
+
+-- Only the Auth server may run it, and it needs to see the staff table to do so.
+grant usage on schema public to supabase_auth_admin;
+grant execute on function public.custom_access_token_hook(jsonb) to supabase_auth_admin;
+revoke execute on function public.custom_access_token_hook(jsonb) from authenticated, anon, public;
+
+grant select on table public.staff to supabase_auth_admin;
+
+drop policy if exists "Auth admin can read staff for the token hook" on public.staff;
+create policy "Auth admin can read staff for the token hook"
+  on public.staff for select
+  to supabase_auth_admin
+  using (true);
 
 -- ============================================================
--- REQUIRED — bootstrap the first admin
+-- REQUIRED - bootstrap the superadmin
 -- ============================================================
 -- The policies above gate everything on having an Active `staff` row, and only
 -- someone who already has one can create more. That leaves the first admin
@@ -401,19 +715,18 @@ create policy "Active staff can manage suppliers"
 -- SQL run here in the editor executes as the table owner and bypasses RLS, so
 -- this is the way in. Do both steps:
 --
--- 1) Authentication → Users → Add User
---      Email:   your admin email
+-- 1) Authentication -> Users -> Add User
+--      Email:    your admin email
 --      Password: anything you'll remember
---      ✅ Auto Confirm User   ← must be checked, or they can't sign in
+--      [x] Auto Confirm User   <- must be checked, or they can't sign in
 --
 -- 2) Edit the email/name below to match exactly, then run this file.
 --
--- The app's VITE_ADMIN_EMAILS bootstrap path can no longer create this row —
--- its INSERT is refused by the policies above. This is now the only route in.
-insert into public.staff (id, name, role, contact_number, status, email) values
-  (1, 'System Admin', 'Admin', '', 'Active', 'lsbhandicraft@email.com')
-on conflict (id) do update set
-  name = excluded.name,
-  role = excluded.role,
-  status = excluded.status,
-  email = excluded.email;
+-- The conflict target is lower(email), matching staff_email_lower_idx.
+insert into public.staff (id, name, role, contact_number, status, email, is_super_admin)
+values (1, 'System Admin', 'Admin', '', 'Active', 'lsbhandicraft@email.com', true)
+on conflict (lower(email)) do update set
+  name           = excluded.name,
+  role           = excluded.role,
+  status         = excluded.status,
+  is_super_admin = true;

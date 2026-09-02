@@ -1,5 +1,6 @@
 import { ChevronLeft } from "../icons";
 import { primaryButton, secondaryButton } from "./profileButtonStyles";
+import { Card } from "@/components/ui/card";
 
 /**
  * The record-detail furniture shared by the Customer, Product and Supplier
@@ -37,7 +38,7 @@ export function DetailHeaderCard({
   onBack,
 }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-[#17263a14] bg-white px-7 py-6 shadow-[0_1px_4px_rgba(23,38,58,0.05)]">
+    <Card clip={false} className="flex flex-wrap items-center justify-between gap-5 px-7 py-6">
       <div className="flex min-w-0 items-center gap-4">
         {badge}
         <div className="min-w-0">
@@ -58,16 +59,14 @@ export function DetailHeaderCard({
           {backLabel}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
 /** A white card with a tinted icon tile, a title, and a hairline under it. */
 export function DetailCard({ icon, title, children, className = "" }) {
   return (
-    <div
-      className={`rounded-xl border border-[#17263a14] bg-white px-7 pb-7 pt-6 shadow-[0_1px_4px_rgba(23,38,58,0.05)] ${className}`}
-    >
+    <Card clip={false} className={`px-7 pb-7 pt-6 ${className}`}>
       <div className="flex items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#1746d114] text-[#1746d1]">
           {icon}
@@ -77,7 +76,7 @@ export function DetailCard({ icon, title, children, className = "" }) {
         </h3>
       </div>
       <div className="mt-4 border-t border-[#17263a12] pt-5">{children}</div>
-    </div>
+    </Card>
   );
 }
 

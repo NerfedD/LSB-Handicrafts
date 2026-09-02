@@ -1,6 +1,7 @@
 import { Box, LayoutDashboard, Package, ShoppingCart, Truck } from "./icons";
 import ManagementShell from "./layout/ManagementShell";
 import { QuickAction, QuickActionsCard } from "./shared/DashboardCards";
+import { Card } from "@/components/ui/card";
 
 /**
  * Stand-in for the inventory / deliveries / orders workspace while it's being
@@ -62,7 +63,7 @@ export default function InventoryWorkspacePlaceholder({
           untouched.
         </p>
 
-        <div className="mt-7 overflow-hidden rounded-xl border border-[#17263a14] bg-white shadow-[0_1px_4px_rgba(23,38,58,0.05)]">
+        <Card className="mt-7">
           <div className="flex flex-col items-center justify-center px-8 pb-10 pt-14 text-center">
             <div className="flex size-14 items-center justify-center rounded-full bg-[#1746d10f]">
               <Box className="h-6 w-6 text-[#1746d1]" />
@@ -117,7 +118,7 @@ export default function InventoryWorkspacePlaceholder({
           <p className="border-t border-[#17263a0f] bg-[#fafaf8] px-5 py-3 text-[12px] text-[#5f6875]/60">
             3 sections planned
           </p>
-        </div>
+        </Card>
 
         <div className="mt-5">
           <QuickActionsCard>

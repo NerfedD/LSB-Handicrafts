@@ -225,17 +225,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
                     </td>
                     <td className="px-4 md:px-6 py-5 text-right flex items-center justify-end gap-1">
                       <button 
-                        onClick={() => {
-                          console.log('1. EYE BUTTON CLICKED');
-                          console.log('2. navigateTo is:', typeof navigateTo, navigateTo);
-                          console.log('3. About to call navigateTo');
-                          try {
-                            navigateTo('order-detail', order);
-                            console.log('4. navigateTo call completed');
-                          } catch (e) {
-                            console.error('5. navigateTo ERROR:', e);
-                          }
-                        }}
+                        onClick={() => navigateTo('order-detail', order)}
                         title="View Order"
                         className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 transition-colors inline-block p-2"
                       >

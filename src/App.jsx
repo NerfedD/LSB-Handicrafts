@@ -3,15 +3,17 @@ import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
 import { canAccess, isAdminRole } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
-import { loadStaff, saveStaff, saveOwnProfile } from "./utils/storageManager";
+import { saveOwnProfile, staffCollection } from "./utils/storageManager";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection from "./hooks/useSupabaseCollection";
-import { todayLongDate } from "./utils/profileFormat";
+import { nowIso } from "./utils/profileFormat";
+import { staffClaimsFromSession } from "./utils/sessionClaims";
+import { Toaster, toast } from "@/components/ui/sonner";
 import {
-  loadCustomers, saveCustomers,
-  loadProducts, saveProducts,
-  loadSuppliers, saveSuppliers,
-  loadInventory, saveInventory,
+  customersCollection,
+  productsCollection,
+  suppliersCollection,
+  inventoryCollection,
 } from "./utils/storageManager";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
@@ -19,6 +21,18 @@ import {
 // pulls in the whole inventory/orders workspace, which no signed-out
 // visitor needs to download.
 import LoginPage from "./components/LoginPage.jsx";
+
+/**
+ * Compare two email addresses.
+ *
+ * Case-insensitively, always. Supabase Auth lowercases what it stores and
+ * returns, but a `staff` row could have been written with different casing --
+ * and when that happened, the row never matched its own session and the account
+ * was locked out of the whole app with no error to explain it. The database
+ * predicates match on lower(email) for the same reason.
+ */
+const sameEmail = (a, b) =>
+  !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
 const ForgotPasswordPage = lazy(() => import("./components/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
@@ -130,29 +144,31 @@ export default function App() {
   const [isStaffLoaded, setIsStaffLoaded] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
   const [sessionEmail, setSessionEmail] = useState(null);
+  // The staff claims carried on the access token, when the Auth hook is
+  // enabled. Used to route before the staff table has been read -- never as an
+  // access decision; see utils/sessionClaims.js.
+  const [sessionClaims, setSessionClaims] = useState(null);
 
   // The customer / product / supplier profile records (Figma #14-#22). Unlike
   // `staff` below — which the sign-in path has to read before it can route —
   // nothing depends on these being loaded, so they go through the shared hook
   // and only start reading once someone is actually signed in.
   const isSignedIn = !!sessionEmail;
-  const [customers, setCustomers] = useSupabaseCollection(
-    loadCustomers, saveCustomers, { enabled: isSignedIn }
-  );
-  const [products, setProducts] = useSupabaseCollection(
-    loadProducts, saveProducts, { enabled: isSignedIn }
-  );
-  const [suppliers, setSuppliers] = useSupabaseCollection(
-    loadSuppliers, saveSuppliers, { enabled: isSignedIn }
-  );
+  const customersState = useSupabaseCollection(customersCollection, { enabled: isSignedIn });
+  const productsState = useSupabaseCollection(productsCollection, { enabled: isSignedIn });
+  const suppliersState = useSupabaseCollection(suppliersCollection, { enabled: isSignedIn });
+
+  const { rows: customers } = customersState;
+  const { rows: products } = productsState;
+  const { rows: suppliers } = suppliersState;
 
   // Read-only here. The inventory workspace owns this table and holds its own
   // copy; the Production dashboard only needs stock levels to tell which
   // catalog entries are running low (see ProductionDashboard's join on item
   // code). Nothing on this side writes to it.
-  const [inventory] = useSupabaseCollection(
-    loadInventory, saveInventory, { enabled: isSignedIn }
-  );
+  const { rows: inventory } = useSupabaseCollection(inventoryCollection, {
+    enabled: isSignedIn,
+  });
 
   // Which record a detail/form screen is looking at, and whether that form is
   // adding or editing. One set per collection so navigating between sections
@@ -177,17 +193,25 @@ export default function App() {
   // failed query — silently promoted whoever was signed in to full admin
   // rights. An unknown role has to be the least privileged one, not the most.
   const profile = useMemo(() => {
-    const match = staff.find((s) => s.email && s.email === sessionEmail);
+    const match = staff.find((s) => sameEmail(s.email, sessionEmail));
     if (match) return match;
+
+    // No row yet. The token's claim fills the gap so the route gate has a real
+    // role to work with during the read -- this is what stops an admin being
+    // shown "You don't have access to this screen" for a moment on load.
+    //
+    // Still least-privileged when there is nothing to go on: without the hook
+    // enabled the role stays null, and canAccess() denies on null.
     return {
       id: null,
       name: nameFromEmail(sessionEmail),
-      role: null,
+      role: sessionClaims?.role ?? null,
       contactNumber: "",
-      status: "Active",
+      status: sessionClaims?.status ?? "Active",
       email: sessionEmail,
+      isSuperAdmin: sessionClaims?.isSuperAdmin ?? false,
     };
-  }, [staff, sessionEmail]);
+  }, [staff, sessionEmail, sessionClaims]);
 
   const isAdmin = isAdminRole(profile?.role);
 
@@ -226,7 +250,7 @@ export default function App() {
   async function resolveStaff({ force = false } = {}) {
     if (isStaffLoaded && !force) return staff;
     if (force) staffPromiseRef.current = null;
-    staffPromiseRef.current ??= loadStaff([]);
+    staffPromiseRef.current ??= staffCollection.load([]);
     const result = await staffPromiseRef.current;
 
     // A failed read hands back the empty fallback, which is indistinguishable
@@ -254,13 +278,38 @@ export default function App() {
       const { data: sessionData } = await supabase.auth.getSession();
       if (cancelled) return;
 
-      const email = sessionData.session?.user?.email ?? null;
+      const session = sessionData.session;
+      const email = session?.user?.email ?? null;
       if (!email) {
         clearIdleStamp();
         setView("login");
         return;
       }
 
+      // FAST PATH. If the Auth hook is enabled, the role travelled with the
+      // session and we can route on this frame -- no table read, no blank
+      // "checking-session" gap, no chance of flashing "You don't have access"
+      // at an admin whose row simply hadn't arrived yet.
+      const claims = staffClaimsFromSession(session);
+      if (claims?.role) {
+        if (claims.status === "Blocked") {
+          clearIdleStamp();
+          supabase.auth.signOut();
+          setView("login");
+          return;
+        }
+        setSessionClaims(claims);
+        setSessionEmail(email);
+        setView("dashboard");
+
+        // Deliberately NOT awaited. The screen is already up; this fills in
+        // the staff list the admin screens need, and the verification effect
+        // below signs the person out if the real row disagrees with the claim.
+        resolveStaff();
+        return;
+      }
+
+      // SLOW PATH, unchanged: no hook enabled, or an account with no staff row.
       const staffRows = await resolveStaff();
       if (cancelled) return;
       if (staffRows === null) {
@@ -268,7 +317,7 @@ export default function App() {
         return;
       }
 
-      const match = staffRows.find((s) => s.email === email);
+      const match = staffRows.find((s) => sameEmail(s.email, email));
       if (match?.status === "Blocked") {
         // A blocked account shouldn't stay signed in just because it has
         // an old session lying around.
@@ -296,6 +345,21 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The table is the authority, the claim was only a head start.
+  //
+  // Routing from a JWT claim means acting on information that is up to an hour
+  // stale, so once the real staff row lands it gets the final say: an account
+  // that has since been blocked, or removed entirely, is signed out here. RLS
+  // already denies it every row and every write in the meantime, so the window
+  // buys empty chrome, never data.
+  useEffect(() => {
+    if (!sessionEmail || !isStaffLoaded) return;
+    const match = staff.find((s) => sameEmail(s.email, sessionEmail));
+    if (!match || match.status === "Blocked") {
+      handleSignOut();
+    }
+  }, [sessionEmail, isStaffLoaded, staff]);
+
   // Clicking the link from ForgotPasswordPage's email brings someone back
   // here already signed into a temporary recovery session — Supabase fires
   // this event when that happens. Jump straight to the reset-password
@@ -317,24 +381,29 @@ export default function App() {
     onIdle: handleSignOut,
   });
 
-  // Persist to Supabase whenever the staff list changes — skipped until the
-  // initial load finishes, so it doesn't overwrite real data with the
-  // placeholder defaults on first render, and skipped while `staff` is still
-  // the very array the load returned. Without that second guard, every page
-  // load wrote the freshly-read rows straight back — a SELECT plus a full
-  // upsert — for no reason.
+  // There is deliberately NO persist-on-change effect here any more.
   //
-  // Admins only. This reconciles the entire table — upserting every row and
-  // deleting any that vanished — which is exactly the permission non-admins
-  // no longer have. Their one legitimate write, editing their own profile,
-  // goes through saveOwnProfile instead. Without this guard a staff member
-  // opening a screen that nudges the array would fire a table-wide write that
-  // the database rejects in full, silently.
-  useEffect(() => {
-    if (!isStaffLoaded || !isAdmin) return;
-    if (staff === loadedStaffRef.current) return;
-    saveStaff(staff);
-  }, [staff, isStaffLoaded, isAdmin]);
+  // There used to be one: whenever the `staff` array changed identity it wrote
+  // the WHOLE table back, upserting every row and deleting any that had
+  // vanished from memory. That is what destroyed data during class testing — a
+  // read denied by RLS came back empty, the app appended a row to that
+  // emptiness, and the sync deleted everyone else. It also meant a rejected
+  // write was invisible, because nothing awaited the result.
+  //
+  // Staff mutations now go through the three helpers below. Each touches one
+  // row, awaits the database, reports failure to the user, and only then
+  // updates local state — so what is on screen is what is actually stored.
+
+  /** Writes one staff row, syncing local state only once the database agrees. */
+  async function persistStaff(operation, optimisticApply) {
+    const result = await operation();
+    if (!result.ok) {
+      toast.error(result.message || "Couldn't save that change.");
+      return result;
+    }
+    optimisticApply?.(result);
+    return result;
+  }
 
   // Called by LoginPage right after a successful signInWithPassword.
   // Returns "ok" | "blocked" | "no-access" and routes by role when it's
@@ -346,10 +415,26 @@ export default function App() {
     // session left behind.
     clearIdleStamp();
 
-    // Forced: anything read before this sign-in was read as an anonymous
-    // caller, which RLS answers with zero rows.
+    // FAST PATH. The token minted a moment ago already carries the role, so the
+    // dashboard can open without waiting on a table read. getSession() here is
+    // a localStorage read, not a network call.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const claims = staffClaimsFromSession(sessionData.session);
+    if (claims?.role) {
+      if (claims.status === "Blocked") return "blocked";
+      setSessionClaims(claims);
+      setSessionEmail(email);
+      setView("dashboard");
+      // Background: populates the staff list and lets the verification effect
+      // re-check the live row against the claim.
+      resolveStaff({ force: true });
+      return "ok";
+    }
+
+    // SLOW PATH. Forced: anything read before this sign-in was read as an
+    // anonymous caller, which RLS answers with zero rows.
     const rows = (await resolveStaff({ force: true })) ?? staff;
-    const match = rows.find((s) => s.email === email);
+    const match = rows.find((s) => sameEmail(s.email, email));
     if (match?.status === "Blocked") return "blocked";
     if (match) {
       setSessionEmail(email);
@@ -385,48 +470,86 @@ export default function App() {
    * whole-table persist effect below pick the change up — that effect
    * reconciles every staff row, which a non-admin has no permission to do.
    */
-  function updateProfile(changes) {
+  async function updateProfile(changes) {
     const next = { ...profile, ...changes };
+    const result = await saveOwnProfile(next);
+    if (!result.ok) {
+      toast.error(result.message || "Couldn't save your profile.");
+      return false;
+    }
     setStaff((prev) =>
-      prev.map((s) => (s.email === sessionEmail ? { ...s, ...changes } : s))
+      prev.map((s) => (sameEmail(s.email, sessionEmail) ? { ...s, ...changes } : s))
     );
-    saveOwnProfile(next);
+    return true;
   }
 
-  function handleRowAction(action, user) {
+  async function handleRowAction(action, user) {
     if (action === "edit" || action === "block" || action === "unblock") {
       setSelectedAccountId(user.id);
       setView("manage-account");
       return;
     }
-    if (action === "delete") {
-      // UserAccountsPage already confirmed and hides this for the
-      // signed-in admin's own row, but never delete your own login here.
-      if (user.email && user.email === sessionEmail) return;
-      setStaff((prev) => prev.filter((s) => s.id !== user.id));
-      if (selectedAccountId === user.id) setSelectedAccountId(null);
-    }
-  }
+    if (action !== "delete") return;
 
-  function updateSelectedAccount(changes) {
-    setStaff((prev) =>
-      prev.map((s) => (s.id === selectedAccountId ? { ...s, ...changes } : s))
+    // The UI hides Delete for your own row and for the superadmin, and the
+    // database refuses both outright. These are the belt to that braces: a
+    // stale render shouldn't be able to fire a request the server will reject.
+    if (sameEmail(user.email, sessionEmail)) {
+      toast.error("You can't delete your own account.");
+      return;
+    }
+    if (user.isSuperAdmin) {
+      toast.error("The super administrator account can't be deleted.");
+      return;
+    }
+
+    // Awaited, and its result checked. Previously the row was filtered out of
+    // local state immediately and the write was fire-and-forget, so a delete
+    // the database rejected still vanished from the screen — and came back on
+    // the next refresh.
+    await persistStaff(
+      () => staffCollection.remove(user.id),
+      () => {
+        setStaff((prev) => prev.filter((s) => s.id !== user.id));
+        if (selectedAccountId === user.id) setSelectedAccountId(null);
+        toast.success(`${user.name} was removed.`);
+      }
     );
   }
 
-  function handleAccountCreated({ name, role, contactNumber, email, username }) {
-    setStaff((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        name,
-        role,
-        contactNumber,
-        status: "Active",
-        email,
-        username: username?.trim() || null,
-      },
-    ]);
+  async function updateSelectedAccount(changes) {
+    const current = staff.find((s) => s.id === selectedAccountId);
+    if (!current) return false;
+
+    const result = await persistStaff(
+      () => staffCollection.update(selectedAccountId, { ...current, ...changes }),
+      (r) => {
+        const saved = r.data ? staffCollection.fromRow(r.data) : changes;
+        setStaff((prev) =>
+          prev.map((s) => (s.id === selectedAccountId ? { ...s, ...saved } : s))
+        );
+      }
+    );
+    return result.ok;
+  }
+
+  async function handleAccountCreated({ name, role, contactNumber, email, username }) {
+    const result = await persistStaff(
+      () =>
+        staffCollection.create({
+          id: Date.now(),
+          name,
+          role,
+          contactNumber,
+          status: "Active",
+          email,
+          username: username?.trim() || null,
+        }),
+      (r) => {
+        if (r.data) setStaff((prev) => [...prev, staffCollection.fromRow(r.data)]);
+      }
+    );
+    return result.ok;
   }
 
   // ---- customer / product / supplier profiles ----------------------------
@@ -440,26 +563,35 @@ export default function App() {
    * Ids are Date.now() to match handleAccountCreated above — the tables use a
    * plain bigint primary key with no sequence, so the client picks them.
    */
-  function makeSaveHandler(records, setRecords, selectedId, setSelectedId) {
-    return (values) => {
-      const now = todayLongDate();
+  function makeSaveHandler(state, records, selectedId, setSelectedId) {
+    return async (values) => {
+      const now = nowIso();
 
       if (formMode === "edit" && selectedId !== null) {
-        setRecords((prev) =>
-          prev.map((record) =>
-            record.id === selectedId
-              ? { ...record, ...values, updatedAt: now }
-              : record
-          )
-        );
+        const current = records.find((r) => r.id === selectedId);
+        const result = await state.update(selectedId, {
+          ...current,
+          ...values,
+          updatedAt: now,
+        });
+        if (!result.ok) {
+          toast.error(result.message || "Couldn't save your changes.");
+          return null;
+        }
         return selectedId;
       }
 
       const id = Date.now();
-      setRecords((prev) => [
-        ...prev,
-        { ...values, id, createdAt: now, updatedAt: now },
-      ]);
+      const result = await state.create({
+        ...values,
+        id,
+        createdAt: now,
+        updatedAt: now,
+      });
+      if (!result.ok) {
+        toast.error(result.message || "Couldn't save that record.");
+        return null;
+      }
       setSelectedId(id);
       return id;
     };
@@ -485,6 +617,7 @@ export default function App() {
       <UserAccountsPage
         isAdmin={isAdmin}
         users={staff}
+        isLoaded={isStaffLoaded}
         currentUserEmail={sessionEmail}
         onNavigate={setView}
         onSignOut={handleSignOut}
@@ -570,6 +703,7 @@ export default function App() {
         return (
           <DashboardPage
             staff={staff}
+            isLoaded={isStaffLoaded}
             profile={profile}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -610,6 +744,7 @@ export default function App() {
           <UserAccountsPage
             isAdmin={isAdmin}
             users={staff}
+            isLoaded={isStaffLoaded}
             currentUserEmail={sessionEmail}
             onNavigate={setView}
             onSignOut={handleSignOut}
@@ -630,8 +765,18 @@ export default function App() {
             onBack={() => setView("accounts")}
             onNavigate={setView}
             onSignOut={handleSignOut}
-            onStatusChange={(status) => updateSelectedAccount({ status })}
-            onSaveDetails={(changes) => updateSelectedAccount(changes)}
+            onStatusChange={async (status) => {
+              if (await updateSelectedAccount({ status })) {
+                toast.success(
+                  status === "Blocked" ? "Account blocked." : "Account unblocked."
+                );
+              }
+            }}
+            onSaveDetails={async (changes) => {
+              if (await updateSelectedAccount(changes)) {
+                toast.success("Account updated.");
+              }
+            }}
             onChangeRole={() => setView("assign-role")}
           />
         );
@@ -645,9 +790,14 @@ export default function App() {
             onBack={() => setView("manage-account")}
             onNavigate={setView}
             onSignOut={handleSignOut}
-            onSaved={(role) => {
-              updateSelectedAccount({ role });
-              setView("manage-account");
+            onSaved={async (role) => {
+              // Only leave the screen if the role change actually persisted.
+              // Navigating first is how a rejected write used to look like a
+              // successful one.
+              if (await updateSelectedAccount({ role })) {
+                toast.success("Role updated.");
+                setView("manage-account");
+              }
             }}
           />
         );
@@ -679,6 +829,7 @@ export default function App() {
           <StaffActivityLogPage
             isAdmin={isAdmin}
             staff={staff}
+            isLoaded={isStaffLoaded}
             onNavigate={setView}
             onSignOut={handleSignOut}
           />
@@ -689,6 +840,7 @@ export default function App() {
           <StaffDirectoryPage
             isAdmin={isAdmin}
             staff={staff}
+            isLoaded={isStaffLoaded}
             onNavigate={setView}
             onSignOut={handleSignOut}
           />
@@ -714,9 +866,11 @@ export default function App() {
             onBack={() => setView("profile")}
             onNavigate={setView}
             onSignOut={handleSignOut}
-            onSaved={(changes) => {
-              updateProfile(changes);
-              setView("profile");
+            onSaved={async (changes) => {
+              if (await updateProfile(changes)) {
+                toast.success("Profile updated.");
+                setView("profile");
+              }
             }}
           />
         );
@@ -724,6 +878,9 @@ export default function App() {
       case "customers":
         return (
           <CustomerListPage
+            isLoaded={customersState.isLoaded}
+            loadError={customersState.error}
+            onRetry={customersState.reload}
             customers={customers}
             profile={profile}
             onNavigate={setView}
@@ -763,8 +920,8 @@ export default function App() {
             onSignOut={handleSignOut}
             onCancel={() => setView("customers")}
             onSave={makeSaveHandler(
+              customersState,
               customers,
-              setCustomers,
               selectedCustomerId,
               setSelectedCustomerId
             )}
@@ -777,6 +934,9 @@ export default function App() {
       case "products":
         return (
           <ProductListPage
+            isLoaded={productsState.isLoaded}
+            loadError={productsState.error}
+            onRetry={productsState.reload}
             inventory={inventory}
             products={products}
             profile={profile}
@@ -819,8 +979,8 @@ export default function App() {
             onSignOut={handleSignOut}
             onCancel={() => setView("products")}
             onSave={makeSaveHandler(
+              productsState,
               products,
-              setProducts,
               selectedProductId,
               setSelectedProductId
             )}
@@ -833,6 +993,9 @@ export default function App() {
       case "suppliers":
         return (
           <SupplierListPage
+            isLoaded={suppliersState.isLoaded}
+            loadError={suppliersState.error}
+            onRetry={suppliersState.reload}
             suppliers={suppliers}
             profile={profile}
             onNavigate={setView}
@@ -872,8 +1035,8 @@ export default function App() {
             onSignOut={handleSignOut}
             onCancel={() => setView("suppliers")}
             onSave={makeSaveHandler(
+              suppliersState,
               suppliers,
-              setSuppliers,
               selectedSupplierId,
               setSelectedSupplierId
             )}
@@ -888,5 +1051,13 @@ export default function App() {
     }
   }
 
-  return <Suspense fallback={<RouteFallback />}>{renderView()}</Suspense>;
+  return (
+    <>
+      <Suspense fallback={<RouteFallback />}>{renderView()}</Suspense>
+      {/* Mounted once, at the root, so a failed write on any screen has
+          somewhere to report itself. Before this, every rejected save was a
+          console.error nobody saw. */}
+      <Toaster />
+    </>
+  );
 }

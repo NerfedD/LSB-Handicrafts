@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AppShell from "./layout/AppShell";
 import { initialsOf } from "../utils/staffData";
+import StatusPill from "./shared/StatusPill";
 
 const EMPTY_PROFILE = { name: "", role: "", contactNumber: "", status: "Active" };
 
@@ -21,11 +22,16 @@ export default function UpdateProfilePage({
 
   const initials = initialsOf(profile.name);
 
-  // TODO(backend): persist to Supabase once a `staff`/`profiles` table exists.
-  // For now the change is handed to the caller, which holds it in app state.
-  function handleSubmit(e) {
+  // Persisted through App's updateProfile -> the update_own_profile RPC, which
+  // is the one write a non-admin is allowed to make. onSaved is async and only
+  // navigates away once the database has confirmed the change.
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e) {
     e.preventDefault();
-    onSaved?.({ name, contactNumber });
+    setSaving(true);
+    await onSaved?.({ name, contactNumber });
+    setSaving(false);
   }
 
   return (
@@ -121,10 +127,7 @@ export default function UpdateProfilePage({
                 <p className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
                   Account Status
                 </p>
-                <span className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#287a5538] bg-[#287a5517] px-3.5 py-1.5 text-[13.5px] font-medium text-[#287a55]">
-                  <span className="size-1.5 rounded-full bg-[#287a55]" />
-                  {profile.status}
-                </span>
+                <StatusPill status={profile.status} variant="badge" className="mt-2" />
               </div>
             </div>
             <p className="mt-8 text-[13px] text-[#5f687599]">
@@ -136,9 +139,10 @@ export default function UpdateProfilePage({
             <div className="mt-7 flex flex-col gap-3">
               <button
                 type="submit"
-                className="h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
+                disabled={saving}
+                className="h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-45"
               >
-                Save Changes
+                {saving ? "Saving…" : "Save Changes"}
               </button>
               <button
                 type="button"

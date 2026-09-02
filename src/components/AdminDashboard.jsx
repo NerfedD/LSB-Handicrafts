@@ -120,8 +120,16 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
   // A save that fails only reaches the console — that is exactly how a column
   // name mismatch went unnoticed while every inventory edit was being rejected.
   // Surface it instead.
-  const reportSave = (label) => (ok) => {
-    if (!ok) setSaveError(`${label} changes couldn't be saved. Check your connection — reload before making more edits.`);
+  // The savers return { ok, message } — not a boolean. Destructuring matters:
+  // a result object is always truthy, so `if (!result)` would never fire and
+  // every failure would go back to being console-only.
+  const reportSave = (label) => (result) => {
+    if (result?.ok) return;
+    setSaveError(
+      result?.message
+        ? `${label}: ${result.message} Reload before making more edits.`
+        : `${label} changes couldn't be saved. Check your connection — reload before making more edits.`
+    );
   };
 
   // Reserved stock is derived, never incremented: it's recomputed from the

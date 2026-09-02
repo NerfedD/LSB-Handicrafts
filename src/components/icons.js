@@ -57,3 +57,11 @@ export { default as UserPlus }        from "lucide-react/dist/esm/icons/user-plu
 export { default as UserRound }       from "lucide-react/dist/esm/icons/user-round.mjs";
 export { default as Users }           from "lucide-react/dist/esm/icons/users.mjs";
 export { default as X }               from "lucide-react/dist/esm/icons/x.mjs";
+
+// Added for the shadcn/ui primitives in components/ui. They import icons from
+// this file, never from the `lucide-react` barrel -- see the caution above.
+export { default as Check           } from "lucide-react/dist/esm/icons/check.mjs";
+export { default as ChevronRight    } from "lucide-react/dist/esm/icons/chevron-right.mjs";
+export { default as ChevronUp       } from "lucide-react/dist/esm/icons/chevron-up.mjs";
+export { default as Circle          } from "lucide-react/dist/esm/icons/circle.mjs";
+export { default as Loader2         } from "lucide-react/dist/esm/icons/loader-2.mjs";

@@ -1,3 +1,4 @@
+import { Card } from "@/components/ui/card";
 import { useMemo, useState } from "react";
 import AppShell from "./layout/AppShell";
 import { initialsOf } from "../utils/staffData";
@@ -25,6 +26,9 @@ function toISODate(value) {
 export default function StaffActivityLogPage({
   entries = SAMPLE_ENTRIES,
   staff = [],
+  // Whether `staff` has actually been read yet — an empty list mid-load would
+  // otherwise make the Staff Member filter look like there are no staff at all.
+  isLoaded = true,
   onNavigate,
   onSignOut,
   isAdmin = false,
@@ -48,6 +52,10 @@ export default function StaffActivityLogPage({
       return true;
     });
   }, [entries, applied]);
+
+  const hasActiveFilters = Boolean(
+    applied.staff || applied.action || applied.from || applied.to
+  );
 
   function applyFilters() {
     setApplied({ staff: staffFilter, action: actionFilter, from: fromDate, to: toDate });
@@ -86,9 +94,10 @@ export default function StaffActivityLogPage({
               <select
                 value={staffFilter}
                 onChange={(e) => setStaffFilter(e.target.value)}
-                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[15px] text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30"
+                disabled={!isLoaded}
+                className="mt-2 h-[46px] w-full rounded-[10px] border border-[#17263a29] bg-white px-3.5 text-[15px] text-[#17263a] outline-none focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60"
               >
-                <option value="">All Staff</option>
+                <option value="">{isLoaded ? "All Staff" : "Loading staff…"}</option>
                 {staff.map((s) => (
                   <option key={s.id} value={s.name}>
                     {s.name}
@@ -151,7 +160,7 @@ export default function StaffActivityLogPage({
           </div>
         </div>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-[#17263a12] bg-white shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]">
+        <Card variant="raised" className="mt-5">
           <div className="grid grid-cols-[1fr_1.1fr_200px] border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
             <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
               Staff Member
@@ -166,7 +175,11 @@ export default function StaffActivityLogPage({
 
           {filtered.length === 0 ? (
             <div className="px-7 py-10 text-center text-sm text-[#5f6875]">
-              No activity matches the selected filters.
+              {/* Blaming the filters when none are applied tells the user to go
+                  looking for a filter that isn't there. */}
+              {hasActiveFilters
+                ? "No activity matches the selected filters."
+                : "No activity has been recorded yet."}
             </div>
           ) : (
             filtered.map((entry) => (
@@ -203,7 +216,7 @@ export default function StaffActivityLogPage({
               {filtered.length} {filtered.length === 1 ? "entry" : "entries"} · Read-only
             </span>
           </div>
-        </div>
+        </Card>
       </div>
     </AppShell>
   );

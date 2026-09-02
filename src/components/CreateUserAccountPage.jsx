@@ -2,14 +2,10 @@ import { useState } from "react";
 import { Eye, EyeOff, CheckCircle2 } from "./icons";
 import AppShell from "./layout/AppShell";
 import { createSignupClient } from "../lib/supabaseSignupClient";
-
-const ROLES = [
-  "Admin",
-  "Manager",
-  "Sales Staff",
-  "Production Staff",
-  "Delivery Staff",
-];
+// Was a private copy of this list. Two copies meant a role added in one place
+// silently failed to appear in the other -- and the database now rejects any
+// role outside the canonical set, so drift here becomes a save failure.
+import { ROLES } from "../utils/staffData";
 
 const emptyForm = {
   employeeName: "",
@@ -73,13 +69,28 @@ export default function CreateUserAccountPage({
         return;
       }
 
-      onAccountCreated?.({
+      // Awaited, and its result decides whether this counts as success.
+      //
+      // These are two writes to two systems: the Auth user above, and the staff
+      // row below that actually grants access. Treating the first as the whole
+      // job is how the project accumulated auth users with no staff row -- they
+      // could sign in, then see nothing and be signed straight back out. If the
+      // staff row fails, say so plainly rather than showing a success screen.
+      const created = await onAccountCreated?.({
         name: form.employeeName,
         role: form.role,
         contactNumber: form.contactNumber,
-        email: form.email,
+        email: form.email.trim().toLowerCase(),
         username: form.username,
       });
+
+      if (created === false) {
+        setError(
+          "The sign-in was created, but granting access failed. Ask an administrator " +
+            "to add this person under User Accounts before they try to sign in."
+        );
+        return;
+      }
 
       setSucceeded(true);
       setForm(emptyForm);

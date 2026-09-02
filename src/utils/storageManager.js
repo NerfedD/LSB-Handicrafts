@@ -139,13 +139,23 @@ const orderFromRow = (r) => ({
 // `username` is nullable and uniquely indexed (case-insensitively), so an empty
 // form field has to go up as null rather than '' — otherwise the second account
 // saved without a username collides with the first.
+//
+// `email` goes up lowercased. Supabase Auth stores and returns emails in lower
+// case, and the RLS predicates match on lower(email); a row saved as
+// 'FinalTest@gmail.com' used to never match its own JWT, which locked that
+// account out of the entire app.
+//
+// `is_super_admin` is read but deliberately NOT written: staffToRow feeds
+// inserts and updates, and the database refuses to let anyone but a superadmin
+// set that flag. Leaving it out keeps the client from ever sending a value the
+// server would reject.
 const staffToRow = (s) => ({
   id: s.id,
   name: s.name,
   role: s.role,
   contact_number: s.contactNumber,
   status: s.status,
-  email: s.email || null,
+  email: s.email ? s.email.trim().toLowerCase() : null,
   username: s.username?.trim() || null,
 });
 
@@ -157,6 +167,7 @@ const staffFromRow = (r) => ({
   status: r.status,
   email: r.email,
   username: r.username,
+  isSuperAdmin: !!r.is_super_admin,
 });
 
 const customerToRow = (c) => ({
@@ -248,164 +259,267 @@ const supplierFromRow = (r) => ({
 
 const identity = (x) => x;
 
-// ---- generic load/sync helpers --------------------------------------------
+// ---- generic load/write helpers -------------------------------------------
 
 /**
  * Reads a table. Returns { ok, data } rather than a bare array so callers can
  * tell "the table is legitimately empty" apart from "the read failed" — they
  * look identical otherwise, and a caller that treats a failed read as real
- * state will happily sync that emptiness back and delete the table. See the
- * isDataLoaded / isStaffLoaded guards in AdminDashboard.jsx and App.jsx.
+ * state used to sync that emptiness back and delete the table.
  */
 const loadTable = async (table, defaultData, fromRow = identity) => {
   try {
-    const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true });
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .order('id', { ascending: true });
     if (error) throw error;
     const rows = !data || data.length === 0 ? defaultData : data.map(fromRow);
     return { ok: true, data: rows };
   } catch (error) {
     console.error(`Failed to load ${table} from Supabase:`, error);
-    return { ok: false, data: defaultData };
+    return { ok: false, data: defaultData, error };
   }
 };
 
 /**
- * Reconciles a table with the given array: upserts every row, then deletes
- * whatever's left in the table that isn't in the array anymore.
+ * Turns anything Supabase hands back into a message worth showing a user.
+ *
+ * Postgres constraint names leak through verbatim otherwise — "new row for
+ * relation \"staff\" violates check constraint \"staff_role_check\"" is not a
+ * sentence anyone should read on screen.
  */
-const syncTable = async (table, rows, toRow = identity) => {
+const humanizeError = (error, fallback) => {
+  if (!error) return fallback;
+  const raw = error.message || String(error);
+
+  if (error.code === '23505' || /duplicate key/i.test(raw)) {
+    if (/email/i.test(raw)) return 'That email address is already in use.';
+    if (/username/i.test(raw)) return 'That username is already taken.';
+    if (/item_code/i.test(raw)) return 'That item code is already in use.';
+    return 'That record already exists.';
+  }
+  if (error.code === '23514' || /check constraint/i.test(raw)) {
+    if (/role/i.test(raw)) return 'That is not a valid role.';
+    if (/status/i.test(raw)) return 'That is not a valid status.';
+    if (/contact_number/i.test(raw)) return 'That contact number is too long.';
+    if (/price|amount/i.test(raw)) return 'That amount is outside the allowed range.';
+    return 'One of the values is outside the allowed range.';
+  }
+  if (error.code === '22003' || /out of range/i.test(raw)) {
+    return 'That number is too large.';
+  }
+  if (error.code === '42501' || /row-level security/i.test(raw)) {
+    return 'You do not have permission to do that.';
+  }
+  // Raised by the staff guard trigger; already written for a human.
+  if (/super administrator|Only an administrator/i.test(raw)) return raw;
+
+  return fallback;
+};
+
+/**
+ * Insert one row.
+ *
+ * Returns { ok, data, error } — never a bare boolean, and never swallowed. The
+ * previous write path only console.error'd, so a rejected write still showed
+ * the user a green "saved successfully" panel.
+ */
+const createRow = async (table, row, toRow = identity) => {
+  const { data, error } = await supabase
+    .from(table)
+    .insert(toRow(row))
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Failed to insert into ${table}:`, error);
+    return { ok: false, error, message: humanizeError(error, `Couldn't save that ${table} record.`) };
+  }
+  // RLS can accept the statement and still return nothing if the new row is
+  // outside the caller's SELECT policy.
+  return { ok: true, data };
+};
+
+/**
+ * Update one row by id.
+ *
+ * `patch` is a whole app-shaped object; `id` is never part of the payload, so a
+ * mis-typed id can't silently repoint the row.
+ */
+const updateRow = async (table, id, patch, toRow = identity) => {
+  const payload = toRow(patch);
+  delete payload.id;
+
+  const { data, error } = await supabase
+    .from(table)
+    .update(payload)
+    .eq('id', id)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error(`Failed to update ${table} #${id}:`, error);
+    return { ok: false, error, message: humanizeError(error, `Couldn't save your changes.`) };
+  }
+  // No error and no row means RLS filtered the row out of the UPDATE. Postgres
+  // reports that as success with zero rows affected, so it has to be caught
+  // here or the UI will claim a save that never happened.
+  if (!data) {
+    return {
+      ok: false,
+      message: "You do not have permission to change that record, or it no longer exists.",
+    };
+  }
+  return { ok: true, data };
+};
+
+/**
+ * Delete one row by id.
+ *
+ * Uses an exact count for the same reason updateRow checks for a returned row:
+ * a DELETE blocked by RLS is not an error, it simply matches nothing. That is
+ * exactly what happens when an ordinary admin tries to delete the superadmin,
+ * and reporting it as success would put the UI back out of step with the
+ * database — which is how a deleted-looking row kept reappearing on refresh.
+ */
+const deleteRow = async (table, id) => {
+  const { error, count } = await supabase
+    .from(table)
+    .delete({ count: 'exact' })
+    .eq('id', id);
+
+  if (error) {
+    console.error(`Failed to delete ${table} #${id}:`, error);
+    return { ok: false, error, message: humanizeError(error, `Couldn't delete that record.`) };
+  }
+  if (!count) {
+    return {
+      ok: false,
+      message: "You do not have permission to delete that record.",
+    };
+  }
+  return { ok: true };
+};
+
+/**
+ * A collection definition: everything the hook and the write helpers need to
+ * talk to one table. Passing one of these around replaces the eight pairs of
+ * load and save functions this module used to export.
+ */
+const collection = (table, fromRow = identity, toRow = identity) => ({
+  table,
+  fromRow,
+  toRow,
+  load: (defaultData = []) => loadTable(table, defaultData, fromRow),
+  create: (row) => createRow(table, row, toRow),
+  update: (id, patch) => updateRow(table, id, patch, toRow),
+  remove: (id) => deleteRow(table, id),
+});
+
+export const inventoryCollection = collection('inventory', inventoryFromRow, inventoryToRow);
+export const deliveriesCollection = collection('deliveries', deliveryFromRow, deliveryToRow);
+export const ordersCollection = collection('orders', orderFromRow, orderToRow);
+export const activityLogCollection = collection('activity_log');
+export const staffCollection = collection('staff', staffFromRow, staffToRow);
+export const customersCollection = collection('customers', customerFromRow, customerToRow);
+export const productsCollection = collection('products', productFromRow, productToRow);
+export const suppliersCollection = collection('suppliers', supplierFromRow, supplierToRow);
+
+export { createRow, updateRow, deleteRow, loadTable, humanizeError };
+
+// ---- legacy whole-table reads ---------------------------------------------
+// Kept because the unrouted workspace (components/AdminDashboard.jsx and
+// components/views/) still calls them. New code should use the collections
+// above.
+
+export const loadInventory = (d = []) => inventoryCollection.load(d);
+export const loadDeliveries = (d = []) => deliveriesCollection.load(d);
+export const loadOrders = (d = []) => ordersCollection.load(d);
+export const loadActivityLog = (d = []) => activityLogCollection.load(d);
+export const loadStaff = (d = []) => staffCollection.load(d);
+export const loadCustomers = (d = []) => customersCollection.load(d);
+export const loadProducts = (d = []) => productsCollection.load(d);
+export const loadSuppliers = (d = []) => suppliersCollection.load(d);
+
+export const deleteFromInventory = (inventoryData, itemId) =>
+  inventoryData.filter((item) => item.id !== itemId);
+export const deleteFromDeliveries = (deliveriesData, deliveryId) =>
+  deliveriesData.filter((delivery) => delivery.id !== deliveryId);
+export const deleteFromOrders = (ordersData, orderId) =>
+  ordersData.filter((order) => order.id !== orderId);
+
+/**
+ * DANGEROUS — whole-table reconcile. Upserts every row, then deletes anything
+ * in the table that isn't in `rows`.
+ *
+ * This was the app's ONLY write primitive, and it was the root cause of the
+ * data loss during class testing: a read denied by RLS came back empty, the app
+ * appended one row to that emptiness, and the sync deleted every other row in
+ * the table. Two heuristic guards were bolted on to stop it, which in turn made
+ * legitimate bulk edits fail silently.
+ *
+ * Every live screen now uses the per-row helpers above. This remains only
+ * because the unrouted workspace still calls it, and deleting it would leave
+ * that code referencing a missing export. Do not use it in new code; migrate
+ * those screens to `createRow` / `updateRow` / `deleteRow` when the workspace
+ * is rebuilt.
+ */
+const replaceAllRows = async (table, rows, toRow = identity) => {
   try {
     const { data: existing, error: fetchError } = await supabase.from(table).select('id');
     if (fetchError) throw fetchError;
 
     const existingIds = new Set((existing || []).map((r) => r.id));
-
-    // Independent backstop against wiping a table. Emptying every row is
-    // never something the UI asks for, so an empty array here means state was
-    // lost (a failed load, a bad render) rather than a real deletion.
     if (rows.length === 0 && existingIds.size > 0) {
-      console.warn(
-        `Refusing to clear ${table}: in-memory state is empty but the table has ${existingIds.size} row(s).`
-      );
-      return false;
+      return { ok: false, message: `Refusing to clear ${table}: in-memory state is empty.` };
     }
 
     const currentIds = new Set(rows.map((r) => r.id));
     const idsToDelete = [...existingIds].filter((id) => !currentIds.has(id));
 
-    // The same backstop, for the case the empty check above misses: state that
-    // was mostly lost rather than entirely lost. A read that comes back empty
-    // because RLS denied it, followed by the app appending a single row, gives
-    // an array of one that would otherwise delete every other row in the table
-    // — which is exactly how the staff table got wiped once.
-    //
-    // Deletions in this UI are one row at a time, so removing most of a table
-    // in a single sync is not something the screens can legitimately ask for.
-    // The >2 floor keeps small tables editable (clearing 2 of 3 rows is fine).
-    if (idsToDelete.length > 2 && idsToDelete.length > existingIds.size / 2) {
-      console.warn(
-        `Refusing to sync ${table}: it would delete ${idsToDelete.length} of ` +
-          `${existingIds.size} row(s), leaving ${rows.length}. That looks like ` +
-          `lost state rather than an edit.`
-      );
-      return false;
-    }
-
     if (idsToDelete.length > 0) {
-      const { error: deleteError } = await supabase.from(table).delete().in('id', idsToDelete);
-      if (deleteError) throw deleteError;
+      const { error } = await supabase.from(table).delete().in('id', idsToDelete);
+      if (error) throw error;
     }
-
     if (rows.length > 0) {
-      const { error: upsertError } = await supabase.from(table).upsert(rows.map(toRow), { onConflict: 'id' });
-      if (upsertError) throw upsertError;
+      const { error } = await supabase.from(table).upsert(rows.map(toRow), { onConflict: 'id' });
+      if (error) throw error;
     }
-
-    return true;
+    return { ok: true };
   } catch (error) {
     console.error(`Failed to save ${table} to Supabase:`, error);
-    return false;
+    return { ok: false, error, message: humanizeError(error, `Couldn't save ${table}.`) };
   }
 };
 
-// ---- inventory --------------------------------------------------------
+export const saveInventory = (rows) => replaceAllRows('inventory', rows, inventoryToRow);
+export const saveDeliveries = (rows) => replaceAllRows('deliveries', rows, deliveryToRow);
+export const saveOrders = (rows) => replaceAllRows('orders', rows, orderToRow);
+export const saveActivityLog = (rows) => replaceAllRows('activity_log', rows);
 
-export const loadInventory = (defaultInventory = []) =>
-  loadTable('inventory', defaultInventory, inventoryFromRow);
-export const saveInventory = (inventoryData) =>
-  syncTable('inventory', inventoryData, inventoryToRow);
-
-export const deleteFromInventory = (inventoryData, itemId) =>
-  inventoryData.filter((item) => item.id !== itemId);
-
-// ---- deliveries ---------------------------------------------------------
-
-export const loadDeliveries = (defaultDeliveries = []) =>
-  loadTable('deliveries', defaultDeliveries, deliveryFromRow);
-export const saveDeliveries = (deliveriesData) => syncTable('deliveries', deliveriesData, deliveryToRow);
-
-export const deleteFromDeliveries = (deliveriesData, deliveryId) =>
-  deliveriesData.filter((delivery) => delivery.id !== deliveryId);
-
-// ---- orders ---------------------------------------------------------------
-
-export const loadOrders = (defaultOrders = []) => loadTable('orders', defaultOrders, orderFromRow);
-export const saveOrders = (ordersData) => syncTable('orders', ordersData, orderToRow);
-
-export const deleteFromOrders = (ordersData, orderId) =>
-  ordersData.filter((order) => order.id !== orderId);
-
-// ---- activity log -----------------------------------------------------
-
-export const loadActivityLog = (defaultActivity = []) => loadTable('activity_log', defaultActivity);
-export const saveActivityLog = (activityData) => syncTable('activity_log', activityData);
-
-// ---- staff / user accounts ---------------------------------------------
-
-export const loadStaff = (defaultStaff = []) => loadTable('staff', defaultStaff, staffFromRow);
-export const saveStaff = (staffData) => syncTable('staff', staffData, staffToRow);
+// ---- the signed-in person's own profile -----------------------------------
 
 /**
  * Saves the signed-in person's own name and contact number.
  *
- * Deliberately not routed through saveStaff: that reconciles the WHOLE table,
- * so a non-admin editing their profile would try to write every colleague's
- * row too, and the admin-only update policy would reject the lot. This touches
- * one row — the caller's, decided server-side from their token, not from
- * anything passed in here.
+ * Deliberately not a direct table write: RLS gates which ROWS you may write,
+ * not which COLUMNS, so any policy permissive enough to let someone edit their
+ * own row would also let them set their own role to 'Admin'. This RPC updates
+ * exactly two columns on exactly the caller's row, decided server-side from
+ * their token rather than from anything passed in here.
  */
 export const saveOwnProfile = async ({ name, contactNumber }) => {
-  try {
-    const { error } = await supabase.rpc('update_own_profile', {
-      p_name: name ?? '',
-      p_contact_number: contactNumber ?? '',
-    });
-    if (error) throw error;
-    return true;
-  } catch (error) {
+  const { error } = await supabase.rpc('update_own_profile', {
+    p_name: name ?? '',
+    p_contact_number: contactNumber ?? '',
+  });
+  if (error) {
     console.error('Failed to save your profile to Supabase:', error);
-    return false;
+    return { ok: false, error, message: humanizeError(error, "Couldn't save your profile.") };
   }
+  return { ok: true };
 };
-
-// ---- customer / product / supplier profiles ----------------------------
-// Figma screens #14-#22. Same whole-table load + reconciling sync as
-// everything above; see useSupabaseCollection for the wiring on the app side.
-
-export const loadCustomers = (defaultCustomers = []) =>
-  loadTable('customers', defaultCustomers, customerFromRow);
-export const saveCustomers = (customerData) =>
-  syncTable('customers', customerData, customerToRow);
-
-export const loadProducts = (defaultProducts = []) =>
-  loadTable('products', defaultProducts, productFromRow);
-export const saveProducts = (productData) =>
-  syncTable('products', productData, productToRow);
-
-export const loadSuppliers = (defaultSuppliers = []) =>
-  loadTable('suppliers', defaultSuppliers, supplierFromRow);
-export const saveSuppliers = (supplierData) =>
-  syncTable('suppliers', supplierData, supplierToRow);
 
 // ---- export / backup --------------------------------------------------
 

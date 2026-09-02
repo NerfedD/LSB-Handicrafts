@@ -1,22 +1,40 @@
-import { useEffect, useMemo, useState } from "react";
-import { Plus, MoreVertical, AlertTriangle } from "./icons";
+import { Card } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import { Plus, MoreVertical } from "./icons";
 import AppShell from "./layout/AppShell";
 import { ROLES } from "../utils/staffData";
 
-// Roughly the tallest the row menu gets (three items plus its border). Used
-// only to decide whether it still fits below the button before flipping it.
-const ROW_MENU_HEIGHT = 160;
+// Case-insensitive, matching App.jsx and the lower(email) predicates in the
+// database. See the note on sameEmail in App.jsx.
+const sameEmail = (a, b) =>
+  !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+import StatusPill, { SuperAdminPill } from "./shared/StatusPill";
+import ConfirmDialog from "./shared/ConfirmDialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * LSB Handicrafts — User Accounts
  * Figma: node 29:713 / 71:204 (list + filters), 71:410 (filters applied)
  *
  * `users` comes from the `staff` table in Supabase (see src/App.jsx).
- * `currentUserEmail` hides Delete on the signed-in admin's own row so they
- * can't remove themselves from here.
+ *
+ * Two rows are protected from the actions menu, both mirroring a rule the
+ * database enforces independently (see the staff policies in schema.sql):
+ *   - the signed-in admin's own row, which can't be deleted from here;
+ *   - the super administrator, which no admin may delete, block or edit.
+ * Hiding the menu items is a courtesy so nobody is offered an action that
+ * would be rejected -- it is not the protection itself.
  */
 export default function UserAccountsPage({
   users = [],
+  // False while the staff read is still in flight. Without it this screen
+  // renders its empty state over a list that simply hasn't arrived yet.
+  isLoaded = true,
   currentUserEmail,
   onNavigate,
   onSignOut,
@@ -27,37 +45,13 @@ export default function UserAccountsPage({
   const [roleFilter, setRoleFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [appliedFilters, setAppliedFilters] = useState({ role: "", status: "" });
-  // { id, drop } — `drop` is "up" for rows near the bottom of the window, so
-  // the last row's menu doesn't open off the end of the page.
-  const [openMenu, setOpenMenu] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
-  // Close the row menu on an outside click or Escape. The button and the menu
-  // itself both stop pointerdown from reaching this, so clicking the button
-  // still toggles and clicking an item still registers before it unmounts.
-  useEffect(() => {
-    if (!openMenu) return;
-    const close = () => setOpenMenu(null);
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setOpenMenu(null);
-    };
-    window.addEventListener("pointerdown", close);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", close);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [openMenu]);
-
-  function toggleRowMenu(user, event) {
-    const { bottom } = event.currentTarget.getBoundingClientRect();
-    const roomBelow = window.innerHeight - bottom;
-    setOpenMenu((current) =>
-      current?.id === user.id
-        ? null
-        : { id: user.id, drop: roomBelow < ROW_MENU_HEIGHT ? "up" : "down" }
-    );
-  }
+  // The row menu's open state, outside-click handling, Escape key and
+  // flip-when-near-the-bottom logic all used to live here by hand. Radix's
+  // DropdownMenu does all of it, plus the focus management and arrow-key
+  // navigation the hand-rolled version never had.
 
   const filtered = useMemo(() => {
     return users.filter((u) => {
@@ -194,7 +188,7 @@ export default function UserAccountsPage({
             the menu extended past the card, which is every time you opened
             the last row's. The header and footer round their own outer
             corners instead, so the card keeps its shape without clipping. */}
-        <div className="mt-4 rounded-2xl border border-[#17263a12] bg-white shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]">
+        <Card variant="raised" clip={false} className="mt-4">
           <div className="grid grid-cols-[1fr_284px_178px_48px] rounded-t-2xl border-b border-[#17263a14] bg-[#f7f4ec] px-7 py-3">
             <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
               Name
@@ -210,7 +204,14 @@ export default function UserAccountsPage({
 
           {filtered.length === 0 ? (
             <div className="px-7 py-10 text-center text-sm text-[#5f6875]">
-              No accounts match the selected filters.
+              {/* Distinguishing these matters: this screen used to blame the
+                  filters even when none were applied and the table was simply
+                  empty or still loading. */}
+              {!isLoaded
+                ? "Loading accounts…"
+                : hasActiveFilters
+                  ? "No accounts match the selected filters."
+                  : "No user accounts yet."}
             </div>
           ) : (
             filtered.map((user) => (
@@ -221,54 +222,57 @@ export default function UserAccountsPage({
                 <span className="text-base font-medium tracking-[-0.16px] text-[#17263a]">
                   {user.name}
                 </span>
-                <span className="text-[15px] text-[#5f6875]">{user.role}</span>
-                <StatusBadge status={user.status} />
+                <span className="flex items-center gap-2 text-[15px] text-[#5f6875]">
+                  {user.role}
+                  {user.isSuperAdmin && <SuperAdminPill />}
+                </span>
+                <StatusPill status={user.status} variant="badge" />
                 <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={(e) => toggleRowMenu(user, e)}
-                    className="rounded p-1 text-[#5f6875] hover:bg-[#17263a0d]"
-                    aria-label={`Actions for ${user.name}`}
-                    aria-haspopup="menu"
-                    aria-expanded={openMenu?.id === user.id}
-                  >
-                    <MoreVertical className="h-[18px] w-[18px]" />
-                  </button>
-                  {openMenu?.id === user.id && (
-                    <div
-                      role="menu"
-                      onPointerDown={(e) => e.stopPropagation()}
-                      className={`absolute right-7 z-20 w-40 overflow-hidden rounded-lg border border-[#17263a1a] bg-white shadow-lg ${
-                        openMenu.drop === "up" ? "bottom-12" : "top-12"
-                      }`}
+                  {user.isSuperAdmin ? (
+                    // No menu at all. The super administrator can't be edited,
+                    // blocked or deleted by anyone else, and the database
+                    // rejects all three, so offering them would be a lie.
+                    <span
+                      className="px-1 text-[#5f687599]"
+                      title="The super administrator account is protected."
                     >
-                      {[
-                        "Edit",
-                        user.status === "Active" ? "Block" : "Unblock",
-                        ...(user.email && user.email === currentUserEmail ? [] : ["Delete"]),
-                      ].map((action) => (
+                      &mdash;
+                    </span>
+                  ) : (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <button
-                          key={action}
                           type="button"
-                          onClick={() => {
-                            setOpenMenu(null);
-                            if (action === "Delete") {
-                              setPendingDelete(user);
-                            } else {
-                              onRowAction?.(action.toLowerCase(), user);
-                            }
-                          }}
-                          className={`block w-full px-4 py-2.5 text-left text-sm hover:bg-[#17263a08] ${
-                            action === "Delete"
-                              ? "text-[#b54747]"
-                              : "text-[#17263a]"
-                          }`}
+                          className="rounded p-1 text-[#5f6875] hover:bg-[#17263a0d]"
+                          aria-label={`Actions for ${user.name}`}
                         >
-                          {action}
+                          <MoreVertical className="h-[18px] w-[18px]" />
                         </button>
-                      ))}
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-40">
+                        <DropdownMenuItem onSelect={() => onRowAction?.("edit", user)}>
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() =>
+                            onRowAction?.(
+                              user.status === "Active" ? "block" : "unblock",
+                              user
+                            )
+                          }
+                        >
+                          {user.status === "Active" ? "Block" : "Unblock"}
+                        </DropdownMenuItem>
+                        {!sameEmail(user.email, currentUserEmail) && (
+                          <DropdownMenuItem
+                            destructive
+                            onSelect={() => setPendingDelete(user)}
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               </div>
@@ -281,83 +285,30 @@ export default function UserAccountsPage({
               registered
             </span>
           </div>
-        </div>
+        </Card>
       </div>
 
-      {pendingDelete && (
-        <DeleteAccountModal
-          name={pendingDelete.name}
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            onRowAction?.("delete", pendingDelete);
-            setPendingDelete(null);
-          }}
-        />
-      )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this account?"
+        subject={pendingDelete?.name}
+        description="This removes their access to the system. This cannot be undone."
+        confirmLabel="Delete Account"
+        busy={deleting}
+        onConfirm={async () => {
+          // Awaited so the dialog stays open, and the row stays on screen,
+          // until the database has actually accepted the delete.
+          setDeleting(true);
+          await onRowAction?.("delete", pendingDelete);
+          setDeleting(false);
+          setPendingDelete(null);
+        }}
+      />
     </AppShell>
   );
 }
 
-function DeleteAccountModal({ name, onCancel, onConfirm }) {
-  return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-[#111e3273] p-10">
-      <div className="w-full max-w-[460px] rounded-2xl border border-[#17263a12] bg-white px-12 py-11 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
-        <div className="flex justify-center">
-          <div className="flex size-14 items-center justify-center rounded-full border border-[#b5474733] bg-[#b5474712]">
-            <AlertTriangle className="h-6 w-6 text-[#b54747]" />
-          </div>
-        </div>
-        <h2 className="mt-6 text-center text-2xl font-bold tracking-tight text-[#17263a]">
-          Delete User Account?
-        </h2>
-        <div className="mt-3 flex justify-center">
-          <span className="rounded-md border border-[#17263a17] bg-[#f7f4ec] px-4 py-1.5 text-sm font-semibold text-[#17263a]">
-            {name}
-          </span>
-        </div>
-        <p className="mt-4 text-center text-[15.5px] leading-relaxed text-[#5f6875]">
-          This permanently removes the account. This action can't be undone.
-        </p>
-        <div className="mt-8 flex gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-[52px] flex-1 rounded-[10px] border border-[#17263a2e] text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="h-[52px] flex-1 rounded-[10px] bg-[#b54747] text-base font-semibold text-white shadow-[0_2px_5px_rgba(181,71,71,0.3)] transition hover:bg-[#a03e3e]"
-          >
-            Delete Account
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const isActive = status === "Active";
-  return (
-    <span
-      className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13.5px] font-medium ${
-        isActive
-          ? "border-[#287a5538] bg-[#287a5517] text-[#287a55]"
-          : "border-[#b5474733] bg-[#b5474714] text-[#b54747]"
-      }`}
-    >
-      <span
-        className={`size-1.5 rounded-full ${
-          isActive ? "bg-[#287a55]" : "bg-[#b54747]"
-        }`}
-      />
-      {status}
-    </span>
-  );
-}
 
 function FilterChip({ label, onRemove }) {
   return (

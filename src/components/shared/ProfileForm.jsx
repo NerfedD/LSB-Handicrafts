@@ -1,5 +1,6 @@
 import { AlertCircle, ChevronLeft } from "../icons";
 import { primaryButton, secondaryButton } from "./profileButtonStyles";
+import { Card } from "@/components/ui/card";
 
 /**
  * The add/edit form card shared by Customer, Product and Supplier
@@ -106,10 +107,14 @@ export default function ProfileFormCard({
   onSubmit,
   onCancel,
   children,
+  // True while the write is in flight. Saving is a real round-trip now that
+  // it's one awaited row rather than a fire-and-forget whole-table upsert, so
+  // the buttons have to stop a second submit creating a duplicate record.
+  saving = false,
 }) {
   return (
     <form onSubmit={onSubmit} noValidate>
-      <div className="overflow-hidden rounded-[14px] border border-[#17263a14] bg-white shadow-[0_1px_6px_rgba(23,38,58,0.06)]">
+      <Card>
         <div className="flex items-center gap-3.5 border-b border-[#17263a12] px-8 pb-5 pt-6">
           <div className="flex size-[38px] shrink-0 items-center justify-center rounded-[9px] bg-[#1746d114] text-[#1746d1]">
             {icon}
@@ -136,19 +141,21 @@ export default function ProfileFormCard({
             <button
               type="button"
               onClick={onCancel}
-              className={`${secondaryButton} h-11 rounded-[9px] px-[22px] text-[14.5px]`}
+              disabled={saving}
+              className={`${secondaryButton} h-11 rounded-[9px] px-[22px] text-[14.5px] disabled:opacity-60`}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`${primaryButton} h-11 rounded-[9px] px-7 text-[14.5px]`}
+              disabled={saving}
+              className={`${primaryButton} h-11 rounded-[9px] px-7 text-[14.5px] disabled:opacity-60`}
             >
-              {saveLabel}
+              {saving ? "Saving…" : saveLabel}
             </button>
           </div>
         </div>
-      </div>
+      </Card>
 
       <p className="pl-1 pt-4 text-[12px] text-[#5f6875]/65">
         <span className="text-[#b54747]">*</span> Required fields

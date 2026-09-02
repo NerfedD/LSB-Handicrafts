@@ -3,10 +3,15 @@ import { UserRound } from "../icons";
 import ManagementShell from "../layout/ManagementShell";
 import ProfileSearchBar from "../shared/ProfileSearchBar";
 import ProfileTable from "../shared/ProfileTable";
-import { ProfileEmptyState } from "../shared/ProfilePanels";
+import {
+  ProfileEmptyState,
+  ProfileLoadingState,
+  ProfileErrorState,
+} from "../shared/ProfilePanels";
 import { avatarColorOf } from "../shared/avatarColors";
 import { initialsOf } from "../../utils/staffData";
 import { formatShortDate } from "../../utils/profileFormat";
+import { rowAction } from "../shared/profileButtonStyles";
 
 /**
  * LSB Handicrafts — Customer Profiles
@@ -23,10 +28,11 @@ const COLUMNS = [
   { key: "actions", label: "Actions", className: "w-[112px] text-right" },
 ];
 
-const rowAction =
-  "rounded-md border border-[#17263a26] px-2.5 py-1 text-[12px] font-semibold transition";
 
 export default function CustomerListPage({
+  isLoaded = true,
+  loadError = null,
+  onRetry,
   customers = [],
   profile,
   onNavigate,
@@ -118,7 +124,14 @@ export default function CustomerListPage({
         />
 
         <div className="pt-6">
-          {filtered.length === 0 ? (
+          {/* Three distinct states, not one. Loading is a skeleton, a failed
+              read offers a retry, and only a genuinely empty result gets the
+              empty panel. */}
+          {loadError ? (
+            <ProfileErrorState onRetry={onRetry} />
+          ) : !isLoaded ? (
+            <ProfileLoadingState />
+          ) : filtered.length === 0 ? (
             <ProfileEmptyState
               icon={<UserRound className="h-5 w-5" />}
               title="customer"
