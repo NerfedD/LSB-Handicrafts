@@ -216,7 +216,7 @@ export default function AdminDashboard({ onSignOut, onOpenAdmin }) {
         </p>
         <button
           onClick={() => window.location.reload()}
-          className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+          className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
           Retry
         </button>

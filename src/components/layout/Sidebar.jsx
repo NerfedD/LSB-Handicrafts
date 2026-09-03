@@ -50,7 +50,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
           <nav className="space-y-1">
             <button 
               onClick={() => handleNavigate('dashboard')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                 activeTab === 'dashboard' 
                   ? 'bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-500' 
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-[#1A1A24]'
@@ -62,7 +62,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
 
             <button 
               onClick={() => handleNavigate('inventory')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                 isInventoryGroup
                   ? 'bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-500' 
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-[#1A1A24]'
@@ -74,7 +74,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
 
             <button 
               onClick={() => handleNavigate('deliveries')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                 isDeliveryGroup
                   ? 'bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-500' 
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-[#1A1A24]'
@@ -86,7 +86,7 @@ export default function Sidebar({ activeTab, navigateTo, isSidebarOpen, setIsSid
 
             <button 
               onClick={() => handleNavigate('orders')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 ${
                 isOrdersGroup
                   ? 'bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-500' 
                   : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-[#1A1A24]'

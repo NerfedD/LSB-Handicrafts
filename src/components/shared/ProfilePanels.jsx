@@ -50,12 +50,12 @@ export function ProfileLoadingState({ rows = 5 }) {
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 border-b border-[#17263a0f] px-7 py-[18px] last:border-b-0"
+          className="flex items-center gap-4 border-b border-[#17263a0f] px-7 py-4 last:border-b-0"
         >
           <div className="size-9 animate-pulse rounded-full bg-[#17263a0f]" />
-          <div className="h-3.5 w-1/4 animate-pulse rounded bg-[#17263a0f]" />
-          <div className="h-3.5 w-1/5 animate-pulse rounded bg-[#17263a0a]" />
-          <div className="ml-auto h-3.5 w-16 animate-pulse rounded bg-[#17263a0a]" />
+          <div className="h-4 w-1/4 animate-pulse rounded bg-[#17263a0f]" />
+          <div className="h-4 w-1/5 animate-pulse rounded bg-[#17263a0a]" />
+          <div className="ml-auto h-4 w-16 animate-pulse rounded bg-[#17263a0a]" />
         </div>
       ))}
     </Card>
@@ -78,7 +78,7 @@ export function ProfileErrorState({ onRetry }) {
       <p className="text-[19px] font-bold tracking-tight text-[#17263a]">
         Couldn&rsquo;t load these records
       </p>
-      <p className="mt-1.5 max-w-[340px] text-[13.5px] leading-relaxed text-[#5f6875]">
+      <p className="mt-2 max-w-[340px] text-[13.5px] leading-relaxed text-[#5f6875]">
         The database couldn&rsquo;t be reached. Check your connection and try
         again.
       </p>
@@ -113,7 +113,7 @@ export function ProfileEmptyState({
       <p className="text-[19px] font-bold tracking-tight text-[#17263a]">
         {isSearch ? `No ${title} found` : `No ${title} records yet`}
       </p>
-      <p className="mt-1.5 max-w-[340px] text-[13.5px] leading-relaxed text-[#5f6875]">
+      <p className="mt-2 max-w-[340px] text-[13.5px] leading-relaxed text-[#5f6875]">
         {isSearch ? (
           <>
             No records match &ldquo;<span className="font-semibold">{query}</span>&rdquo;.
@@ -147,11 +147,11 @@ export function ProfileNotFound({ label, onBack }) {
       <p className="text-[19px] font-bold tracking-tight text-[#17263a]">
         {label} Record Not Found
       </p>
-      <p className="mt-1.5 text-[13.5px] text-[#5f6875]">
+      <p className="mt-2 text-[13.5px] text-[#5f6875]">
         The {label.toLowerCase()} information could not be loaded.
       </p>
       <button type="button" onClick={onBack} className={`${secondaryButton} mt-5`}>
-        <ChevronLeft className="h-3.5 w-3.5" />
+        <ChevronLeft className="h-4 w-4" />
         Back to {label} List
       </button>
     </Panel>
@@ -159,26 +159,3 @@ export function ProfileNotFound({ label, onBack }) {
 }
 
 /** Shown after a successful save, in place of the form. */
-export function ProfileSaved({ label, onView, onBackToList }) {
-  return (
-    <Panel>
-      <Circle tone="success">
-        <CheckCircle2 className="h-6 w-6" />
-      </Circle>
-      <p className="text-[22px] font-bold tracking-tight text-[#17263a]">
-        {label} profile saved successfully.
-      </p>
-      <p className="mt-1.5 text-[13.5px] text-[#5f6875]">
-        The {label.toLowerCase()} information has been added to the system.
-      </p>
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
-        <button type="button" onClick={onView} className={primaryButton}>
-          View {label}
-        </button>
-        <button type="button" onClick={onBackToList} className={secondaryButton}>
-          Back to {label} List
-        </button>
-      </div>
-    </Panel>
-  );
-}

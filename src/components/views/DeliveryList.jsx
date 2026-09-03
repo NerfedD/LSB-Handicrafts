@@ -141,7 +141,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
               <select 
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="location-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivery Location (A → Z)</option>
                 <option value="location-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivery Location (Z → A)</option>
@@ -157,7 +157,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Status" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Status</option>
                 <option value="Not Yet Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Not Yet Delivered</option>
@@ -170,7 +170,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
               <select 
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Locations" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Locations</option>
                 {uniqueLocations.map(location => (
@@ -181,7 +181,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
             </div>
             <button 
               onClick={() => navigateTo('add-delivery')}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
             >
               <Plus size={16} /> Add Delivery
             </button>
@@ -258,7 +258,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
                               onChange={(e) => handleStatusChange(delivery.id, e.target.value)}
                               aria-label={`Delivery status for ${delivery.product}`}
                               title={`Current status: ${delivery.status}`}
-                              className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                              className={`appearance-none w-full outline-none pr-8 pl-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
                                 delivery.status === 'Not Yet Delivered' 
                                   ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100 dark:border-red-900/50 dark:text-red-500 dark:bg-red-950/20 dark:hover:bg-red-950/40' 
                                   : delivery.status === 'Delivered'
@@ -270,7 +270,7 @@ export function DeliveryList({ deliveries, setDeliveries, orders = [], navigateT
                               <option value="On The Way" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">On The Way</option>
                               <option value="Delivered" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Delivered</option>
                             </select>
-                            <ChevronDown size={14} className={`absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70 ${
+                            <ChevronDown size={14} className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-70 ${
                               delivery.status === 'Not Yet Delivered' ? 'text-red-600 dark:text-red-500' : delivery.status === 'Delivered' ? 'text-emerald-600 dark:text-emerald-500' : 'text-yellow-600 dark:text-yellow-500'
                             }`} />
                           </div>
@@ -394,7 +394,7 @@ export function AddDelivery({ record, navigateTo, inventory, deliveries, setDeli
       <div className="bg-white dark:bg-[#111116] border border-zinc-200 dark:border-[#1F1F2E] rounded-2xl overflow-hidden shadow-sm dark:shadow-lg p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <p className="text-zinc-500 dark:text-zinc-400 text-sm">Manage product deliveries and track their status</p>
-          <button className="w-full sm:w-auto bg-blue-100 text-blue-400 dark:bg-blue-600/50 dark:text-white/50 px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
+          <button className="w-full sm:w-auto bg-blue-100 text-blue-400 dark:bg-blue-600/50 dark:text-white/50 px-5 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 cursor-not-allowed">
             <Plus size={16} /> Add Delivery
           </button>
         </div>

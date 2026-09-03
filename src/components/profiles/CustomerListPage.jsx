@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { UserRound } from "../icons";
-import ManagementShell from "../layout/ManagementShell";
 import ProfileSearchBar from "../shared/ProfileSearchBar";
 import ProfileTable from "../shared/ProfileTable";
 import {
@@ -34,9 +33,6 @@ export default function CustomerListPage({
   loadError = null,
   onRetry,
   customers = [],
-  profile,
-  onNavigate,
-  onSignOut,
   onView,
   onEdit,
   onAdd,
@@ -57,7 +53,7 @@ export default function CustomerListPage({
     switch (key) {
       case "name":
         return (
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white ${avatarColorOf(
                 customer.name
@@ -105,55 +101,46 @@ export default function CustomerListPage({
   }
 
   return (
-    <ManagementShell
-      active="customers"
-      title="Customer Profiles"
-      subtitle="Manage customer information and contact details."
-      profile={profile}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-    >
-      <div className="mx-auto w-full max-w-[1160px]">
-        <ProfileSearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Search customers by name or contact number"
-          resultCount={filtered.length}
-          addLabel="Add Customer"
-          onAdd={onAdd}
-        />
+    <div className="mx-auto w-full max-w-[1160px]">
+      <ProfileSearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search customers by name or contact number"
+        resultCount={filtered.length}
+        addLabel="Add Customer"
+        onAdd={onAdd}
+      />
 
-        <div className="pt-6">
-          {/* Three distinct states, not one. Loading is a skeleton, a failed
-              read offers a retry, and only a genuinely empty result gets the
-              empty panel. */}
-          {loadError ? (
-            <ProfileErrorState onRetry={onRetry} />
-          ) : !isLoaded ? (
-            <ProfileLoadingState />
-          ) : filtered.length === 0 ? (
-            <ProfileEmptyState
-              icon={<UserRound className="h-5 w-5" />}
-              title="customer"
-              description="Add a customer profile to begin managing customer information."
-              query={query.trim()}
-              onClearSearch={() => setQuery("")}
-              addLabel="Add Customer"
-              onAdd={onAdd}
-            />
-          ) : (
-            <ProfileTable
-              columns={COLUMNS}
-              rows={filtered}
-              rowKey={(customer) => customer.id}
-              renderCell={renderCell}
-              footer={`${filtered.length} ${
-                filtered.length === 1 ? "customer" : "customers"
-              } total`}
-            />
-          )}
-        </div>
+      <div className="pt-6">
+        {/* Three distinct states, not one. Loading is a skeleton, a failed
+            read offers a retry, and only a genuinely empty result gets the
+            empty panel. */}
+        {loadError ? (
+          <ProfileErrorState onRetry={onRetry} />
+        ) : !isLoaded ? (
+          <ProfileLoadingState />
+        ) : filtered.length === 0 ? (
+          <ProfileEmptyState
+            icon={<UserRound className="h-5 w-5" />}
+            title="customer"
+            description="Add a customer profile to begin managing customer information."
+            query={query.trim()}
+            onClearSearch={() => setQuery("")}
+            addLabel="Add Customer"
+            onAdd={onAdd}
+          />
+        ) : (
+          <ProfileTable
+            columns={COLUMNS}
+            rows={filtered}
+            rowKey={(customer) => customer.id}
+            renderCell={renderCell}
+            footer={`${filtered.length} ${
+              filtered.length === 1 ? "customer" : "customers"
+            } total`}
+          />
+        )}
       </div>
-    </ManagementShell>
+    </div>
   );
 }

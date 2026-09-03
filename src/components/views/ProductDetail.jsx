@@ -43,10 +43,10 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
           <ArrowLeft size={20} className="text-zinc-500 dark:text-zinc-400" /> {record.name}
         </button>
         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <button onClick={() => navigateTo('edit-product', record)} className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+          <button onClick={() => navigateTo('edit-product', record)} className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
             <Edit2 size={16} /> Edit Product
           </button>
-          <button onClick={handleDelete} className="flex-1 sm:flex-none justify-center bg-transparent border border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+          <button onClick={handleDelete} className="flex-1 sm:flex-none justify-center bg-transparent border border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
             <Trash2 size={16} /> Delete
           </button>
         </div>
@@ -95,7 +95,7 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
               <div>
                 <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">Status</p>
                 <div className="flex items-center gap-2">
-                  <div className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></div>
+                  <div className={`w-2 h-2 rounded-full ${statusDot}`}></div>
                   <span className={`font-medium text-sm ${statusText}`}>
                     {record.status}
                   </span>
@@ -130,7 +130,7 @@ export default function ProductDetail({ record, navigateTo, inventory, setInvent
           <div className="bg-blue-50 dark:bg-[#0f1422] border border-blue-200 dark:border-blue-900/30 rounded-2xl p-5 md:p-6 relative overflow-hidden shadow-sm dark:shadow-none">
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-200/50 dark:bg-blue-600/10 rounded-full blur-3xl"></div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="bg-blue-600 rounded p-1.5"><LayoutDashboard size={18} className="text-white" /></div>
+              <div className="bg-blue-600 rounded p-2"><LayoutDashboard size={18} className="text-white" /></div>
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Quick Stats</h3>
             </div>
             

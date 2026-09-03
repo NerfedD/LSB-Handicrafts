@@ -125,7 +125,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
               <select 
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Orders" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Orders</option>
                 <option value="Pending" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Pending</option>
@@ -138,7 +138,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
               <select 
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="date-newest" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Creation Date (Newest → Oldest)</option>
                 <option value="date-oldest" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Creation Date (Oldest → Newest)</option>
@@ -152,7 +152,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
             </div>
             <button 
               onClick={() => navigateTo('create-order')}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto shadow-[0_0_15px_rgba(37,99,235,0.2)]"
             >
               <Plus size={16} /> Create Order
             </button>
@@ -208,7 +208,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
                         <select
                           value={order.status}
                           onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                          className={`appearance-none w-full outline-none pr-8 pl-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
+                          className={`appearance-none w-full outline-none pr-8 pl-3 py-2 rounded-lg border text-xs font-medium cursor-pointer transition-colors ${
                             order.status === 'Pending' 
                               ? 'border-yellow-200 text-yellow-600 bg-yellow-50 hover:bg-yellow-100 dark:border-yellow-900/50 dark:text-yellow-500 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/40' 
                               : order.status === 'Completed'
@@ -220,7 +220,7 @@ export function OrdersList({ orders, setOrders, deliveries, setDeliveries, inven
                           <option value="Completed" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Completed</option>
                           <option value="Cancelled" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Cancelled</option>
                         </select>
-                        <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" />
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none opacity-70" />
                       </div>
                     </td>
                     <td className="px-4 md:px-6 py-5 text-right flex items-center justify-end gap-1">

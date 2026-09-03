@@ -19,7 +19,7 @@ const Label = forwardRef(function Label({ className, ...props }, ref) {
 /**
  * The label-plus-hairline heading used above each block of fields.
  *
- * Defined twice (CreateUserAccountPage, ManageUserAccountPage) and inlined
+ * Defined twice (CreateUserAccountDialog, ManageUserAccountPage) and inlined
  * verbatim five more times across UpdateProfilePage, ViewProfilePage,
  * StaffActivityLogPage and UserAccountsPage. Same markup, one place.
  */

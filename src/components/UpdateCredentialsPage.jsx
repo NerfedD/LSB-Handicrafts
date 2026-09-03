@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Eye, EyeOff, Info, CheckCircle2 } from "./icons";
-import AppShell from "./layout/AppShell";
 import { supabase } from "../lib/supabaseClient";
 
 /**
@@ -17,8 +16,6 @@ import { supabase } from "../lib/supabaseClient";
 export default function UpdateCredentialsPage({
   currentUserEmail,
   onNavigate,
-  onSignOut,
-  isAdmin = false,
   onCancel,
 }) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -70,159 +67,155 @@ export default function UpdateCredentialsPage({
 
   if (succeeded) {
     return (
-      <AppShell isAdmin={isAdmin} activeTab="credentials" onNavigate={onNavigate} onSignOut={onSignOut}>
-        <div className="relative flex w-[600px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
-          <div className="flex size-[68px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
-            <CheckCircle2 className="h-8 w-8 text-[#287a55]" />
-          </div>
-          <h1 className="mt-7 text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
-            Credentials Updated Successfully
-          </h1>
-          <p className="mt-3.5 text-base text-[#5f6875]">
-            Your account credentials have been updated.
-          </p>
-          <button
-            type="button"
-            onClick={() => onNavigate?.("accounts")}
-            className="mt-9 h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
-          >
-            Done
-          </button>
+      <div className="relative flex mx-auto w-[600px] max-w-full flex-col items-center rounded-2xl border border-[#17263a12] bg-white px-14 py-13 text-center shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+        <div className="flex size-[68px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
+          <CheckCircle2 className="h-8 w-8 text-[#287a55]" />
         </div>
-      </AppShell>
+        <h1 className="mt-7 text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
+          Credentials Updated Successfully
+        </h1>
+        <p className="mt-4 text-base text-[#5f6875]">
+          Your account credentials have been updated.
+        </p>
+        <button
+          type="button"
+          onClick={() => onNavigate?.("profile")}
+          className="mt-9 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
+        >
+          Done
+        </button>
+      </div>
     );
   }
 
   return (
-    <AppShell isAdmin={isAdmin} activeTab="credentials" onNavigate={onNavigate} onSignOut={onSignOut}>
-      <div className="relative w-[600px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-[52px] shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
-        <div className="h-[2.5px] w-7 rounded bg-[#1b3a6b]" />
-        <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
-          Update Credentials
-        </h1>
-        <p className="mt-2.5 text-base text-[#5f6875]">
-          Update your password to keep your account secure.
-        </p>
+    <div className="relative mx-auto w-[600px] max-w-full rounded-2xl border border-[#17263a12] bg-white px-14 py-13 shadow-[0_8px_24px_rgba(17,30,50,0.12),0_2px_4px_rgba(17,30,50,0.07)]">
+      <div className="h-[2.5px] w-7 rounded bg-[#1b3a6b]" />
+      <h1 className="mt-5 text-[32px] font-bold leading-tight tracking-tight text-[#17263a]">
+        Update Credentials
+      </h1>
+      <p className="mt-3 text-base text-[#5f6875]">
+        Update your password to keep your account secure.
+      </p>
 
-        {error && (
-          <p className="mt-5 text-sm font-medium text-[#b54747]">{error}</p>
-        )}
+      {error && (
+        <p className="mt-5 text-sm font-medium text-[#b54747]">{error}</p>
+      )}
 
-        <form onSubmit={handleSubmit} className="mt-9 flex flex-col">
-          <SectionLabel>Verify Current Password</SectionLabel>
-          <label
-            htmlFor="current-password"
-            className="mt-5 block text-base font-semibold text-[#17263a]"
+      <form onSubmit={handleSubmit} className="mt-9 flex flex-col">
+        <SectionLabel>Verify Current Password</SectionLabel>
+        <label
+          htmlFor="current-password"
+          className="mt-5 block text-base font-semibold text-[#17263a]"
+        >
+          Current Password
+        </label>
+        <PasswordField
+          id="current-password"
+          required
+          value={currentPassword}
+          onChange={setCurrentPassword}
+          show={showCurrent}
+          onToggle={() => setShowCurrent((v) => !v)}
+          placeholder="Enter your current password"
+        />
+
+        <hr className="mt-7 border-[#17263a14]" />
+
+        <SectionLabel className="mt-6">Update Password</SectionLabel>
+        <div className="mt-5 flex items-start gap-3 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
+          <Info className="mt-1 h-4 w-4 shrink-0 text-[#1b3a6b]" />
+          <p className="text-[13px] leading-[1.6] text-[#1b3a6b]">
+            Your new password must meet the system's password requirements.
+          </p>
+        </div>
+
+        <label
+          htmlFor="new-password"
+          className="mt-6 block text-base font-semibold text-[#17263a]"
+        >
+          New Password
+        </label>
+        <PasswordField
+          id="new-password"
+          required
+          minLength={6}
+          value={newPassword}
+          onChange={setNewPassword}
+          show={showNew}
+          onToggle={() => setShowNew((v) => !v)}
+          placeholder="At least 6 characters"
+        />
+
+        <label
+          htmlFor="confirm-password"
+          className="mt-6 block text-base font-semibold text-[#17263a]"
+        >
+          Confirm New Password
+        </label>
+        <PasswordField
+          id="confirm-password"
+          required
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          show={showConfirm}
+          onToggle={() => setShowConfirm((v) => !v)}
+          placeholder="Re-enter your new password"
+        />
+
+        <div className="mt-9 flex gap-4">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-13 flex-1 rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
           >
-            Current Password
-          </label>
-          <PasswordField
-            id="current-password"
-            required
-            value={currentPassword}
-            onChange={setCurrentPassword}
-            show={showCurrent}
-            onToggle={() => setShowCurrent((v) => !v)}
-            placeholder="Enter your current password"
-          />
-
-          <hr className="mt-7 border-[#17263a14]" />
-
-          <SectionLabel className="mt-6">Update Password</SectionLabel>
-          <div className="mt-5 flex items-start gap-2.5 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
-            <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1b3a6b]" />
-            <p className="text-[13px] leading-[1.6] text-[#1b3a6b]">
-              Your new password must meet the system's password requirements.
-            </p>
-          </div>
-
-          <label
-            htmlFor="new-password"
-            className="mt-[22px] block text-base font-semibold text-[#17263a]"
+            {isSubmitting ? "Saving…" : "Save Changes"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-13 rounded-[10px] border border-[#17263a2e] px-7 text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
           >
-            New Password
-          </label>
-          <PasswordField
-            id="new-password"
-            required
-            minLength={6}
-            value={newPassword}
-            onChange={setNewPassword}
-            show={showNew}
-            onToggle={() => setShowNew((v) => !v)}
-            placeholder="At least 6 characters"
-          />
-
-          <label
-            htmlFor="confirm-password"
-            className="mt-[22px] block text-base font-semibold text-[#17263a]"
-          >
-            Confirm New Password
-          </label>
-          <PasswordField
-            id="confirm-password"
-            required
-            value={confirmPassword}
-            onChange={setConfirmPassword}
-            show={showConfirm}
-            onToggle={() => setShowConfirm((v) => !v)}
-            placeholder="Re-enter your new password"
-          />
-
-          <div className="mt-9 flex gap-3.5">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="h-14 flex-1 rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
-            >
-              {isSubmitting ? "Saving…" : "Save Changes"}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="h-14 rounded-[10px] border border-[#17263a2e] px-7 text-base font-medium text-[#17263a] transition hover:bg-[#17263a08]"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </AppShell>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
 function SectionLabel({ children, className = "" }) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
-        {children}
-      </span>
-      <span className="h-px flex-1 bg-[#17263a1a]" />
+    <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-[1.1px] text-[#5f6875]">
+      {children}
+    </span>
+    <span className="h-px flex-1 bg-[#17263a1a]" />
     </div>
   );
 }
 
 function PasswordField({ id, value, onChange, show, onToggle, placeholder, required, minLength }) {
   return (
-    <div className="relative mt-[9px]">
-      <input
-        id={id}
-        type={show ? "text" : "password"}
-        required={required}
-        minLength={minLength}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="h-14 w-full rounded-[10px] border border-[#17263a29] bg-white pl-[18px] pr-[58px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-label={show ? "Hide password" : "Show password"}
-        className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-[#17263a99] hover:bg-[#17263a0d]"
-      >
-        {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-      </button>
+    <div className="relative mt-2">
+    <input
+      id={id}
+      type={show ? "text" : "password"}
+      required={required}
+      minLength={minLength}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="h-13 w-full rounded-[10px] border border-[#17263a29] bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
+    />
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={show ? "Hide password" : "Show password"}
+      className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d]"
+    >
+      {show ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+    </button>
     </div>
   );
 }

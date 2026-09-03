@@ -56,7 +56,7 @@ export default function ConfirmDialog({
           </div>
           <DialogTitle>{title}</DialogTitle>
           {subject && (
-            <span className="rounded-lg bg-[#17263a0a] px-3 py-1.5 text-sm font-semibold text-ink">
+            <span className="rounded-lg bg-[#17263a0a] px-3 py-2 text-sm font-semibold text-ink">
               {subject}
             </span>
           )}
@@ -67,7 +67,7 @@ export default function ConfirmDialog({
           <Button
             type="button"
             variant="outline"
-            className="h-[52px] flex-1"
+            className="h-13 flex-1"
             disabled={busy}
             onClick={() => onOpenChange?.(false)}
           >
@@ -76,7 +76,7 @@ export default function ConfirmDialog({
           <Button
             type="button"
             variant={variant === "destructive" ? "destructive" : "navy"}
-            className="h-[52px] flex-1"
+            className="h-13 flex-1"
             disabled={busy}
             onClick={onConfirm}
           >

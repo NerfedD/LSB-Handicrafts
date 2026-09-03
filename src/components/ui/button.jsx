@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  * The app's one button.
  *
  * Replaces `shared/profileButtonStyles.js`, which exported raw class STRINGS
- * that callers concatenated to resize (`${secondaryButton} h-11 px-[22px]`).
+ * that callers concatenated to resize (`${secondaryButton} h-11 px-6`).
  * That only worked when class order happened to favour the override; `cn()`
  * resolves the conflict properly.
  *
@@ -18,8 +18,16 @@ import { cn } from "@/lib/utils";
  * half the app, both ship as variants and each screen keeps the colour it has
  * today. Unifying them is a design decision that hasn't been made.
  *
- * Sizes match the heights already in use so no screen shifts: h-[38px] and
- * h-11 on ManagementShell, h-[46px]/h-[52px]/h-14 on AppShell.
+ * THREE HEIGHTS, ON THE 4px GRID. The app had twelve distinct interactive
+ * heights (38, 42, 45, 46, 49.5, 52, 54, 60, 63...), most of them arbitrary px
+ * that ignored the spacing scale. They collapse to:
+ *
+ *   sm      36px  filters, row actions, search
+ *   default 44px  the standard control height, matching Input and Select
+ *   lg      52px  the full-width submit buttons on the auth and account forms
+ *
+ * `xl` is kept as an alias of `lg` so existing call sites don't break; prefer
+ * `lg` in new code.
  */
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-medium transition disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -38,10 +46,10 @@ const buttonVariants = cva(
         link: "text-brand underline-offset-4 hover:underline",
       },
       size: {
-        sm: "h-[38px] px-4",
+        sm: "h-9 px-4",
         default: "h-11 px-5",
-        lg: "h-[46px] px-[22px]",
-        xl: "h-[52px] px-6",
+        lg: "h-13 px-6",
+        xl: "h-13 px-6",
         icon: "h-9 w-9 rounded-lg",
       },
     },

@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * There were six of these. `StatusPill` (this file, the dot-and-label version
  * on the dashboard and product screens), a private `StatusBadge` copied into
  * UserAccountsPage, ManageUserAccountPage and AssignStaffRolePage — identical
- * apart from one having `py-1` instead of `py-1.5` — and inline copies in
+ * apart from one having `py-1` instead of `py-2` — and inline copies in
  * UpdateProfilePage and ViewProfilePage.
  *
  * The inline pair carried a real bug: they were hardcoded to the green "Active"
@@ -38,12 +38,12 @@ export default function StatusPill({ status, variant = "dot", className }) {
     return (
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] font-semibold",
+          "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-[13px] font-semibold",
           tone,
           className
         )}
       >
-        <span className={cn("size-1.5 rounded-full", dot)} />
+        <span className={cn("size-2 rounded-full", dot)} />
         {status}
       </span>
     );
@@ -52,7 +52,7 @@ export default function StatusPill({ status, variant = "dot", className }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-[3px] text-[12px] font-medium",
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-medium",
         tone,
         className
       )}
@@ -73,7 +73,7 @@ export function SuperAdminPill({ className }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-[#1746d13d] bg-[#1746d114] px-2.5 py-[3px] text-[12px] font-medium text-brand",
+        "inline-flex items-center gap-2 rounded-full border border-[#1746d13d] bg-[#1746d114] px-3 py-1 text-[12px] font-medium text-brand",
         className
       )}
     >

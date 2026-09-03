@@ -7,7 +7,7 @@ export default function AuthLayout({ children, cardClassName = "" }) {
   return (
     <div className="flex min-h-screen w-full items-stretch bg-[#f7f4ec]">
       {/* Left panel — brand */}
-      <div className="relative hidden w-[42%] flex-col justify-between overflow-hidden bg-[#17263a] px-12 py-[52px] lg:flex">
+      <div className="relative hidden w-[42%] flex-col justify-between overflow-hidden bg-[#17263a] px-12 py-13 lg:flex">
         <div className="relative w-fit rounded-md border border-white/[0.14] bg-white/[0.03] px-7 py-6">
           <span className="absolute left-3 top-3 text-white/40">+</span>
           <span className="absolute right-3 top-3 text-white/40">+</span>

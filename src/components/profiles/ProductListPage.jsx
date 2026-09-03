@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Box } from "../icons";
-import ManagementShell from "../layout/ManagementShell";
 import ProfileSearchBar from "../shared/ProfileSearchBar";
 import ProfileTable from "../shared/ProfileTable";
 import StatusPill from "../shared/StatusPill";
@@ -43,9 +42,6 @@ export default function ProductListPage({
   onRetry,
   products = [],
   inventory = [],
-  profile,
-  onNavigate,
-  onSignOut,
   onView,
   onEdit,
   onAdd,
@@ -166,55 +162,46 @@ export default function ProductListPage({
   }
 
   return (
-    <ManagementShell
-      active="products"
-      title="Product / Item Profiles"
-      subtitle="Dashboard / Product / Item Profiles"
-      profile={profile}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-    >
-      <div className="mx-auto w-full max-w-[1160px]">
-        <ProfileSearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Search products by name or item code"
-          resultCount={filtered.length}
-          addLabel="Add Product"
-          onAdd={onAdd}
-        />
+    <div className="mx-auto w-full max-w-[1160px]">
+      <ProfileSearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search products by name or item code"
+        resultCount={filtered.length}
+        addLabel="Add Product"
+        onAdd={onAdd}
+      />
 
-        <div className="pt-6">
-          {/* Three distinct states, not one. Loading is a skeleton, a failed
-              read offers a retry, and only a genuinely empty result gets the
-              empty panel. */}
-          {loadError ? (
-            <ProfileErrorState onRetry={onRetry} />
-          ) : !isLoaded ? (
-            <ProfileLoadingState />
-          ) : filtered.length === 0 ? (
-            <ProfileEmptyState
-              icon={<Box className="h-5 w-5" />}
-              title="product"
-              description="Add a product or item profile to begin managing the product catalog."
-              query={query.trim()}
-              onClearSearch={() => setQuery("")}
-              addLabel="Add Product"
-              onAdd={onAdd}
-            />
-          ) : (
-            <ProfileTable
-              columns={COLUMNS}
-              rows={filtered}
-              rowKey={(product) => product.id}
-              renderCell={renderCell}
-              footer={`${filtered.length} ${
-                filtered.length === 1 ? "product" : "products"
-              } in catalog`}
-            />
-          )}
-        </div>
+      <div className="pt-6">
+        {/* Three distinct states, not one. Loading is a skeleton, a failed
+            read offers a retry, and only a genuinely empty result gets the
+            empty panel. */}
+        {loadError ? (
+          <ProfileErrorState onRetry={onRetry} />
+        ) : !isLoaded ? (
+          <ProfileLoadingState />
+        ) : filtered.length === 0 ? (
+          <ProfileEmptyState
+            icon={<Box className="h-5 w-5" />}
+            title="product"
+            description="Add a product or item profile to begin managing the product catalog."
+            query={query.trim()}
+            onClearSearch={() => setQuery("")}
+            addLabel="Add Product"
+            onAdd={onAdd}
+          />
+        ) : (
+          <ProfileTable
+            columns={COLUMNS}
+            rows={filtered}
+            rowKey={(product) => product.id}
+            renderCell={renderCell}
+            footer={`${filtered.length} ${
+              filtered.length === 1 ? "product" : "products"
+            } in catalog`}
+          />
+        )}
       </div>
-    </ManagementShell>
+    </div>
   );
 }

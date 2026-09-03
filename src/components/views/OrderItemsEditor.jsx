@@ -360,7 +360,7 @@ export default function OrderItemsEditor({ items, setItems, inventory, disabled 
                     {item.reason && <span className="block text-xs text-zinc-500">{item.reason}</span>}
                   </td>
                   <td className="py-4">
-                    <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${KIND_BADGE[item.kind] || KIND_BADGE[LINE_KIND.CATALOG]}`}>
+                    <span className={`px-2 py-1 rounded-md text-[11px] font-semibold ${KIND_BADGE[item.kind] || KIND_BADGE[LINE_KIND.CATALOG]}`}>
                       {kindLabel(item.kind)}
                     </span>
                   </td>

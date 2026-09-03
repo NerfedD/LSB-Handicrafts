@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Activity, Box, Truck, UserPlus, UserRound, Users } from "./icons";
-import ManagementShell from "./layout/ManagementShell";
 import {
   Panel,
   PanelEmptyState,
@@ -33,7 +32,7 @@ const PANEL_ROWS = 5;
 function ActivityRow({ entry, index }) {
   return (
     <div
-      className={`flex items-center gap-3.5 px-5 py-3 ${
+      className={`flex items-center gap-4 px-5 py-3 ${
         index > 0 ? "border-t border-[#17263a0d]" : ""
       }`}
     >
@@ -49,10 +48,10 @@ function ActivityRow({ entry, index }) {
           <span className="font-semibold">{entry.name}</span>
           <span className="font-medium"> — {entry.action}</span>
         </p>
-        <p className="pt-0.5 text-[12px] text-[#5f6875]">{relativeDay(entry.when)}</p>
+        <p className="pt-1 text-[12px] text-[#5f6875]">{relativeDay(entry.when)}</p>
       </div>
       <span
-        className={`shrink-0 rounded-full px-2.5 py-[3px] text-[11.5px] font-semibold tracking-[0.115px] ${
+        className={`shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold tracking-[0.115px] ${
           ACTIVITY_PILL_STYLES[entry.kind]
         }`}
       >
@@ -68,7 +67,6 @@ export default function SalesDashboard({
   suppliers = [],
   profile,
   onNavigate,
-  onSignOut,
   onAddCustomer,
 }) {
   const customerActivity = useMemo(
@@ -89,128 +87,119 @@ export default function SalesDashboard({
   );
 
   return (
-    <ManagementShell
-      active="dashboard"
-      title="Dashboard"
-      subtitle="Overview of your sales workspace."
-      profile={profile}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-    >
-      <div className="mx-auto w-full max-w-[1160px]">
-        <h2 className="text-[24px] font-bold leading-9 tracking-[-0.48px] text-[#17263a]">
-          {greeting()}, {profile?.name?.split(" ")[0] || "there"}.
-        </h2>
-        <p className="pt-1 text-[14.5px] text-[#5f6875]">
-          Here&rsquo;s your workspace overview.
-        </p>
+    <div className="mx-auto w-full max-w-[1160px]">
+      <h2 className="text-[24px] font-bold leading-9 tracking-[-0.48px] text-[#17263a]">
+        {greeting()}, {profile?.name?.split(" ")[0] || "there"}.
+      </h2>
+      <p className="pt-1 text-[14.5px] text-[#5f6875]">
+        Here&rsquo;s your workspace overview.
+      </p>
 
-        <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            icon={<UserRound className="h-5 w-5 text-[#1b3a6b]" />}
-            tone="bg-[#1b3a6b14]"
-            value={customers.length}
-            label="Customers"
-            description="Total registered customers"
-            onView={() => onNavigate("customers")}
-          />
-          <StatCard
-            icon={<Box className="h-5 w-5 text-[#653eb5]" />}
-            tone="bg-[#653eb514]"
-            value={products.length}
-            label="Products"
-            description="Products and items on file"
-            onView={() => onNavigate("products")}
-          />
-          <StatCard
-            icon={<Truck className="h-5 w-5 text-[#166b59]" />}
-            tone="bg-[#166b5914]"
-            value={suppliers.length}
-            label="Suppliers"
-            description="Registered suppliers"
-            onView={() => onNavigate("suppliers")}
-          />
-          <StatCard
-            icon={<Activity className="h-5 w-5 text-[#8a5600]" />}
-            tone="bg-[#9a610014]"
-            value={eventsToday}
-            label="Recent Activity"
-            description="Events recorded today"
-          />
-        </div>
-
-        <div className="pt-5">
-          <QuickActionsCard>
-            <QuickAction
-              primary
-              icon={<UserPlus className="h-[15px] w-[15px]" />}
-              label="Add Customer"
-              onClick={onAddCustomer}
-            />
-            <QuickAction
-              icon={<Users className="h-[15px] w-[15px]" />}
-              label="View Customers"
-              onClick={() => onNavigate("customers")}
-            />
-            <QuickAction
-              icon={<Box className="h-[15px] w-[15px]" />}
-              label="View Products"
-              onClick={() => onNavigate("products")}
-            />
-            <QuickAction
-              icon={<Truck className="h-[15px] w-[15px]" />}
-              label="View Suppliers"
-              onClick={() => onNavigate("suppliers")}
-            />
-          </QuickActionsCard>
-        </div>
-
-        <div className="grid grid-cols-1 gap-5 pt-5 lg:grid-cols-2">
-          <Panel
-            title="Recent Customer Activity"
-            icon={<UserRound className="h-4 w-4 text-[#5f6875]" />}
-            onViewAll={() => onNavigate("customers")}
-            footer={`${customers.length} ${
-              customers.length === 1 ? "customer" : "customers"
-            } total`}
-          >
-            {customerActivity.length === 0 ? (
-              <PanelEmptyState
-                title="No recent activity"
-                description="Customer activity will appear here when records are added or updated."
-              />
-            ) : (
-              customerActivity
-                .slice(0, PANEL_ROWS)
-                .map((entry, index) => (
-                  <ActivityRow key={entry.id} entry={entry} index={index} />
-                ))
-            )}
-          </Panel>
-
-          <Panel
-            title="Recent Supplier Activity"
-            icon={<Truck className="h-4 w-4 text-[#5f6875]" />}
-            onViewAll={() => onNavigate("suppliers")}
-            footer={`${suppliers.length} ${
-              suppliers.length === 1 ? "supplier" : "suppliers"
-            } total`}
-          >
-            {supplierActivity.length === 0 ? (
-              <PanelEmptyState
-                title="No recent activity"
-                description="Supplier activity will appear here when records are added or updated."
-              />
-            ) : (
-              supplierActivity
-                .slice(0, PANEL_ROWS)
-                .map((entry, index) => (
-                  <ActivityRow key={entry.id} entry={entry} index={index} />
-                ))
-            )}
-          </Panel>
-        </div>
+      <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={<UserRound className="h-5 w-5 text-[#1b3a6b]" />}
+          tone="bg-[#1b3a6b14]"
+          value={customers.length}
+          label="Customers"
+          description="Total registered customers"
+          onView={() => onNavigate("customers")}
+        />
+        <StatCard
+          icon={<Box className="h-5 w-5 text-[#653eb5]" />}
+          tone="bg-[#653eb514]"
+          value={products.length}
+          label="Products"
+          description="Products and items on file"
+          onView={() => onNavigate("products")}
+        />
+        <StatCard
+          icon={<Truck className="h-5 w-5 text-[#166b59]" />}
+          tone="bg-[#166b5914]"
+          value={suppliers.length}
+          label="Suppliers"
+          description="Registered suppliers"
+          onView={() => onNavigate("suppliers")}
+        />
+        <StatCard
+          icon={<Activity className="h-5 w-5 text-[#8a5600]" />}
+          tone="bg-[#9a610014]"
+          value={eventsToday}
+          label="Recent Activity"
+          description="Events recorded today"
+        />
       </div>
-    </ManagementShell>
+
+      <div className="pt-5">
+        <QuickActionsCard>
+          <QuickAction
+            primary
+            icon={<UserPlus className="h-4 w-4" />}
+            label="Add Customer"
+            onClick={onAddCustomer}
+          />
+          <QuickAction
+            icon={<Users className="h-4 w-4" />}
+            label="View Customers"
+            onClick={() => onNavigate("customers")}
+          />
+          <QuickAction
+            icon={<Box className="h-4 w-4" />}
+            label="View Products"
+            onClick={() => onNavigate("products")}
+          />
+          <QuickAction
+            icon={<Truck className="h-4 w-4" />}
+            label="View Suppliers"
+            onClick={() => onNavigate("suppliers")}
+          />
+        </QuickActionsCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 pt-5 lg:grid-cols-2">
+        <Panel
+          title="Recent Customer Activity"
+          icon={<UserRound className="h-4 w-4 text-[#5f6875]" />}
+          onViewAll={() => onNavigate("customers")}
+          footer={`${customers.length} ${
+            customers.length === 1 ? "customer" : "customers"
+          } total`}
+        >
+          {customerActivity.length === 0 ? (
+            <PanelEmptyState
+              title="No recent activity"
+              description="Customer activity will appear here when records are added or updated."
+            />
+          ) : (
+            customerActivity
+              .slice(0, PANEL_ROWS)
+              .map((entry, index) => (
+                <ActivityRow key={entry.id} entry={entry} index={index} />
+              ))
+          )}
+        </Panel>
+
+        <Panel
+          title="Recent Supplier Activity"
+          icon={<Truck className="h-4 w-4 text-[#5f6875]" />}
+          onViewAll={() => onNavigate("suppliers")}
+          footer={`${suppliers.length} ${
+            suppliers.length === 1 ? "supplier" : "suppliers"
+          } total`}
+        >
+          {supplierActivity.length === 0 ? (
+            <PanelEmptyState
+              title="No recent activity"
+              description="Supplier activity will appear here when records are added or updated."
+            />
+          ) : (
+            supplierActivity
+              .slice(0, PANEL_ROWS)
+              .map((entry, index) => (
+                <ActivityRow key={entry.id} entry={entry} index={index} />
+              ))
+          )}
+        </Panel>
+      </div>
+    </div>
   );
 }

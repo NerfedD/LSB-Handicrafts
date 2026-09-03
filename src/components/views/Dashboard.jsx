@@ -70,7 +70,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Products</h3>
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalProducts}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+12%</span>
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-1 rounded">+12%</span>
             <span className="text-zinc-500">from last quarter</span>
           </div>
         </div>
@@ -79,7 +79,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Volume</h3>
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">{totalVolume}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+5%</span>
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-1 rounded">+5%</span>
             <span className="text-zinc-500">from last quarter</span>
           </div>
         </div>
@@ -88,7 +88,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mb-3 md:mb-4">Total Revenue</h3>
           <p className="text-3xl md:text-4xl font-bold text-zinc-900 dark:text-zinc-100 mb-3 md:mb-4">PHP {totalRevenue.toLocaleString()}</p>
           <div className="flex items-center gap-2 text-xs font-medium">
-            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-0.5 rounded">+8%</span>
+            <span className="text-emerald-600 bg-emerald-50 dark:text-emerald-500 dark:bg-emerald-500/10 px-2 py-1 rounded">+8%</span>
             <span className="text-zinc-500">from last quarter</span>
           </div>
         </div>
@@ -109,7 +109,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => setShowHistory(true)}
-                className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                className="flex items-center gap-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
               >
                 <History size={14} />
                 View History
@@ -123,7 +123,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
             ) : (
               recentActivities.map((activity, idx) => (
                 <div key={idx} className="flex gap-4">
-                  <div className={`mt-1.5 w-1.5 h-1.5 rounded-full ${activity.color} shrink-0`}></div>
+                  <div className={`mt-2 w-2 h-2 rounded-full ${activity.color} shrink-0`}></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-zinc-700 dark:text-zinc-300">
                       <span className={`font-medium ${activity.type === 'Order' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
@@ -148,25 +148,25 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           <div className="flex flex-wrap gap-2 mb-6">
             <button 
               onClick={() => setInvFilter('All')} 
-              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'All' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
+              className={`text-xs font-medium px-4 py-2 rounded-lg transition-colors ${invFilter === 'All' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
             >
               View All
             </button>
             <button 
               onClick={() => setInvFilter('In Stock')} 
-              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'In Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
+              className={`text-xs font-medium px-4 py-2 rounded-lg transition-colors ${invFilter === 'In Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
             >
               In Stock
             </button>
             <button
               onClick={() => setInvFilter('Low Stock')}
-              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'Low Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
+              className={`text-xs font-medium px-4 py-2 rounded-lg transition-colors ${invFilter === 'Low Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
             >
               Low Stock
             </button>
             <button
               onClick={() => setInvFilter('Out of Stock')}
-              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${invFilter === 'Out of Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
+              className={`text-xs font-medium px-4 py-2 rounded-lg transition-colors ${invFilter === 'Out of Stock' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-[#1A1A24] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'}`}
             >
               Out of Stock
             </button>
@@ -178,13 +178,13 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
               return (
               <div key={item.id} className="bg-zinc-50 dark:bg-[#09090B] border border-zinc-200 dark:border-[#1F1F2E] p-4 rounded-xl flex items-center justify-between w-full">
                 <div className="flex items-center gap-3">
-                  <div className={`w-1.5 h-1.5 rounded-full ${tone.dot} shrink-0`}></div>
+                  <div className={`w-2 h-2 rounded-full ${tone.dot} shrink-0`}></div>
                   <div>
                     <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200 line-clamp-1">{item.name}</p>
                     <p className="text-xs text-zinc-500">{item.sku}</p>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${tone.pill}`}>
+                <span className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap ${tone.pill}`}>
                   {availableOf(item)} available
                 </span>
               </div>
@@ -252,7 +252,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
           ].map((stat, idx) => (
             <div key={idx} className={`p-4 md:p-5 rounded-2xl border ${stat.color} flex flex-col items-start gap-4 shadow-inner`}>
               <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${stat.dotColor}`}></div>
+                <div className={`w-2 h-2 rounded-full ${stat.dotColor}`}></div>
                 <span className={`text-xs font-semibold ${stat.titleColor}`}>{stat.title}</span>
               </div>
               <div className={`text-3xl font-bold ${stat.dotCountColor}`}>{stat.count}</div>
@@ -287,7 +287,7 @@ export default function Dashboard({ inventory, deliveries, orders = [], activity
                     }`}></div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
+                        <span className={`text-xs font-semibold px-2 py-1 rounded ${
                           activity.type === 'Product' ? 'bg-red-100 text-red-600 dark:bg-red-500/10 dark:text-red-400' :
                           activity.type === 'Delivery' ? 'bg-orange-100 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400' :
                           'bg-blue-100 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400'

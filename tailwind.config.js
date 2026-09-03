@@ -8,6 +8,37 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
+    // The 4px grid.
+    //
+    // This REPLACES Tailwind's rem-based spacing scale rather than extending
+    // it, and that is the whole point. src/index.css sets a fluid root
+    // (`clamp(14px, 1vw + 12px, 18px)`) which hits its 18px ceiling at a 600px
+    // viewport — so on every desktop and tablet the root is pinned at 18px and
+    // one rem-based unit is 4.5px, not 4px. `p-4` rendered 18px. Pinning the
+    // scale to px decouples spacing from that clamp, so `p-4` is exactly 16px
+    // everywhere and the grid is real.
+    //
+    // Type is deliberately NOT pinned: font sizes across the app are already
+    // written as fixed px, so they were never subject to the clamp anyway, and
+    // the clamp still does its job on narrow phones.
+    //
+    // There are NO half-steps (0.5, 1.5, 2.5, 3.5) on purpose. Omitting them
+    // means an old `gap-3.5` stops compiling and disappears visibly, instead of
+    // silently sitting 2px off the grid forever.
+    //
+    // `13` (52px) is not in stock Tailwind. It is here because `h-13` was
+    // already being used in AssignStaffRolePage, where it silently applied no
+    // height at all — this makes that markup mean what it says.
+    spacing: {
+      0: '0px',   px: '1px',
+      1: '4px',   2: '8px',   3: '12px',  4: '16px',  5: '20px',
+      6: '24px',  7: '28px',  8: '32px',  9: '36px',  10: '40px',
+      11: '44px', 12: '48px', 13: '52px', 14: '56px', 16: '64px',
+      18: '72px', 20: '80px', 24: '96px', 28: '112px', 32: '128px',
+      36: '144px', 40: '160px', 44: '176px', 48: '192px', 52: '208px',
+      56: '224px', 60: '240px', 64: '256px', 72: '288px', 80: '320px',
+      96: '384px',
+    },
     extend: {
       // Named tokens for the palette this app already uses. Every value here is
       // a colour that was previously written as a hardcoded arbitrary class

@@ -8,6 +8,11 @@ import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection from "./hooks/useSupabaseCollection";
 import { nowIso } from "./utils/profileFormat";
 import { staffClaimsFromSession } from "./utils/sessionClaims";
+import { CHROMELESS_VIEWS, metaForView } from "./utils/navigation";
+import Shell from "./components/layout/Shell";
+import CustomerFormDialog from "./components/profiles/CustomerFormDialog";
+import ProductFormDialog from "./components/profiles/ProductFormDialog";
+import SupplierFormDialog from "./components/profiles/SupplierFormDialog";
 import { Toaster, toast } from "@/components/ui/sonner";
 import {
   customersCollection,
@@ -34,10 +39,19 @@ import LoginPage from "./components/LoginPage.jsx";
 const sameEmail = (a, b) =>
   !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
+/** Which list screen each record dialog belongs to — used for its route gate. */
+const LIST_VIEW_OF = { customer: "customers", product: "products", supplier: "suppliers" };
+
+/** Retired view keys, kept resolvable so a stale link still lands somewhere. */
+const FORM_ALIASES = {
+  "customer-form": "customer",
+  "product-form": "product",
+  "supplier-form": "supplier",
+};
+
 const ForgotPasswordPage = lazy(() => import("./components/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./components/ResetPasswordPage"));
 const UpdateCredentialsPage = lazy(() => import("./components/UpdateCredentialsPage"));
-const CreateUserAccountPage = lazy(() => import("./components/CreateUserAccountPage"));
 const UserAccountsPage = lazy(() => import("./components/UserAccountsPage"));
 const ManageUserAccountPage = lazy(() => import("./components/ManageUserAccountPage"));
 const AssignStaffRolePage = lazy(() => import("./components/AssignStaffRolePage"));
@@ -53,13 +67,10 @@ const SalesDashboard = lazy(() => import("./components/SalesDashboard.jsx"));
 const ProductionDashboard = lazy(() => import("./components/ProductionDashboard.jsx"));
 const CustomerListPage = lazy(() => import("./components/profiles/CustomerListPage"));
 const CustomerDetailPage = lazy(() => import("./components/profiles/CustomerDetailPage"));
-const CustomerFormPage = lazy(() => import("./components/profiles/CustomerFormPage"));
 const ProductListPage = lazy(() => import("./components/profiles/ProductListPage"));
 const ProductDetailPage = lazy(() => import("./components/profiles/ProductDetailPage"));
-const ProductFormPage = lazy(() => import("./components/profiles/ProductFormPage"));
 const SupplierListPage = lazy(() => import("./components/profiles/SupplierListPage"));
 const SupplierDetailPage = lazy(() => import("./components/profiles/SupplierDetailPage"));
-const SupplierFormPage = lazy(() => import("./components/profiles/SupplierFormPage"));
 
 /** Shown while a route chunk is still downloading. */
 function RouteFallback() {
@@ -86,14 +97,14 @@ function NotAuthorized({ role, onBack, onSignOut }) {
         <button
           type="button"
           onClick={onBack}
-          className="rounded-lg bg-[#1b3a6b] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#17263a]"
+          className="rounded-lg bg-[#1b3a6b] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#17263a]"
         >
           Back to Dashboard
         </button>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded-lg border border-[#17263a29] px-4 py-2.5 text-sm font-medium text-[#17263a] transition hover:bg-[#17263a08]"
+          className="rounded-lg border border-[#17263a29] px-4 py-3 text-sm font-medium text-[#17263a] transition hover:bg-[#17263a08]"
         >
           Sign Out
         </button>
@@ -124,8 +135,8 @@ const IDLE_TIMEOUT_MS =
  * session: signing in successfully only gets someone past LoginPage, then
  * handleLoginAttempt below looks them up by email. Every role now lands on
  * the same DashboardPage (Figma #13); what differs is the sidebar, which
- * hides User Management and the Staff Activity Log from non-Admins (see
- * layout/ManagementShell). The inventory/deliveries/orders workspace moved
+ * hides User Management and the Staff group from non-Admins (see the
+ * NAV_TREE filter in layout/Shell). The inventory/deliveries/orders workspace moved
  * to the "workspace" view key and is reached from the dashboard.
  *
  * VITE_ADMIN_EMAILS + bootstrapAdminRow below used to be how the very
@@ -140,6 +151,10 @@ const IDLE_TIMEOUT_MS =
  */
 export default function App() {
   const [view, setView] = useState("checking-session");
+  // Creating an account used to be its own screen. It is now a modal on the
+  // accounts list, so what used to be a view key is an open flag instead --
+  // see navigate() below, which still understands the old key.
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [staff, setStaff] = useState([]);
   const [isStaffLoaded, setIsStaffLoaded] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState(null);
@@ -148,6 +163,21 @@ export default function App() {
   // enabled. Used to route before the staff table has been read -- never as an
   // access decision; see utils/sessionClaims.js.
   const [sessionClaims, setSessionClaims] = useState(null);
+
+  // Which sidebar groups the user has explicitly opened or closed.
+  //
+  // Lives here rather than in Shell because Shell does unmount on the
+  // chromeless branch (sign-out, NotAuthorized) while App never does — so a
+  // group left open survives a trip through the login screen.
+  //
+  // A key that is absent means "follow the active screen"; a key that is
+  // present means the user chose, and their choice wins. That is what lets
+  // someone collapse the group they are currently inside.
+  const [openGroups, setOpenGroups] = useState({});
+
+  function handleToggleGroup(key, nextOpen) {
+    setOpenGroups((prev) => ({ ...prev, [key]: nextOpen }));
+  }
 
   // The customer / product / supplier profile records (Figma #14-#22). Unlike
   // `staff` below — which the sign-in path has to read before it can route —
@@ -176,7 +206,12 @@ export default function App() {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedSupplierId, setSelectedSupplierId] = useState(null);
-  const [formMode, setFormMode] = useState("add");
+  // Which record dialog is open, and on which record. `id: null` means adding.
+  //
+  // Replaces the customer-form / product-form / supplier-form VIEW KEYS, the
+  // same way isCreateOpen replaced the "create" key: adding a record shouldn't
+  // navigate away from the list you're adding to.
+  const [profileDialog, setProfileDialog] = useState(null); // { kind, id } | null
 
   // Derived so it always reflects the latest edit rather than a stale copy.
   const selectedAccount = staff.find((s) => s.id === selectedAccountId);
@@ -549,6 +584,11 @@ export default function App() {
         if (r.data) setStaff((prev) => [...prev, staffCollection.fromRow(r.data)]);
       }
     );
+    // The create form used to be a screen with a success panel of its own. As a
+    // modal it just closes, so the confirmation is a toast — the same way every
+    // other write on these screens reports itself. persistStaff has already
+    // raised the error toast if this failed.
+    if (result.ok) toast.success("Account created.");
     return result.ok;
   }
 
@@ -563,11 +603,11 @@ export default function App() {
    * Ids are Date.now() to match handleAccountCreated above — the tables use a
    * plain bigint primary key with no sequence, so the client picks them.
    */
-  function makeSaveHandler(state, records, selectedId, setSelectedId) {
+  function makeSaveHandler(state, records, selectedId, setSelectedId, mode) {
     return async (values) => {
       const now = nowIso();
 
-      if (formMode === "edit" && selectedId !== null) {
+      if (mode === "edit" && selectedId !== null) {
         const current = records.find((r) => r.id === selectedId);
         const result = await state.update(selectedId, {
           ...current,
@@ -597,11 +637,49 @@ export default function App() {
     };
   }
 
-  /** Opens a profile form. `id` is null when adding. */
-  function openProfileForm(view, setSelectedId, id = null) {
-    setSelectedId(id);
-    setFormMode(id === null ? "add" : "edit");
-    setView(view);
+  /**
+   * The save handler for one record dialog.
+   *
+   * Wraps makeSaveHandler with the toast the dialogs need. As pages these
+   * screens showed a full success panel with a "View X" button; a dialog just
+   * closes, so that affordance moves into the toast rather than disappearing.
+   */
+  function makeRecordSaveHandler(kind) {
+    const byKind = {
+      customer: [customersState, customers, selectedCustomerId, setSelectedCustomerId, "customer-detail", "Customer"],
+      product: [productsState, products, selectedProductId, setSelectedProductId, "product-detail", "Product"],
+      supplier: [suppliersState, suppliers, selectedSupplierId, setSelectedSupplierId, "supplier-detail", "Supplier"],
+    };
+    const [state, records, selectedId, setSelectedId, detailView, label] = byKind[kind];
+    const mode = profileDialog?.id == null ? "add" : "edit";
+    const save = makeSaveHandler(state, records, profileDialog?.id ?? selectedId, setSelectedId, mode);
+
+    return async (values) => {
+      const id = await save(values);
+      if (id === null || id === undefined) return null;
+      setProfileDialog(null);
+      toast.success(`${label} saved.`, {
+        action: {
+          label: "View",
+          onClick: () => openProfileDetail(detailView, setSelectedId, id),
+        },
+      });
+      return id;
+    };
+  }
+
+  /**
+   * Opens a record dialog. `id` is null when adding.
+   *
+   * The canAccess check is not belt-and-braces. These forms used to be routed
+   * views, so DENIED_BY_ROLE covered them — Production Staff could not open the
+   * customer or supplier form because the route gate refused the view key. A
+   * dialog has no view key, so the same denial has to be applied against the
+   * section's list view or that protection would silently disappear.
+   */
+  function openProfileForm(kind, id = null) {
+    if (!canAccess(profile?.role, LIST_VIEW_OF[kind])) return;
+    setProfileDialog({ kind, id });
   }
 
   /** Opens a profile detail screen. */
@@ -612,46 +690,52 @@ export default function App() {
 
   // Guard for deep-linked/stale account views: show the list instead of
   // rendering a screen with no record behind it.
+  /**
+   * The one navigation entry point handed to every screen's `onNavigate`.
+   *
+   * "create" is no longer a view: the create form is a modal on the accounts
+   * list. Rather than hunt down every caller, the old key is translated here --
+   * open the accounts screen with the modal already up. That keeps the
+   * dashboard's "Create User Account" quick action working as a single click,
+   * and means a stale link can't route to a screen that no longer exists.
+   */
+  function navigate(next) {
+    if (next === "create") {
+      setIsCreateOpen(true);
+      setView("accounts");
+      return;
+    }
+    // The three record forms are dialogs now, so their view keys are retired
+    // the same way "create" was: open the list with the dialog already up,
+    // rather than routing to a screen that no longer exists.
+    const kind = FORM_ALIASES[next];
+    if (kind) {
+      setView(LIST_VIEW_OF[kind]);
+      openProfileForm(kind);
+      return;
+    }
+    setView(next);
+  }
+
   function renderMissingAccount() {
     return (
       <UserAccountsPage
         isAdmin={isAdmin}
+        profile={profile}
         users={staff}
         isLoaded={isStaffLoaded}
         currentUserEmail={sessionEmail}
-        onNavigate={setView}
+        onNavigate={navigate}
         onSignOut={handleSignOut}
-        onCreateAccount={() => setView("create")}
+        isCreateOpen={isCreateOpen}
+        onCreateOpenChange={setIsCreateOpen}
+        onAccountCreated={handleAccountCreated}
         onRowAction={handleRowAction}
       />
     );
   }
 
   function renderView() {
-    // Authorization, not decoration. Hiding a nav link only hides the link —
-    // the view still renders for anyone who reaches it another way, and every
-    // one of these screens was reachable by a non-admin through the shared
-    // AppShell header. This is the check that actually stops them.
-    //
-    // Resolved through utils/permissions, which covers both halves of the
-    // sidebar's filter: the admin-only screens, and the per-role denials that
-    // ManagementShell's `hideFrom` was enforcing on the nav entry alone (a
-    // Production Staff account could still land on the customer and supplier
-    // screens the design omits from their sidebar).
-    //
-    // Guarded on sessionEmail so it only applies once someone is signed in —
-    // the pre-auth views (login, password reset, checking-session) have no role
-    // to check against and must stay reachable.
-    if (sessionEmail && !canAccess(profile?.role, view)) {
-      return (
-        <NotAuthorized
-          role={profile?.role}
-          onBack={() => setView("dashboard")}
-          onSignOut={handleSignOut}
-        />
-      );
-    }
-
     switch (view) {
       case "checking-session":
         return <RouteFallback />;
@@ -676,10 +760,10 @@ export default function App() {
               products={products}
               suppliers={suppliers}
               profile={profile}
-              onNavigate={setView}
+              onNavigate={navigate}
               onSignOut={handleSignOut}
               onAddCustomer={() =>
-                openProfileForm("customer-form", setSelectedCustomerId)
+                openProfileForm("customer")
               }
             />
           );
@@ -691,10 +775,10 @@ export default function App() {
               products={products}
               inventory={inventory}
               profile={profile}
-              onNavigate={setView}
+              onNavigate={navigate}
               onSignOut={handleSignOut}
               onAddProduct={() =>
-                openProfileForm("product-form", setSelectedProductId)
+                openProfileForm("product")
               }
             />
           );
@@ -705,7 +789,7 @@ export default function App() {
             staff={staff}
             isLoaded={isStaffLoaded}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
           />
         );
@@ -719,7 +803,7 @@ export default function App() {
         return (
           <InventoryWorkspacePlaceholder
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
           />
         );
@@ -743,12 +827,15 @@ export default function App() {
         return (
           <UserAccountsPage
             isAdmin={isAdmin}
+            profile={profile}
             users={staff}
             isLoaded={isStaffLoaded}
             currentUserEmail={sessionEmail}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
-            onCreateAccount={() => setView("create")}
+            isCreateOpen={isCreateOpen}
+            onCreateOpenChange={setIsCreateOpen}
+            onAccountCreated={handleAccountCreated}
             onRowAction={handleRowAction}
           />
         );
@@ -759,11 +846,12 @@ export default function App() {
         return (
           <ManageUserAccountPage
             isAdmin={isAdmin}
+            profile={profile}
             key={selectedAccount.id}
             account={selectedAccount}
             currentUserEmail={sessionEmail}
             onBack={() => setView("accounts")}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onStatusChange={async (status) => {
               if (await updateSelectedAccount({ status })) {
@@ -786,9 +874,10 @@ export default function App() {
         return (
           <AssignStaffRolePage
             isAdmin={isAdmin}
+            profile={profile}
             account={selectedAccount}
             onBack={() => setView("manage-account")}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onSaved={async (role) => {
               // Only leave the screen if the role change actually persisted.
@@ -802,25 +891,20 @@ export default function App() {
           />
         );
 
-      case "create":
-        return (
-          <CreateUserAccountPage
-            isAdmin={isAdmin}
-            onNavigate={setView}
-            onSignOut={handleSignOut}
-            onCancel={() => setView("accounts")}
-            onAccountCreated={handleAccountCreated}
-          />
-        );
-
       case "credentials":
         return (
           <UpdateCredentialsPage
             isAdmin={isAdmin}
+            profile={profile}
             currentUserEmail={sessionEmail}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
-            onCancel={() => setView("accounts")}
+            // Cancel used to always land on the admin-only accounts list, so a
+            // non-admin backing out of this screen hit "You don't have access".
+            // Admins used to have no My Profile entry, so cancelling sent them
+            // to the accounts list. The unified sidebar gives every role My
+            // Profile, and Update Credentials belongs to that section.
+            onCancel={() => setView("profile")}
           />
         );
 
@@ -828,9 +912,10 @@ export default function App() {
         return (
           <StaffActivityLogPage
             isAdmin={isAdmin}
+            profile={profile}
             staff={staff}
             isLoaded={isStaffLoaded}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
           />
         );
@@ -839,9 +924,10 @@ export default function App() {
         return (
           <StaffDirectoryPage
             isAdmin={isAdmin}
+            profile={profile}
             staff={staff}
             isLoaded={isStaffLoaded}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
           />
         );
@@ -851,7 +937,7 @@ export default function App() {
           <ViewProfilePage
             isAdmin={isAdmin}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onUpdateProfile={() => setView("update-profile")}
             onGoToCredentials={() => setView("credentials")}
@@ -864,7 +950,7 @@ export default function App() {
             isAdmin={isAdmin}
             profile={profile}
             onBack={() => setView("profile")}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onSaved={async (changes) => {
               if (await updateProfile(changes)) {
@@ -883,15 +969,15 @@ export default function App() {
             onRetry={customersState.reload}
             customers={customers}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onView={(id) =>
               openProfileDetail("customer-detail", setSelectedCustomerId, id)
             }
             onEdit={(id) =>
-              openProfileForm("customer-form", setSelectedCustomerId, id)
+              openProfileForm("customer", id)
             }
-            onAdd={() => openProfileForm("customer-form", setSelectedCustomerId)}
+            onAdd={() => openProfileForm("customer")}
           />
         );
 
@@ -900,33 +986,11 @@ export default function App() {
           <CustomerDetailPage
             customer={selectedCustomer}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onBack={() => setView("customers")}
             onEdit={(id) =>
-              openProfileForm("customer-form", setSelectedCustomerId, id)
-            }
-          />
-        );
-
-      case "customer-form":
-        return (
-          <CustomerFormPage
-            key={selectedCustomerId ?? "new"}
-            mode={formMode}
-            customer={selectedCustomer}
-            profile={profile}
-            onNavigate={setView}
-            onSignOut={handleSignOut}
-            onCancel={() => setView("customers")}
-            onSave={makeSaveHandler(
-              customersState,
-              customers,
-              selectedCustomerId,
-              setSelectedCustomerId
-            )}
-            onView={(id) =>
-              openProfileDetail("customer-detail", setSelectedCustomerId, id)
+              openProfileForm("customer", id)
             }
           />
         );
@@ -940,15 +1004,15 @@ export default function App() {
             inventory={inventory}
             products={products}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onView={(id) =>
               openProfileDetail("product-detail", setSelectedProductId, id)
             }
             onEdit={(id) =>
-              openProfileForm("product-form", setSelectedProductId, id)
+              openProfileForm("product", id)
             }
-            onAdd={() => openProfileForm("product-form", setSelectedProductId)}
+            onAdd={() => openProfileForm("product")}
           />
         );
 
@@ -958,34 +1022,11 @@ export default function App() {
             inventory={inventory}
             product={selectedProduct}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onBack={() => setView("products")}
             onEdit={(id) =>
-              openProfileForm("product-form", setSelectedProductId, id)
-            }
-          />
-        );
-
-      case "product-form":
-        return (
-          <ProductFormPage
-            key={selectedProductId ?? "new"}
-            mode={formMode}
-            product={selectedProduct}
-            products={products}
-            profile={profile}
-            onNavigate={setView}
-            onSignOut={handleSignOut}
-            onCancel={() => setView("products")}
-            onSave={makeSaveHandler(
-              productsState,
-              products,
-              selectedProductId,
-              setSelectedProductId
-            )}
-            onView={(id) =>
-              openProfileDetail("product-detail", setSelectedProductId, id)
+              openProfileForm("product", id)
             }
           />
         );
@@ -998,15 +1039,15 @@ export default function App() {
             onRetry={suppliersState.reload}
             suppliers={suppliers}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onView={(id) =>
               openProfileDetail("supplier-detail", setSelectedSupplierId, id)
             }
             onEdit={(id) =>
-              openProfileForm("supplier-form", setSelectedSupplierId, id)
+              openProfileForm("supplier", id)
             }
-            onAdd={() => openProfileForm("supplier-form", setSelectedSupplierId)}
+            onAdd={() => openProfileForm("supplier")}
           />
         );
 
@@ -1015,33 +1056,11 @@ export default function App() {
           <SupplierDetailPage
             supplier={selectedSupplier}
             profile={profile}
-            onNavigate={setView}
+            onNavigate={navigate}
             onSignOut={handleSignOut}
             onBack={() => setView("suppliers")}
             onEdit={(id) =>
-              openProfileForm("supplier-form", setSelectedSupplierId, id)
-            }
-          />
-        );
-
-      case "supplier-form":
-        return (
-          <SupplierFormPage
-            key={selectedSupplierId ?? "new"}
-            mode={formMode}
-            supplier={selectedSupplier}
-            profile={profile}
-            onNavigate={setView}
-            onSignOut={handleSignOut}
-            onCancel={() => setView("suppliers")}
-            onSave={makeSaveHandler(
-              suppliersState,
-              suppliers,
-              selectedSupplierId,
-              setSelectedSupplierId
-            )}
-            onView={(id) =>
-              openProfileDetail("supplier-detail", setSelectedSupplierId, id)
+              openProfileForm("supplier", id)
             }
           />
         );
@@ -1051,9 +1070,92 @@ export default function App() {
     }
   }
 
+  // Authorization, not decoration. Hiding a nav link only hides the link — the
+  // view still renders for anyone who reaches it another way, and every one of
+  // these screens was once reachable by a non-admin through the shared header.
+  // This is the check that actually stops them.
+  //
+  // Resolved through utils/permissions, which derives from the same NAV_TREE the
+  // sidebar filters on, so a hidden entry and a denied view can no longer drift
+  // apart. Guarded on sessionEmail so it only applies once someone is signed in
+  // — the pre-auth views have no role to check against and must stay reachable.
+  //
+  // Computed HERE rather than inside renderView() so a denied view never
+  // reaches the router at all, and never mounts inside the shell.
+  const denied = !!sessionEmail && !canAccess(profile?.role, view);
+
+  // Keyed on `view`, never on `sessionEmail`. Signing out sets both, and keying
+  // on the session risks a frame where the shell has gone but a management
+  // screen is still mounted against nulled state.
+  const chromeless = CHROMELESS_VIEWS.has(view) || denied;
+
+  if (denied) {
+    return (
+      <>
+        <NotAuthorized
+          role={profile?.role}
+          onBack={() => setView("dashboard")}
+          onSignOut={handleSignOut}
+        />
+        <Toaster />
+      </>
+    );
+  }
+
+  const meta = metaForView(view, profile?.role);
+
   return (
     <>
-      <Suspense fallback={<RouteFallback />}>{renderView()}</Suspense>
+      {chromeless ? (
+        <Suspense fallback={<RouteFallback />}>{renderView()}</Suspense>
+      ) : (
+        // Mounted ONCE, outside renderView(), which is the whole point: the
+        // sidebar is no longer torn down and rebuilt on every navigation. Its
+        // own Suspense boundary lives inside <main>, so a lazy chunk fetch
+        // never blanks the chrome.
+        <Shell
+          view={view}
+          title={meta.title}
+          subtitle={meta.subtitle}
+          profile={profile}
+          openGroups={openGroups}
+          onToggleGroup={handleToggleGroup}
+          onNavigate={navigate}
+          onSignOut={handleSignOut}
+        >
+          {renderView()}
+        </Shell>
+      )}
+      {/* Mounted at the root rather than inside a screen, because all three
+          are opened from list screens, detail screens AND dashboard quick
+          actions. `key` forces fresh state when the target record changes;
+          each dialog also resets itself on close, which covers add -> add. */}
+      <CustomerFormDialog
+        key={`customer-${profileDialog?.id ?? "new"}`}
+        open={profileDialog?.kind === "customer"}
+        onOpenChange={(next) => !next && setProfileDialog(null)}
+        mode={profileDialog?.id == null ? "add" : "edit"}
+        customer={customers.find((c) => c.id === profileDialog?.id)}
+        onSave={makeRecordSaveHandler("customer")}
+      />
+      <ProductFormDialog
+        key={`product-${profileDialog?.id ?? "new"}`}
+        open={profileDialog?.kind === "product"}
+        onOpenChange={(next) => !next && setProfileDialog(null)}
+        mode={profileDialog?.id == null ? "add" : "edit"}
+        product={products.find((p) => p.id === profileDialog?.id)}
+        products={products}
+        onSave={makeRecordSaveHandler("product")}
+      />
+      <SupplierFormDialog
+        key={`supplier-${profileDialog?.id ?? "new"}`}
+        open={profileDialog?.kind === "supplier"}
+        onOpenChange={(next) => !next && setProfileDialog(null)}
+        mode={profileDialog?.id == null ? "add" : "edit"}
+        supplier={suppliers.find((s) => s.id === profileDialog?.id)}
+        onSave={makeRecordSaveHandler("supplier")}
+      />
+
       {/* Mounted once, at the root, so a failed write on any screen has
           somewhere to report itself. Before this, every rejected save was a
           console.error nobody saw. */}

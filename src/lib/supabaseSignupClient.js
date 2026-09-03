@@ -5,7 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 /**
  * A throwaway Supabase client used only for creating other people's login
- * accounts (see CreateUserAccountPage). `supabase.auth.signUp()` on the
+ * accounts (see CreateUserAccountDialog). `supabase.auth.signUp()` on the
  * normal client (src/lib/supabaseClient.js) would replace whoever's
  * currently signed in with the brand-new account — Supabase auth clients
  * only ever hold one session. This client never persists a session or

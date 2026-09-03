@@ -12,7 +12,6 @@ import {
   UserRound,
   Users,
 } from "./icons";
-import ManagementShell from "./layout/ManagementShell";
 import StatusPill from "./shared/StatusPill";
 import {
   Panel,
@@ -54,7 +53,6 @@ export default function DashboardPage({
   activityEntries = SAMPLE_ENTRIES,
   profile,
   onNavigate,
-  onSignOut,
 }) {
   const counts = useMemo(
     () => ({
@@ -69,215 +67,206 @@ export default function DashboardPage({
   const displayName = isAdmin ? "Administrator" : profile?.name;
 
   return (
-    <ManagementShell
-      active="dashboard"
-      title="Dashboard"
-      subtitle="Overview of your system"
-      profile={profile}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-    >
-      <div className="mx-auto w-full max-w-[1160px]">
-        <h2 className="text-[24px] font-bold leading-9 tracking-[-0.48px] text-[#17263a]">
-          {greeting()}, {displayName}.
-        </h2>
-        <p className="pt-1 text-[14.5px] text-[#5f6875]">
-          Here&rsquo;s an overview of LSB Handicrafts.
-        </p>
+    <div className="mx-auto w-full max-w-[1160px]">
+      <h2 className="text-[24px] font-bold leading-9 tracking-[-0.48px] text-[#17263a]">
+        {greeting()}, {displayName}.
+      </h2>
+      <p className="pt-1 text-[14.5px] text-[#5f6875]">
+        Here&rsquo;s an overview of LSB Handicrafts.
+      </p>
 
-        {isAdmin && (
-        <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            icon={<Users className="h-5 w-5 text-[#1b3a6b]" />}
-            tone="bg-[#1b3a6b14]"
-            value={counts.total}
-            label="Total Users"
-            description="Registered staff accounts"
-          />
-          <StatCard
-            icon={<CheckCircle2 className="h-5 w-5 text-[#287a55]" />}
-            tone="bg-[#287a5517]"
-            value={counts.active}
-            label="Active Users"
-            description="Currently able to log in"
-          />
-          <StatCard
-            icon={<CircleSlash className="h-5 w-5 text-[#b54747]" />}
-            tone="bg-[#b5474714]"
-            value={counts.blocked}
-            label="Blocked Users"
-            description="Access currently restricted"
-          />
-          <StatCard
-            icon={<FileText className="h-5 w-5 text-[#653eb5]" />}
-            tone="bg-[#653eb514]"
-            value={activityEntries.length}
-            label="Activity Entries"
-            description="Total recorded actions"
-          />
-        </div>
-        )}
+      {isAdmin && (
+      <div className="grid grid-cols-1 gap-4 pt-7 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          icon={<Users className="h-5 w-5 text-[#1b3a6b]" />}
+          tone="bg-[#1b3a6b14]"
+          value={counts.total}
+          label="Total Users"
+          description="Registered staff accounts"
+        />
+        <StatCard
+          icon={<CheckCircle2 className="h-5 w-5 text-[#287a55]" />}
+          tone="bg-[#287a5517]"
+          value={counts.active}
+          label="Active Users"
+          description="Currently able to log in"
+        />
+        <StatCard
+          icon={<CircleSlash className="h-5 w-5 text-[#b54747]" />}
+          tone="bg-[#b5474714]"
+          value={counts.blocked}
+          label="Blocked Users"
+          description="Access currently restricted"
+        />
+        <StatCard
+          icon={<FileText className="h-5 w-5 text-[#653eb5]" />}
+          tone="bg-[#653eb514]"
+          value={activityEntries.length}
+          label="Activity Entries"
+          description="Total recorded actions"
+        />
+      </div>
+      )}
 
-        {isAdmin && (
-        <div className="grid grid-cols-1 gap-5 pt-7 lg:grid-cols-2">
-          <Panel
-            title="User Management"
-            onViewAll={() => onNavigate("accounts")}
-            footer={`${staff.length} staff ${
-              staff.length === 1 ? "member" : "members"
-            } total`}
-          >
-            <div className="flex items-center gap-4 bg-[#fafaf8] px-5 py-2.5">
-              <span className="flex-[2] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
-                Name
+      {isAdmin && (
+      <div className="grid grid-cols-1 gap-5 pt-7 lg:grid-cols-2">
+        <Panel
+          title="User Management"
+          onViewAll={() => onNavigate("accounts")}
+          footer={`${staff.length} staff ${
+            staff.length === 1 ? "member" : "members"
+          } total`}
+        >
+          <div className="flex items-center gap-4 bg-[#fafaf8] px-5 py-3">
+            <span className="flex-[2] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
+              Name
+            </span>
+            <span className="flex-[1.4] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
+              Role
+            </span>
+            <span className="w-[104px] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
+              Status
+            </span>
+          </div>
+          {!isLoaded && (
+            <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+              Loading staff…
+            </p>
+          )}
+          {isLoaded && staff.length === 0 && (
+            <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+              No staff accounts yet.
+            </p>
+          )}
+          {staff.slice(0, PANEL_ROWS).map((member, index) => (
+            <div
+              key={member.id}
+              className={`flex items-center gap-4 px-5 py-3 ${
+                index > 0 ? "border-t border-[#17263a0d]" : ""
+              }`}
+            >
+              <div className="flex flex-[2] min-w-0 items-center gap-3">
+                <span
+                  className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white ${avatarColorOf(
+                    member.name
+                  )}`}
+                >
+                  {initialsOf(member.name)}
+                </span>
+                <span className="truncate text-[13.5px] font-medium text-[#17263a]">
+                  {member.name}
+                </span>
+              </div>
+              <span className="flex-[1.4] truncate text-[12.5px] text-[#5f6875]">
+                {member.role}
               </span>
-              <span className="flex-[1.4] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
-                Role
-              </span>
-              <span className="w-[104px] text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
-                Status
+              <span className="w-[104px]">
+                <StatusPill status={member.status} />
               </span>
             </div>
-            {!isLoaded && (
-              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
-                Loading staff…
-              </p>
-            )}
-            {isLoaded && staff.length === 0 && (
-              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
-                No staff accounts yet.
-              </p>
-            )}
-            {staff.slice(0, PANEL_ROWS).map((member, index) => (
-              <div
-                key={member.id}
-                className={`flex items-center gap-4 px-5 py-3 ${
-                  index > 0 ? "border-t border-[#17263a0d]" : ""
+          ))}
+        </Panel>
+
+        <Panel
+          title="Recent Activity"
+          onViewAll={() => onNavigate("activity")}
+          footer={`${activityEntries.length} ${
+            activityEntries.length === 1 ? "entry" : "entries"
+          } recorded`}
+        >
+          {activityEntries.length === 0 && (
+            <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
+              No recent activity.
+            </p>
+          )}
+          {activityEntries.slice(0, PANEL_ROWS).map((entry, index) => (
+            <div
+              key={entry.id}
+              className={`flex items-center gap-4 px-5 py-3 ${
+                index > 0 ? "border-t border-[#17263a0d]" : ""
+              }`}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] text-[#17263a]">
+                  <span className="font-semibold">{entry.staff}</span>
+                  <span className="font-medium"> — {entry.action}</span>
+                </p>
+                <p className="pt-1 text-[12px] text-[#5f6875]">
+                  {entry.date} · {entry.time}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-3 py-1 text-[11.5px] font-semibold tracking-[0.115px] ${
+                  ACTION_PILL_STYLES[entry.type] ?? ACTION_PILL_STYLES.Login
                 }`}
               >
-                <div className="flex flex-[2] min-w-0 items-center gap-2.5">
-                  <span
-                    className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[9.5px] font-bold text-white ${avatarColorOf(
-                      member.name
-                    )}`}
-                  >
-                    {initialsOf(member.name)}
-                  </span>
-                  <span className="truncate text-[13.5px] font-medium text-[#17263a]">
-                    {member.name}
-                  </span>
-                </div>
-                <span className="flex-[1.4] truncate text-[12.5px] text-[#5f6875]">
-                  {member.role}
-                </span>
-                <span className="w-[104px]">
-                  <StatusPill status={member.status} />
-                </span>
-              </div>
-            ))}
-          </Panel>
-
-          <Panel
-            title="Recent Activity"
-            onViewAll={() => onNavigate("activity")}
-            footer={`${activityEntries.length} ${
-              activityEntries.length === 1 ? "entry" : "entries"
-            } recorded`}
-          >
-            {activityEntries.length === 0 && (
-              <p className="px-5 py-8 text-center text-[13px] text-[#5f6875]">
-                No recent activity.
-              </p>
-            )}
-            {activityEntries.slice(0, PANEL_ROWS).map((entry, index) => (
-              <div
-                key={entry.id}
-                className={`flex items-center gap-3.5 px-5 py-3 ${
-                  index > 0 ? "border-t border-[#17263a0d]" : ""
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13.5px] text-[#17263a]">
-                    <span className="font-semibold">{entry.staff}</span>
-                    <span className="font-medium"> — {entry.action}</span>
-                  </p>
-                  <p className="pt-0.5 text-[12px] text-[#5f6875]">
-                    {entry.date} · {entry.time}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-[3px] text-[11.5px] font-semibold tracking-[0.115px] ${
-                    ACTION_PILL_STYLES[entry.type] ?? ACTION_PILL_STYLES.Login
-                  }`}
-                >
-                  {entry.type}
-                </span>
-              </div>
-            ))}
-          </Panel>
-        </div>
-        )}
-
-        <div className="mt-5">
-          <QuickActionsCard>
-            {isAdmin && (
-              <>
-                <QuickAction
-                  icon={<UserPlus className="h-[15px] w-[15px]" />}
-                  label="Create User Account"
-                  onClick={() => onNavigate("create")}
-                />
-                <QuickAction
-                  icon={<Users className="h-[15px] w-[15px]" />}
-                  label="View User Accounts"
-                  onClick={() => onNavigate("accounts")}
-                />
-                <QuickAction
-                  icon={<History className="h-[15px] w-[15px]" />}
-                  label="Activity Log"
-                  onClick={() => onNavigate("activity")}
-                />
-                <QuickAction
-                  icon={<BookUser className="h-[15px] w-[15px]" />}
-                  label="Staff Directory"
-                  onClick={() => onNavigate("directory")}
-                />
-              </>
-            )}
-            {/* With the panels above gated, a Manager or Delivery Staff account
-                would otherwise be left with a greeting and one tile. These are
-                the sections they can actually open — same set SalesDashboard
-                offers. */}
-            {!isAdmin && (
-              <>
-                <QuickAction
-                  icon={<UserRound className="h-[15px] w-[15px]" />}
-                  label="View Customers"
-                  onClick={() => onNavigate("customers")}
-                />
-                <QuickAction
-                  icon={<Box className="h-[15px] w-[15px]" />}
-                  label="View Products"
-                  onClick={() => onNavigate("products")}
-                />
-                <QuickAction
-                  icon={<Truck className="h-[15px] w-[15px]" />}
-                  label="View Suppliers"
-                  onClick={() => onNavigate("suppliers")}
-                />
-              </>
-            )}
-            {/* Not in the Figma quick-action row, but the inventory/deliveries/
-                orders workspace has no other way in now that this screen is the
-                landing page. */}
-            <QuickAction
-              icon={<Package className="h-[15px] w-[15px]" />}
-              label="Inventory Workspace"
-              onClick={() => onNavigate("workspace")}
-            />
-          </QuickActionsCard>
-        </div>
+                {entry.type}
+              </span>
+            </div>
+          ))}
+        </Panel>
       </div>
-    </ManagementShell>
+      )}
+
+      <div className="mt-5">
+        <QuickActionsCard>
+          {isAdmin && (
+            <>
+              <QuickAction
+                icon={<UserPlus className="h-4 w-4" />}
+                label="Create User Account"
+                onClick={() => onNavigate("create")}
+              />
+              <QuickAction
+                icon={<Users className="h-4 w-4" />}
+                label="View User Accounts"
+                onClick={() => onNavigate("accounts")}
+              />
+              <QuickAction
+                icon={<History className="h-4 w-4" />}
+                label="Activity Log"
+                onClick={() => onNavigate("activity")}
+              />
+              <QuickAction
+                icon={<BookUser className="h-4 w-4" />}
+                label="Staff Directory"
+                onClick={() => onNavigate("directory")}
+              />
+            </>
+          )}
+          {/* With the panels above gated, a Manager or Delivery Staff account
+              would otherwise be left with a greeting and one tile. These are
+              the sections they can actually open — same set SalesDashboard
+              offers. */}
+          {!isAdmin && (
+            <>
+              <QuickAction
+                icon={<UserRound className="h-4 w-4" />}
+                label="View Customers"
+                onClick={() => onNavigate("customers")}
+              />
+              <QuickAction
+                icon={<Box className="h-4 w-4" />}
+                label="View Products"
+                onClick={() => onNavigate("products")}
+              />
+              <QuickAction
+                icon={<Truck className="h-4 w-4" />}
+                label="View Suppliers"
+                onClick={() => onNavigate("suppliers")}
+              />
+            </>
+          )}
+          {/* Not in the Figma quick-action row, but the inventory/deliveries/
+              orders workspace has no other way in now that this screen is the
+              landing page. */}
+          <QuickAction
+            icon={<Package className="h-4 w-4" />}
+            label="Inventory Workspace"
+            onClick={() => onNavigate("workspace")}
+          />
+        </QuickActionsCard>
+      </div>
+    </div>
   );
 }

@@ -48,8 +48,8 @@ export default function VerifyIdentityPage({
       </div>
 
       {error && (
-        <div className="mt-6 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474708] px-[18px] py-[14px]">
-          <AlertCircle className="mt-px h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+        <div className="mt-6 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474708] px-4 py-3">
+          <AlertCircle className="mt-px h-4 w-4 shrink-0 text-[#b54747]" />
           <p className="text-[15px] leading-6 text-[#b54747]">
             That answer doesn't match our records. Please try again.
           </p>
@@ -60,13 +60,13 @@ export default function VerifyIdentityPage({
         <p className="text-base font-semibold text-[#17263a]">
           Security Question
         </p>
-        <div className="mt-[9px] rounded-[10px] border border-[#17263a1a] bg-[#f0ede4] px-[18px] py-[14px] text-base text-[#17263a]">
+        <div className="mt-2 rounded-[10px] border border-[#17263a1a] bg-[#f0ede4] px-4 py-3 text-base text-[#17263a]">
           {securityQuestion}
         </div>
 
         <label
           htmlFor="answer"
-          className="mt-[22px] block text-base font-semibold text-[#17263a]"
+          className="mt-6 block text-base font-semibold text-[#17263a]"
         >
           Answer
         </label>
@@ -76,7 +76,7 @@ export default function VerifyIdentityPage({
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
           placeholder="Enter your answer"
-          className={`mt-[9px] h-14 w-full rounded-[10px] border bg-white px-[18px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30 ${
+          className={`mt-2 h-13 w-full rounded-[10px] border bg-white px-4 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30 ${
             error ? "border-[#b5474780]" : "border-[#17263a29]"
           }`}
         />
@@ -84,7 +84,7 @@ export default function VerifyIdentityPage({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-7 h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
+          className="mt-7 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
         >
           {isSubmitting ? "Verifying…" : "Verify Identity"}
         </button>
@@ -95,7 +95,7 @@ export default function VerifyIdentityPage({
         onClick={onBack}
         className="mt-3 flex items-center gap-1 py-2 text-sm font-medium text-[#5f6875] hover:text-[#17263a]"
       >
-        <ChevronLeft className="h-3.5 w-3.5" />
+        <ChevronLeft className="h-4 w-4" />
         Back
       </button>
 

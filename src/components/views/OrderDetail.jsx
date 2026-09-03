@@ -73,10 +73,10 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
           <ArrowLeft size={20} className="text-zinc-500 dark:text-zinc-400" /> Order #{record.id}
         </button>
         <div className="flex flex-wrap gap-3 w-full sm:w-auto">
-          <button onClick={() => navigateTo('edit-order', record)} className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+          <button onClick={() => navigateTo('edit-order', record)} className="flex-1 sm:flex-none justify-center bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
             <Edit2 size={16} /> Edit Order
           </button>
-          <button onClick={handleDelete} className="flex-1 sm:flex-none justify-center bg-transparent border border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-2.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+          <button onClick={handleDelete} className="flex-1 sm:flex-none justify-center bg-transparent border border-red-200 dark:border-red-500/20 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
             <Trash2 size={16} /> Delete
           </button>
         </div>
@@ -129,7 +129,7 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</p>
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${KIND_BADGE[item.kind] || KIND_BADGE[LINE_KIND.CATALOG]}`}>
+                        <span className={`px-2 py-1 rounded-md text-[11px] font-semibold ${KIND_BADGE[item.kind] || KIND_BADGE[LINE_KIND.CATALOG]}`}>
                           {kindLabel(item.kind)}
                         </span>
                       </div>
@@ -172,7 +172,7 @@ export default function OrderDetail({ record, navigateTo, orders, setOrders, del
           <div className={`border-2 rounded-2xl p-5 md:p-6 relative overflow-hidden shadow-sm dark:shadow-none ${getStatusColor(record.status)}`}>
             <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/20 dark:bg-white/5 rounded-full blur-3xl"></div>
             <div className="flex items-center gap-2 mb-6">
-              <div className="bg-blue-600 rounded p-1.5"><ShoppingCart size={18} className="text-white" /></div>
+              <div className="bg-blue-600 rounded p-2"><ShoppingCart size={18} className="text-white" /></div>
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Order Summary</h3>
             </div>
             

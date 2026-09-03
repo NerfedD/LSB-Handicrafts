@@ -15,9 +15,9 @@ export function DetailBackLink({ label, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="mb-4 flex items-center gap-1.5 text-[13.5px] font-medium text-[#5f6875] transition hover:text-[#17263a]"
+      className="mb-4 flex items-center gap-2 text-[13.5px] font-medium text-[#5f6875] transition hover:text-[#17263a]"
     >
-      <ChevronLeft className="h-3.5 w-3.5" />
+      <ChevronLeft className="h-4 w-4" />
       {label}
     </button>
   );
@@ -45,13 +45,13 @@ export function DetailHeaderCard({
           <p className="text-[10.5px] font-bold uppercase tracking-[0.945px] text-[#5f6875]">
             {eyebrow}
           </p>
-          <h2 className="mt-0.5 truncate text-[24px] font-bold tracking-[-0.48px] text-[#17263a]">
+          <h2 className="mt-1 truncate text-[24px] font-bold tracking-[-0.48px] text-[#17263a]">
             {title}
           </h2>
           {meta && <div className="mt-1 text-[13px] text-[#5f6875]">{meta}</div>}
         </div>
       </div>
-      <div className="flex shrink-0 flex-col gap-2.5">
+      <div className="flex shrink-0 flex-col gap-3">
         <button type="button" onClick={onEdit} className={primaryButton}>
           {editLabel}
         </button>

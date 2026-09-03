@@ -21,14 +21,14 @@ export default function ProfileSearchBar({
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-3">
         <div className="relative w-[436px] max-w-full">
-          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-[#5f6875]/70" />
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5f6875]/70" />
           <input
             type="search"
             value={value}
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             aria-label={placeholder}
-            className="h-[38px] w-full rounded-lg border border-[#17263a1a] bg-white pl-10 pr-10 text-[13.5px] text-[#17263a] outline-none placeholder:text-[#5f6875]/70 focus:ring-2 focus:ring-[#1746d1]/25"
+            className="h-9 w-full rounded-lg border border-[#17263a1a] bg-white pl-10 pr-10 text-[13.5px] text-[#17263a] outline-none placeholder:text-[#5f6875]/70 focus:ring-2 focus:ring-[#1746d1]/25"
           />
           {hasQuery && (
             <button
@@ -51,9 +51,9 @@ export default function ProfileSearchBar({
       <button
         type="button"
         onClick={onAdd}
-        className="flex h-[38px] shrink-0 items-center gap-2 rounded-lg bg-[#1746d1] px-[18px] text-[13.5px] font-semibold text-white shadow-[0_1px_3px_rgba(23,70,209,0.3)] transition hover:bg-[#1238ad]"
+        className="flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[#1746d1] px-4 text-[13.5px] font-semibold text-white shadow-[0_1px_3px_rgba(23,70,209,0.3)] transition hover:bg-[#1238ad]"
       >
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-4 w-4" />
         {addLabel}
       </button>
     </div>

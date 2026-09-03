@@ -89,8 +89,8 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       </div>
 
       {status === "error" && (
-        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474708] px-[18px] py-[14px]">
-          <AlertCircle className="mt-px h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474708] px-4 py-3">
+          <AlertCircle className="mt-px h-4 w-4 shrink-0 text-[#b54747]" />
           <p className="text-[15px] leading-6 text-[#b54747]">
             Incorrect username or password. Please check your details and try
             again.
@@ -99,13 +99,13 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       )}
 
       {isLocked && (
-        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-[18px] py-[14px]">
-          <AlertCircle className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-4 py-3">
+          <AlertCircle className="mt-1 h-4 w-4 shrink-0 text-[#b54747]" />
           <div>
             <p className="text-[15px] font-semibold text-[#17263a]">
               Your account has been temporarily locked.
             </p>
-            <p className="mt-1.5 text-sm leading-[23px] text-[#5f6875]">
+            <p className="mt-2 text-sm leading-[23px] text-[#5f6875]">
               Multiple failed attempts were detected. Please contact your
               system administrator to restore access.
             </p>
@@ -114,13 +114,13 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       )}
 
       {isRestricted && (
-        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-[18px] py-[14px]">
-          <AlertCircle className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-4 py-3">
+          <AlertCircle className="mt-1 h-4 w-4 shrink-0 text-[#b54747]" />
           <div>
             <p className="text-[15px] font-semibold text-[#17263a]">
               This account doesn't have dashboard access.
             </p>
-            <p className="mt-1.5 text-sm leading-[23px] text-[#5f6875]">
+            <p className="mt-2 text-sm leading-[23px] text-[#5f6875]">
               Your credentials were correct, but this account isn't set up
               in the system yet. Contact your system administrator.
             </p>
@@ -129,13 +129,13 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       )}
 
       {isBlocked && (
-        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-[18px] py-[14px]">
-          <AlertCircle className="mt-0.5 h-[18px] w-[18px] shrink-0 text-[#b54747]" />
+        <div className="mt-8 flex items-start gap-3 rounded-r-lg border-l-2 border-[#b54747] bg-[#b5474706] px-4 py-3">
+          <AlertCircle className="mt-1 h-4 w-4 shrink-0 text-[#b54747]" />
           <div>
             <p className="text-[15px] font-semibold text-[#17263a]">
               This account has been blocked.
             </p>
-            <p className="mt-1.5 text-sm leading-[23px] text-[#5f6875]">
+            <p className="mt-2 text-sm leading-[23px] text-[#5f6875]">
               Your credentials were correct, but an administrator has
               blocked this account. Contact your system administrator to
               restore access.
@@ -160,7 +160,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
             placeholder="jdelacruz or you@example.com"
-            className={`mt-[9px] h-14 w-full rounded-[10px] border px-[18px] text-[17px] text-[#17263a] outline-none transition focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60 ${
+            className={`mt-2 h-13 w-full rounded-[10px] border px-4 text-[17px] text-[#17263a] outline-none transition focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60 ${
               status === "error"
                 ? "border-[#b5474780] bg-white"
                 : isLocked
@@ -170,14 +170,14 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
           />
         </div>
 
-        <div className="mt-[26px]">
+        <div className="mt-6">
           <label
             htmlFor="password"
             className="block text-base font-semibold text-[#17263a]"
           >
             Password
           </label>
-          <div className="relative mt-[9px]">
+          <div className="relative mt-2">
             <input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -186,7 +186,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className={`h-14 w-full rounded-[10px] border bg-white pl-[18px] pr-[58px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60 ${
+              className={`h-13 w-full rounded-[10px] border bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30 disabled:opacity-60 ${
                 status === "error" || isLocked
                   ? "border-[#b5474780]"
                   : "border-[#17263a1a]"
@@ -197,7 +197,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
               disabled={isLocked}
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-[#17263a99] hover:bg-[#17263a0d] disabled:opacity-40"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d] disabled:opacity-40"
             >
               {showPassword ? (
                 <EyeOff className="h-5 w-5" />
@@ -212,7 +212,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
           <button
             type="button"
             onClick={onForgotPassword}
-            className="py-1.5 text-sm font-medium text-[#1b3a6b] underline underline-offset-2 hover:text-[#17263a]"
+            className="py-2 text-sm font-medium text-[#1b3a6b] underline underline-offset-2 hover:text-[#17263a]"
           >
             Forgot Password?
           </button>
@@ -221,7 +221,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
         <button
           type="submit"
           disabled={isSubmitting || isLocked}
-          className={`mt-[34px] h-14 w-full rounded-[10px] text-[17px] font-semibold tracking-[0.5px] text-white transition disabled:cursor-not-allowed ${
+          className={`mt-8 h-13 w-full rounded-[10px] text-[17px] font-semibold tracking-[0.5px] text-white transition disabled:cursor-not-allowed ${
             isLocked
               ? "bg-[#8a9db8]"
               : "bg-[#1b3a6b] shadow-[0_2px_6px_rgba(27,58,107,0.28)] hover:bg-[#17263a] disabled:opacity-60"

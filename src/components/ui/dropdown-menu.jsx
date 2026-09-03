@@ -45,7 +45,7 @@ const DropdownMenuItem = forwardRef(function DropdownMenuItem(
     <DropdownMenuPrimitive.Item
       ref={ref}
       className={cn(
-        "flex cursor-pointer select-none items-center px-4 py-2.5 text-sm outline-none transition",
+        "flex cursor-pointer select-none items-center px-4 py-3 text-sm outline-none transition",
         "focus:bg-[#17263a08] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         destructive ? "text-danger" : "text-ink",
         className

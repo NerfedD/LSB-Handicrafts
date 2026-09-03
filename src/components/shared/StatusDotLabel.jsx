@@ -15,7 +15,7 @@ export default function StatusDotLabel({
       aria-label={ariaLabel || label}
       title={resolvedTitle}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotClassName}`} aria-hidden="true" />
+      <span className={`w-2 h-2 rounded-full shrink-0 ${dotClassName}`} aria-hidden="true" />
       <span className={`font-medium text-xs ${textClassName}`}>{label}</span>
     </span>
   );

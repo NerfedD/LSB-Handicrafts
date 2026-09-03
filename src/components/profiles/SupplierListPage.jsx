@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { Truck } from "../icons";
-import ManagementShell from "../layout/ManagementShell";
 import ProfileSearchBar from "../shared/ProfileSearchBar";
 import ProfileTable from "../shared/ProfileTable";
 import {
@@ -35,9 +34,6 @@ export default function SupplierListPage({
   loadError = null,
   onRetry,
   suppliers = [],
-  profile,
-  onNavigate,
-  onSignOut,
   onView,
   onEdit,
   onAdd,
@@ -58,7 +54,7 @@ export default function SupplierListPage({
     switch (key) {
       case "name":
         return (
-          <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-3">
             <span
               className={`flex size-7 shrink-0 items-center justify-center rounded-lg text-[9.5px] font-bold text-white ${avatarColorOf(
                 supplier.name
@@ -106,55 +102,46 @@ export default function SupplierListPage({
   }
 
   return (
-    <ManagementShell
-      active="suppliers"
-      title="Supplier Profiles"
-      subtitle="Dashboard / Supplier Profiles"
-      profile={profile}
-      onNavigate={onNavigate}
-      onSignOut={onSignOut}
-    >
-      <div className="mx-auto w-full max-w-[1160px]">
-        <ProfileSearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Search suppliers by name or contact number"
-          resultCount={filtered.length}
-          addLabel="Add Supplier"
-          onAdd={onAdd}
-        />
+    <div className="mx-auto w-full max-w-[1160px]">
+      <ProfileSearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="Search suppliers by name or contact number"
+        resultCount={filtered.length}
+        addLabel="Add Supplier"
+        onAdd={onAdd}
+      />
 
-        <div className="pt-6">
-          {/* Three distinct states, not one. Loading is a skeleton, a failed
-              read offers a retry, and only a genuinely empty result gets the
-              empty panel. */}
-          {loadError ? (
-            <ProfileErrorState onRetry={onRetry} />
-          ) : !isLoaded ? (
-            <ProfileLoadingState />
-          ) : filtered.length === 0 ? (
-            <ProfileEmptyState
-              icon={<Truck className="h-5 w-5" />}
-              title="supplier"
-              description="Add a supplier profile to begin managing supplier information."
-              query={query.trim()}
-              onClearSearch={() => setQuery("")}
-              addLabel="Add Supplier"
-              onAdd={onAdd}
-            />
-          ) : (
-            <ProfileTable
-              columns={COLUMNS}
-              rows={filtered}
-              rowKey={(supplier) => supplier.id}
-              renderCell={renderCell}
-              footer={`${filtered.length} ${
-                filtered.length === 1 ? "supplier" : "suppliers"
-              } total`}
-            />
-          )}
-        </div>
+      <div className="pt-6">
+        {/* Three distinct states, not one. Loading is a skeleton, a failed
+            read offers a retry, and only a genuinely empty result gets the
+            empty panel. */}
+        {loadError ? (
+          <ProfileErrorState onRetry={onRetry} />
+        ) : !isLoaded ? (
+          <ProfileLoadingState />
+        ) : filtered.length === 0 ? (
+          <ProfileEmptyState
+            icon={<Truck className="h-5 w-5" />}
+            title="supplier"
+            description="Add a supplier profile to begin managing supplier information."
+            query={query.trim()}
+            onClearSearch={() => setQuery("")}
+            addLabel="Add Supplier"
+            onAdd={onAdd}
+          />
+        ) : (
+          <ProfileTable
+            columns={COLUMNS}
+            rows={filtered}
+            rowKey={(supplier) => supplier.id}
+            renderCell={renderCell}
+            footer={`${filtered.length} ${
+              filtered.length === 1 ? "supplier" : "suppliers"
+            } total`}
+          />
+        )}
       </div>
-    </ManagementShell>
+    </div>
   );
 }

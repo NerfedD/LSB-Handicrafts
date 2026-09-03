@@ -115,7 +115,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               placeholder="Search products..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-10 pr-4 py-2.5 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 transition-colors"
+              className="w-full bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-10 pr-4 py-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-500 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 transition-colors"
             />
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
@@ -123,7 +123,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               <select 
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Categories" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Categories</option>
                 {categories.map(category => (
@@ -136,7 +136,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="All Types" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">All Types</option>
                 {PRODUCT_TYPE_OPTIONS.map(o => (
@@ -149,7 +149,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
               <select 
                 value={sortOption}
                 onChange={(e) => setSortOption(e.target.value)}
-                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
+                className="appearance-none bg-zinc-50 dark:bg-[#1A1A24] border border-zinc-300 dark:border-[#272730] rounded-xl pl-4 pr-10 py-3 text-sm text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500/50 cursor-pointer w-full"
               >
                 <option value="name-az" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (A → Z)</option>
                 <option value="name-za" className="bg-white text-zinc-900 dark:bg-[#1A1A24] dark:text-zinc-200">Product Name (Z → A)</option>
@@ -166,7 +166,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
             </div>
             <button 
               onClick={() => navigateTo('add-product')}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto"
+              className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors whitespace-nowrap w-full sm:w-auto"
             >
               <Plus size={16} /> Add Product
             </button>
@@ -223,7 +223,7 @@ export default function InventoryList({ inventory, navigateTo, setInventory, sho
                         dotClassName={tone.dot}
                       />
                       {item.reserved > 0 && (
-                        <span className="block text-xs text-zinc-500 dark:text-zinc-500 mt-0.5">
+                        <span className="block text-xs text-zinc-500 dark:text-zinc-500 mt-1">
                           {item.stock} on hand · {item.reserved} reserved
                         </span>
                       )}

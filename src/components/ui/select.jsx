@@ -26,7 +26,7 @@ const SelectTrigger = forwardRef(function SelectTrigger(
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex h-[46px] w-full items-center justify-between gap-2 rounded-[10px] border border-[#17263a29] bg-white px-4 text-sm text-ink",
+        "flex h-11 w-full items-center justify-between gap-2 rounded-[10px] border border-[#17263a29] bg-white px-4 text-sm text-ink",
         "transition focus:border-brand focus:outline-none focus:ring-2 focus:ring-ring/30",
         "disabled:cursor-not-allowed disabled:opacity-60 [&>span]:truncate",
         className
@@ -83,7 +83,7 @@ const SelectLabel = forwardRef(function SelectLabel({ className, ...props }, ref
     <SelectPrimitive.Label
       ref={ref}
       className={cn(
-        "px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[1.1px] text-muted",
+        "px-3 py-2 text-[11px] font-semibold uppercase tracking-[1.1px] text-muted",
         className
       )}
       {...props}
@@ -105,7 +105,7 @@ const SelectItem = forwardRef(function SelectItem(
       )}
       {...props}
     >
-      <span className="absolute left-2.5 flex h-3.5 w-3.5 items-center justify-center">
+      <span className="absolute left-3 flex h-4 w-4 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <Check className="h-4 w-4 text-brand" />
         </SelectPrimitive.ItemIndicator>

@@ -56,7 +56,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
             Password Reset Successful
           </h1>
 
-          <div className="mt-6 flex w-full flex-col gap-3 rounded-[10px] border border-[#17263a14] bg-[#f7f4ec] px-[22px] py-5 text-left">
+          <div className="mt-6 flex w-full flex-col gap-3 rounded-[10px] border border-[#17263a14] bg-[#f7f4ec] px-6 py-5 text-left">
             {[
               "Your password has been successfully changed.",
               "Your previous password is no longer valid.",
@@ -74,7 +74,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
           <button
             type="button"
             onClick={onReturnToLogin}
-            className="mt-8 h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
+            className="mt-8 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
           >
             Return to Login
           </button>
@@ -94,8 +94,8 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
         </p>
       </div>
 
-      <div className="mt-8 flex items-start gap-2.5 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#1b3a6b]" />
+      <div className="mt-8 flex items-start gap-3 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
+        <Info className="mt-1 h-4 w-4 shrink-0 text-[#1b3a6b]" />
         <p className="text-[13.5px] leading-[1.6] text-[#1b3a6b]">
           Your new password must meet the system's password requirements.
         </p>
@@ -112,7 +112,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
         >
           New Password
         </label>
-        <div className="relative mt-[9px]">
+        <div className="relative mt-2">
           <input
             id="new-password"
             type={showPassword ? "text" : "password"}
@@ -121,13 +121,13 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="At least 6 characters"
-            className="h-14 w-full rounded-[10px] border border-[#17263a29] bg-white pl-[18px] pr-[58px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
+            className="h-13 w-full rounded-[10px] border border-[#17263a29] bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
             aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-[#17263a99] hover:bg-[#17263a0d]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d]"
           >
             {showPassword ? (
               <EyeOff className="h-5 w-5" />
@@ -139,11 +139,11 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
 
         <label
           htmlFor="confirm-password"
-          className="mt-[22px] block text-base font-semibold text-[#17263a]"
+          className="mt-6 block text-base font-semibold text-[#17263a]"
         >
           Confirm New Password
         </label>
-        <div className="relative mt-[9px]">
+        <div className="relative mt-2">
           <input
             id="confirm-password"
             type={showConfirm ? "text" : "password"}
@@ -151,13 +151,13 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Re-enter new password"
-            className="h-14 w-full rounded-[10px] border border-[#17263a29] bg-white pl-[18px] pr-[58px] text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
+            className="h-13 w-full rounded-[10px] border border-[#17263a29] bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
           />
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
             aria-label={showConfirm ? "Hide password" : "Show password"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1.5 text-[#17263a99] hover:bg-[#17263a0d]"
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d]"
           >
             {showConfirm ? (
               <EyeOff className="h-5 w-5" />
@@ -170,7 +170,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="mt-8 h-14 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
+          className="mt-8 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
         >
           {isSubmitting ? "Resetting…" : "Reset Password"}
         </button>

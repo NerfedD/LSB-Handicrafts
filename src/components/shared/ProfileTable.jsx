@@ -14,7 +14,7 @@ export default function ProfileTable({ columns, rows, rowKey, renderCell, footer
     <Card>
       <div className="overflow-x-auto">
         <div className="min-w-[860px]">
-          <div className="flex items-center gap-4 border-b border-[#17263a12] bg-[#fafaf8] px-6 py-2.5">
+          <div className="flex items-center gap-4 border-b border-[#17263a12] bg-[#fafaf8] px-6 py-3">
             {columns.map((column) => (
               <div
                 key={column.key}
@@ -28,7 +28,7 @@ export default function ProfileTable({ columns, rows, rowKey, renderCell, footer
           {rows.map((row, index) => (
             <div
               key={rowKey(row)}
-              className={`flex items-center gap-4 px-6 py-3.5 ${
+              className={`flex items-center gap-4 px-6 py-4 ${
                 index > 0 ? "border-t border-[#17263a0d]" : ""
               }`}
             >

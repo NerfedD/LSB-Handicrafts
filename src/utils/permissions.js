@@ -1,57 +1,26 @@
 /**
  * Who may open which screen.
  *
- * The shape below deliberately mirrors NAV_ITEMS in layout/ManagementShell:
- * that list decides which sidebar entries render, this one decides which view
- * keys are allowed to render at all. Keeping them parallel is what stops a nav
- * item being hidden while the screen behind it stays reachable — which is
- * exactly how non-admins were getting into User Management, via the unfiltered
- * AppShell tab bar on My Profile.
+ * These rules are DERIVED from NAV_TREE in utils/navigation.js rather than
+ * written out again here. They used to be a hand-maintained copy of the
+ * sidebar's `adminOnly` / `hideFrom` flags, which meant the nav and the route
+ * gate had to be edited in lockstep — and when they drifted, a nav item was
+ * hidden while the screen behind it stayed reachable. That is exactly how
+ * non-admins were getting into User Management.
  *
- * `adminOnly` in NAV_ITEMS already had its counterpart in App.jsx's route gate.
- * `hideFrom` did not: Production Staff's sidebar omits the customer and
- * supplier entries, but nothing stopped those views rendering for them if a
- * stale view key or a link added later pointed there. DENIED_BY_ROLE closes
- * that half.
+ * One tree now feeds both, so hiding an entry and denying its views are the
+ * same edit.
  *
  * Enforcement here is client-side and therefore cosmetic on its own: the anon
  * key ships in the JS bundle, so anyone can call Supabase directly. The real
  * boundary is the RLS policies in supabase/schema.sql. This stops staff walking
  * into the wrong screen; that stops them writing what they shouldn't.
  */
+import { ADMIN_ONLY_VIEWS, DENIED_BY_ROLE } from "./navigation";
 
 export const isAdminRole = (role) => role === "Admin";
 
-/**
- * View keys only an Admin may render. Mirrors `adminOnly` in NAV_ITEMS, plus
- * the detail and form screens those nav items lead to, which have no nav entry
- * of their own.
- */
-export const ADMIN_ONLY_VIEWS = new Set([
-  "accounts",
-  "manage-account",
-  "assign-role",
-  "create",
-  "activity",
-  "directory",
-]);
-
-/**
- * Per-role denials, mirroring `hideFrom` in NAV_ITEMS — Production Staff's
- * designed sidebar (Figma #24) is Dashboard, Product / Item Profiles and My
- * Profile only, so the customer and supplier screens are hidden from them there
- * and unreachable here.
- */
-const DENIED_BY_ROLE = {
-  "Production Staff": new Set([
-    "customers",
-    "customer-detail",
-    "customer-form",
-    "suppliers",
-    "supplier-detail",
-    "supplier-form",
-  ]),
-};
+export { ADMIN_ONLY_VIEWS };
 
 /**
  * Unlisted keys are allowed, which is what leaves the pre-auth views (login,
