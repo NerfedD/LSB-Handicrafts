@@ -651,6 +651,56 @@ export default function App() {
   }
 
   /**
+   * Removes a customer.
+   *
+   * TWO GUARDS, AND THEY GUARD DIFFERENT THINGS. `is_admin()` on the RLS
+   * policy stops the wrong ROLE; the open-order check here stops the wrong
+   * MOMENT, and only the app can make it — `orders` links to `customers` by
+   * text name with no foreign key, so a policy would need a subquery over a
+   * join the schema does not model.
+   *
+   * That missing foreign key is also why this deletes less than it appears to:
+   * past orders keep the name and stay in the list and the takings. What goes
+   * is the phone number, the email and the address.
+   */
+  async function deleteCustomer(customer) {
+    if (!isAdminRole(profile?.role)) {
+      toast.error("Only an administrator can remove a customer.");
+      return;
+    }
+
+    const key = String(customer.name || "").trim().toLowerCase();
+    const openOrders = orders.filter(
+      (order) =>
+        order.status === ORDER_STATUS.PENDING &&
+        String(order.customerName || "").trim().toLowerCase() === key
+    );
+    if (openOrders.length > 0) {
+      toast.error(`${customer.name} still has an order waiting.`, {
+        description: "Finish or cancel it before removing them.",
+      });
+      return;
+    }
+
+    const result = await customersState.remove(customer.id);
+    if (!result.ok) {
+      toast.error(result.message || "That customer was not removed.");
+      return;
+    }
+
+    if (selectedCustomerId === customer.id) setSelectedCustomerId(null);
+    toast.success(`${customer.name} was removed.`, {
+      description: "Their past orders stay in the system under their name.",
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.CUSTOMER,
+      what: `removed customer ${customer.name}`,
+      subject: `customer:${customer.id}`,
+    });
+    navigate("customers");
+  }
+
+  /**
    * Opens a record dialog. `id` is null when adding.
    *
    * The canAccess check is not belt-and-braces: these forms have no view key of
@@ -1231,6 +1281,8 @@ export default function App() {
           <CustomerDetailPage
             customer={selectedCustomer}
             orders={orders}
+            canDelete={isAdminRole(profile?.role)}
+            onDelete={deleteCustomer}
             onBack={() => navigate("customers")}
             onEdit={(id) => openProfileForm("customer", id)}
             onWriteOrder={(one) => {

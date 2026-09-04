@@ -500,8 +500,6 @@ create policy "Active staff can manage orders"       on public.orders       for 
   using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Active staff can manage activity_log" on public.activity_log for all
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage customers"    on public.customers    for all
-  using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Active staff can manage products"     on public.products     for all
   using (private.is_active_staff()) with check (private.is_active_staff());
 
@@ -535,6 +533,36 @@ create policy "Active staff insert suppliers" on public.suppliers for insert
 create policy "Active staff update suppliers" on public.suppliers for update
   using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Admins delete suppliers"       on public.suppliers for delete
+  using (private.is_admin());
+
+-- ------------------------------------------------------------
+-- customers: same split, for a sharper reason
+-- ------------------------------------------------------------
+--
+-- `orders` has NO foreign key to `customers` -- it carries customer_name as
+-- text -- so the database will not stop a delete and will not cascade one
+-- either. Past orders survive with the name on them. What a delete actually
+-- destroys is the only record of how to REACH the person: phone, email,
+-- address. That is not something a Sales Staff account should be able to do
+-- to the customer list on a bad afternoon, and there is no undo.
+--
+-- The app additionally refuses while the customer has an order still open,
+-- which the database cannot express in a policy -- it would need a subquery
+-- over orders joined on a text name. That check lives in App.deleteCustomer
+-- and on the screen. This policy is the part that stops the wrong ROLE; the
+-- open-order rule is the part that stops the wrong MOMENT.
+drop policy if exists "Active staff read customers"   on public.customers;
+drop policy if exists "Active staff insert customers" on public.customers;
+drop policy if exists "Active staff update customers" on public.customers;
+drop policy if exists "Admins delete customers"       on public.customers;
+
+create policy "Active staff read customers"   on public.customers for select
+  using (private.is_active_staff());
+create policy "Active staff insert customers" on public.customers for insert
+  with check (private.is_active_staff());
+create policy "Active staff update customers" on public.customers for update
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Admins delete customers"       on public.customers for delete
   using (private.is_admin());
 
 -- ------------------------------------------------------------

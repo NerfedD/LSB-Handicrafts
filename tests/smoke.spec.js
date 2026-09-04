@@ -325,6 +325,58 @@ test.describe("people", () => {
     expectClean();
   });
 
+  test("a customer with an order still waiting cannot be removed, and is told why", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: navName("Customers") }).click();
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "Reyes Events" })
+      .getByRole("button", { name: "Open" })
+      .click();
+
+    // The block still renders — it explains the refusal rather than vanishing,
+    // because "why can't I delete this" deserves an answer on the screen.
+    await expect(
+      page.getByRole("heading", { name: "Remove this customer for good" })
+    ).toBeVisible();
+    await expect(page.getByText(/still owe goods to/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Remove Reyes Events/ })).toHaveCount(0);
+
+    expectClean();
+  });
+
+  test("removing a customer keeps their past orders", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Customers") }).click();
+    await page
+      .getByRole("listitem")
+      .filter({ hasText: "Bloom & Co" })
+      .getByRole("button", { name: "Open" })
+      .click();
+
+    // Nothing waiting, so removal is offered and the copy promises the orders
+    // survive -- `orders` holds the name as text with no foreign key.
+    await expect(page.getByText(/past orders are NOT deleted/)).toBeVisible();
+    await page.getByRole("button", { name: "Remove Bloom & Co" }).click();
+
+    await expect(page.getByRole("heading", { name: "Remove Bloom & Co?" })).toBeVisible();
+    await page.getByRole("button", { name: "Yes, remove them" }).click();
+
+    await expect(page.getByRole("heading", { level: 1, name: "Customers" })).toBeVisible();
+    // Scoped to <main>: the success toast names them too, and sonner renders
+    // each toast as a list item in a portal outside the content area. That is
+    // the toast doing its job, not the customer still being on the list.
+    await expect(
+      page.getByRole("main").getByRole("listitem").filter({ hasText: "Bloom & Co" })
+    ).toHaveCount(0);
+
+    // The promise the copy makes, actually checked.
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await expect(page.getByRole("table").getByText("Bloom & Co")).toBeVisible();
+
+    expectClean();
+  });
+
   test("customers are cards with call-list filters", async ({ page }) => {
     await page.getByRole("button", { name: navName("Customers") }).click();
 
