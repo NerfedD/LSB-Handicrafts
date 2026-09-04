@@ -297,6 +297,34 @@ test.describe("people", () => {
     await signIn(page, baseURL);
   });
 
+  test("a supplier can be removed, in its own block, with a named confirm", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Suppliers") }).click();
+    await page
+      .getByRole("row", { name: /Davao Foam Supply/ })
+      .getByRole("button", { name: "Open" })
+      .click();
+
+    // Rule 6: destructive lives in its own block at the bottom, never as an
+    // icon in the row, and it says what goes and what survives.
+    await expect(
+      page.getByRole("heading", { name: "Remove this supplier for good" })
+    ).toBeVisible();
+    await expect(page.getByText(/Orders and stock records are not touched/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove Davao Foam Supply" }).click();
+
+    // The confirm names the record rather than asking "are you sure?".
+    await expect(page.getByRole("heading", { name: "Remove Davao Foam Supply?" })).toBeVisible();
+    await page.getByRole("button", { name: "Yes, remove them" }).click();
+
+    // Back on the list, and gone from it.
+    await expect(page.getByRole("heading", { level: 1, name: "Suppliers" })).toBeVisible();
+    await expect(page.getByRole("table").getByText("Davao Foam Supply")).toHaveCount(0);
+    await expect(page.getByRole("table").getByText("Southern Adhesives")).toBeVisible();
+
+    expectClean();
+  });
+
   test("customers are cards with call-list filters", async ({ page }) => {
     await page.getByRole("button", { name: navName("Customers") }).click();
 
@@ -375,6 +403,39 @@ test.describe("people", () => {
     await expect(page.getByText(/recorded 60 × Styro Ball 4 inch made/)).toBeVisible();
     // A row written in the pre-overhaul shape still renders.
     await expect(page.getByText(/Deleted order #1039/)).toBeVisible();
+
+    expectClean();
+  });
+});
+
+test.describe("what a role is not offered", () => {
+  test("a non-admin sees the supplier but not the way to remove them", async ({
+    page,
+    baseURL,
+  }) => {
+    // Sales Staff reach suppliers -- knowing who to ring for materials is
+    // everyone's job -- but removing one is not theirs. The RLS policy on
+    // public.suppliers is the real gate; this checks the screen agrees with it
+    // rather than offering a button the database would refuse.
+    //
+    // Re-stubbed as Juan: the route registered here takes precedence over the
+    // administrator stub from the top-level beforeEach.
+    await stubSupabase(page, { as: "juan@lsbhandicrafts.test" });
+    await signIn(page, baseURL, "juan@lsbhandicrafts.test");
+
+    await page.getByRole("button", { name: navName("Suppliers") }).click();
+    await page
+      .getByRole("row", { name: /Davao Foam Supply/ })
+      .getByRole("button", { name: "Open" })
+      .click();
+
+    await expect(page.getByRole("heading", { name: "Davao Foam Supply" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit details" })).toBeVisible();
+
+    await expect(
+      page.getByRole("heading", { name: "Remove this supplier for good" })
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /^Remove / })).toHaveCount(0);
 
     expectClean();
   });

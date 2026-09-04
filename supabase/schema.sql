@@ -504,8 +504,38 @@ create policy "Active staff can manage customers"    on public.customers    for 
   using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Active staff can manage products"     on public.products     for all
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage suppliers"    on public.suppliers    for all
+
+-- ------------------------------------------------------------
+-- suppliers: everyone works with them, only an admin removes one
+-- ------------------------------------------------------------
+--
+-- WHY THIS TABLE IS SPLIT OUT of the `for all` group above. `for all` covers
+-- DELETE, so while suppliers sat in that list any active staff member could
+-- remove a supplier row -- including a Delivery Staff account that has no
+-- reason to. There was no delete button anywhere in the app, so nothing
+-- exercised it; adding one makes the gap reachable, and a UI-only check is
+-- not a permission. The four verbs are therefore spelled out separately and
+-- DELETE alone asks for is_admin().
+--
+-- Read, add and edit stay open to any active staff member: knowing who to ring
+-- for materials, and correcting a wrong phone number, is everybody's job.
+--
+-- Nothing references public.suppliers, so removing one orphans no orders and
+-- no deliveries -- which is what makes a hard delete the honest thing here
+-- rather than an "archived" flag.
+drop policy if exists "Active staff read suppliers"   on public.suppliers;
+drop policy if exists "Active staff insert suppliers" on public.suppliers;
+drop policy if exists "Active staff update suppliers" on public.suppliers;
+drop policy if exists "Admins delete suppliers"       on public.suppliers;
+
+create policy "Active staff read suppliers"   on public.suppliers for select
+  using (private.is_active_staff());
+create policy "Active staff insert suppliers" on public.suppliers for insert
+  with check (private.is_active_staff());
+create policy "Active staff update suppliers" on public.suppliers for update
   using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Admins delete suppliers"       on public.suppliers for delete
+  using (private.is_admin());
 
 -- ------------------------------------------------------------
 -- staff: the one table where "any active staff member" is too broad

@@ -32,7 +32,12 @@ function fakeJwt(payload) {
   return `${b64({ alg: "HS256", typ: "JWT" })}.${b64(payload)}.stub-signature`;
 }
 
-export async function stubSupabase(page, { onWrite } = {}) {
+/**
+ * `as` is the email the stub signs in as. It defaults to the administrator,
+ * which is what nearly every case wants; pass another staff member's address
+ * to exercise a screen as a role that sees less of it.
+ */
+export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {}) {
   // A per-run copy, so a test that blocks an account does not leak that state
   // into the next test in the file.
   const tables = Object.fromEntries(
@@ -52,12 +57,12 @@ export async function stubSupabase(page, { onWrite } = {}) {
 
     if (url.pathname.endsWith("/token")) {
       const now = Math.floor(Date.now() / 1000);
-      const user = { id: "stub-user", email: SIGNED_IN_EMAIL, aud: "authenticated" };
+      const user = { id: "stub-user", email: as, aud: "authenticated" };
       return json(route, {
         // NO staff_* claims: that is the default install, where the access-token
         // hook has not been enabled — so the app takes its read-then-route path
         // and the test exercises resolveStaff() rather than skipping past it.
-        access_token: fakeJwt({ sub: "stub-user", email: SIGNED_IN_EMAIL, exp: now + 3600 }),
+        access_token: fakeJwt({ sub: "stub-user", email: as, exp: now + 3600 }),
         refresh_token: "stub-refresh",
         token_type: "bearer",
         expires_in: 3600,
@@ -68,7 +73,7 @@ export async function stubSupabase(page, { onWrite } = {}) {
 
     if (url.pathname.endsWith("/logout")) return route.fulfill({ status: 204, body: "" });
     if (url.pathname.endsWith("/user")) {
-      return json(route, { id: "stub-user", email: SIGNED_IN_EMAIL });
+      return json(route, { id: "stub-user", email: as });
     }
     if (url.pathname.endsWith("/recover")) return json(route, {});
     return json(route, {});
@@ -120,7 +125,18 @@ export async function stubSupabase(page, { onWrite } = {}) {
         // The delete path checks an exact count, so the stub has to send the
         // header PostgREST would — otherwise a successful delete reports as
         // "you do not have permission".
-        headers: { "content-range": index === -1 ? "*/0" : "*/1", "access-control-allow-origin": "*" },
+        //
+        // AND IT HAS TO EXPOSE IT. content-range is not a CORS-safelisted
+        // response header, so without access-control-expose-headers the
+        // browser hands supabase-js a null count and the delete reports as a
+        // permission failure anyway. Sending the header is not the same as the
+        // page being allowed to read it, and only a test that clicks all the
+        // way through a delete notices the difference.
+        headers: {
+          "content-range": index === -1 ? "*/0" : "*/1",
+          "access-control-allow-origin": "*",
+          "access-control-expose-headers": "content-range",
+        },
         body: "[]",
       });
     }
@@ -132,9 +148,9 @@ export async function stubSupabase(page, { onWrite } = {}) {
 }
 
 /** Signs in through the real form, against the stub above. */
-export async function signIn(page, baseURL) {
+export async function signIn(page, baseURL, as = SIGNED_IN_EMAIL) {
   await page.goto(baseURL);
-  await page.getByLabel("Username or email").fill(SIGNED_IN_EMAIL);
+  await page.getByLabel("Username or email").fill(as);
   await page.getByLabel("Password", { exact: true }).fill("stub-password");
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("heading", { level: 1, name: "Dashboard" }).waitFor();

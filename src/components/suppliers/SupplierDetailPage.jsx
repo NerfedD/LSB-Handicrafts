@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import { ArrowLeft, AtSign, Calendar, Handshake, MapPin, Pencil, Phone, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { DangerBlock } from "../shared/Callout";
 import IconChip from "../shared/Chip";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
 import { NotFoundState } from "../shared/PageStates";
 import { formatLongDate } from "../../utils/profileFormat";
@@ -17,11 +21,39 @@ import { formatLongDate } from "../../utils/profileFormat";
  * The primary action here is calling them, which is why the phone number is a
  * real `tel:` link rather than text to copy out. On the phone this screen is
  * most likely opened on, that is the entire job.
+ *
+ * REMOVING ONE LIVES AT THE BOTTOM, IN ITS OWN BLOCK, and only an admin sees
+ * it — `canDelete`. Rule 6: never a red trash icon in a row, because a
+ * row-level icon is an irreversible action sitting a few pixels from "Edit"
+ * and gets triggered before it is read. The block names the supplier, says
+ * what goes and what stays, and offers the reversible alternative first:
+ * almost every "we don't use them any more" is better served by leaving the
+ * record alone than by destroying the only copy of their phone number.
+ *
+ * `canDelete` is the UI half of the rule. The other half is the RLS policy on
+ * public.suppliers, where DELETE asks for is_admin() — a hidden button is a
+ * courtesy, not a permission.
  */
-export default function SupplierDetailPage({ supplier, onBack, onEdit }) {
+export default function SupplierDetailPage({
+  supplier,
+  canDelete = false,
+  onBack,
+  onEdit,
+  onDelete,
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [working, setWorking] = useState(false);
+
   if (!supplier) return <NotFoundState noun="supplier" onBack={onBack} />;
 
   const dialable = String(supplier.contactNumber || "").replace(/[^\d+]/g, "");
+
+  async function runDelete() {
+    setWorking(true);
+    await onDelete?.(supplier);
+    setWorking(false);
+    setConfirming(false);
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -99,6 +131,42 @@ export default function SupplierDetailPage({ supplier, onBack, onEdit }) {
           />
         </Card>
       </div>
+
+      {/* ---- the only place a supplier can be removed ---- */}
+      {canDelete && (
+        <DangerBlock
+          title="Remove this supplier for good"
+          action={
+            <Button variant="danger" size="lg" onClick={() => setConfirming(true)}>
+              Remove {supplier.name}
+            </Button>
+          }
+        >
+          {supplier.name} disappears from the suppliers list, along with their contact
+          person, phone number and address. Orders and stock records are not touched —
+          nothing in the system points at a supplier — so nothing else changes. This
+          cannot be undone.
+          <br />
+          <br />
+          If you have simply stopped buying from them, leaving the record alone costs
+          nothing and keeps their number to hand if you go back.
+        </DangerBlock>
+      )}
+
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={(next) => !next && setConfirming(false)}
+        title={`Remove ${supplier.name}?`}
+        consequences={
+          <>
+            Their contact person, phone number, email and address are deleted with them.
+            Orders and stock records stay exactly as they are. This cannot be undone.
+          </>
+        }
+        confirmLabel="Yes, remove them"
+        busy={working}
+        onConfirm={runDelete}
+      />
     </div>
   );
 }

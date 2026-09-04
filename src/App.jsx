@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } fro
 
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
-import { canAccess } from "./utils/permissions";
+import { canAccess, isAdminRole } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
   activityLogCollection,
@@ -612,6 +612,42 @@ export default function App() {
       });
       return id;
     };
+  }
+
+  /**
+   * Removes a supplier.
+   *
+   * ADMIN ONLY, CHECKED IN THREE PLACES and deliberately so: the detail screen
+   * only renders the block for an admin, this refuses outright, and the RLS
+   * policy on public.suppliers grants DELETE to is_admin() alone. The first is
+   * a courtesy, the second stops a stale render firing a doomed request, and
+   * only the third is the actual permission.
+   *
+   * Nothing in the schema references suppliers, so this orphans nothing —
+   * which is why it is a real delete rather than an archived flag.
+   */
+  async function deleteSupplier(supplier) {
+    if (!isAdminRole(profile?.role)) {
+      toast.error("Only an administrator can remove a supplier.");
+      return;
+    }
+
+    const result = await suppliersState.remove(supplier.id);
+    if (!result.ok) {
+      toast.error(result.message || "That supplier was not removed.");
+      return;
+    }
+
+    if (selectedSupplierId === supplier.id) setSelectedSupplierId(null);
+    toast.success(`${supplier.name} was removed.`, {
+      description: "Orders and stock records are untouched.",
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.SUPPLIER,
+      what: `removed supplier ${supplier.name}`,
+      subject: `supplier:${supplier.id}`,
+    });
+    navigate("suppliers");
   }
 
   /**
@@ -1230,8 +1266,10 @@ export default function App() {
         return (
           <SupplierDetailPage
             supplier={selectedSupplier}
+            canDelete={isAdminRole(profile?.role)}
             onBack={() => navigate("suppliers")}
             onEdit={(id) => openProfileForm("supplier", id)}
+            onDelete={deleteSupplier}
           />
         );
 
