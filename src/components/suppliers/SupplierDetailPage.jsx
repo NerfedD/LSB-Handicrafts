@@ -21,7 +21,7 @@ import { formatLongDate } from "../../utils/profileFormat";
 export default function SupplierDetailPage({ supplier, onBack, onEdit }) {
   if (!supplier) return <NotFoundState noun="supplier" onBack={onBack} />;
 
-  const dialable = String(supplier.contactNumber || "").replace(/[^\d+]/g);
+  const dialable = String(supplier.contactNumber || "").replace(/[^\d+]/g, "");
 
   return (
     <div className="flex flex-col gap-4">

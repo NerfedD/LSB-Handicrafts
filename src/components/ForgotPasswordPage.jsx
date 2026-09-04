@@ -77,7 +77,7 @@ export default function ForgotPasswordPage({ onBack }) {
             Back to sign in
           </Button>
           <Button variant="outline" size="lg" block asChild>
-            <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g)}`}>
+            <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`}>
               <Phone className="h-5 w-5" />
               No email arrived — call the office
             </a>

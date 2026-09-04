@@ -72,7 +72,7 @@ export default function StaffDirectoryPage({
       ) : (
         <ul className="grid gap-3.5 sm:grid-cols-2">
           {filtered.map((person) => {
-            const dialable = String(person.contactNumber || "").replace(/[^\d+]/g);
+            const dialable = String(person.contactNumber || "").replace(/[^\d+]/g, "");
             return (
               <li key={person.id}>
                 <Card className="flex h-full items-center gap-4 p-4.5">

@@ -104,7 +104,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
 
   const callTheOffice = (
     <Button variant="outline" size="sm" asChild>
-      <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g)}`}>
+      <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`}>
         <Phone className="h-4.5 w-4.5" />
         Call the office
       </a>
