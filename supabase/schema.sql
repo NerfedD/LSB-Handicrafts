@@ -631,6 +631,155 @@ revoke all on function public.update_own_profile(text, text) from public, anon;
 grant execute on function public.update_own_profile(text, text) to authenticated;
 
 -- ============================================================
+-- UI overhaul: what happened recently, and per-account preferences
+-- ============================================================
+-- Added for design_handoff_lsb_ui_overhaul. Both are additive and guarded, so
+-- this file stays safe to re-run on a database that already has them.
+
+-- ------------------------------------------------------------
+-- activity_log becomes real
+-- ------------------------------------------------------------
+-- This table existed but nothing ever wrote to it: the "Recent Activity" panel
+-- and the whole activity-log screen were rendering a hardcoded array of twelve
+-- fake entries in src/utils/activityData.js, which is why the screen looked
+-- identical on every install and why the dashboard's "Activity Entries: 12"
+-- counter never moved.
+--
+-- The overhaul makes "What happened recently" a feed of sentences naming the
+-- person who did the thing, and the product detail screen shows stock
+-- movements. Both need three things the original seven columns cannot carry:
+--
+--   staff_name  who did it. `title` held an event NAME ("Order Deleted"), not a
+--               person, and the feed's whole shape is "<person> <did what>".
+--   subject     what it was done to, as a stable key -- an item code, an order
+--               id -- so one record's own screen can filter the feed to itself
+--               without string-matching a sentence.
+--   at          when, as a real timestamp. `date` is text holding a display
+--               string, so ordering by it sorts alphabetically by month name:
+--               'August 30' outranks 'July 2' and 'April' outranks everything.
+--               That is the same bug the customers/products/suppliers
+--               timestamptz migration above fixed, in the one table it missed.
+--
+-- The original columns stay. Rows written by the legacy workspace screens are
+-- still readable, they simply have nulls in the new ones, and the reader in
+-- src/utils/activityLog.js falls back to `date` when `at` is null.
+alter table public.activity_log
+  add column if not exists staff_name text,
+  add column if not exists subject    text,
+  add column if not exists at         timestamptz default now();
+
+-- Bounded like every other numeric column: `amount` carries a stock change
+-- here, and an unbounded integer column is how a typo in a quantity box
+-- rejected an entire write during class testing.
+alter table public.activity_log drop constraint if exists activity_log_amount_check;
+alter table public.activity_log add constraint activity_log_amount_check
+  check (amount is null or (amount >= -2000000000 and amount <= 2000000000));
+
+-- The feed is always "most recent first", and the product detail screen always
+-- filters to one subject before ordering.
+create index if not exists activity_log_at_idx      on public.activity_log (at desc);
+create index if not exists activity_log_subject_idx on public.activity_log (subject, at desc);
+
+-- ------------------------------------------------------------
+-- deliveries.driver
+-- ------------------------------------------------------------
+-- Who is taking it out.
+--
+-- The deliveries board filters by driver and has a "No driver yet" chip, and
+-- the order screen offers "Assign someone" on an order that has been waiting —
+-- none of which can exist without somewhere to put the name. There was nowhere:
+-- the table had product, size, location, amount and status.
+--
+-- Free text rather than a foreign key to `staff`, deliberately. Deliveries are
+-- sometimes taken by somebody without a system account — an owner, a hired van
+-- — and a constraint that made those undeliverable would be a constraint staff
+-- worked around by writing the name into the location field.
+alter table public.deliveries
+  add column if not exists driver text;
+
+-- ------------------------------------------------------------
+-- deliveries.due_on
+-- ------------------------------------------------------------
+-- When it is expected to arrive.
+--
+-- The board's filters are "Late", "Due today" and "This week", and its default
+-- view is today's work. None of that means anything against `created_at`, which
+-- is when the delivery was RAISED — a delivery raised on Monday for Friday is
+-- neither late on Tuesday nor due today.
+--
+-- A `date`, not a timestamptz: deliveries are promised for a day, not a minute,
+-- and storing a time nobody supplied would make "due today" depend on what hour
+-- the row happened to be created.
+--
+-- Nullable, because a delivery with no promised date is a real state — it is
+-- simply one that never appears in the "late" or "due today" columns.
+alter table public.deliveries
+  add column if not exists due_on date;
+
+-- The board groups by stage and its chips read the due date, so both are
+-- indexed.
+create index if not exists deliveries_status_idx on public.deliveries (status);
+create index if not exists deliveries_due_on_idx on public.deliveries (due_on);
+
+-- ------------------------------------------------------------
+-- customers.kind
+-- ------------------------------------------------------------
+-- A business or a walk-in.
+--
+-- The customers screen splits on it — it is two of the chips and the line under
+-- every name — and it cannot be derived from anything already stored. Guessing
+-- it (from whether an email was filled in, say) would be worse than not having
+-- it: sales staff would filter to "Businesses", not see a customer they know is
+-- one, and stop trusting the filter.
+--
+-- Defaulted to 'walk-in' because that is the larger group and the safer wrong
+-- answer: a business miscategorised as a walk-in is still found by name, where
+-- the reverse pollutes the list a salesperson uses to plan calls.
+alter table public.customers
+  add column if not exists kind text not null default 'walk-in';
+
+alter table public.customers drop constraint if exists customers_kind_check;
+alter table public.customers add constraint customers_kind_check
+  check (kind in ('business', 'walk-in'));
+
+-- ------------------------------------------------------------
+-- staff.dashboard_view
+-- ------------------------------------------------------------
+-- Which of the two dashboards a person sees: 'standard' (more on screen at
+-- once) or 'large' (bigger words and buttons, fewer things per screen).
+--
+-- PER ACCOUNT, NOT GLOBAL. It changes only what that person sees, which is the
+-- point -- the owner and the production floor do not have to agree, and nobody
+-- has to be talked out of their preference. Defaulted to 'standard' so a new
+-- account behaves exactly as before.
+alter table public.staff
+  add column if not exists dashboard_view text not null default 'standard';
+
+alter table public.staff drop constraint if exists staff_dashboard_view_check;
+alter table public.staff add constraint staff_dashboard_view_check
+  check (dashboard_view in ('standard', 'large'));
+
+-- Same reasoning as update_own_profile above, and the reason this is a separate
+-- function rather than two more parameters on it: that function is granted by
+-- exact signature, so changing its arity would revoke the grant from every
+-- client still calling the old shape. One column, one function, one grant.
+create or replace function public.set_own_dashboard_view(p_view text)
+returns void
+language sql
+security definer
+set search_path = public
+as $fn$
+  update public.staff
+  set dashboard_view = p_view
+  where lower(email) = lower((select auth.jwt()) ->> 'email')
+    and status = 'Active'
+    and p_view in ('standard', 'large');
+$fn$;
+
+revoke all on function public.set_own_dashboard_view(text) from public, anon;
+grant execute on function public.set_own_dashboard_view(text) to authenticated;
+
+-- ============================================================
 -- Auth hook: staff claims on the access token
 -- ============================================================
 -- Stamps the signed-in person's staff role onto their JWT.

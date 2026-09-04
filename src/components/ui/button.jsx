@@ -7,68 +7,106 @@ import { cn } from "@/lib/utils";
 /**
  * The app's one button.
  *
- * Replaces `shared/profileButtonStyles.js`, which exported raw class STRINGS
- * that callers concatenated to resize (`${secondaryButton} h-11 px-6`).
- * That only worked when class order happened to favour the override; `cn()`
- * resolves the conflict properly.
+ * ONE PRIMARY NOW. This file used to ship two — #1b3a6b for the
+ * user-management screens and #2196f3 for the dashboards — with a note saying
+ * that picking one was a design decision nobody had made. The UI overhaul made
+ * it: cobalt is the action colour everywhere. `clay` and `green` are not
+ * second primaries but jobs: clay marks production and supplier work, green is
+ * reserved for the one confirm-forward action on a screen ("It arrived",
+ * "Mark as done", "Let Ana sign in again").
  *
- * TWO PRIMARIES, ON PURPOSE. The app has two chrome systems with two different
- * primary colours -- AppShell (user management) is #1b3a6b, ManagementShell
- * (dashboards, profiles) is #1746d1. Rather than pick one and silently restyle
- * half the app, both ship as variants and each screen keeps the colour it has
- * today. Unifying them is a design decision that hasn't been made.
+ * HEIGHTS COME FROM THE TAP-TARGET FLOOR, not from a t-shirt scale. The
+ * handoff's rule is 44px minimum for anything tappable, 46–52px for buttons,
+ * 52–56px for a primary call to action, and that is exactly what the four
+ * sizes below are. There is no `xs`: a 36px button existed on the old screens
+ * and is precisely what rule 1 rules out.
  *
- * THREE HEIGHTS, ON THE 4px GRID. The app had twelve distinct interactive
- * heights (38, 42, 45, 46, 49.5, 52, 54, 60, 63...), most of them arbitrary px
- * that ignored the spacing scale. They collapse to:
- *
- *   sm      36px  filters, row actions, search
- *   default 44px  the standard control height, matching Input and Select
- *   lg      52px  the full-width submit buttons on the auth and account forms
- *
- * `xl` is kept as an alias of `lg` so existing call sites don't break; prefer
- * `lg` in new code.
+ * NO ICON-ONLY BUTTONS. Rule 3 — "every icon has a word beside it" — is a
+ * content rule this component cannot enforce, but it can decline to make the
+ * wrong thing easy: the `icon` size is documented for dismiss affordances (a
+ * dialog's close X, a search field's clear) and nothing else. A bare pencil or
+ * trash icon in a row is a guess, and the row actions on every list screen
+ * therefore read "View" and "Edit" beside their icons.
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[10px] text-sm font-medium transition disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  [
+    "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
+    "rounded-btn font-bold transition duration-150",
+    "disabled:pointer-events-none disabled:opacity-50",
+    // The global :focus-visible ring in index.css covers this; the offset is
+    // set here so a ring on a filled button sits clear of its own fill.
+    "focus-visible:outline-offset-2",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0",
+  ],
   {
     variants: {
       variant: {
-        // ManagementShell primary
-        brand: "bg-brand text-white hover:bg-[#1238ab]",
-        // AppShell primary
-        navy: "bg-navy text-white hover:bg-ink",
-        // The shared outline treatment, identical in both shells
+        /** The primary action. One per screen. */
+        cobalt:
+          "bg-cobalt text-white shadow-cobalt hover:bg-cobalt-deep dark:bg-dk-cobalt dark:text-dk-on-cobalt dark:hover:bg-[#5c9fea]",
+        /** Chrome-coloured fill: sidebar-adjacent surfaces, selected states. */
+        navy: "bg-navy text-white hover:bg-[#0b2547]",
+        /**
+         * Production and supplier work.
+         *
+         * The hover is spelled out for dark because `clay-deep` is a
+         * FOREGROUND token — it flips to a light clay so clay text stays
+         * readable on a dark surface, which is the wrong direction for a fill
+         * sitting under white text.
+         */
+        clay: "bg-clay text-white shadow-card hover:bg-clay-deep dark:hover:bg-[#c9662e]",
+        /** The single confirm-forward action on a screen. */
+        green: "bg-green text-white shadow-card hover:bg-[#0b5537]",
+        /** The standard secondary. 1.5px border, per the handoff. */
         outline:
-          "border border-[#17263a29] bg-white text-ink hover:bg-[#17263a08]",
-        ghost: "text-ink hover:bg-[#17263a08]",
-        destructive: "bg-danger text-white hover:bg-[#9c3c3c]",
-        link: "text-brand underline-offset-4 hover:underline",
+          "border-[1.5px] border-chip bg-surface text-ink hover:bg-wash",
+        /** Destructive, and always inside its own outlined block — never a red icon in a row. */
+        danger:
+          "border-[1.5px] border-red/[0.45] bg-surface text-red-text hover:bg-tint-red dark:border-dk-red/[0.45]",
+        /** Solid destructive, for the confirm button inside a confirm dialog. */
+        "danger-solid": "bg-red text-white hover:bg-[#8f2b28]",
+        ghost:
+          "text-ink hover:bg-wash",
+        link: "font-bold text-cobalt dark:text-dk-cobalt underline-offset-[3px] hover:text-cobalt-deep hover:underline",
       },
       size: {
-        sm: "h-9 px-4",
-        default: "h-11 px-5",
-        lg: "h-13 px-6",
-        xl: "h-13 px-6",
-        icon: "h-9 w-9 rounded-lg",
+        /** 44px — the tap-target floor. Row actions, header utilities, chips-as-buttons. */
+        sm: "h-11 gap-1.5 px-3.5 text-[14.5px]",
+        /**
+         * 54px — a button standing IN a filter row, beside the search box and
+         * the dropdowns. It exists so that row is one height: the fields there
+         * are 54px, and a 44px button next to them left an 8px step in the
+         * middle of a single row on the staff screen.
+         */
+        field: "h-13.5 px-4 text-[15.5px]",
+        /** 48px — the default. Header primary, in-card calls to action. */
+        default: "h-12 px-5 text-[15.5px]",
+        /** 52px — form footers, quick actions, the stacked buttons on a detail screen. */
+        lg: "h-13 px-5 text-[16px]",
+        /** 56px — the one big primary on an auth screen or a delivery detail. */
+        xl: "h-14 px-6 text-[16.5px]",
+        /** Dismiss affordances only. See the note above. */
+        icon: "h-11 w-11 rounded-btn",
       },
+      block: { true: "w-full", false: "" },
     },
-    defaultVariants: {
-      variant: "brand",
-      size: "default",
-    },
+    defaultVariants: { variant: "cobalt", size: "default", block: false },
   }
 );
 
 const Button = forwardRef(function Button(
-  { className, variant, size, asChild = false, ...props },
+  { className, variant, size, block, asChild = false, type, ...props },
   ref
 ) {
   const Comp = asChild ? Slot : "button";
   return (
     <Comp
       ref={ref}
-      className={cn(buttonVariants({ variant, size }), className)}
+      // A <button> inside a <form> submits by default, which is how "Cancel"
+      // used to save the record it was cancelling. Only an explicit type="submit"
+      // submits now.
+      type={asChild ? type : type ?? "button"}
+      className={cn(buttonVariants({ variant, size, block }), className)}
       {...props}
     />
   );

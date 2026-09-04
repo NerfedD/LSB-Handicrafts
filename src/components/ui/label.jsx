@@ -3,12 +3,21 @@ import * as LabelPrimitive from "@radix-ui/react-label";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * A field label.
+ *
+ * 16px, not 13px. A label is a sentence somebody reads to decide what to type,
+ * so it sits above the floor like everything else — and the help text under
+ * the field is 14.5px, which is the smallest anything gets outside a tracked
+ * uppercase signpost.
+ */
 const Label = forwardRef(function Label({ className, ...props }, ref) {
   return (
     <LabelPrimitive.Root
       ref={ref}
       className={cn(
-        "text-[13px] font-medium text-ink peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+        "block text-[16px] font-bold text-ink",
+        "peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
         className
       )}
       {...props}
@@ -17,21 +26,40 @@ const Label = forwardRef(function Label({ className, ...props }, ref) {
 });
 
 /**
- * The label-plus-hairline heading used above each block of fields.
+ * The help text under a field.
  *
- * Defined twice (CreateUserAccountDialog, ManageUserAccountPage) and inlined
- * verbatim five more times across UpdateProfilePage, ViewProfilePage,
- * StaffActivityLogPage and UserAccountsPage. Same markup, one place.
+ * Rule 5: help text goes UNDER the field, not in a tooltip and not as
+ * placeholder text that vanishes the moment somebody starts typing. Every
+ * field that needs explaining gets one of these — "Write it the way staff say
+ * it out loud","This decides which measurements we ask for next".
  */
-function SectionLabel({ className, children, ...props }) {
+function FieldHint({ className, ...props }) {
   return (
-    <div className={cn("flex items-center gap-3", className)} {...props}>
-      <span className="text-[11px] font-semibold uppercase tracking-[1.1px] text-muted">
-        {children}
-      </span>
-      <span className="h-px flex-1 bg-[#17263a14]" />
-    </div>
+    <p
+      className={cn("pt-2 text-[14.5px] leading-[1.45] text-muted", className)}
+      {...props}
+    />
   );
 }
 
-export { Label, SectionLabel };
+/**
+ * A numbered band heading inside a form: "1. What is it?".
+ *
+ * Numbering the bands is what turns a wall of fields into a sequence, which is
+ * the whole of rule 5 — one question at a time.
+ */
+function BandHeading({ className, children, ...props }) {
+  return (
+    <h3
+      className={cn(
+        "text-[18.5px] font-extrabold tracking-[-0.01em] text-ink",
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </h3>
+  );
+}
+
+export { Label, FieldHint, BandHeading };

@@ -5,7 +5,12 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // 'Professional UI mockups project' is the design handoff -- prototype HTML
+  // and its support script, kept in the repo because the comments throughout
+  // src reference it as the source of truth for every token and measurement.
+  // It is reference material, not application source, and linting it reports
+  // problems in a file nobody is going to change.
+  globalIgnores(['dist', 'Professional UI mockups project']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

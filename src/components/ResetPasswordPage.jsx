@@ -1,32 +1,49 @@
 import { useState } from "react";
-import { Eye, EyeOff, Info, CheckCircle2 } from "./icons";
-import AuthLayout from "./layout/AuthLayout";
+
+import { CircleAlert, CircleCheck, KeyRound, Lock } from "./icons";
+import AuthLayout, { StepBar } from "./layout/AuthLayout";
+import AuthField from "./shared/AuthField";
+import Callout from "./shared/Callout";
+import IconChip from "./shared/Chip";
+import { RequirementList } from "./shared/forms";
+import { Button } from "@/components/ui/button";
 import { supabase } from "../lib/supabaseClient";
+import { passwordIsAcceptable, passwordRequirements } from "../utils/password";
 
 /**
- * LSB Handicrafts — Create a New Password + success confirmation
- * Figma: node 10:1525 (form), 11:1733 (success)
+ * Forgot password, step 3 of 3 — choose a new one.
  *
- * Only reachable with a valid Supabase recovery session already
- * established — see the PASSWORD_RECOVERY listener in src/App.jsx, which
- * is what lands someone here after they click the link from
- * ForgotPasswordPage's email.
+ * Only reachable with a valid Supabase recovery session already established:
+ * see the PASSWORD_RECOVERY listener in src/App.jsx, which is what lands
+ * somebody here after they click the link from the email.
+ *
+ * THE CHECKLIST TICKS AS THEY TYPE. Password rules delivered as an error after
+ * submitting are a guessing game played one round per submission; the same
+ * rules shown as a list that fills in are a progress bar. The screen also
+ * refuses to submit until all three are met, so the round trip that would have
+ * told them off never happens.
+ *
+ * The confirm field is labelled "Type the new password again — so we know there
+ * is no typo", which says why it exists."Confirm New Password" describes the
+ * field; this describes the reason, and the reason is what makes somebody type
+ * carefully rather than paste.
  */
 export default function ResetPasswordPage({ onReturnToLogin }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [succeeded, setSucceeded] = useState(false);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  const requirements = passwordRequirements(password);
+  const ready = passwordIsAcceptable(password) && confirmPassword === password;
+
+  async function handleSubmit(event) {
+    event.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError("Passwords don't match.");
+    if (confirmPassword !== password) {
+      setError("The two passwords are not the same. Check for a typo in the second box.");
       return;
     }
 
@@ -39,7 +56,7 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
       }
       setSucceeded(true);
     } catch {
-      setError("Couldn't reset your password. Please try again.");
+      setError("We could not reach the system, so your password was not changed.");
     } finally {
       setIsSubmitting(false);
     }
@@ -47,133 +64,80 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
 
   if (succeeded) {
     return (
-      <AuthLayout>
-        <div className="mt-11 flex flex-col items-center text-center">
-          <div className="flex size-[68px] items-center justify-center rounded-full border border-[#287a5538] bg-[#287a5514]">
-            <CheckCircle2 className="h-8 w-8 text-[#287a55]" />
-          </div>
-          <h1 className="mt-7 text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
-            Password Reset Successful
+      <AuthLayout width={470}>
+        <StepBar step={3} />
+
+        <div className="pt-6">
+          <IconChip icon={<CircleCheck />} tone="green" size="xl" />
+          <h1 className="pt-5 text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
+            Your new password is saved
           </h1>
-
-          <div className="mt-6 flex w-full flex-col gap-3 rounded-[10px] border border-[#17263a14] bg-[#f7f4ec] px-6 py-5 text-left">
-            {[
-              "Your password has been successfully changed.",
-              "Your previous password is no longer valid.",
-              "Any other active sessions have been signed out for your security.",
-            ].map((line) => (
-              <div key={line} className="flex items-start gap-3">
-                <span className="mt-2 size-[5px] shrink-0 rounded-full bg-[#287a55]" />
-                <p className="text-[15px] leading-[1.65] text-[#17263a]">
-                  {line}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={onReturnToLogin}
-            className="mt-8 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
-          >
-            Return to Login
-          </button>
+          <p className="pt-2 text-[16px] leading-[1.55] text-muted">
+            Use it the next time you sign in. Your old password no longer works, and
+            anywhere else you were signed in has been signed out.
+          </p>
         </div>
+
+        <Button variant="cobalt" size="xl" block className="mt-7" onClick={onReturnToLogin}>
+          Sign in with the new password
+        </Button>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout>
-      <div className="mt-11">
-        <h1 className="text-[32px] font-bold leading-[1.18] tracking-tight text-[#17263a]">
-          Create a New Password
-        </h1>
-        <p className="mt-3 text-base leading-[1.65] text-[#5f6875]">
-          Choose a new password for your account.
-        </p>
-      </div>
+    <AuthLayout width={470}>
+      <StepBar step={3} />
 
-      <div className="mt-8 flex items-start gap-3 rounded-[9px] border border-[#1b3a6b1f] bg-[#dce8ff] px-4 py-3">
-        <Info className="mt-1 h-4 w-4 shrink-0 text-[#1b3a6b]" />
-        <p className="text-[13.5px] leading-[1.6] text-[#1b3a6b]">
-          Your new password must meet the system's password requirements.
+      <div className="pt-6">
+        <h1 className="text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
+          Choose a new password
+        </h1>
+        <p className="pt-2 text-[16px] leading-[1.55] text-muted">
+          Pick something you will remember. Nobody else can see what you type here.
         </p>
       </div>
 
       {error && (
-        <p className="mt-4 text-sm font-medium text-[#b54747]">{error}</p>
+        <Callout tone="red" icon={<CircleAlert />} title="Not saved yet." className="mt-5">
+          {error}
+        </Callout>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col">
-        <label
-          htmlFor="new-password"
-          className="block text-base font-semibold text-[#17263a]"
-        >
-          New Password
-        </label>
-        <div className="relative mt-2">
-          <input
-            id="new-password"
-            type={showPassword ? "text" : "password"}
-            required
-            minLength={6}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="At least 6 characters"
-            className="h-13 w-full rounded-[10px] border border-[#17263a29] bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d]"
-          >
-            {showPassword ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pt-6" noValidate>
+        <AuthField
+          label="New password"
+          type="password"
+          icon={<KeyRound />}
+          value={password}
+          onChange={setPassword}
+          placeholder="Your new password"
+          autoComplete="new-password"
+        />
 
-        <label
-          htmlFor="confirm-password"
-          className="mt-6 block text-base font-semibold text-[#17263a]"
-        >
-          Confirm New Password
-        </label>
-        <div className="relative mt-2">
-          <input
-            id="confirm-password"
-            type={showConfirm ? "text" : "password"}
-            required
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Re-enter new password"
-            className="h-13 w-full rounded-[10px] border border-[#17263a29] bg-white pl-4 pr-14 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirm((v) => !v)}
-            aria-label={showConfirm ? "Hide password" : "Show password"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-2 text-[#17263a99] hover:bg-[#17263a0d]"
-          >
-            {showConfirm ? (
-              <EyeOff className="h-5 w-5" />
-            ) : (
-              <Eye className="h-5 w-5" />
-            )}
-          </button>
-        </div>
+        <RequirementList requirements={requirements} />
 
-        <button
+        <AuthField
+          label="Type the new password again"
+          type="password"
+          icon={<Lock />}
+          value={confirmPassword}
+          onChange={setConfirmPassword}
+          placeholder="The same password"
+          autoComplete="new-password"
+          invalid={confirmPassword !== "" && confirmPassword !== password}
+          hint="So we know there is no typo."
+        />
+
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className="mt-8 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
+          variant="cobalt"
+          size="xl"
+          block
+          disabled={isSubmitting || !ready}
         >
-          {isSubmitting ? "Resetting…" : "Reset Password"}
-        </button>
+          {isSubmitting ? "Saving…" : "Save the new password"}
+        </Button>
       </form>
     </AuthLayout>
   );

@@ -5,70 +5,213 @@
 /* ---------------------------------------------------------------------------
    shadcn/ui token layer.
 
-   These are the handful of variables the generated primitives reference. They
-   are bound to the palette this app already uses (see tailwind.config.js), so
-   a shadcn Button or Dialog renders in the existing colours rather than
-   shadcn's default slate theme. Adding these changes nothing on screen; it
-   only gives the primitives something to inherit.
+   The handful of variables the generated primitives in components/ui
+   reference, bound to the overhaul's palette (see tailwind.config.js) so a
+   Button, Dialog or Select inherits cobalt rather than shadcn's slate.
 
-   HSL triplets without the hsl() wrapper is shadcn's convention -- it lets a
+   HSL triplets without the hsl() wrapper is shadcn's convention — it lets a
    component write `hsl(var(--ring) / 0.4)` for an alpha variant.
    --------------------------------------------------------------------------- */
 :root {
-  --radius: 10px;              /* the rounding already used across the app */
-  --border: 213 42% 16% / 16%; /* #17263a29 -- the hairline used everywhere */
-  --input:  213 42% 16% / 16%;
-  --ring:   225 80% 46%;       /* #1746d1 -- focus ring on ManagementShell */
+  --radius: 10px;               /* the button radius from the handoff */
+  --border: 212 43% 12% / 12%;  /* #111d2b1f — the default card hairline */
+  --input:  212 43% 12% / 18%;  /* #111d2b2e — the input border */
+  --ring:   214 82% 43%;        /* #1462c8 — cobalt, the one focus colour */
 
-  /* FLUID TYPOGRAPHY CORE */
-  /* This scales the base font size from 14px on small phones up to 18px on 1080p+ displays. */
-  /* Because Tailwind uses 'rem', ALL text, padding, and margins will now seamlessly adjust! */
-  font-size: clamp(14px, 1vw + 12px, 18px);
-  
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* -------------------------------------------------------------------------
+     The theme-aware half of the palette.
+
+     Every token here means a ROLE, not a colour: `--c-ink` is "primary text",
+     `--c-paper-2` is "the recessed band". tailwind.config.js binds them so
+     `text-ink` and `bg-paper-2` resolve through these, and the `html.dark`
+     block below is the entire dark theme for them.
+
+     That indirection is the fix for what dark mode used to be: a `dark:` class
+     hand-written beside each light one, present on four screens and absent on
+     twenty-five. Because the shared primitives DID flip, the twenty-five did
+     not merely stay light — a Card painted its dark surface under page markup
+     still asking for near-black `text-ink`. Roles cannot drift that way; a
+     screen gets dark mode whether or not its author thought about it.
+
+     Space-separated channels, not hex, so Tailwind's `/40` opacity modifier
+     still composes (`bg-tint-cobalt/40` is real usage).
+     ------------------------------------------------------------------------- */
+  --c-paper:     244 242 236;  /* app canvas */
+  --c-paper-2:   250 249 245;  /* table headers, card footers, form bands */
+  --c-surface:   255 255 255;  /* card, dialog and field fill */
+  --c-ink:        17  29  43;  /* primary text, selected chip fill */
+  --c-ink-2:      50  64  84;  /* body text inside tinted callouts */
+  --c-muted:      75  87 104;  /* secondary text, icon default */
+  --c-muted-2:   138 147 161;  /* placeholder, disabled */
+
+  /* Foreground-only relatives of the fixed hues. See tailwind.config.js. */
+  --c-cobalt-deep: 14  75 156;
+  --c-clay-deep:  138  67  24;
+  --c-amber-icon: 138  80   0;
+  --c-amber-text: 107  63   0;
+  --c-red-text:   125  37  33;
+
+  --c-tint-cobalt:  232 241 253;
+  --c-tint-clay:    253 239 230;
+  --c-tint-green:   230 242 236;
+  --c-tint-amber:   253 243 228;
+  --c-tint-red:     251 236 235;
+  --c-tint-purple:  239 234 248;
+  --c-tint-neutral: 240 238 232;
+
+  /* Borders carry their alpha pre-mixed — the alpha IS the token, and nothing
+     writes `border-hair/50`. On paper they are ink; on a dark surface an
+     ink-alpha hairline is invisible, which is what left every card edgeless. */
+  --c-hair:   rgba(17, 29, 43, 0.07);  /* row dividers, internal rules */
+  --c-hair2:  rgba(17, 29, 43, 0.08);
+  --c-card:   rgba(17, 29, 43, 0.12);  /* the default card border */
+  --c-chip:   rgba(17, 29, 43, 0.15);  /* secondary button / chip, at 1.5px */
+  --c-chip2:  rgba(17, 29, 43, 0.16);
+  --c-field:  rgba(17, 29, 43, 0.18);  /* input, at 1.5px */
+  --c-sketch: rgba(17, 29, 43, 0.20);  /* image placeholder outline */
+
+  /* Overlays — a wash of ink over whatever is underneath. */
+  --c-wash:   rgba(17, 29, 43, 0.03);  /* control hover */
+  --c-wash-2: rgba(17, 29, 43, 0.02);  /* row hover */
+  --c-rule:   rgba(17, 29, 43, 0.08);  /* separator fills, tracks, skeletons */
+
+  /* Type is fixed px throughout, per the handoff: every size in it is an
+     intended value, and the hard floor of 16px for anything read as a
+     sentence only means something if a viewport-driven clamp cannot scale it
+     under that. The fluid `clamp(14px, 1vw + 12px, 18px)` root this file used
+     to carry is therefore gone — on a narrow phone it pushed body copy to
+     14px, which is exactly what rule 1 forbids. Accessibility is served by
+     the two dashboard views (standard / large text) instead, which is a
+     choice the user makes rather than a function of their screen width. */
+  font-size: 16px;
+
+  font-family: Manrope, system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
-  background-color: #f8fafc;
+  background-color: rgb(var(--c-paper));
+}
+
+/* The dark theme, in full. Warm-neutral darks, never pure black.
+
+   Only the ROLES are restated — the fixed hues (cobalt, clay, green, amber,
+   red, purple) keep their values, because each of those is a fill as often as
+   it is a foreground and `bg-cobalt text-white` has to stay a saturated
+   button. Where one of them genuinely has to be read as text on a dark
+   surface, tones.js pairs it with a `dk-` value explicitly. */
+html.dark {
+  color-scheme: dark;
+
+  --border: 0 0% 100% / 9%;
+  --input:  0 0% 100% / 14%;
+  --ring:   211 76% 57%;        /* #3b8ae5 — cobalt, lifted for the dark canvas */
+
+  --c-paper:     18  22  28;   /* dk-canvas  */
+  --c-paper-2:   32  39  47;   /* dk-header  */
+  --c-surface:   26  32  41;   /* dk-surface */
+  --c-ink:      238 241 245;   /* dk-text    */
+  --c-ink-2:    201 209 218;   /* dk-text-2  */
+  --c-muted:    201 209 218;   /* dk-text-2 — the one value `text-muted` takes
+                                  in dark. It used to take two: most screens
+                                  wrote `text-muted dark:text-dk-text-2` and a
+                                  few wrote `-text-3`, so the same role landed
+                                  two different greys depending on the file. */
+  --c-muted-2:  127 136 148;
+
+  --c-cobalt-deep:  59 138 229;
+  --c-clay-deep:   224 138  82;
+  --c-amber-icon:  224 160  74;
+  --c-amber-text:  240 190 116;
+  --c-red-text:    240 155 142;
+
+  /* Tints collapse to the one dark chip surface, except the two the dark
+     screens already tinted by hand — a red or amber state has to stay legible
+     as a state, not flatten into every other chip. */
+  --c-tint-cobalt:   37  44  53;
+  --c-tint-clay:     37  44  53;
+  --c-tint-green:    37  44  53;
+  --c-tint-purple:   37  44  53;
+  --c-tint-neutral:  37  44  53;
+  --c-tint-amber:    42  33  19;
+  --c-tint-red:      43  23  23;
+
+  --c-hair:   rgba(255, 255, 255, 0.07);
+  --c-hair2:  rgba(255, 255, 255, 0.07);
+  --c-card:   rgba(255, 255, 255, 0.09);
+  --c-chip:   rgba(255, 255, 255, 0.14);
+  --c-chip2:  rgba(255, 255, 255, 0.18);
+  --c-field:  rgba(255, 255, 255, 0.14);
+  --c-sketch: rgba(255, 255, 255, 0.22);
+
+  --c-wash:   rgba(255, 255, 255, 0.06);
+  --c-wash-2: rgba(255, 255, 255, 0.03);
+  --c-rule:   rgba(255, 255, 255, 0.09);
 }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  /* Through the tokens, so the canvas cannot drift from `bg-paper`. */
+  background: rgb(var(--c-paper));
+  color: rgb(var(--c-ink));
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Adds a smooth scroll behavior globally */
-  scroll-behavior: smooth;
-  background:
-    radial-gradient(circle at top left, rgba(139, 92, 246, 0.08), transparent 28%),
-    radial-gradient(circle at top right, rgba(99, 102, 241, 0.08), transparent 24%),
-    #f8fafc;
 }
 
-html.dark body {
-  background:
-    radial-gradient(circle at top left, rgba(139, 92, 246, 0.14), transparent 28%),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.08), transparent 24%),
-    #08080b;
+/* Every number in this system is compared down a column — stock counts, prices,
+   line totals, order ids. Proportional digits make those columns ragged. */
+body {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Focus.
+
+   Rule 4 of the six: "Focus rings visible, not hinted." This is a global
+   `:focus-visible` rather than something each control opts into, because the
+   failure mode is silent — a control that forgets it looks fine until someone
+   tries to use the keyboard. Anything that needs a different ring colour
+   overrides it locally; nothing should be removing it.
+   --------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid #1462c8;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px #1462c826;
+}
+
+html.dark :focus-visible {
+  outline-color: #3b8ae5;
+  box-shadow: 0 0 0 4px #3b8ae533;
 }
 
 ::selection {
-  background: rgba(139, 92, 246, 0.25);
+  background: #1462c828;
 }
 
-/* Super seamless page transition animation */
-@keyframes smoothFadeIn {
-  0% { opacity: 0; transform: translateY(10px) scale(0.99); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.seamless-view {
-  animation: smoothFadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-/* Custom minimal scrollbar */
-::-webkit-scrollbar { width: 8px; height: 8px; }
+/* Scrollbars, matched to the paper canvas rather than the browser default. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: #111d2b26; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #111d2b3d; }
+html.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); }
+html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
 
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 24px); }
+/* Room for the phone's home indicator under the bottom tab bar and the sticky
+   list CTA. */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Panel and dialog entry, at the handoff's 200ms. Hover and press transitions
+   are 120–160ms and live on the components themselves. No decorative motion. */
+@keyframes lsb-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lsb-rise { animation: lsb-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lsb-rise { animation: none; }
+  *, *::before, *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

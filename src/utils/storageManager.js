@@ -1,12 +1,15 @@
 /**
- * Supabase-backed data manager for LSB Handicrafts Admin System.
+ * The data layer: one Supabase table per collection, and one row per write.
  *
- * Replaces the old localStorage persistence. The app keeps owning its
- * in-memory arrays (inventory/deliveries/orders/activityLog) exactly as
- * before — these functions just load them from Supabase on startup and
- * push a reconciled copy (upsert changed rows, delete removed ones) back up
- * whenever they change, so components didn't need to be rewritten around a
- * per-action CRUD API.
+ * WHAT IT REPLACED, TWICE OVER. First localStorage, then a whole-table
+ * reconcile that upserted every row and deleted anything missing from the
+ * in-memory array — which is what destroyed data during class testing, because
+ * a read denied by RLS is indistinguishable from an empty table. That path is
+ * gone entirely (see the note where it used to live, below the write helpers).
+ *
+ * Everything now goes through createRow / updateRow / deleteRow: one row,
+ * awaited, with the result checked and reported. A rejected write is visible on
+ * screen rather than a console.error nobody sees under a green success panel.
  */
 import { supabase } from '../lib/supabaseClient';
 
@@ -92,6 +95,9 @@ const inventoryFromRow = (r) => ({
   isCuttable: r.is_cuttable,
 });
 
+// `driver` is free text and nullable: a delivery with nobody assigned yet is a
+// real state the board has a column for, so an empty string goes up as null
+// rather than as "", which would count as assigned.
 const deliveryToRow = (d) => ({
   id: d.id,
   product: d.product,
@@ -99,6 +105,10 @@ const deliveryToRow = (d) => ({
   location: d.location,
   amount: d.amount === '' || d.amount === undefined ? null : Number(d.amount),
   status: d.status,
+  driver: d.driver?.trim() || null,
+  // A `date` column: '' from an untouched form field is not a date and
+  // PostgREST rejects it, taking the whole write with it.
+  due_on: d.dueOn || null,
   created_at: d.createdAt,
 });
 
@@ -109,6 +119,8 @@ const deliveryFromRow = (r) => ({
   location: r.location,
   amount: r.amount,
   status: r.status,
+  driver: r.driver,
+  dueOn: r.due_on,
   createdAt: r.created_at,
 });
 
@@ -168,14 +180,61 @@ const staffFromRow = (r) => ({
   email: r.email,
   username: r.username,
   isSuperAdmin: !!r.is_super_admin,
+  // Which of the two dashboards this person sees. Read but deliberately NOT
+  // written by staffToRow, for the same reason as is_super_admin: that mapper
+  // feeds every admin insert and update, and one person's view preference is
+  // not something another person's edit should be able to overwrite. It is
+  // changed only through set_own_dashboard_view() below.
+  dashboardView: r.dashboard_view || 'standard',
 });
 
+/**
+ * The activity feed's rows.
+ *
+ * `staff_name`, `subject` and `at` are the columns the UI overhaul added (see
+ * supabase/schema.sql). The four original ones are still mapped because rows
+ * written by the legacy workspace screens carry them, and utils/activityLog.js
+ * falls back to `title`/`date` when the new columns are null — otherwise every
+ * pre-existing entry would render as a blank line.
+ */
+const activityToRow = (a) => ({
+  id: a.id,
+  type: a.type,
+  title: a.title ?? null,
+  description: a.description ?? null,
+  amount: numOrNull(a.amount),
+  status: a.status ?? null,
+  color: a.color ?? null,
+  date: a.date ?? null,
+  staff_name: a.staffName ?? null,
+  subject: a.subject ?? null,
+  at: a.at ?? new Date().toISOString(),
+});
+
+const activityFromRow = (r) => ({
+  id: r.id,
+  type: r.type,
+  title: r.title,
+  description: r.description,
+  amount: r.amount,
+  status: r.status,
+  color: r.color,
+  date: r.date,
+  staffName: r.staff_name,
+  subject: r.subject,
+  at: r.at,
+});
+
+// `kind` is 'business' | 'walk-in' and is NOT NULL with a default, so an
+// unanswered form field has to fall back to that default rather than going up
+// as null and being rejected.
 const customerToRow = (c) => ({
   id: c.id,
   name: c.name,
   contact_number: c.contactNumber,
   email: c.email || null,
   address: c.address,
+  kind: c.kind === 'business' ? 'business' : 'walk-in',
   created_at: c.createdAt,
   updated_at: c.updatedAt,
 });
@@ -186,6 +245,7 @@ const customerFromRow = (r) => ({
   contactNumber: r.contact_number,
   email: r.email,
   address: r.address,
+  kind: r.kind || 'walk-in',
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -420,7 +480,7 @@ const collection = (table, fromRow = identity, toRow = identity) => ({
 export const inventoryCollection = collection('inventory', inventoryFromRow, inventoryToRow);
 export const deliveriesCollection = collection('deliveries', deliveryFromRow, deliveryToRow);
 export const ordersCollection = collection('orders', orderFromRow, orderToRow);
-export const activityLogCollection = collection('activity_log');
+export const activityLogCollection = collection('activity_log', activityFromRow, activityToRow);
 export const staffCollection = collection('staff', staffFromRow, staffToRow);
 export const customersCollection = collection('customers', customerFromRow, customerToRow);
 export const productsCollection = collection('products', productFromRow, productToRow);
@@ -428,75 +488,21 @@ export const suppliersCollection = collection('suppliers', supplierFromRow, supp
 
 export { createRow, updateRow, deleteRow, loadTable, humanizeError };
 
-// ---- legacy whole-table reads ---------------------------------------------
-// Kept because the unrouted workspace (components/AdminDashboard.jsx and
-// components/views/) still calls them. New code should use the collections
-// above.
-
-export const loadInventory = (d = []) => inventoryCollection.load(d);
-export const loadDeliveries = (d = []) => deliveriesCollection.load(d);
-export const loadOrders = (d = []) => ordersCollection.load(d);
-export const loadActivityLog = (d = []) => activityLogCollection.load(d);
-export const loadStaff = (d = []) => staffCollection.load(d);
-export const loadCustomers = (d = []) => customersCollection.load(d);
-export const loadProducts = (d = []) => productsCollection.load(d);
-export const loadSuppliers = (d = []) => suppliersCollection.load(d);
-
-export const deleteFromInventory = (inventoryData, itemId) =>
-  inventoryData.filter((item) => item.id !== itemId);
-export const deleteFromDeliveries = (deliveriesData, deliveryId) =>
-  deliveriesData.filter((delivery) => delivery.id !== deliveryId);
-export const deleteFromOrders = (ordersData, orderId) =>
-  ordersData.filter((order) => order.id !== orderId);
-
-/**
- * DANGEROUS — whole-table reconcile. Upserts every row, then deletes anything
- * in the table that isn't in `rows`.
- *
- * This was the app's ONLY write primitive, and it was the root cause of the
- * data loss during class testing: a read denied by RLS came back empty, the app
- * appended one row to that emptiness, and the sync deleted every other row in
- * the table. Two heuristic guards were bolted on to stop it, which in turn made
- * legitimate bulk edits fail silently.
- *
- * Every live screen now uses the per-row helpers above. This remains only
- * because the unrouted workspace still calls it, and deleting it would leave
- * that code referencing a missing export. Do not use it in new code; migrate
- * those screens to `createRow` / `updateRow` / `deleteRow` when the workspace
- * is rebuilt.
- */
-const replaceAllRows = async (table, rows, toRow = identity) => {
-  try {
-    const { data: existing, error: fetchError } = await supabase.from(table).select('id');
-    if (fetchError) throw fetchError;
-
-    const existingIds = new Set((existing || []).map((r) => r.id));
-    if (rows.length === 0 && existingIds.size > 0) {
-      return { ok: false, message: `Refusing to clear ${table}: in-memory state is empty.` };
-    }
-
-    const currentIds = new Set(rows.map((r) => r.id));
-    const idsToDelete = [...existingIds].filter((id) => !currentIds.has(id));
-
-    if (idsToDelete.length > 0) {
-      const { error } = await supabase.from(table).delete().in('id', idsToDelete);
-      if (error) throw error;
-    }
-    if (rows.length > 0) {
-      const { error } = await supabase.from(table).upsert(rows.map(toRow), { onConflict: 'id' });
-      if (error) throw error;
-    }
-    return { ok: true };
-  } catch (error) {
-    console.error(`Failed to save ${table} to Supabase:`, error);
-    return { ok: false, error, message: humanizeError(error, `Couldn't save ${table}.`) };
-  }
-};
-
-export const saveInventory = (rows) => replaceAllRows('inventory', rows, inventoryToRow);
-export const saveDeliveries = (rows) => replaceAllRows('deliveries', rows, deliveryToRow);
-export const saveOrders = (rows) => replaceAllRows('orders', rows, orderToRow);
-export const saveActivityLog = (rows) => replaceAllRows('activity_log', rows);
+// ---- what used to live here -----------------------------------------------
+//
+// A block of whole-table load/save helpers and, at its centre, replaceAllRows()
+// -- "upsert every row, then delete anything in the table that is not in this
+// array". That function was the app's only write primitive and the root cause
+// of the data loss during class testing: a read denied by RLS came back empty,
+// the app appended one row to that emptiness, and the sync deleted every other
+// row in the table.
+//
+// Two heuristic guards were bolted on to stop it, which in turn made legitimate
+// bulk edits fail silently. It survived only because the unrouted legacy
+// workspace still called it. The UI overhaul replaced those screens, so the
+// last caller is gone and the function with it -- every write in this app is
+// now one row, awaited, with its result checked (createRow / updateRow /
+// deleteRow above).
 
 // ---- the signed-in person's own profile -----------------------------------
 
@@ -517,6 +523,31 @@ export const saveOwnProfile = async ({ name, contactNumber }) => {
   if (error) {
     console.error('Failed to save your profile to Supabase:', error);
     return { ok: false, error, message: humanizeError(error, "Couldn't save your profile.") };
+  }
+  return { ok: true };
+};
+
+/**
+ * Saves which dashboard the signed-in person wants to see.
+ *
+ * A separate RPC rather than two more parameters on update_own_profile, for the
+ * reason spelled out beside it in schema.sql: that function is granted by exact
+ * signature, so changing its arity would revoke the grant from any client still
+ * calling the old shape.
+ *
+ * The preference is reachable from two places — the profile screen and the
+ * header's account menu — because the handoff flags the profile screen alone as
+ * possibly too buried for it.
+ */
+export const saveOwnDashboardView = async (view) => {
+  const { error } = await supabase.rpc('set_own_dashboard_view', { p_view: view });
+  if (error) {
+    console.error('Failed to save your dashboard preference:', error);
+    return {
+      ok: false,
+      error,
+      message: humanizeError(error, "Couldn't save how your dashboard looks."),
+    };
   }
   return { ok: true };
 };

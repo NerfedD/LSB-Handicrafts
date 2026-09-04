@@ -15,7 +15,7 @@ import { PRODUCT_TYPE, PRODUCT_TYPE_OPTIONS } from './constants';
 
 /**
  * Thicknesses are quoted in halves and quarters in this trade — a sheet is a
- * 1/2" sheet, never a 0.5" sheet. Anything not on this list falls back to a
+ * 1/2"sheet, never a 0.5" sheet. Anything not on this list falls back to a
  * trimmed decimal.
  */
 const FRACTIONS = [
@@ -102,6 +102,57 @@ export function suggestProductName(item) {
   if (item.productType === PRODUCT_TYPE.SHEET) return `Styro Sheet ${size}`;
   if (item.productType === PRODUCT_TYPE.BLOCK) return `Styro Block ${size}`;
   return '';
+}
+
+/**
+ * The item code for a new product, generated from its kind and size.
+ *
+ * NOBODY TYPES THESE. The add-a-product form states it outright — "you never
+ * have to invent a code" — and that is the point of generating them: a code
+ * typed by hand is a code that collides, or that encodes the same 4-inch ball
+ * three different ways depending on who was at the keyboard. The scheme is the
+ * one the existing catalogue already follows:
+ *
+ *   balls   SB-{diameter x 10}     SB-040 = 4"
+ *   sheets  SS-{thickness x 100}   SS-100 = 1" thick
+ *   blocks  SL-{thickness x 100}
+ *   other   SX
+ *
+ * A numeric suffix is appended only when the base already exists, so the first
+ * 4-inch ball is SB-040 and a second one — a different density, say — becomes
+ * SB-040-2 rather than silently failing the unique index on item_code.
+ *
+ * `taken` is every code already in use.
+ */
+const CODE_PREFIX = {
+  [PRODUCT_TYPE.BALL]: 'SB',
+  [PRODUCT_TYPE.SHEET]: 'SS',
+  [PRODUCT_TYPE.BLOCK]: 'SL',
+  [PRODUCT_TYPE.OTHER]: 'SX',
+};
+
+export function suggestItemCode(item, taken = []) {
+  const prefix = CODE_PREFIX[item?.productType] ?? CODE_PREFIX[PRODUCT_TYPE.OTHER];
+
+  let size = null;
+  if (item?.productType === PRODUCT_TYPE.BALL && item.diameterIn) {
+    size = Math.round(Number(item.diameterIn) * 10);
+  } else if (item?.thicknessIn) {
+    size = Math.round(Number(item.thicknessIn) * 100);
+  }
+
+  const base =
+    size && Number.isFinite(size) ? `${prefix}-${String(size).padStart(3, '0')}` : prefix;
+
+  const used = new Set(taken.map((code) => String(code || '').toUpperCase()));
+  if (!used.has(base.toUpperCase())) return base;
+
+  // Starts at 2 because the unsuffixed code IS the first one.
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = `${base}-${n}`;
+    if (!used.has(candidate.toUpperCase())) return candidate;
+  }
+  return `${base}-${Date.now()}`;
 }
 
 /**
