@@ -98,6 +98,15 @@ const inventoryFromRow = (r) => ({
 // `driver` is free text and nullable: a delivery with nobody assigned yet is a
 // real state the board has a column for, so an empty string goes up as null
 // rather than as "", which would count as assigned.
+//
+// `parent_delivery_id` points a follow-up run at the one it follows, and it is
+// a real foreign key rather than another parsed string: the order link had to
+// stay text for compatibility, but nothing forced a second one to. Null on
+// every original run, which is most of them.
+//
+// `items_manifest` is what was actually loaded — jsonb, and untyped for the
+// same reason `orders.items` is: it records a moment, and the shape of that
+// moment should be able to grow without a migration.
 const deliveryToRow = (d) => ({
   id: d.id,
   product: d.product,
@@ -110,6 +119,8 @@ const deliveryToRow = (d) => ({
   // PostgREST rejects it, taking the whole write with it.
   due_on: d.dueOn || null,
   created_at: d.createdAt,
+  parent_delivery_id: d.parentDeliveryId ?? null,
+  items_manifest: d.itemsManifest || [],
 });
 
 const deliveryFromRow = (r) => ({
@@ -122,12 +133,24 @@ const deliveryFromRow = (r) => ({
   driver: r.driver,
   dueOn: r.due_on,
   createdAt: r.created_at,
+  parentDeliveryId: r.parent_delivery_id ?? null,
+  itemsManifest: r.items_manifest || [],
 });
 
 // `items` is untyped jsonb, so line-item shape changes need no migration here —
 // but a new top-level order field does. stockCommittedAt is stamped when a
 // Pending order is marked Completed and its stock is actually deducted; its
 // presence is what keeps that deduction from happening twice.
+//
+// The per-line delivery counters (committedUnits, voidedUnits) live INSIDE
+// `items` and therefore need nothing here — which is the whole reason they were
+// put there. The four columns below are the ones that could not be: money and
+// history that SQL reporting has to be able to read without unpacking jsonb.
+//
+// `refunded_amount` and `backorder_status` are NOT NULL with defaults in
+// Postgres, so the fallbacks here have to match those defaults exactly. See the
+// note on intOr above: this mapper feeds whole-row updates, and a mismatch
+// quietly overwrites a real value with the wrong one on the next save.
 const orderToRow = (o) => ({
   id: o.id,
   customer_name: o.customerName,
@@ -136,6 +159,10 @@ const orderToRow = (o) => ({
   status: o.status,
   created_at: o.createdAt,
   stock_committed_at: o.stockCommittedAt || null,
+  backorder_status: o.backorderStatus || 'none',
+  refund_history: o.refundHistory || [],
+  price_adjustments: o.priceAdjustments || [],
+  refunded_amount: numOrNull(o.refundedAmount) ?? 0,
 });
 
 const orderFromRow = (r) => ({
@@ -146,6 +173,10 @@ const orderFromRow = (r) => ({
   status: r.status,
   createdAt: r.created_at,
   stockCommittedAt: r.stock_committed_at,
+  backorderStatus: r.backorder_status || 'none',
+  refundHistory: r.refund_history || [],
+  priceAdjustments: r.price_adjustments || [],
+  refundedAmount: r.refunded_amount ?? 0,
 });
 
 // `username` is nullable and uniquely indexed (case-insensitively), so an empty

@@ -838,6 +838,179 @@ revoke all on function public.set_own_dashboard_view(text) from public, anon;
 grant execute on function public.set_own_dashboard_view(text) to authenticated;
 
 -- ============================================================
+-- Goods left behind, money given back, and prices put right
+-- ============================================================
+-- Three things that happen in this shop every week and that the schema had no
+-- room for. All additive and guarded, so this file stays safe to re-run on a
+-- database that already has them.
+--
+-- NOTHING HERE TRACKS PER-LINE QUANTITIES, and that is deliberate. How much of
+-- each line has physically left the building, and how much was refunded, are
+-- counters on the line objects inside `orders.items` -- which is untyped jsonb
+-- and passed through wholesale by the mapper, so they cost no migration at all.
+-- See the header of src/utils/stockLedger.js. What is below is only what SQL
+-- reporting genuinely cannot dig out of jsonb: money, and history.
+
+-- ------------------------------------------------------------
+-- orders.backorder_status
+-- ------------------------------------------------------------
+-- Whether an order still owes the customer goods after part of it went out.
+--
+-- A CACHE, NOT THE TRUTH. The app never reads this column -- it derives the
+-- answer from the line counters, for the same reason the stage tracker is
+-- derived rather than stored: a word in a column and the lines it summarises
+-- are two places that can disagree about one fact, and the column is the one
+-- that will be wrong. It exists so a report can ask "how often are we sending
+-- half an order?" without unpacking jsonb, exactly as inventory.reserved caches
+-- a number the orders array is the real source of.
+--
+-- Defaulted to 'none' so every existing row reads as what it is: an order that
+-- has never been split.
+--
+-- ------------------------------------------------------------
+-- orders.refund_history / orders.refunded_amount
+-- ------------------------------------------------------------
+-- What went back, to whom, why, and what happened to the goods.
+--
+-- A LIST, NOT A FLAG, because a partial refund can happen more than once on one
+-- order -- two sheets rejected on Tuesday, a third on Friday -- and a single
+-- amount column would answer "how much" while losing every "why". Each entry
+-- carries { id, amount, refundedAt, refundedByStaffId, reason, method,
+-- restockedItems: [{ productId, quantity, disposition }] }.
+--
+-- `refunded_amount` is the running total kept beside it. Denormalised on
+-- purpose: the orders list filters and totals on it, and summing a jsonb array
+-- in a WHERE clause on every list read is a cost paid forever to avoid storing
+-- one number.
+--
+-- ------------------------------------------------------------
+-- orders.price_adjustments
+-- ------------------------------------------------------------
+-- Every time the total moved after the customer had already been told one.
+--
+-- APPEND ONLY, AND THE OLD FIGURE IS KEPT. Correcting a price used to mean
+-- overwriting total_amount, which destroyed the only record of what the
+-- customer was actually quoted -- so a disputed invoice had no evidence on
+-- either side. Each entry carries { oldTotal, newTotal, difference, reason,
+-- changedBy, changedAt } and the screen prints the most recent one as a banner.
+--
+-- One column, not two: an earlier draft of this work had `price_adjustments`
+-- and a separate `audit_history` holding the same six fields. Two columns that
+-- must agree are one column and a bug.
+alter table public.orders
+  add column if not exists backorder_status  text    not null default 'none',
+  add column if not exists refund_history    jsonb   not null default '[]'::jsonb,
+  add column if not exists price_adjustments jsonb   not null default '[]'::jsonb,
+  add column if not exists refunded_amount   numeric not null default 0;
+
+alter table public.orders drop constraint if exists orders_backorder_status_check;
+alter table public.orders add constraint orders_backorder_status_check
+  check (backorder_status in ('none', 'partial', 'resolved'));
+
+-- Bounded like every other numeric column in this file. A refund cannot be
+-- negative -- that is a charge, and it goes through the price correction path
+-- where it is recorded as one.
+alter table public.orders drop constraint if exists orders_refunded_amount_check;
+alter table public.orders add constraint orders_refunded_amount_check
+  check (refunded_amount >= 0 and refunded_amount <= 1000000000);
+
+-- Partial: the overwhelming majority of orders never split, and an index over
+-- 'none' repeated ten thousand times answers no question anybody asks.
+create index if not exists orders_backorder_idx on public.orders (backorder_status)
+  where backorder_status <> 'none';
+
+-- ------------------------------------------------------------
+-- deliveries.parent_delivery_id / deliveries.items_manifest
+-- ------------------------------------------------------------
+-- When part of an order is left behind, a second delivery is raised for the
+-- rest. These are how the two runs know about each other, and what each one
+-- actually carried.
+--
+-- A REAL FOREIGN KEY THIS TIME. An order finds its deliveries by matching the
+-- free text in `product` ("Order #12 - Ana Reyes"), which is a weakness this
+-- work deliberately did not widen: the follow-up run keeps that exact prefix so
+-- every existing matcher goes on working untouched. But nothing forced the
+-- run-to-run link to be a second parsed string, so it is not one.
+--
+-- Null on every original run, which is most of them.
+--
+-- `items_manifest` is what was actually loaded onto that van --
+-- [{ productId, name, orderedQty, deliveredQty, backorderQty }] -- kept per
+-- DELIVERY rather than per order, because it is a record of one departure. The
+-- order's own line counters are the running total; this is the receipt.
+alter table public.deliveries
+  add column if not exists parent_delivery_id bigint references public.deliveries(id),
+  add column if not exists items_manifest jsonb not null default '[]'::jsonb;
+
+create index if not exists deliveries_parent_idx on public.deliveries (parent_delivery_id)
+  where parent_delivery_id is not null;
+
+-- ------------------------------------------------------------
+-- The money guard
+-- ------------------------------------------------------------
+-- Only an administrator or a manager may refund, or change what an order costs.
+--
+-- WHY A TRIGGER AND NOT A POLICY. RLS decides which ROWS you may write, not
+-- which COLUMNS -- and every member of staff needs UPDATE on public.orders to
+-- mark one done, so the row permission cannot be narrowed without breaking the
+-- ordinary case. Admins, managers and sales staff are all the same
+-- `authenticated` database role, so column grants cannot separate them either.
+-- This is the same problem, and the same answer, as staff_guard_self_update
+-- above.
+--
+-- WHAT IT PROTECTS is exactly the four things that move money or rewrite what a
+-- customer was told. Everything else on an order -- status, items, the
+-- delivery stamp -- is untouched, so marking an order done and recording what
+-- went out stay open to whoever is doing the work.
+--
+-- THIS IS THE PERMISSION. The Order screen hides the block from anyone else and
+-- App.jsx refuses before it writes, but those are a courtesy and a guard
+-- against a stale render. The anon key ships in the JS bundle; only this runs
+-- on the server.
+create or replace function private.is_manager_or_admin()
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select exists (
+    select 1 from public.staff
+    where lower(email) = lower((select auth.jwt()) ->> 'email')
+      and status = 'Active' and role in ('Admin', 'Manager')
+  );
+$fn$;
+
+revoke all on function private.is_manager_or_admin() from public;
+grant execute on function private.is_manager_or_admin() to authenticated;
+
+create or replace function public.orders_guard_money_update()
+returns trigger language plpgsql security definer set search_path = public as $fn$
+begin
+  -- No JWT at all means the table owner or the service role: SQL editor,
+  -- migrations, seeds. Those bypass RLS already, so guarding them here only
+  -- blocks legitimate maintenance - including running this very file.
+  if (select auth.jwt()) is null then return new; end if;
+
+  if private.is_manager_or_admin() then return new; end if;
+
+  if new.total_amount      is distinct from old.total_amount
+     or new.refunded_amount   is distinct from old.refunded_amount
+     or new.refund_history    is distinct from old.refund_history
+     or new.price_adjustments is distinct from old.price_adjustments then
+    -- Written for a person: humanizeError in src/utils/storageManager.js passes
+    -- messages shaped like this straight through to the toast rather than
+    -- replacing them with a generic one.
+    raise exception 'Only an administrator or a manager can give money back or change what an order costs';
+  end if;
+
+  return new;
+end;
+$fn$;
+
+revoke all on function public.orders_guard_money_update() from public, anon, authenticated;
+
+drop trigger if exists orders_guard_money_update on public.orders;
+create trigger orders_guard_money_update
+  before update on public.orders
+  for each row execute function public.orders_guard_money_update();
+
+-- ============================================================
 -- Auth hook: staff claims on the access token
 -- ============================================================
 -- Stamps the signed-in person's staff role onto their JWT.

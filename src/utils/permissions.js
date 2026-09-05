@@ -20,6 +20,24 @@ import { ADMIN_ONLY_VIEWS, DENIED_BY_ROLE } from "./navigation";
 
 export const isAdminRole = (role) => role === "Admin";
 
+/**
+ * Who may give money back or put a price right.
+ *
+ * NARROWER THAN "can open an order", and deliberately so. Every other action on
+ * an order is recoverable — a status can be flipped back, a driver reassigned.
+ * A refund moves money out of the business and a price correction rewrites what
+ * a customer was told, and neither is undone by pressing something again.
+ *
+ * A MANAGER AS WELL AS AN ADMIN, because the owner is not always in the shop
+ * and a rule that sends every wrong price to one person is a rule that gets
+ * worked around with a pen.
+ *
+ * This is the UI half only. The other half is the guard trigger on
+ * public.orders in supabase/schema.sql, which refuses the write whatever the
+ * client believes — see the note there. A hidden button is a courtesy.
+ */
+export const canHandleMoney = (role) => role === "Admin" || role === "Manager";
+
 export { ADMIN_ONLY_VIEWS };
 
 /**

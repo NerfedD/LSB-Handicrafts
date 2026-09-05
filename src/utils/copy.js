@@ -15,7 +15,16 @@
  * is ever written back to a row.
  */
 
-import { DELIVERY_STAGE, ORDER_STATUS, STOCK_STATUS } from "./constants";
+import {
+  BACKORDER_STATUS,
+  DELIVERY_STAGE,
+  ORDER_STATUS,
+  PRICE_REASON,
+  REFUND_DISPOSITION,
+  REFUND_METHOD,
+  REFUND_REASON,
+  STOCK_STATUS,
+} from "./constants";
 
 // ---- stock -----------------------------------------------------------------
 
@@ -104,6 +113,157 @@ export const ORDER_TONE = {
 
 export const orderLabel = (status) => ORDER_LABEL[status] ?? status ?? "—";
 export const orderTone = (status) => ORDER_TONE[status] ?? "neutral";
+
+// ---- goods left behind -----------------------------------------------------
+
+/**
+ * "Backorder" is the trade word and it is not used anywhere a person can see.
+ * What actually happened is that some of the order did not fit on the van, so
+ * that is what it says. The same phrase is the chip on two screens, the stage
+ * on the tracker and the heading on the callout, so somebody who learns it once
+ * recognises it everywhere.
+ */
+export const BACKORDER_LABEL = {
+  [BACKORDER_STATUS.NONE]: "All gone out",
+  [BACKORDER_STATUS.PARTIAL]: "Some left behind",
+  [BACKORDER_STATUS.RESOLVED]: "The rest went later",
+};
+
+export const BACKORDER_TONE = {
+  [BACKORDER_STATUS.NONE]: "green",
+  [BACKORDER_STATUS.PARTIAL]: "amber",
+  [BACKORDER_STATUS.RESOLVED]: "green",
+};
+
+export const backorderLabel = (status) => BACKORDER_LABEL[status] ?? "All gone out";
+export const backorderTone = (status) => BACKORDER_TONE[status] ?? "neutral";
+
+/** The chip on the orders list and the deliveries board. */
+export const BACKORDER_CHIP = "Some left behind";
+
+// ---- money going back ------------------------------------------------------
+
+/**
+ * What happens to goods that come back, as two cards with a sentence each.
+ *
+ * THE SENTENCE IS THE POINT. "Restock" and "Scrap" are a quiz — nothing about
+ * either word says which one a cracked sheet is. Spelling out the consequence
+ * ("it can be sold again" against "counted as waste") turns the choice from a
+ * guess into a decision, which is the same reasoning as the role cards.
+ */
+export const DISPOSITION_OPTIONS = [
+  {
+    value: REFUND_DISPOSITION.RESTOCK,
+    label: "Back on the shelf",
+    description: "It came back in one piece and can be sold to somebody else.",
+  },
+  {
+    value: REFUND_DISPOSITION.SCRAP,
+    label: "Thrown away",
+    description:
+      "Broken, or carved to a shape nobody else will buy. It is counted as waste and does not go back on the shelf.",
+  },
+];
+
+export const DISPOSITION_LABEL = {
+  [REFUND_DISPOSITION.RESTOCK]: "Back on the shelf",
+  [REFUND_DISPOSITION.SCRAP]: "Thrown away",
+};
+
+export const dispositionLabel = (value) => DISPOSITION_LABEL[value] ?? "—";
+
+/** How the money actually reaches them. In the order the shop uses them. */
+export const REFUND_METHOD_OPTIONS = [
+  { value: REFUND_METHOD.CASH, label: "Cash" },
+  { value: REFUND_METHOD.GCASH, label: "GCash" },
+  { value: REFUND_METHOD.BANK, label: "Bank transfer" },
+  { value: REFUND_METHOD.CREDIT, label: "Left on their account" },
+];
+
+export const REFUND_METHOD_LABEL = Object.fromEntries(
+  REFUND_METHOD_OPTIONS.map((option) => [option.value, option.label])
+);
+
+export const refundMethodLabel = (value) => REFUND_METHOD_LABEL[value] ?? "—";
+
+/**
+ * Why money went back. A fixed list, because the reasons point at different
+ * people: "damaged on the way" is a question for whoever drove, "made wrong" is
+ * a question for the production floor, and a free-text box turns both into
+ * sentences nobody can count at the end of the month.
+ */
+export const REFUND_REASON_OPTIONS = [
+  {
+    value: REFUND_REASON.DAMAGED,
+    label: "Damaged on the way",
+    description: "It left here fine and arrived broken.",
+  },
+  {
+    value: REFUND_REASON.WRONG,
+    label: "Made wrong",
+    description: "The wrong size, the wrong shape, or a bad cut.",
+  },
+  {
+    value: REFUND_REASON.LATE,
+    label: "Arrived late",
+    description: "They needed it for a date and it missed it.",
+  },
+  {
+    value: REFUND_REASON.CHANGED_MIND,
+    label: "They changed their mind",
+    description: "Nothing was wrong with it. The order was called off.",
+  },
+  {
+    value: REFUND_REASON.PRICE,
+    label: "The price was wrong",
+    description: "They were charged more than they were quoted.",
+  },
+];
+
+export const REFUND_REASON_LABEL = Object.fromEntries(
+  REFUND_REASON_OPTIONS.map((option) => [option.value, option.label])
+);
+
+export const refundReasonLabel = (value) => REFUND_REASON_LABEL[value] ?? "—";
+
+// ---- putting a price right -------------------------------------------------
+
+/**
+ * Why a price changed after the customer had already been told one.
+ *
+ * The reason is required and it is stored beside the old and new figures,
+ * because a total that moved with no explanation is indistinguishable from a
+ * mistake — and the person who has to answer for it is usually not the person
+ * who changed it.
+ */
+export const PRICE_REASON_OPTIONS = [
+  {
+    value: PRICE_REASON.TYPO,
+    label: "The rate was typed wrong",
+    description: "The agreed price and the price on the order do not match.",
+  },
+  {
+    value: PRICE_REASON.MEASURE,
+    label: "A cut was measured wrong",
+    description: "The sheets it actually took were not what was charged for.",
+  },
+  {
+    value: PRICE_REASON.DISCOUNT,
+    label: "A discount the owner agreed",
+    description: "A price given after the order was written.",
+  },
+  {
+    value: PRICE_REASON.RUSH,
+    label: "Extra charge for a rush job",
+    description: "Work brought forward, and charged for.",
+  },
+];
+
+export const PRICE_REASON_LABEL = Object.fromEntries(
+  PRICE_REASON_OPTIONS.map((option) => [option.value, option.label])
+);
+
+export const priceReasonLabel = (value) => PRICE_REASON_LABEL[value] ?? "—";
 
 // ---- deliveries ------------------------------------------------------------
 

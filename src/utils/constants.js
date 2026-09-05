@@ -129,3 +129,63 @@ export const DASHBOARD_VIEW = {
   STANDARD: 'standard',
   LARGE: 'large',
 };
+
+/**
+ * Whether an order still owes the customer goods.
+ *
+ * A CACHE, NOT THE TRUTH. The app never reads this — utils/orders.hasBackorder
+ * derives the answer from the line counters, for the same reason the stage
+ * tracker is derived: a stored word and the lines it summarises are two places
+ * that can disagree about the same fact. The column exists so SQL reporting can
+ * ask the question without unpacking jsonb, exactly as inventory.reserved
+ * caches a number the orders array is the real source of.
+ */
+export const BACKORDER_STATUS = {
+  NONE: 'none',
+  PARTIAL: 'partial',
+  RESOLVED: 'resolved',
+};
+
+/**
+ * What happens to goods a customer sends back.
+ *
+ * THE ONLY TWO ANSWERS, and the difference is the whole point. Styrofoam that
+ * was carved to a shape or cut to a size cannot be sold to anybody else, and a
+ * broken sheet is worth nothing — so putting either back on the shelf would be
+ * the shelf lying about what can be sold, which is the bug this system exists
+ * to avoid. Staff have to say which it was; there is no default.
+ */
+export const REFUND_DISPOSITION = {
+  RESTOCK: 'restock',
+  SCRAP: 'scrap',
+};
+
+/** How the money actually goes back. Stored as-is; see utils/copy for wording. */
+export const REFUND_METHOD = {
+  CASH: 'cash',
+  GCASH: 'gcash',
+  BANK: 'bank',
+  CREDIT: 'credit',
+};
+
+/**
+ * Why money went back. A fixed list rather than free text: "damaged on the way"
+ * asked of the delivery driver and "made wrong" asked of the production floor
+ * are different conversations, and neither happens if the reason is a sentence
+ * nobody can count.
+ */
+export const REFUND_REASON = {
+  DAMAGED: 'damaged',
+  WRONG: 'wrong',
+  LATE: 'late',
+  CHANGED_MIND: 'changed-mind',
+  PRICE: 'price',
+};
+
+/** Why a price was corrected after the customer had already been told one. */
+export const PRICE_REASON = {
+  TYPO: 'typo',
+  DISCOUNT: 'discount',
+  RUSH: 'rush',
+  MEASURE: 'measure',
+};

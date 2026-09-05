@@ -23,6 +23,22 @@ export default defineConfig({
     include: ['react', 'react-dom/client', '@supabase/supabase-js'],
   },
 
+  // Unit tests, for the pure domain functions only.
+  //
+  // WHAT THIS IS AND IS NOT FOR. The screens are covered end to end by
+  // Playwright against a stubbed Supabase (see tests/), and that stays the
+  // place a change to a screen is proved. This runs the stock ledger, where
+  // the interesting cases — a manifest submitted twice, a scrapped return
+  // against a restocked one, an order stamped before the per-line counters
+  // existed — are combinations of numbers, not clicks. Driving those through a
+  // browser would be slower and would prove less.
+  //
+  // `node` rather than jsdom: nothing under test imports React.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.js'],
+  },
+
   server: {
     // Transform the login path before the browser asks for it — that's
     // everything needed for first paint.

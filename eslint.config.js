@@ -32,6 +32,15 @@ export default defineConfig([
     },
   },
   {
+    // The Playwright specs and their Supabase stub run in Node, not a browser:
+    // the stub mints a fake JWT with Buffer, which was being reported as an
+    // undefined global because this config only ever declared browser ones.
+    files: ['tests/**/*.js', 'playwright.config.js', '*.config.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+  {
     // The shadcn/ui primitives export a component alongside its cva variant
     // definition (Button + buttonVariants), which react-refresh flags. That
     // pairing is the library's own convention and splitting it would mean

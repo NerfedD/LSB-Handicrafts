@@ -7,7 +7,8 @@
  */
 
 import { DELIVERY_STAGE } from "./constants";
-import { DELIVERY_STAGES, deliveryStageIndex } from "./copy";
+import { BACKORDER_CHIP, DELIVERY_STAGES, deliveryStageIndex } from "./copy";
+import { BACKORDER_SUFFIX, isBackorderDelivery } from "./orders";
 
 /** Midnight today, as a number, for date-only comparisons. */
 const startOfToday = () => {
@@ -54,6 +55,17 @@ export function isDueThisWeek(delivery) {
 export const hasNoDriver = (delivery) => !String(delivery?.driver || "").trim();
 
 /**
+ * A second run, raised because the first one could not take everything.
+ *
+ * Worth its own chip for the reason the "No driver yet" chip earns one: it is a
+ * filter and a list of debts at the same time. These are the runs where a
+ * customer has already had half of what they paid for and is waiting on the
+ * rest, and they should not have to be found by reading every card.
+ */
+export const isLeftBehindRun = (delivery) =>
+  isBackorderDelivery(delivery) && !hasArrived(delivery);
+
+/**
  * The board's chips. Counts come from the UNFILTERED set, like every list in
  * this system.
  *
@@ -78,6 +90,12 @@ export function deliveryChips(deliveries = []) {
       count: deliveries.filter((d) => hasNoDriver(d) && !hasArrived(d)).length,
     },
     {
+      value: "left-behind",
+      label: BACKORDER_CHIP,
+      count: deliveries.filter(isLeftBehindRun).length,
+      tone: "amber",
+    },
+    {
       value: "arrived",
       label: "Arrived",
       count: deliveries.filter(hasArrived).length,
@@ -92,6 +110,7 @@ const CHIP_TESTS = {
   today: isDueToday,
   week: isDueThisWeek,
   "no-driver": (d) => hasNoDriver(d) && !hasArrived(d),
+  "left-behind": isLeftBehindRun,
   arrived: hasArrived,
 };
 
@@ -171,11 +190,22 @@ export function dueLabel(delivery) {
   return `Due ${new Date(due).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
 }
 
-/** The customer name written into the free-text `product` field, if there is one. */
+/**
+ * The customer name written into the free-text `product` field, if there is one.
+ *
+ * The "(backorder)" suffix is trimmed off. It is there so the follow-up run can
+ * be told apart from the original while keeping the same "Order #N - " prefix
+ * every matcher relies on — but it is a marker, not part of anybody's name, and
+ * printing "Ana Reyes (backorder)" under a card reads as though it were.
+ * Whether a run is a follow-up is said by its own badge instead.
+ */
 export function customerFrom(delivery) {
   const raw = String(delivery?.product || "");
   const dash = raw.indexOf(" - ");
-  return dash === -1 ? raw : raw.slice(dash + 3);
+  const name = dash === -1 ? raw : raw.slice(dash + 3);
+  return name.endsWith(BACKORDER_SUFFIX)
+    ? name.slice(0, -BACKORDER_SUFFIX.length)
+    : name;
 }
 
 /** "Order #12", when the delivery was raised from one. */

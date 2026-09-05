@@ -19,8 +19,8 @@
 
 import { ORDER_STATUS } from "./constants";
 import { isLate } from "./deliveries";
-import { daysWaiting } from "./orders";
-import { lowStockProducts } from "./productStock";
+import { backorderDemand, daysWaiting } from "./orders";
+import { lowStockProducts, shelfItems } from "./productStock";
 import { signInState } from "./copy";
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -207,14 +207,60 @@ export function followUpsFor({ orders, customerRows }) {
  * be. That makes it checkable, which a forecast would not be.
  */
 export function makeList({ products, inventory, orders }) {
-  return lowStockProducts(products, inventory, orders).map(({ product, stock }) => ({
+  const owed = backorderDemand(orders);
+  const rows = lowStockProducts(products, inventory, orders).map(({ product, stock }) => ({
     product,
     stock,
+    backorder: false,
     onShelf: stock.available,
     needed: Math.max(1, stock.threshold - stock.available),
     urgency: stock.isOut ? "Run out" : "Running low",
     tone: stock.isOut ? "red" : "amber",
   }));
+
+  if (owed.size === 0) return rows;
+
+  // backorderDemand is keyed by inventory row id; the make list is a list of
+  // CATALOG products. The two line up on code — inventory.sku is
+  // products.itemCode — which is the join utils/productStock owns, so the walk
+  // goes through it rather than matching the strings a fourth time.
+  const codeOf = new Map(
+    inventory.map((row) => [row.id, String(row.sku || "").toLowerCase()])
+  );
+  const shelf = shelfItems(products, inventory, orders);
+
+  const promoted = [];
+  const rest = [];
+  const claimed = new Set();
+
+  for (const [productId, units] of owed) {
+    const code = codeOf.get(productId);
+    const entry = shelf.find(
+      ({ product }) => String(product.itemCode || "").toLowerCase() === code
+    );
+    // No catalog entry for a stocked row is a real state, and inventing a row
+    // for it would put a nameless line at the top of the list.
+    if (!entry) continue;
+    claimed.add(entry.product.id);
+    promoted.push({
+      product: entry.product,
+      stock: entry.stock,
+      backorder: true,
+      onShelf: entry.stock.tracked ? entry.stock.available : 0,
+      needed: units,
+      urgency: "Owed to a customer",
+      tone: "red",
+    });
+  }
+
+  for (const row of rows) {
+    if (!claimed.has(row.product.id)) rest.push(row);
+  }
+
+  // Most owed first within the promoted group, then the ordinary shortfall list
+  // in the order productStock already sorted it.
+  promoted.sort((a, b) => b.needed - a.needed);
+  return [...promoted, ...rest];
 }
 
 /** Money taken this calendar month, across orders that were not cancelled. */
