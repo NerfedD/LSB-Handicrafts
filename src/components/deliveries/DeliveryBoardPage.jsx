@@ -19,7 +19,9 @@ import {
   SearchField,
 } from "../shared/filters";
 import { EmptySlot, ErrorState, LoadingState } from "../shared/PageStates";
+import { InlineBadge } from "../shared/StatusPill";
 import { tone as toneOf } from "../shared/tones";
+import { isBackorderDelivery } from "../../utils/orders";
 import { matches } from "../../utils/search";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import {
@@ -251,6 +253,15 @@ export default function DeliveryBoardPage({
                       <p className="truncate pt-0.5 text-[16px] font-bold text-ink">
                         {customerFrom(delivery) || "No customer named"}
                       </p>
+                      {/* Said in words on the card, not only by the chip above
+                          it. Somebody scanning the board for what is owed
+                          should not have to apply a filter to find out which
+                          of these is a second trip. */}
+                      {isBackorderDelivery(delivery) && (
+                        <p className="pt-1">
+                          <InlineBadge label="The rest of an order" tone="amber" />
+                        </p>
+                      )}
                       <p className="truncate pt-0.5 text-[14.5px] text-muted">
                         {delivery.location || "No address"}
                       </p>

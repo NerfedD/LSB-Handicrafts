@@ -290,6 +290,148 @@ test.describe("orders and deliveries", () => {
 
     expectClean();
   });
+
+  test("sending a delivery out asks what actually went on the van", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Deliveries") }).click();
+    // Ready to go -> On the way is the moment stock physically leaves, and the
+    // only advance that asks.
+    await page.getByRole("button", { name: /Liza Villanueva/ }).click();
+    await page.getByRole("button", { name: /It is on the way/ }).click();
+
+    await expect(page.getByRole("heading", { name: "What actually went out?" })).toBeVisible();
+
+    // Pre-filled with all of it, because all of it is what usually happens.
+    const count = page.getByRole("spinbutton").first();
+    await expect(count).toHaveValue("4");
+
+    // Drop it, and the consequence is stated before anything is pressed.
+    await count.fill("1");
+    await expect(page.getByText("Some of this is being left behind")).toBeVisible();
+    await expect(page.getByText(/A second delivery will be raised/)).toBeVisible();
+
+    await page.getByRole("button", { name: /Record what went, and raise the rest/ }).click();
+    await expect(page.getByText(/went out short/)).toBeVisible();
+
+    expectClean();
+  });
+
+  test("an order that went out short says so, and the tracker agrees", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Orders") }).click();
+
+    // The chip counts from the unfiltered set, so it is readable before it is
+    // clicked — and clicking it narrows the list to exactly that order.
+    const chip = page.getByRole("radio", { name: /Some left behind/ });
+    await expect(chip).toBeVisible();
+    await chip.click();
+    await expect(page.getByRole("row").filter({ hasText: "Santos Catering" })).toHaveCount(1);
+
+    await page.getByRole("button", { name: "Open" }).first().click();
+
+    // The fourth stage is standing in place, not finished.
+    await expect(page.getByText("Partly delivered").first()).toBeVisible();
+    await expect(
+      page.getByText("Some of this order has not gone out yet")
+    ).toBeVisible();
+    await expect(page.getByText(/still set aside for Santos Catering/)).toBeVisible();
+
+    // And the price correction on the same order names the day, the person and
+    // the reason rather than silently showing a different total.
+    await expect(page.getByText(/Price changed on .* by Maria Santos/)).toBeVisible();
+    await expect(page.getByText(/a cut was measured wrong/)).toBeVisible();
+
+    expectClean();
+  });
+
+  test("the second run is linked to the one it follows", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Deliveries") }).click();
+    await page.getByRole("radio", { name: /Some left behind/ }).click();
+
+    // The marker suffix is not shown as part of anybody's name.
+    const card = page.getByRole("button", { name: /Santos Catering/ });
+    await expect(card).toHaveCount(1);
+    await expect(page.getByText("(backorder)")).toHaveCount(0);
+    await expect(page.getByText("The rest of an order")).toBeVisible();
+
+    await card.click();
+    await expect(page.getByText("This is the rest of an earlier delivery")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open the first run" })).toBeVisible();
+
+    expectClean();
+  });
+});
+
+test.describe("money going back, and prices put right", () => {
+  test.beforeEach(async ({ page, baseURL }) => {
+    await signIn(page, baseURL);
+  });
+
+  test("a refund is listed with what happened to the goods", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await page.getByRole("radio", { name: /Refunded/ }).click();
+    await page.getByRole("button", { name: "Open" }).first().click();
+
+    await expect(page.getByRole("heading", { name: "Money given back" })).toBeVisible();
+    await expect(page.getByText("They changed their mind")).toBeVisible();
+    // The disposition is the part that matters, so it is on the screen and not
+    // only in the database.
+    await expect(page.getByText(/2 × Styro Block 2 inch — back on the shelf/)).toBeVisible();
+
+    expectClean();
+  });
+
+  test("giving money back names the goods and what happens to them", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await page.getByRole("radio", { name: /Some left behind/ }).click();
+    await page.getByRole("button", { name: "Open" }).first().click();
+
+    // Rule 6: its own outlined block at the bottom, never a red icon in a row.
+    await expect(page.getByRole("heading", { name: "Money on this order" })).toBeVisible();
+    await page.getByRole("button", { name: "Give money back" }).click();
+
+    await expect(page.getByRole("heading", { name: /Give money back on order/ })).toBeVisible();
+
+    // Nothing is refunded until a quantity is put in, and the disposition is
+    // only asked once something is actually coming back.
+    await expect(page.getByRole("radio", { name: /Back on the shelf/ })).toHaveCount(0);
+    await page.getByRole("spinbutton").first().fill("2");
+    await expect(page.getByRole("radio", { name: /Back on the shelf/ })).toBeVisible();
+    await expect(
+      page.getByText(/Broken, or carved to a shape nobody else will buy/)
+    ).toBeVisible();
+
+    // The button says the verb and the amount, not "Confirm".
+    await expect(page.getByRole("button", { name: /Give back ₱/ })).toBeVisible();
+
+    expectClean();
+  });
+
+  test("fixing a price shows both figures and says which way it moved", async ({ page }) => {
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await page.getByRole("radio", { name: /Some left behind/ }).click();
+    await page.getByRole("button", { name: "Open" }).first().click();
+
+    await page.getByRole("button", { name: "Fix the price" }).click();
+    await expect(page.getByRole("heading", { name: /Fix the price on order/ })).toBeVisible();
+    await expect(page.getByText("What they were told")).toBeVisible();
+
+    const total = page.getByRole("spinbutton").first();
+    await total.fill("3500");
+    await expect(page.getByText(/more than they were told/)).toBeVisible();
+
+    await total.fill("2500");
+    await expect(page.getByText(/too much was charged/)).toBeVisible();
+
+    // The reason is required — a total that moves with no reason reads as a
+    // mistake a month later.
+    await page.getByRole("button", { name: "Save the new price" }).click();
+    await expect(page.getByText(/Say why the price changed/)).toBeVisible();
+
+    await page.getByRole("radio", { name: /A discount the owner agreed/ }).click();
+    await page.getByRole("button", { name: "Save the new price" }).click();
+    await expect(page.getByText(/is now ₱2,500/)).toBeVisible();
+
+    expectClean();
+  });
 });
 
 test.describe("people", () => {
@@ -461,6 +603,30 @@ test.describe("people", () => {
 });
 
 test.describe("what a role is not offered", () => {
+  // No beforeEach sign-in in this block: each case signs in AS the role it is
+  // about, and signing in twice would land the second attempt on a dashboard
+  // with no sign-in form to fill.
+
+  test("sales staff are not offered the money block", async ({ page, baseURL }) => {
+    // Refunding and re-pricing are an administrator's or a manager's job. The
+    // guard trigger on public.orders is the real gate; this checks the screen
+    // agrees with it rather than offering a button the database would refuse.
+    await stubSupabase(page, { as: "juan@lsbhandicrafts.test" });
+    await signIn(page, baseURL, "juan@lsbhandicrafts.test");
+
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await page.getByRole("button", { name: "Open" }).first().click();
+
+    // The ordinary forward action is still theirs — writing orders and moving
+    // them along is the job. Only the money is not.
+    await expect(page.getByRole("button", { name: "Mark as done" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Money on this order" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Give money back" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Fix the price" })).toHaveCount(0);
+
+    expectClean();
+  });
+
   test("a non-admin sees the supplier but not the way to remove them", async ({
     page,
     baseURL,

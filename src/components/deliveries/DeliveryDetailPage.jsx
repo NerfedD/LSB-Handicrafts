@@ -10,12 +10,14 @@ import {
   Inbox,
   MapPin,
   PackageCheck,
+  PackageOpen,
   Truck,
   Undo2,
   UserRound,
 } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import Callout from "../shared/Callout";
 import IconChip, { Mono } from "../shared/Chip";
 import FactTable from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
@@ -48,6 +50,14 @@ import { formatPeso, formatShortDate } from "../../utils/profileFormat";
  *
  * THE HISTORY WRITES ITSELF. Nobody types it. That is what makes it worth
  * reading: a log people have to maintain is a log that is empty by March.
+ *
+ * THE BUTTON THAT SENDS IT NOW ASKS WHAT WENT. Moving to "On the way" is the
+ * moment stock physically leaves, and that moment used to assume the whole
+ * order went with it. It usually does, so the manifest dialog opens pre-filled
+ * with all of it and one press still finishes the job — but when the van could
+ * not take everything there is finally somewhere to say so. Every other stage
+ * change is unchanged: nothing leaves the building on the way from "Not sent
+ * yet" to "Being made".
  */
 
 const STAGE_ICONS = {
@@ -60,12 +70,14 @@ const STAGE_ICONS = {
 
 export default function DeliveryDetailPage({
   delivery,
+  deliveries = [],
   activity = [],
   onBack,
   onMoveForward,
   onMoveBack,
   onAssignDriver,
   onOpenOrder,
+  onOpenDelivery,
   busy = false,
 }) {
   const history = useMemo(
@@ -74,6 +86,18 @@ export default function DeliveryDetailPage({
         ? activity.filter((entry) => entry.subject === `delivery:${delivery.id}`)
         : [],
     [activity, delivery]
+  );
+
+  // The run this one follows, or the one raised because this one came up short.
+  // Linked by id rather than by parsing a string: the order link had to stay
+  // text for compatibility, but nothing forced this one to.
+  const parent = useMemo(
+    () => deliveries.find((one) => one.id === delivery?.parentDeliveryId),
+    [deliveries, delivery]
+  );
+  const child = useMemo(
+    () => deliveries.find((one) => one.parentDeliveryId === delivery?.id),
+    [deliveries, delivery]
   );
 
   if (!delivery) return <NotFoundState noun="delivery" onBack={onBack} />;
@@ -235,6 +259,43 @@ export default function DeliveryDetailPage({
               </Button>
             </div>
           </Card>
+
+          {/* ---- the other half of a split delivery ---- */}
+          {(parent || child) && (
+            <Callout
+              tone="amber"
+              icon={<PackageOpen />}
+              title={
+                parent
+                  ? "This is the rest of an earlier delivery"
+                  : "Some of this was left behind"
+              }
+              action={
+                onOpenDelivery && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenDelivery((parent ?? child).id)}
+                  >
+                    <Truck className="h-4.5 w-4.5" />
+                    {parent ? "Open the first run" : "Open the second run"}
+                  </Button>
+                )
+              }
+            >
+              {parent ? (
+                <>
+                  The first run could not take everything, so this one was raised for what
+                  was left. The customer already has the rest.
+                </>
+              ) : (
+                <>
+                  A second delivery was raised for what did not fit. This one is finished
+                  with; the order stays open until the other arrives.
+                </>
+              )}
+            </Callout>
+          )}
 
           {orderRef && (
             <Button variant="outline" size="lg" block onClick={() => onOpenOrder(orderRef)}>

@@ -20,8 +20,8 @@ import { FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
 import { ORDER_STATUS } from "../../utils/constants";
-import { orderLabel, orderTone } from "../../utils/copy";
-import { itemSummary, orderCounts } from "../../utils/orders";
+import { BACKORDER_CHIP, orderLabel, orderTone } from "../../utils/copy";
+import { hasBackorder, hasRefund, itemSummary, orderCounts } from "../../utils/orders";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
@@ -49,6 +49,21 @@ const GROUP_STATUS = {
   waiting: ORDER_STATUS.PENDING,
   done: ORDER_STATUS.COMPLETED,
   cancelled: ORDER_STATUS.CANCELLED,
+};
+
+/**
+ * The two chips that are not a status.
+ *
+ * "Some left behind" and "Refunded" cut across the status column rather than
+ * selecting a value in it — a part-delivered order is still Waiting, and a
+ * refunded one can be Waiting or Cancelled. They are still chips in the same
+ * row, because the row is a single choice among ways of looking at the list,
+ * and splitting them into a second control would ask somebody to combine two
+ * filters to answer one question.
+ */
+const GROUP_TEST = {
+  backorder: hasBackorder,
+  refunded: hasRefund,
 };
 
 export default function OrderListPage({
@@ -83,7 +98,11 @@ export default function OrderListPage({
 
   const filtered = useMemo(() => {
     const list = orders.filter((order) => {
-      if (group !== "all" && order.status !== GROUP_STATUS[group]) return false;
+      if (GROUP_TEST[group]) {
+        if (!GROUP_TEST[group](order)) return false;
+      } else if (group !== "all" && order.status !== GROUP_STATUS[group]) {
+        return false;
+      }
       return matches(query, order.customerName, `#${order.id}`, String(order.id));
     });
 
@@ -108,7 +127,9 @@ export default function OrderListPage({
   const chips = [
     { value: "all", label: "All", count: counts.all },
     { value: "waiting", label: "Waiting", count: counts.waiting, tone: "amber" },
+    { value: "backorder", label: BACKORDER_CHIP, count: counts.backorder, tone: "amber" },
     { value: "done", label: "Done", count: counts.done, tone: "green" },
+    { value: "refunded", label: "Refunded", count: counts.refunded, tone: "purple" },
     { value: "cancelled", label: "Cancelled", count: counts.cancelled, tone: "red" },
   ];
 
@@ -187,11 +208,20 @@ export default function OrderListPage({
                       </TableCell>
 
                       <TableCell>
-                        <StatusPill
-                          label={orderLabel(order.status)}
-                          tone={orderTone(order.status)}
-                          size="sm"
-                        />
+                        {/* Two pills rather than one replaced: a part-delivered
+                            order is still Waiting, and hiding that behind the
+                            newer fact would make the Waiting count and the list
+                            disagree. */}
+                        <div className="flex flex-col items-start gap-1.5">
+                          <StatusPill
+                            label={orderLabel(order.status)}
+                            tone={orderTone(order.status)}
+                            size="sm"
+                          />
+                          {hasBackorder(order) && (
+                            <StatusPill label={BACKORDER_CHIP} tone="amber" size="sm" />
+                          )}
+                        </div>
                       </TableCell>
 
                       <TableCell>
@@ -226,11 +256,16 @@ export default function OrderListPage({
                         {formatShortDate(order.createdAt)} · {items.label}
                       </p>
                     </div>
-                    <StatusPill
-                      label={orderLabel(order.status)}
-                      tone={orderTone(order.status)}
-                      size="sm"
-                    />
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <StatusPill
+                        label={orderLabel(order.status)}
+                        tone={orderTone(order.status)}
+                        size="sm"
+                      />
+                      {hasBackorder(order) && (
+                        <StatusPill label={BACKORDER_CHIP} tone="amber" size="sm" />
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-3 pt-3.5">

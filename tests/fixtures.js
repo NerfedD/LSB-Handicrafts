@@ -12,6 +12,13 @@
  * a delivery in each of the five stages, one of them late and one with nobody
  * assigned; a customer who has not ordered in a year; and a blocked account.
  * A fixture where everything is fine tests nothing.
+ *
+ * It also carries one of each of the three situations this data model was
+ * extended for: an order part-delivered with the rest still owed (#1046 and its
+ * pair of deliveries), an order refunded in full with the goods put back on the
+ * shelf (#1044), and a price corrected after the customer had been told one
+ * (#1046 again). Those are the states the screens are least likely to be
+ * exercised in by hand.
  */
 
 const DAY = 86400000;
@@ -100,6 +107,10 @@ export const customers = [
   { id: 202, name: "Liza Villanueva", contact_number: "0917 555 0202", email: null, address: "8 Bonifacio Ext, Agdao, Davao City", kind: "walk-in", created_at: iso(12), updated_at: iso(12) },
   { id: 203, name: "Carlos Mendoza", contact_number: "0917 555 0203", email: null, address: "44 Quimpo Blvd, Matina, Davao City", kind: "walk-in", created_at: iso(600), updated_at: iso(600) },
   { id: 204, name: "Bloom & Co", contact_number: "0917 555 0204", email: "orders@bloomco.test", address: "3 Torres St, Poblacion, Davao City", kind: "business", created_at: iso(200), updated_at: iso(45) },
+  // The part-delivered order (#1046) hangs off this one rather than an existing
+  // customer on purpose: Bloom & Co is the customer the removal test deletes,
+  // and it can only be deleted while it has nothing waiting.
+  { id: 205, name: "Santos Catering", contact_number: "0917 555 0205", email: "book@santoscatering.test", address: "3 Torres St, Poblacion, Davao City", kind: "business", created_at: iso(150), updated_at: iso(3) },
 ];
 
 export const suppliers = [
@@ -111,7 +122,13 @@ export const orders = [
   { id: 1041, customer_name: "Reyes Events", items: [ { kind: "catalog", productId: 101, name: 'Styro Ball 4 inch', quantity: 40, unitPrice: 120, lineTotal: 4800, stockUnits: 40 }, { kind: "cut", name: 'Styro Sheet 1 inch, cut to 2ft x 1ft', quantity: 12, unitPrice: 90, lineTotal: 1080, stockUnits: 3, notes: "Cut to 2ft × 1ft for the stage backdrop" } ], total_amount: 6280, status: "Pending", created_at: iso(6), stock_committed_at: null },
   { id: 1042, customer_name: "Liza Villanueva", items: [ { kind: "catalog", productId: 104, name: 'Styro Sheet 1/2 inch', quantity: 4, unitPrice: 150, lineTotal: 600, stockUnits: 4 } ], total_amount: 600, status: "Pending", created_at: iso(1), stock_committed_at: null },
   { id: 1043, customer_name: "Bloom & Co", items: [ { kind: "catalog", productId: 102, name: 'Styro Ball 6 inch', quantity: 25, unitPrice: 185, lineTotal: 4625, stockUnits: 25 } ], total_amount: 4625, status: "Completed", created_at: iso(20), stock_committed_at: iso(16) },
-  { id: 1044, customer_name: "Carlos Mendoza", items: [ { kind: "catalog", productId: 105, name: "Styro Block 2 inch", quantity: 2, unitPrice: 420, lineTotal: 840, stockUnits: 2 } ], total_amount: 840, status: "Cancelled", created_at: iso(40), stock_committed_at: null },
+  { id: 1044, customer_name: "Carlos Mendoza", items: [ { kind: "catalog", productId: 105, name: "Styro Block 2 inch", quantity: 2, unitPrice: 420, lineTotal: 840, stockUnits: 2, committedUnits: 0, voidedUnits: 2 } ], total_amount: 840, status: "Cancelled", created_at: iso(40), stock_committed_at: null, refunded_amount: 840, refund_history: [ { id: 5001, amount: 840, refundedAt: iso(38), refundedByStaffId: 1, refundedBy: "Maria Santos", reason: "changed-mind", method: "gcash", restockedItems: [ { productId: 105, name: "Styro Block 2 inch", quantity: 2, disposition: "restock" } ] } ], price_adjustments: [], backorder_status: "none" },
+  // PART-DELIVERED. Twelve of the twenty bundles went out on delivery #2046;
+  // the van could not take the rest, so #2047 was raised for them and this
+  // order is still Waiting with eight bundles owed. It is what puts the
+  // "Some left behind" chip, the "Partly delivered" tracker and the top of the
+  // production make list into a state worth looking at.
+  { id: 1046, customer_name: "Santos Catering", items: [ { kind: "catalog", productId: 104, name: 'Styro Sheet 1/2 inch', quantity: 20, unitPrice: 150, lineTotal: 3000, stockUnits: 20, committedUnits: 12, voidedUnits: 0 } ], total_amount: 3000, status: "Pending", created_at: iso(3), stock_committed_at: null, refunded_amount: 0, refund_history: [], price_adjustments: [ { oldTotal: 2800, newTotal: 3000, difference: 200, reason: "measure", changedBy: "Maria Santos", changedAt: iso(2) } ], backorder_status: "partial" },
 ];
 
 export const deliveries = [
@@ -120,6 +137,12 @@ export const deliveries = [
   { id: 2043, product: "Order #1043 - Bloom & Co", size: "25 × Styro Ball 6 inch", location: "3 Torres St, Poblacion", amount: 200, status: "Delivered", driver: "Ramon Garcia", due_on: day(-14), created_at: iso(20) },
   { id: 2044, product: "Walk-in - Cielo Dizon", size: "6 × Styro Ball 4 inch", location: "Km 9, Matina, Davao City", amount: 150, status: "On The Way", driver: "Ramon Garcia", due_on: day(0), created_at: iso(2) },
   { id: 2045, product: "Order #1045 - Parish of San Pedro", size: "2 × Styro Block 2 inch", location: "San Pedro St, Poblacion", amount: 250, status: "Not Yet Delivered", driver: null, due_on: day(3), created_at: iso(1) },
+  // The run that went out short, and the one raised for what it left behind.
+  // The follow-up keeps the same "Order #1046 - " prefix so every matcher finds
+  // it, carries the marker suffix so it can be told apart, and points at its
+  // parent by id. It is not charged for a second time.
+  { id: 2046, product: "Order #1046 - Santos Catering", size: "20 × Styro Sheet 1/2 inch", location: "3 Torres St, Poblacion", amount: 300, status: "Delivered", driver: "Ramon Garcia", due_on: day(-1), created_at: iso(3), parent_delivery_id: null, items_manifest: [ { productId: 104, name: 'Styro Sheet 1/2 inch', orderedQty: 20, deliveredQty: 12, backorderQty: 8 } ] },
+  { id: 2047, product: "Order #1046 - Santos Catering (backorder)", size: "8 × Styro Sheet 1/2 inch", location: "3 Torres St, Poblacion", amount: 0, status: "Not Yet Delivered", driver: null, due_on: day(2), created_at: iso(1), parent_delivery_id: 2046, items_manifest: [] },
 ];
 
 export const activity_log = [

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } fro
 
 import { supabase } from "./lib/supabaseClient";
 import { isAdminEmail } from "./utils/adminAccess";
-import { canAccess, isAdminRole } from "./utils/permissions";
+import { canAccess, canHandleMoney, isAdminRole } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
   activityLogCollection,
@@ -24,8 +24,15 @@ import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigatio
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
 import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
 import { deliveryStage } from "./utils/copy";
-import { commitOrder } from "./utils/stockLedger";
-import { deliveryForOrder } from "./utils/orders";
+import { commitOrder, commitPartialDelivery, handleRefundStock } from "./utils/stockLedger";
+import { normalizeItems } from "./utils/orderItems";
+import {
+  BACKORDER_SUFFIX,
+  backorderStatusOf,
+  deliveryBelongsToOrder,
+  deliveryForOrder,
+  orderRefunded,
+} from "./utils/orders";
 import { stockCounts } from "./utils/productStock";
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
@@ -53,6 +60,12 @@ const OrderFormPage = lazy(() => import("./components/orders/OrderFormPage"));
 const DeliveryBoardPage = lazy(() => import("./components/deliveries/DeliveryBoardPage"));
 const DeliveryDetailPage = lazy(() => import("./components/deliveries/DeliveryDetailPage"));
 const AssignDriverDialog = lazy(() => import("./components/deliveries/AssignDriverDialog"));
+const RecordDeliveredDialog = lazy(() =>
+  import("./components/deliveries/RecordDeliveredDialog")
+);
+
+const RefundDialog = lazy(() => import("./components/orders/RefundDialog"));
+const PriceAdjustmentDialog = lazy(() => import("./components/orders/PriceAdjustmentDialog"));
 
 const CustomerListPage = lazy(() => import("./components/customers/CustomerListPage"));
 const CustomerDetailPage = lazy(() => import("./components/customers/CustomerDetailPage"));
@@ -154,6 +167,10 @@ export default function App() {
   const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);
   const [recordMadeFor, setRecordMadeFor] = useState(null); // productId | true | null
   const [assignDriverFor, setAssignDriverFor] = useState(null); // deliveryId | null
+  // { deliveryId, toStage } — the manifest asked for when goods actually leave.
+  const [recordDeliveredFor, setRecordDeliveredFor] = useState(null);
+  const [refundFor, setRefundFor] = useState(null); // orderId | null
+  const [adjustPriceFor, setAdjustPriceFor] = useState(null); // orderId | null
   const [busy, setBusy] = useState(false);
 
   // The header's second line. Screens push it up because it is usually a count
@@ -918,24 +935,34 @@ export default function App() {
    */
   async function markOrderDone(order) {
     setBusy(true);
-    const { inventory: nextInventory, stockCommittedAt } = commitOrder(inventory, order);
+    const {
+      inventory: nextInventory,
+      items,
+      stockCommittedAt,
+    } = commitOrder(inventory, order);
 
     // Stock first. An order marked done whose stock never moved is a shelf that
     // lies; stock moved for an order that never got marked is recoverable.
-    const changed = nextInventory.filter((row, index) => row !== inventory[index]);
-    for (const row of changed) {
-      const result = await inventoryState.update(row.id, row);
-      if (!result.ok) {
-        setBusy(false);
-        toast.error("The stock could not be updated, so the order was left as it was.");
-        return;
-      }
+    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
+    if (!stockOk) {
+      setBusy(false);
+      toast.error("The stock could not be updated, so the order was left as it was.");
+      return;
     }
 
-    const result = await ordersState.update(order.id, {
+    // `items` carries the per-line commit counters back with the stamp. Writing
+    // one without the other would leave the order claiming stock had left while
+    // its lines still read as owed — the exact disagreement stockCommittedAt
+    // exists to prevent.
+    const done = {
       ...order,
+      items,
       status: ORDER_STATUS.COMPLETED,
       stockCommittedAt,
+    };
+    const result = await ordersState.update(order.id, {
+      ...done,
+      backorderStatus: backorderStatusOf(done),
     });
     setBusy(false);
 
@@ -963,7 +990,181 @@ export default function App() {
     }
   }
 
+  /**
+   * Writes the inventory rows a ledger function changed, and nothing else.
+   *
+   * STOCK GOES FIRST, EVERY TIME. An order recorded as sent whose stock never
+   * moved is a shelf that lies to everybody who reads it; stock that moved for
+   * a record that failed to save is recoverable by looking at the goods. So
+   * every caller below writes the shelf, checks it, and only then touches the
+   * order — and abandons the whole thing if the shelf refused.
+   */
+  async function persistStockChanges(nextInventory) {
+    const changed = nextInventory.filter((row, index) => row !== inventory[index]);
+    for (const row of changed) {
+      const result = await inventoryState.update(row.id, row);
+      if (!result.ok) return { ok: false, changed };
+    }
+    return { ok: true, changed };
+  }
+
+  /**
+   * Gives money back, and puts the goods wherever the person holding them says
+   * they belong.
+   *
+   * REFUSED HERE AS WELL AS HIDDEN ON THE SCREEN, and neither is the actual
+   * permission — the guard trigger on public.orders is, and it refuses the
+   * write whatever this believes. This stops a stale render firing a request
+   * the server will reject; the hidden block is a courtesy.
+   *
+   * A FULL REFUND CANCELS THE ORDER, which is what releases anything still set
+   * aside for it: reserved is derived from Pending orders, so a cancelled one
+   * reserves nothing without a single number being decremented anywhere.
+   */
+  async function issueRefund(order, { amount, method, reason, full, lines }) {
+    if (!canHandleMoney(profile?.role)) {
+      toast.error("Only an administrator or a manager can give money back.");
+      return false;
+    }
+
+    setBusy(true);
+    const {
+      inventory: nextInventory,
+      items,
+      scrapped,
+    } = handleRefundStock(inventory, order, lines);
+
+    const stock = await persistStockChanges(nextInventory);
+    if (!stock.ok) {
+      setBusy(false);
+      toast.error("The stock could not be updated, so no money was given back.");
+      return false;
+    }
+
+    const source = normalizeItems(order.items);
+    const entry = {
+      id: Date.now(),
+      amount,
+      refundedAt: nowIso(),
+      refundedByStaffId: profile?.id ?? null,
+      refundedBy: profile?.name ?? null,
+      reason,
+      method,
+      restockedItems: lines.map((line) => ({
+        productId: source[line.lineIndex]?.productId ?? null,
+        name: source[line.lineIndex]?.name ?? "",
+        quantity: line.units,
+        disposition: line.disposition,
+      })),
+    };
+
+    const refunded = { ...order, items, refundedAmount: orderRefunded(order) + amount };
+    const result = await ordersState.update(order.id, {
+      ...refunded,
+      status: full ? ORDER_STATUS.CANCELLED : order.status,
+      refundHistory: [...(order.refundHistory || []), entry],
+      backorderStatus: backorderStatusOf(refunded),
+    });
+    setBusy(false);
+
+    if (!result.ok) {
+      toast.error(result.message || "That refund was not recorded.");
+      return false;
+    }
+
+    toast.success(`${formatPeso(amount)} given back on order #${order.id}.`, {
+      description: full
+        ? "The order is cancelled. Anything set aside for it has been released."
+        : "What was put back on the shelf is on sale again.",
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.ORDER,
+      what: `gave back ${formatPeso(amount)} on order #${order.id}`,
+      subject: `order:${order.id}`,
+      amount,
+    });
+    // Waste is logged per item and separately from the refund. A month-end
+    // question about how much stock is being thrown away cannot be answered
+    // from a money figure.
+    for (const item of scrapped) {
+      logActivity({
+        kind: ACTIVITY_KIND.STOCK,
+        what: `wrote off ${item.units} × ${item.name} returned on order #${order.id}`,
+        subject: `order:${order.id}`,
+        amount: -item.units,
+      });
+    }
+    return true;
+  }
+
+  /**
+   * Puts a price right after the customer has already been told one.
+   *
+   * NEVER AN OVERWRITE. The old figure goes into price_adjustments beside the
+   * new one, with the reason and the name of whoever changed it, and the order
+   * screen prints the most recent as a banner from then on. A total that moved
+   * with no record is indistinguishable from a mistake a month later.
+   */
+  async function adjustPrice(order, { oldTotal, newTotal, difference, reason }) {
+    if (!canHandleMoney(profile?.role)) {
+      toast.error("Only an administrator or a manager can change what an order costs.");
+      return false;
+    }
+
+    setBusy(true);
+    const entry = {
+      oldTotal,
+      newTotal,
+      difference,
+      reason,
+      changedBy: profile?.name ?? "Somebody",
+      changedAt: nowIso(),
+    };
+    const result = await ordersState.update(order.id, {
+      ...order,
+      totalAmount: newTotal,
+      priceAdjustments: [...(order.priceAdjustments || []), entry],
+    });
+    setBusy(false);
+
+    if (!result.ok) {
+      toast.error(result.message || "That price change was not saved.");
+      return false;
+    }
+
+    const overcharged = difference < 0;
+    toast.success(`Order #${order.id} is now ${formatPeso(newTotal)}.`, {
+      description: overcharged
+        ? `They were charged ${formatPeso(Math.abs(difference))} too much.`
+        : `They owe ${formatPeso(difference)} more than they were told.`,
+      // The correction and the money are two separate acts on purpose: lowering
+      // a price does not by itself hand anything back, and pretending it did
+      // would leave the shop believing it had paid somebody it had not.
+      action: overcharged
+        ? { label: "Give it back", onClick: () => setRefundFor(order.id) }
+        : { label: "Print it", onClick: () => window.print() },
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.PRICE,
+      what: `changed order #${order.id} from ${formatPeso(oldTotal)} to ${formatPeso(newTotal)}`,
+      subject: `order:${order.id}`,
+      amount: difference,
+    });
+    return true;
+  }
+
   // ---- deliveries ----------------------------------------------------------
+
+  /**
+   * The order a delivery is carrying, or undefined for one raised by hand.
+   *
+   * The reverse of deliveryForOrder, and it goes through the same string
+   * convention rather than a second one — see the note at the top of
+   * utils/orders. A backorder run keeps the same prefix, so it finds its order
+   * exactly as the original does.
+   */
+  const orderForDelivery = (delivery) =>
+    delivery ? orders.find((order) => deliveryBelongsToOrder(delivery, order.id)) : undefined;
 
   async function moveDelivery(delivery, nextStatus) {
     setBusy(true);
@@ -988,6 +1189,140 @@ export default function App() {
       what: `moved delivery #${delivery.id} to ${to.label.toLowerCase()}`,
       subject: `delivery:${delivery.id}`,
     });
+  }
+
+  /**
+   * The forward button on a delivery.
+   *
+   * ONE STAGE ASKS A QUESTION, AND ONLY ONE. "On the way" is the moment the
+   * goods physically leave the building, which is the only moment the shelf
+   * changes — so that is where the manifest opens, pre-filled with all of it.
+   * Every other advance is a plain move: nothing leaves on the way from "Not
+   * sent yet" to "Being made", and a dialog there would be a dialog people
+   * learn to dismiss.
+   *
+   * A delivery raised by hand, with no order behind it, has nothing to count
+   * against and falls straight through.
+   */
+  function advanceDelivery(delivery, nextStatus) {
+    const order = orderForDelivery(delivery);
+    if (nextStatus === DELIVERY_STAGE.ON_THE_WAY && order) {
+      setRecordDeliveredFor({ deliveryId: delivery.id, toStage: nextStatus });
+      return;
+    }
+    moveDelivery(delivery, nextStatus);
+  }
+
+  /**
+   * Records what actually went out, deducts only that, and raises a second
+   * delivery for anything left behind.
+   *
+   * FOUR WRITES, IN THIS ORDER, and the order is the whole design: shelf, then
+   * order, then the delivery that moved, then the follow-up. Each one is only
+   * attempted if the one before it landed, so a failure part-way leaves a state
+   * somebody can look at and finish by hand rather than a shelf and an order
+   * that disagree.
+   *
+   * THE FOLLOW-UP KEEPS THE SAME "Order #N - " PREFIX. That string is how an
+   * order finds its deliveries — there is no foreign key — so the suffix goes
+   * on the end where no matcher will trip over it. The run-to-run link is a
+   * real column, because nothing forced that one to be a parsed string too.
+   */
+  async function recordDelivered(delivery, order, { toStage, delivered, manifest, followUp }) {
+    setBusy(true);
+    const {
+      inventory: nextInventory,
+      items,
+      stockCommittedAt,
+    } = commitPartialDelivery(inventory, order, delivered);
+
+    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
+    if (!stockOk) {
+      setBusy(false);
+      toast.error("The stock could not be updated, so the delivery was left as it was.");
+      return false;
+    }
+
+    const sent = { ...order, items, stockCommittedAt };
+    const orderResult = await ordersState.update(order.id, {
+      ...sent,
+      backorderStatus: backorderStatusOf(sent),
+    });
+    if (!orderResult.ok) {
+      setBusy(false);
+      toast.error(orderResult.message || "The order was not updated.", {
+        description: "The stock has already moved, so check the shelf before trying again.",
+      });
+      return false;
+    }
+
+    const deliveryResult = await deliveriesState.update(delivery.id, {
+      ...delivery,
+      status: toStage,
+      itemsManifest: manifest,
+    });
+    if (!deliveryResult.ok) {
+      setBusy(false);
+      toast.error(deliveryResult.message || "That delivery was not moved.");
+      return false;
+    }
+
+    const short = manifest.filter((line) => line.backorderQty > 0);
+    let raised = true;
+
+    if (short.length > 0) {
+      const followUpResult = await deliveriesState.create({
+        id: Date.now(),
+        product: `Order #${order.id} - ${order.customerName}${BACKORDER_SUFFIX}`,
+        size: short.map((line) => `${line.backorderQty} × ${line.name}`).join(", "),
+        location: delivery.location,
+        // A second trip for a shortfall the shop caused is not a second charge.
+        amount: 0,
+        status: DELIVERY_STAGE.NOT_SENT,
+        driver: followUp?.driver || null,
+        dueOn: followUp?.dueOn || null,
+        parentDeliveryId: delivery.id,
+        itemsManifest: [],
+        createdAt: nowIso(),
+      });
+      raised = followUpResult.ok;
+    }
+
+    setBusy(false);
+
+    const to = deliveryStage(toStage);
+    if (short.length === 0) {
+      toast.success(`Delivery #${delivery.id} is now ${to.label.toLowerCase()}.`);
+    } else if (raised) {
+      toast.success(`Delivery #${delivery.id} went out short.`, {
+        description: "A second delivery has been raised for what was left behind.",
+      });
+    } else {
+      toast.error("What went out was recorded, but the second delivery was not raised.", {
+        description: "Raise it from the deliveries board so it does not get missed.",
+      });
+    }
+
+    logActivity({
+      kind: ACTIVITY_KIND.DELIVERY,
+      what:
+        short.length === 0
+          ? `sent delivery #${delivery.id} out in full`
+          : `sent delivery #${delivery.id} out short by ${short
+              .map((line) => `${line.backorderQty} × ${line.name}`)
+              .join(", ")}`,
+      subject: `delivery:${delivery.id}`,
+    });
+    for (const row of changed) {
+      const before = inventory.find((item) => item.id === row.id);
+      logActivity({
+        kind: ACTIVITY_KIND.STOCK,
+        what: `sent out ${(before?.stock ?? 0) - row.stock} × ${row.name} on order #${order.id}`,
+        subject: row.sku,
+        amount: row.stock - (before?.stock ?? 0),
+      });
+    }
+    return true;
   }
 
   async function assignDriver(delivery, driver) {
@@ -1187,9 +1522,16 @@ export default function App() {
             )}
             deliveries={deliveries}
             busy={busy}
+            canHandleMoney={canHandleMoney(profile?.role)}
             onBack={() => navigate("orders")}
             onMarkDone={() => markOrderDone(selectedOrder)}
             onPrint={() => window.print()}
+            onRefund={() => setRefundFor(selectedOrder.id)}
+            onAdjustPrice={() => setAdjustPriceFor(selectedOrder.id)}
+            onOpenDelivery={(id) => {
+              setSelectedDeliveryId(id);
+              setView("delivery-detail");
+            }}
             onAssignDriver={() => {
               const delivery = deliveryForOrder(selectedOrder, deliveries);
               if (delivery) setAssignDriverFor(delivery.id);
@@ -1242,15 +1584,23 @@ export default function App() {
         return (
           <DeliveryDetailPage
             delivery={selectedDelivery}
+            deliveries={deliveries}
             activity={activity}
             busy={busy}
             onBack={() => navigate("deliveries")}
-            onMoveForward={(next) => moveDelivery(selectedDelivery, next)}
+            // Forward can open the manifest dialog; back never does. Moving a
+            // delivery backwards does not un-send goods, and asking what went
+            // out at that moment would invite somebody to answer it twice.
+            onMoveForward={(next) => advanceDelivery(selectedDelivery, next)}
             onMoveBack={(next) => moveDelivery(selectedDelivery, next)}
             onAssignDriver={() => setAssignDriverFor(selectedDelivery.id)}
             onOpenOrder={(id) => {
               setSelectedOrderId(id);
               setView("order-detail");
+            }}
+            onOpenDelivery={(id) => {
+              setSelectedDeliveryId(id);
+              setView("delivery-detail");
             }}
           />
         );
@@ -1563,6 +1913,39 @@ export default function App() {
             deliveries.find((d) => d.id === assignDriverFor),
             driver
           )
+        }
+      />
+      <RecordDeliveredDialog
+        key={`manifest-${recordDeliveredFor?.deliveryId ?? "none"}`}
+        open={recordDeliveredFor !== null}
+        onOpenChange={(next) => !next && setRecordDeliveredFor(null)}
+        delivery={deliveries.find((d) => d.id === recordDeliveredFor?.deliveryId)}
+        order={orderForDelivery(
+          deliveries.find((d) => d.id === recordDeliveredFor?.deliveryId)
+        )}
+        toStage={recordDeliveredFor?.toStage}
+        staff={staff}
+        onSave={(payload) => {
+          const delivery = deliveries.find((d) => d.id === recordDeliveredFor?.deliveryId);
+          const order = orderForDelivery(delivery);
+          if (!delivery || !order) return false;
+          return recordDelivered(delivery, order, payload);
+        }}
+      />
+      <RefundDialog
+        key={`refund-${refundFor ?? "none"}`}
+        open={refundFor !== null}
+        onOpenChange={(next) => !next && setRefundFor(null)}
+        order={orders.find((o) => o.id === refundFor)}
+        onSave={(refund) => issueRefund(orders.find((o) => o.id === refundFor), refund)}
+      />
+      <PriceAdjustmentDialog
+        key={`price-${adjustPriceFor ?? "none"}`}
+        open={adjustPriceFor !== null}
+        onOpenChange={(next) => !next && setAdjustPriceFor(null)}
+        order={orders.find((o) => o.id === adjustPriceFor)}
+        onSave={(change) =>
+          adjustPrice(orders.find((o) => o.id === adjustPriceFor), change)
         }
       />
     </Suspense>

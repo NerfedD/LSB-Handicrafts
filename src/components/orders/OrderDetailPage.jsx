@@ -2,12 +2,16 @@ import { useMemo } from "react";
 
 import {
   ArrowLeft,
+  Banknote,
   CircleCheck,
   CircleX,
   Clock,
+  Info,
   MapPin,
+  PackageOpen,
   Phone,
   Printer,
+  Tag,
   Truck,
   UserRound,
 } from "../icons";
@@ -22,21 +26,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Callout from "../shared/Callout";
+import Callout, { DangerBlock } from "../shared/Callout";
 import IconChip, { Avatar, Mono } from "../shared/Chip";
 import FactTable from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StageTracker from "../shared/StageTracker";
 import StatusPill from "../shared/StatusPill";
 import { ORDER_STATUS } from "../../utils/constants";
-import { orderLabel, orderTone } from "../../utils/copy";
+import {
+  dispositionLabel,
+  orderLabel,
+  orderTone,
+  priceReasonLabel,
+  refundMethodLabel,
+  refundReasonLabel,
+} from "../../utils/copy";
 import { normalizeItems } from "../../utils/orderItems";
 import {
+  backorderLines,
   daysWaiting,
   deliveryForOrder,
+  deliveriesForOrder,
+  hasBackorder,
+  isBackorderDelivery,
+  lastPriceAdjustment,
   orderProgress,
   orderTotals,
 } from "../../utils/orders";
+import { outstandingOf } from "../../utils/stockLedger";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
@@ -57,26 +74,51 @@ import { formatPeso, formatShortDate } from "../../utils/profileFormat";
  * THE WAITING CALLOUT IS NOT A BADGE. An order that has sat for four days is a
  * problem with an owner, so the amber block says how long AND offers the thing
  * that unblocks it: give it to somebody.
+ *
+ * MONEY LIVES IN ITS OWN OUTLINED BLOCK AT THE BOTTOM. Rule 6: giving money
+ * back and changing what an order costs are not recoverable by pressing
+ * something again, so they are never a control in the header beside Print. They
+ * are a bordered section that names what each one does, and it only renders for
+ * somebody allowed to use it — the courtesy half of a permission whose real
+ * half is the guard trigger on public.orders.
+ *
+ * WHAT WAS DONE TO THE MONEY IS SHOWN, NOT JUST THE RESULT. A total that moved
+ * with no explanation is indistinguishable from a mistake, so a corrected price
+ * carries a banner naming the day, the person and the reason, and every refund
+ * is listed with what happened to the goods.
  */
 export default function OrderDetailPage({
   order,
   customer,
   deliveries = [],
+  canHandleMoney = false,
   onBack,
   onMarkDone,
   onAssignDriver,
   onPrint,
+  onRefund,
+  onAdjustPrice,
+  onOpenDelivery,
   busy = false,
 }) {
   const items = useMemo(() => normalizeItems(order?.items), [order]);
   const progress = useMemo(() => orderProgress(order, deliveries), [order, deliveries]);
   const totals = useMemo(() => orderTotals(order, deliveries), [order, deliveries]);
   const delivery = useMemo(() => deliveryForOrder(order, deliveries), [order, deliveries]);
+  const owed = useMemo(() => backorderLines(order), [order]);
+  const followUp = useMemo(
+    () => deliveriesForOrder(order, deliveries).find(isBackorderDelivery),
+    [order, deliveries]
+  );
 
   if (!order) return <NotFoundState noun="order" onBack={onBack} />;
 
   const waiting = daysWaiting(order);
   const isDone = order.status === ORDER_STATUS.COMPLETED;
+  const isCancelled = order.status === ORDER_STATUS.CANCELLED;
+  const partial = hasBackorder(order);
+  const correction = lastPriceAdjustment(order);
+  const refunds = Array.isArray(order.refundHistory) ? order.refundHistory : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -137,6 +179,57 @@ export default function OrderDetailPage({
               </>
             )}
           </Card>
+
+          {/* ---- what is still owed ---- */}
+          {partial && (
+            <Callout
+              tone="amber"
+              icon={<PackageOpen />}
+              title="Some of this order has not gone out yet"
+              action={
+                followUp &&
+                onOpenDelivery && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onOpenDelivery(followUp.id)}
+                  >
+                    <Truck className="h-4.5 w-4.5" />
+                    Open the second delivery
+                  </Button>
+                )
+              }
+            >
+              {owed.map((line) => (
+                <span key={line.index} className="block">
+                  <strong className="font-bold text-ink">
+                    {outstandingOf(line)} × {line.name}
+                  </strong>{" "}
+                  still to go.
+                </span>
+              ))}
+              <span className="block pt-2">
+                The rest was delivered and has come off the shelf. What is listed here is
+                still set aside for {order.customerName} and is not sellable to anybody
+                else.
+              </span>
+            </Callout>
+          )}
+
+          {/* ---- the price was changed after it was sent ---- */}
+          {correction && (
+            <Callout
+              tone="cobalt"
+              icon={<Info />}
+              title={`Price changed on ${formatShortDate(correction.changedAt)} by ${correction.changedBy || "somebody"}`}
+            >
+              It went from{" "}
+              <strong className="font-bold text-ink">{formatPeso(correction.oldTotal)}</strong>{" "}
+              to{" "}
+              <strong className="font-bold text-ink">{formatPeso(correction.newTotal)}</strong>.
+              Reason: {priceReasonLabel(correction.reason).toLowerCase()}.
+            </Callout>
+          )}
 
           {/* ---- what is on it ---- */}
           <Card>
@@ -218,11 +311,108 @@ export default function OrderDetailPage({
                         {formatPeso(totals.total)}
                       </dd>
                     </div>
+
+                    {/* Only once money has actually gone back. An order with no
+                        refund should not carry a row of zeroes explaining a
+                        thing that never happened. "Total to pay" keeps its 28px
+                        as the one number on the screen set that size, and what
+                        they are left owing sits under it as the correction. */}
+                    {totals.refunded > 0 && (
+                      <>
+                        <div className="flex items-baseline justify-between gap-6">
+                          <dt className="text-[15.5px] text-muted">Given back</dt>
+                          <dd className="text-[16.5px] font-bold tabular-nums text-red-text">
+                            −{formatPeso(totals.refunded)}
+                          </dd>
+                        </div>
+                        <div className="flex items-baseline justify-between gap-6">
+                          <dt className="text-[16.5px] font-extrabold text-ink">
+                            What they still owe
+                          </dt>
+                          <dd className="text-[19px] font-extrabold tabular-nums text-ink">
+                            {formatPeso(totals.net)}
+                          </dd>
+                        </div>
+                      </>
+                    )}
                   </dl>
                 </div>
               </>
             )}
           </Card>
+
+          {/* ---- what came back ---- */}
+          {refunds.length > 0 && (
+            <Card>
+              <CardHeader>
+                <IconChip icon={<Banknote />} tone="red" size="sm" />
+                <CardTitle>Money given back</CardTitle>
+              </CardHeader>
+              <ul>
+                {refunds.map((refund, index) => (
+                  <li
+                    key={refund.id ?? index}
+                    className="border-b border-hair px-5.5 py-4 last:border-b-0"
+                  >
+                    <div className="flex flex-wrap items-baseline justify-between gap-3">
+                      <p className="text-[16.5px] font-bold text-ink">
+                        {formatPeso(refund.amount)} · {refundMethodLabel(refund.method)}
+                      </p>
+                      <p className="text-[14.5px] text-muted">
+                        {formatShortDate(refund.refundedAt)}
+                        {refund.refundedBy ? ` · ${refund.refundedBy}` : ""}
+                      </p>
+                    </div>
+                    <p className="pt-1 text-[15px] leading-[1.5] text-ink-2">
+                      {refundReasonLabel(refund.reason)}
+                    </p>
+                    {Array.isArray(refund.restockedItems) &&
+                      refund.restockedItems.length > 0 && (
+                        <ul className="pt-1.5">
+                          {refund.restockedItems.map((line, lineIndex) => (
+                            <li
+                              key={`${refund.id ?? index}-${lineIndex}`}
+                              className="text-[14.5px] text-muted"
+                            >
+                              {line.quantity} × {line.name} —{" "}
+                              {dispositionLabel(line.disposition).toLowerCase()}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+
+          {/* ---- the only place money moves on an order ---- */}
+          {canHandleMoney && !isCancelled && (
+            <DangerBlock
+              title="Money on this order"
+              action={
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="danger" size="lg" disabled={busy} onClick={onRefund}>
+                    <Banknote className="h-5 w-5" />
+                    Give money back
+                  </Button>
+                  <Button variant="outline" size="lg" disabled={busy} onClick={onAdjustPrice}>
+                    <Tag className="h-5 w-5" />
+                    Fix the price
+                  </Button>
+                </div>
+              }
+            >
+              Giving money back records where it went and what happened to the goods —
+              whether they went back on the shelf or were thrown away. Anything thrown
+              away is counted as waste and is not sold again.
+              <br />
+              <br />
+              Fixing the price never overwrites what {order.customerName} was told. The old
+              figure is kept beside the new one, with your name and the reason, and it
+              shows at the top of this screen from then on.
+            </DangerBlock>
+          )}
         </div>
 
         {/* ---- who it is for ---- */}

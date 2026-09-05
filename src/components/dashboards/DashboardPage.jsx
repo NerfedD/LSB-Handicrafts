@@ -122,6 +122,7 @@ export default function DashboardPage({
     () => makeList({ products, inventory, orders }),
     [products, inventory, orders]
   );
+  const owedCount = list.filter((row) => row.backorder).length;
   const waiting = orders.filter((order) => order.status === ORDER_STATUS.PENDING).length;
   const late = deliveries.filter(isLate).length;
 
@@ -181,7 +182,12 @@ export default function DashboardPage({
           summary={
             list.length === 0
               ? "Nothing is running low. The shelves are where they should be."
-              : `${list.length === 1 ? "One product needs" : `${list.length} products need`} making. The most urgent is at the top.`
+              : owedCount > 0
+                ? // Somebody standing waiting outranks a shelf that dipped under
+                  // a warning level, and the line says which is which rather
+                  // than leaving the red rows to explain themselves.
+                  `${owedCount === 1 ? "One thing is" : `${owedCount} things are`} already owed to a customer. Those are at the top.`
+                : `${list.length === 1 ? "One product needs" : `${list.length} products need`} making. The most urgent is at the top.`
           }
         />
 
@@ -210,14 +216,27 @@ export default function DashboardPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {list.map(({ product, onShelf, needed, urgency, tone }) => (
-                  <TableRow key={product.id}>
+                {list.map(({ product, onShelf, needed, urgency, tone, backorder }) => (
+                  // Keyed on the source as well as the product: one product can
+                  // now appear because a customer is owed it AND because the
+                  // shelf is low, and those are two different rows.
+                  <TableRow key={`${backorder ? "owed" : "low"}-${product.id}`}>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3.5">
-                        <IconChip icon={productIcon(product.productType)} tone="neutral" size="md" />
+                        <IconChip
+                          icon={productIcon(product.productType)}
+                          tone={backorder ? "red" : "neutral"}
+                          size="md"
+                        />
                         <div className="min-w-0">
                           <p className="truncate text-[16.5px] font-bold">{product.name}</p>
-                          <Mono className="block truncate">{product.itemCode}</Mono>
+                          {backorder ? (
+                            <p className="truncate text-[14px] font-bold text-red-text">
+                              Somebody is already waiting for this
+                            </p>
+                          ) : (
+                            <Mono className="block truncate">{product.itemCode}</Mono>
+                          )}
                         </div>
                       </div>
                     </TableCell>
