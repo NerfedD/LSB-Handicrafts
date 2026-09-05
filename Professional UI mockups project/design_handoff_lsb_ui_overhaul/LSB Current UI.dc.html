@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script><style>
+body{margin:0;background:#e9e6e0;font-family:Inter,system-ui,sans-serif}
+a{color:#1668d6}a:hover{color:#0f4a9c}
+svg.lucide{width:1em;height:1em;flex:none;stroke-width:2.1px}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Inter,system-ui,sans-serif;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 Inter,system-ui,sans-serif;color:rgba(0,0,0,.55)}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.08);overflow:hidden}
+.dv-next{margin:22px 0 0;font:12px/1.5 Inter,system-ui,sans-serif;color:rgba(0,0,0,.5)}
+</style></helmet>
+
+<section class="dv-turn" id="t0" style="font-size:18px">
+<div class="dv-thd"><a class="dv-tid" href="#t0">0</a><span class="dv-tname">Current UI, recreated from source — the baseline we are overhauling</span></div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="0a">
+<div class="dv-olabel"><a class="dv-oid" href="#0a">0a</a>Login — <code>LoginPage.jsx</code> + <code>layout/AuthLayout.jsx</code></div>
+<div class="dv-card" style="width:1180px">
+<div style="display:flex;min-height:720px;align-items:stretch;background:#f7f4ec">
+  <div style="position:relative;width:42%;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;background:#2196f3;padding:52px 48px">
+    <div style="position:relative;width:fit-content;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.03);border-radius:6px;padding:24px 28px">
+      <span style="position:absolute;left:12px;top:6px;color:rgba(255,255,255,.4)">+</span>
+      <span style="position:absolute;right:12px;top:6px;color:rgba(255,255,255,.4)">+</span>
+      <span style="position:absolute;left:12px;bottom:6px;color:rgba(255,255,255,.4)">+</span>
+      <span style="position:absolute;right:12px;bottom:6px;color:rgba(255,255,255,.4)">+</span>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 24px">
+        <span style="font-size:33.75px;line-height:36px;font-weight:700;letter-spacing:-.6px;color:#fff">LSB</span>
+        <div style="height:1px;width:64px;background:rgba(255,255,255,.4)"></div>
+        <span style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.7)">HANDICRAFTS</span>
+      </div>
+    </div>
+    <div style="display:flex;flex:1;align-items:center">
+      <p style="max-width:290px;text-align:justify;font-size:15px;line-height:1.62;color:rgba(255,255,255,.85);margin:0">Your styrofoam specialist in creating unique decor pieces! From event centerpieces and wall art to stage backdrops and custom sculptures. Based in Davao City.</p>
+    </div>
+    <p style="font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.7);margin:0">The official LSB internal system</p>
+  </div>
+
+  <div style="position:relative;display:flex;flex:1;align-items:center;justify-content:center;background:linear-gradient(145deg,#ddd8c8 8%,#e8e4d8 25%,#f0edE4 50%,#e9e5da 75%,#dfd9cb 92%);padding:48px 24px">
+    <div style="width:100%;max-width:460px;border-radius:16px;border:1px solid #17263a0f;background:#fff;padding:48px;box-shadow:0 8px 24px rgba(17,30,50,.12),0 2px 4px rgba(17,30,50,.07)">
+      <div>
+        <p style="margin:0;font-size:13.5px;font-weight:600;text-transform:uppercase;letter-spacing:2.4px;color:#17263a">LSB Handicrafts</p>
+        <div style="margin-top:8px;height:1px;width:120px;background:linear-gradient(to right,#e8dcc8,transparent)"></div>
+      </div>
+      <div style="margin-top:40px">
+        <h1 style="margin:0;font-size:40.5px;line-height:1;font-weight:700;letter-spacing:-1px;color:#17263a">Hello!</h1>
+        <p style="margin:12px 0 0;font-size:18px;color:#5f6875">Please sign in to access your account.</p>
+      </div>
+      <div style="margin-top:28px;display:flex;flex-direction:column">
+        <div>
+          <label style="display:block;font-size:18px;font-weight:600;color:#17263a">Username or Email</label>
+          <div style="margin-top:8px;height:52px;width:100%;border-radius:10px;border:1px solid #17263a1a;background:#fff;padding:0 16px;display:flex;align-items:center;font-size:17px;color:#17263a80">jdelacruz or you@example.com</div>
+        </div>
+        <div style="margin-top:24px">
+          <label style="display:block;font-size:18px;font-weight:600;color:#17263a">Password</label>
+          <div style="position:relative;margin-top:8px">
+            <div style="height:52px;width:100%;border-radius:10px;border:1px solid #17263a1a;background:#fff;padding:0 56px 0 16px;display:flex;align-items:center;font-size:17px;color:#17263a80">Enter your password</div>
+            <div style="position:absolute;right:11px;top:50%;transform:translateY(-50%);padding:8px;display:inline-flex;font-size:20px;color:#17263a99"><i data-lucide="eye"></i></div>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:flex-end">
+          <span style="padding:8px 0;font-size:15.75px;font-weight:500;color:#1b3a6b;text-decoration:underline;text-underline-offset:2px">Forgot Password?</span>
+        </div>
+        <div style="margin-top:32px;height:52px;width:100%;border-radius:10px;background:#1b3a6b;box-shadow:0 2px 6px rgba(27,58,107,.28);display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;letter-spacing:.5px;color:#fff">Log In</div>
+      </div>
+      <div style="margin-top:44px;display:flex;flex-direction:column;align-items:center;gap:12px">
+        <div style="height:1px;width:32px;background:#5f687533"></div>
+        <p style="margin:0;font-size:12.5px;letter-spacing:.25px;color:#5f687588">LSB Handicrafts · Internal Management System</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="0b">
+<div class="dv-olabel"><a class="dv-oid" href="#0b">0b</a>Admin Dashboard — <code>layout/Shell.jsx</code> + <code>DashboardPage.jsx</code></div>
+<div class="dv-card" style="width:1320px">
+<div style="display:flex;height:880px;width:100%;overflow:hidden;background:#f2efe7">
+
+  <aside style="display:flex;width:232px;flex-shrink:0;flex-direction:column;overflow:hidden;border-right:1px solid rgba(25,118,210,.5);background:#2196f3;color:#fff">
+    <div style="display:flex;flex-shrink:0;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.15);padding:24px 20px 20px">
+      <div style="display:flex;width:34px;height:34px;flex-shrink:0;align-items:center;justify-content:center;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.2)"><span style="font-size:10.5px;font-weight:800;letter-spacing:.42px;color:#fff">LSB</span></div>
+      <div style="min-width:0">
+        <p style="margin:0;font-size:13px;font-weight:700;letter-spacing:.13px;color:#fff">LSB Handicrafts</p>
+        <p style="margin:0;font-size:10.5px;letter-spacing:.525px;color:rgba(255,255,255,.8)">MANAGEMENT SYSTEM</p>
+      </div>
+    </div>
+
+    <nav style="display:flex;flex:1;flex-direction:column;gap:4px;padding:16px 12px">
+      <p style="margin:0;padding:0 0 8px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.6)">Navigation</p>
+
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;background:#1976d2;font-weight:600;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)"><span style="display:inline-flex;font-size:16px"><i data-lucide="layout-dashboard"></i></span>Dashboard</div>
+
+      <div>
+        <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:600;color:#fff"><span style="display:inline-flex;font-size:16px"><i data-lucide="users"></i></span><span style="flex:1">User Management</span><span style="display:inline-flex;font-size:16px;color:rgba(255,255,255,.7)"><i data-lucide="chevron-down"></i></span></div>
+        <div style="display:flex;flex-direction:column;gap:4px;padding-top:4px">
+          <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px 12px 44px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="users"></i></span>User Accounts</div>
+        </div>
+      </div>
+
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="book-user"></i></span><span style="flex:1">Staff</span><span style="display:inline-flex;font-size:16px;color:rgba(255,255,255,.7);transform:rotate(-90deg)"><i data-lucide="chevron-down"></i></span></div>
+
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="user-round"></i></span>Customer Profiles</div>
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="package"></i></span>Product / Item Profiles</div>
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="truck"></i></span>Supplier Profiles</div>
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px 16px;font-size:13.5px;letter-spacing:.135px;font-weight:400;color:rgba(255,255,255,.9)"><span style="display:inline-flex;font-size:16px;opacity:.85"><i data-lucide="user-round"></i></span>My Profile</div>
+    </nav>
+
+    <div style="margin-top:auto;flex-shrink:0;border-top:1px solid rgba(255,255,255,.15);padding:12px">
+      <div style="display:flex;width:100%;align-items:center;gap:12px;border-radius:10px;padding:12px">
+        <div style="display:flex;width:34px;height:34px;flex-shrink:0;align-items:center;justify-content:center;border-radius:9999px;background:#7c3aed;font-size:12px;font-weight:700;color:#fff;box-shadow:0 1px 3px rgba(25,118,210,.4)">MS</div>
+        <div style="min-width:0;flex:1">
+          <p style="margin:0;font-size:13px;font-weight:600;color:#fff">Maria Santos</p>
+          <p style="margin:0;font-size:11.5px;color:rgba(255,255,255,.8)">Administrator</p>
+        </div>
+        <span style="display:inline-flex;font-size:16px;color:rgba(255,255,255,.7)"><i data-lucide="chevron-down"></i></span>
+      </div>
+    </div>
+  </aside>
+
+  <div style="display:flex;min-width:0;flex:1;flex-direction:column">
+    <header style="display:flex;height:60px;flex-shrink:0;align-items:center;justify-content:space-between;border-bottom:1px solid #17263a14;background:#fff;padding:0 32px;box-shadow:0 1px 1.5px rgba(23,38,58,.04)">
+      <div style="min-width:0">
+        <h1 style="margin:0;font-size:17px;font-weight:700;letter-spacing:-.17px;color:#17263a">Dashboard</h1>
+        <p style="margin:0;font-size:12.5px;color:#5f6875">Overview of your system</p>
+      </div>
+      <div style="display:flex;flex-shrink:0;align-items:center;gap:16px">
+        <div style="position:relative;display:flex;width:36px;height:36px;align-items:center;justify-content:center;border-radius:10px;border:1px solid #17263a1a;color:#17263a;font-size:16px"><i data-lucide="bell"></i><span style="position:absolute;right:8px;top:8px;width:8px;height:8px;border-radius:9999px;border:1px solid #fff;background:#2196f3"></span></div>
+      </div>
+    </header>
+
+    <main style="flex:1;overflow-y:auto;padding:28px 32px 40px">
+      <div style="margin:0 auto;width:100%;max-width:1160px">
+        <h2 style="margin:0;font-size:24px;line-height:36px;font-weight:700;letter-spacing:-.48px;color:#17263a">Good morning, Administrator.</h2>
+        <p style="margin:0;padding-top:4px;font-size:14.5px;color:#5f6875">Here&rsquo;s an overview of LSB Handicrafts.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;padding-top:28px">
+          <div style="border-radius:12px;border:1px solid #17263a14;background:#fff;padding:24px;box-shadow:0 1px 2px rgba(23,38,58,.05)">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between"><div style="display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:10px;background:#1b3a6b14;font-size:20px;color:#1b3a6b"><i data-lucide="users"></i></div></div>
+            <p style="margin:0;padding-top:16px;font-size:32px;line-height:32px;font-weight:700;letter-spacing:-.96px;color:#17263a">24</p>
+            <p style="margin:0;padding-top:8px;font-size:14px;font-weight:600;color:#17263a">Total Users</p>
+            <p style="margin:0;padding-top:4px;font-size:12.5px;color:#5f6875">Registered staff accounts</p>
+          </div>
+          <div style="border-radius:12px;border:1px solid #17263a14;background:#fff;padding:24px;box-shadow:0 1px 2px rgba(23,38,58,.05)">
+            <div style="display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:10px;background:#287a5517;font-size:20px;color:#287a55"><i data-lucide="check-circle-2"></i></div>
+            <p style="margin:0;padding-top:16px;font-size:32px;line-height:32px;font-weight:700;letter-spacing:-.96px;color:#17263a">21</p>
+            <p style="margin:0;padding-top:8px;font-size:14px;font-weight:600;color:#17263a">Active Users</p>
+            <p style="margin:0;padding-top:4px;font-size:12.5px;color:#5f6875">Currently able to log in</p>
+          </div>
+          <div style="border-radius:12px;border:1px solid #17263a14;background:#fff;padding:24px;box-shadow:0 1px 2px rgba(23,38,58,.05)">
+            <div style="display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:10px;background:#b5474714;font-size:20px;color:#b54747"><i data-lucide="circle-slash"></i></div>
+            <p style="margin:0;padding-top:16px;font-size:32px;line-height:32px;font-weight:700;letter-spacing:-.96px;color:#17263a">3</p>
+            <p style="margin:0;padding-top:8px;font-size:14px;font-weight:600;color:#17263a">Blocked Users</p>
+            <p style="margin:0;padding-top:4px;font-size:12.5px;color:#5f6875">Access currently restricted</p>
+          </div>
+          <div style="border-radius:12px;border:1px solid #17263a14;background:#fff;padding:24px;box-shadow:0 1px 2px rgba(23,38,58,.05)">
+            <div style="display:flex;width:42px;height:42px;align-items:center;justify-content:center;border-radius:10px;background:#653eb514;font-size:20px;color:#653eb5"><i data-lucide="file-text"></i></div>
+            <p style="margin:0;padding-top:16px;font-size:32px;line-height:32px;font-weight:700;letter-spacing:-.96px;color:#17263a">12</p>
+            <p style="margin:0;padding-top:8px;font-size:14px;font-weight:600;color:#17263a">Activity Entries</p>
+            <p style="margin:0;padding-top:4px;font-size:12.5px;color:#5f6875">Total recorded actions</p>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding-top:28px">
+          <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #17263a14;background:#fff;box-shadow:0 1px 2px rgba(23,38,58,.05);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #17263a12;padding:16px 20px">
+              <h3 style="margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.145px;color:#17263a">User Management</h3>
+              <span style="border-radius:6px;padding:4px 8px;font-size:12.5px;font-weight:600;color:#2196f3">View All →</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;background:#fafaf8;padding:12px 20px">
+              <span style="flex:2;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.945px;color:#5f6875">Name</span>
+              <span style="flex:1.4;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.945px;color:#5f6875">Role</span>
+              <span style="width:104px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.945px;color:#5f6875">Status</span>
+            </div>
+            <sc-for list="{{ staffRows }}" as="row" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-top:1px solid #17263a0d">
+                <div style="display:flex;flex:2;min-width:0;align-items:center;gap:12px">
+                  <span style="display:flex;width:28px;height:28px;flex-shrink:0;align-items:center;justify-content:center;border-radius:9999px;font-size:9.5px;font-weight:700;color:#fff;background:#4f46e5">{{ row.initials }}</span>
+                  <span style="font-size:13.5px;font-weight:500;color:#17263a">{{ row.name }}</span>
+                </div>
+                <span style="flex:1.4;font-size:12.5px;color:#5f6875">{{ row.role }}</span>
+                <span style="width:104px"><span style="display:inline-flex;align-items:center;gap:8px;border-radius:9999px;border:1px solid #287a5533;background:#287a5517;padding:4px 12px;font-size:12px;font-weight:500;color:#287a55"><span style="width:5px;height:5px;border-radius:2px;background:#287a55"></span>Active</span></span>
+              </div>
+            </sc-for>
+            <p style="margin:0;border-top:1px solid #17263a0f;background:#fafaf8;padding:12px 20px;font-size:12px;color:rgba(95,104,117,.6)">24 staff members total</p>
+          </div>
+
+          <div style="display:flex;flex-direction:column;border-radius:12px;border:1px solid #17263a14;background:#fff;box-shadow:0 1px 2px rgba(23,38,58,.05);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #17263a12;padding:16px 20px">
+              <h3 style="margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.145px;color:#17263a">Recent Activity</h3>
+              <span style="border-radius:6px;padding:4px 8px;font-size:12.5px;font-weight:600;color:#2196f3">View All →</span>
+            </div>
+            <sc-for list="{{ activityRows }}" as="row" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-top:1px solid #17263a0d">
+                <div style="min-width:0;flex:1">
+                  <p style="margin:0;font-size:13.5px;color:#17263a"><span style="font-weight:600">{{ row.staff }}</span><span style="font-weight:500"> — {{ row.action }}</span></p>
+                  <p style="margin:0;padding-top:4px;font-size:12px;color:#5f6875">{{ row.when }}</p>
+                </div>
+                <span style="flex-shrink:0;border-radius:9999px;padding:4px 12px;font-size:11.5px;font-weight:600;letter-spacing:.115px;background:#1b3a6b14;color:#1b3a6b">{{ row.type }}</span>
+              </div>
+            </sc-for>
+            <p style="margin:0;border-top:1px solid #17263a0f;background:#fafaf8;padding:12px 20px;font-size:12px;color:rgba(95,104,117,.6)">12 entries recorded</p>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;border-radius:12px;border:1px solid #17263a14;background:#fff;padding:20px 24px;box-shadow:0 1px 2px rgba(23,38,58,.05)">
+          <h3 style="margin:0;font-size:14.5px;font-weight:700;letter-spacing:-.145px;color:#17263a">Quick Actions</h3>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;padding-top:16px">
+            <div style="display:flex;height:44px;align-items:center;gap:8px;border-radius:9px;border:1px solid #17263a2e;padding:0 16px;font-size:13.5px;font-weight:600;color:#17263a"><span style="display:inline-flex;font-size:16px"><i data-lucide="user-plus"></i></span>Create User Account</div>
+            <div style="display:flex;height:44px;align-items:center;gap:8px;border-radius:9px;border:1px solid #17263a2e;padding:0 16px;font-size:13.5px;font-weight:600;color:#17263a"><span style="display:inline-flex;font-size:16px"><i data-lucide="users"></i></span>View User Accounts</div>
+            <div style="display:flex;height:44px;align-items:center;gap:8px;border-radius:9px;border:1px solid #17263a2e;padding:0 16px;font-size:13.5px;font-weight:600;color:#17263a"><span style="display:inline-flex;font-size:16px"><i data-lucide="history"></i></span>Activity Log</div>
+            <div style="display:flex;height:44px;align-items:center;gap:8px;border-radius:9px;border:1px solid #17263a2e;padding:0 16px;font-size:13.5px;font-weight:600;color:#17263a"><span style="display:inline-flex;font-size:16px"><i data-lucide="book-user"></i></span>Staff Directory</div>
+            <div style="display:flex;height:44px;align-items:center;gap:8px;border-radius:9px;border:1px solid #17263a2e;padding:0 16px;font-size:13.5px;font-weight:600;color:#17263a"><span style="display:inline-flex;font-size:16px"><i data-lucide="package"></i></span>Inventory Workspace</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="0c">
+<div class="dv-olabel"><a class="dv-oid" href="#0c">0c</a>Inventory list — the unrouted legacy workspace, <code>views/InventoryList.jsx</code> + <code>layout/Sidebar.jsx</code></div>
+<div class="dv-card" style="width:1320px">
+<div style="display:flex;height:700px;background:#f8fafc;font-size:16px">
+  <aside style="width:256px;flex-shrink:0;background:#fff;border-right:1px solid #e4e4e7;display:flex;flex-direction:column">
+    <div style="padding:24px;display:flex;align-items:center;gap:12px">
+      <img src="assets/Logo-128.png" alt="LSB Handicrafts" style="width:40px;height:40px;object-fit:cover;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.05);flex:none">
+      <span style="font-weight:700;color:#18181b;font-size:18px;letter-spacing:.4px;white-space:nowrap">LSB Handicrafts</span>
+    </div>
+    <div style="padding:8px 16px;flex:1">
+      <p style="margin:0 0 16px;padding:0 8px;font-size:10px;font-weight:700;color:#a1a1aa;text-transform:uppercase;letter-spacing:.1em">Main Menu</p>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;color:#71717a"><span style="display:inline-flex;font-size:18px"><i data-lucide="layout-dashboard"></i></span><span style="font-weight:500;font-size:14px">Dashboard</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:#eff6ff;color:#2563eb"><span style="display:inline-flex;font-size:18px"><i data-lucide="package"></i></span><span style="font-weight:500;font-size:14px">Inventory</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;color:#71717a"><span style="display:inline-flex;font-size:18px"><i data-lucide="truck"></i></span><span style="font-weight:500;font-size:14px">Deliveries</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;color:#71717a"><span style="display:inline-flex;font-size:18px"><i data-lucide="shopping-cart"></i></span><span style="font-weight:500;font-size:14px">Orders</span></div>
+      </nav>
+    </div>
+    <div style="padding:24px;border-top:1px solid #e4e4e7;display:flex;align-items:center;gap:12px">
+      <div style="width:40px;height:40px;border-radius:9999px;background:#f4f4f5;border:1px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#52525b">SA</div>
+      <div><p style="margin:0;font-size:14px;font-weight:600;color:#18181b">System Admin</p><p style="margin:0;font-size:12px;color:#71717a">Davao City</p></div>
+    </div>
+  </aside>
+
+  <div style="flex:1;min-width:0;padding:24px;overflow:hidden">
+    <div style="background:#fff;border:1px solid #e4e4e7;border-radius:16px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+      <div style="padding:20px 24px;border-bottom:1px solid #e4e4e7;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+        <div>
+          <p style="margin:0 0 12px;font-size:14px;color:#71717a">Manage product inventory and monitor stock levels</p>
+          <div style="position:relative;width:320px">
+            <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);display:inline-flex;font-size:16px;color:#a1a1aa"><i data-lucide="search"></i></span>
+            <div style="background:#fafafa;border:1px solid #d4d4d8;border-radius:12px;padding:12px 16px 12px 40px;font-size:14px;color:#71717a">Search products...</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-end">
+          <div style="position:relative"><div style="background:#fafafa;border:1px solid #d4d4d8;border-radius:12px;padding:12px 40px 12px 16px;font-size:14px;color:#3f3f46">All Categories</div><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:inline-flex;font-size:16px;color:#71717a"><i data-lucide="chevron-down"></i></span></div>
+          <div style="position:relative"><div style="background:#fafafa;border:1px solid #d4d4d8;border-radius:12px;padding:12px 40px 12px 16px;font-size:14px;color:#3f3f46">All Types</div><span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);display:inline-flex;font-size:16px;color:#71717a"><i data-lucide="chevron-down"></i></span></div>
+          <div style="background:#2563eb;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;white-space:nowrap"><span style="display:inline-flex;font-size:16px"><i data-lucide="plus"></i></span>Add Product</div>
+        </div>
+      </div>
+
+      <div style="overflow:hidden">
+        <div style="display:grid;grid-template-columns:130px 1fr 130px 130px 140px 130px 130px 120px;border-bottom:1px solid #e4e4e7;color:#71717a">
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">SKU</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Product Description</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Size</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Category</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Status</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Available</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Price</div>
+          <div style="padding:16px 24px;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;text-align:right">Actions</div>
+        </div>
+        <sc-for list="{{ legacyRows }}" as="row" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:130px 1fr 130px 130px 140px 130px 130px 120px;border-top:1px solid #f4f4f5;align-items:center">
+            <div style="padding:16px 24px;font-size:12px;color:#71717a;font-family:ui-monospace,Menlo,monospace">{{ row.sku }}</div>
+            <div style="padding:16px 24px;font-size:14px;font-weight:500;color:#18181b">{{ row.name }}</div>
+            <div style="padding:16px 24px;font-size:14px;color:#3f3f46">{{ row.size }}</div>
+            <div style="padding:16px 24px;font-size:14px;color:#52525b">{{ row.category }}</div>
+            <div style="padding:16px 24px;font-size:14px"><span style="display:inline-flex;align-items:center;gap:8px;color:{{ row.tone }}"><span style="width:8px;height:8px;border-radius:9999px;background:{{ row.tone }}"></span>{{ row.status }}</span></div>
+            <div style="padding:16px 24px;font-size:14px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:8px;height:8px;border-radius:9999px;background:{{ row.tone }}"></span>{{ row.available }}</span></div>
+            <div style="padding:16px 24px;font-size:14px;color:#3f3f46">{{ row.price }}<span style="display:block;font-size:12px;color:#71717a">{{ row.unit }}</span></div>
+            <div style="padding:16px 24px;text-align:right;color:#a1a1aa"><span style="display:inline-flex;gap:12px;font-size:16px"><i data-lucide="eye"></i><i data-lucide="edit-2"></i><i data-lucide="trash-2"></i></span></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">This file is the reference only — the overhaul lives in <strong>LSB Handicrafts UI.dc.html</strong>.</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      if (window.lucide) { window.lucide.createIcons(); clearInterval(this.tick); }
+    }, 80);
+  }
+  componentDidUpdate() { window.lucide?.createIcons(); }
+  componentWillUnmount() { clearInterval(this.tick); }
+  renderVals() {
+    return {
+      staffRows: [
+        { initials: "MS", name: "Maria Santos", role: "Admin" },
+        { initials: "JD", name: "Juan Dela Cruz", role: "Manager" },
+        { initials: "RG", name: "Ramon Garcia", role: "Production Staff" },
+        { initials: "AR", name: "Ana Reyes", role: "Sales Staff" },
+        { initials: "CM", name: "Carlos Mendoza", role: "Delivery Staff" },
+      ],
+      activityRows: [
+        { staff: "Maria Santos", action: "Logged in", type: "Login", when: "August 22, 2026 · 8:02 AM" },
+        { staff: "Juan Dela Cruz", action: "Updated user account", type: "Account Change", when: "August 22, 2026 · 8:15 AM" },
+        { staff: "Ramon Garcia", action: "Edited stock information", type: "Stock Edit", when: "August 22, 2026 · 9:04 AM" },
+        { staff: "Ana Reyes", action: "Updated product price", type: "Price Edit", when: "August 22, 2026 · 9:31 AM" },
+        { staff: "Maria Santos", action: "Logged in", type: "Login", when: "August 21, 2026 · 7:58 AM" },
+      ],
+      legacyRows: [
+        { sku: "SB-04-001", name: "Styro Ball 4 inch", size: "4 in dia.", category: "Balls", status: "In Stock", available: "240", price: "PHP 12.00", unit: "per piece", tone: "#3b82f6" },
+        { sku: "SB-06-002", name: "Styro Ball 6 inch", size: "6 in dia.", category: "Balls", status: "Low Stock", available: "18", price: "PHP 24.00", unit: "per piece", tone: "#f97316" },
+        { sku: "SS-12-004", name: "Styro Sheet 1/2 inch", size: "24 × 48 × 0.5 in", category: "Sheets", status: "In Stock", available: "96", price: "PHP 85.00", unit: "per sheet", tone: "#3b82f6" },
+        { sku: "SS-10-005", name: "Styro Sheet 1 inch", size: "24 × 48 × 1 in", category: "Sheets", status: "Out of Stock", available: "0", price: "PHP 150.00", unit: "per sheet", tone: "#ef4444" },
+        { sku: "BL-24-008", name: "Styro Block Standard", size: "12 × 12 × 24 in", category: "Blocks", status: "In Stock", available: "34", price: "PHP 320.00", unit: "per piece", tone: "#3b82f6" },
+        { sku: "LT-01-011", name: "Letter Cutout Set A–Z", size: "8 in height", category: "Cutouts", status: "Low Stock", available: "6", price: "PHP 480.00", unit: "per bundle", tone: "#f97316" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

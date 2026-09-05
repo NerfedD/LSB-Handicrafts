@@ -1,16 +1,30 @@
 import { useState } from "react";
-import { ChevronLeft, Mail } from "./icons";
-import AuthLayout from "./layout/AuthLayout";
+
+import { CircleAlert, Mail, Phone, Send } from "./icons";
+import AuthLayout, { StepBar } from "./layout/AuthLayout";
+import AuthField from "./shared/AuthField";
+import Callout from "./shared/Callout";
+import IconChip from "./shared/Chip";
+import { Button } from "@/components/ui/button";
 import { supabase } from "../lib/supabaseClient";
+import { OFFICE_PHONE } from "../utils/office";
 
 /**
- * LSB Handicrafts — Forgot Password (request step)
- * Figma: node 10:1346
+ * Forgot password, steps 1 and 2 of 3.
  *
- * Supabase's real reset flow is just email -> emailed link -> new password
- * (see ResetPasswordPage). There's no in-app "verify identity" step —
- * clicking the link in the email is what proves it's really them, and it
- * lands back in this app already signed into a temporary recovery session.
+ * Supabase's real reset flow is email → emailed link → new password. The link
+ * is what proves it is really them, and clicking it lands back in this app on a
+ * temporary recovery session — which is step 3, ResetPasswordPage.
+ *
+ * THE PROGRESS BAR IS NOT DECORATION. A password reset that spans an email
+ * client and two screens is a flow of unknown length, and "how many more of
+ * these are there" is the question that makes somebody abandon it and phone the
+ * office. Three bars answer it before they start.
+ *
+ * "The link works for one hour" is stated on step 1, before they leave for
+ * their inbox — which is the only moment saying it is any use. Told on step 2,
+ * it is a fact about a link they are already holding; told on step 3, it is an
+ * explanation for why nothing worked.
  */
 export default function ForgotPasswordPage({ onBack }) {
   const [email, setEmail] = useState("");
@@ -18,8 +32,8 @@ export default function ForgotPasswordPage({ onBack }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
@@ -31,6 +45,8 @@ export default function ForgotPasswordPage({ onBack }) {
         return;
       }
       setSent(true);
+    } catch {
+      setError("We could not reach the system. Check the internet connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -38,80 +54,81 @@ export default function ForgotPasswordPage({ onBack }) {
 
   if (sent) {
     return (
-      <AuthLayout>
-        <div className="mt-11 flex flex-col items-center text-center">
-          <div className="flex size-[68px] items-center justify-center rounded-full border border-[#1b3a6b33] bg-[#1b3a6b12]">
-            <Mail className="h-8 w-8 text-[#1b3a6b]" />
-          </div>
-          <h1 className="mt-7 text-[30px] font-bold leading-tight tracking-tight text-[#17263a]">
-            Check Your Email
+      <AuthLayout width={470}>
+        <StepBar step={2} />
+
+        <div className="pt-6">
+          <IconChip icon={<Mail />} tone="cobalt" size="xl" />
+          <h1 className="pt-5 text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
+            Now check your email
           </h1>
-          <p className="mt-4 text-base leading-[1.65] text-[#5f6875]">
-            If an account exists for <span className="font-medium text-[#17263a]">{email}</span>,
-            we've sent a link to reset the password. Open it on this device
-            to continue.
+          <p className="pt-2 text-[16px] leading-[1.55] text-muted">
+            {/* Deliberately "if an account exists": confirming which addresses
+                are registered would tell a stranger who works here. */}
+            If there is an account for{" "}
+            <strong className="font-bold text-ink">{email}</strong>, a link is on its way.
+            Open it on this device and you can choose a new password. The link works for
+            one hour.
           </p>
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-9 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a]"
-          >
-            Back to Login
-          </button>
+        </div>
+
+        <div className="flex flex-col gap-3 pt-7">
+          <Button variant="cobalt" size="xl" block onClick={onBack}>
+            Back to sign in
+          </Button>
+          <Button variant="outline" size="lg" block asChild>
+            <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`}>
+              <Phone className="h-5 w-5" />
+              No email arrived — call the office
+            </a>
+          </Button>
         </div>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout>
-      <div className="mt-11">
-        <h1 className="text-[32px] font-bold leading-[1.18] tracking-tight text-[#17263a]">
-          Forgot Password?
+    <AuthLayout width={470}>
+      <StepBar step={1} />
+
+      <div className="pt-6">
+        <h1 className="text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
+          What is your email?
         </h1>
-        <p className="mt-3 text-base leading-[1.65] text-[#5f6875]">
-          Enter your email and we'll send you a link to reset your password.
+        <p className="pt-2 text-[16px] leading-[1.55] text-muted">
+          We will send you a link that lets you choose a new password. The link works for
+          one hour.
         </p>
       </div>
 
       {error && (
-        <p className="mt-5 text-sm font-medium text-[#b54747]">{error}</p>
+        <Callout tone="red" icon={<CircleAlert />} title="That did not work." className="mt-5">
+          {error}
+        </Callout>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col">
-        <label
-          htmlFor="email"
-          className="block text-base font-semibold text-[#17263a]"
-        >
-          Email
-        </label>
-        <input
-          id="email"
+      <form onSubmit={handleSubmit} className="pt-6" noValidate>
+        <AuthField
+          label="Email address"
+          icon={<Mail />}
           type="email"
-          required
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Enter your email"
-          className="mt-2 h-13 w-full rounded-[10px] border border-[#17263a29] bg-white px-4 text-[17px] text-[#17263a] outline-none transition placeholder:text-[#17263a80] focus:ring-2 focus:ring-[#1b3a6b]/30"
+          onChange={setEmail}
+          placeholder="you@example.com"
+          autoComplete="email"
+          invalid={Boolean(error)}
         />
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="mt-8 h-13 w-full rounded-[10px] bg-[#1b3a6b] text-[17px] font-semibold tracking-[0.5px] text-white shadow-[0_2px_6px_rgba(27,58,107,0.28)] transition hover:bg-[#17263a] disabled:opacity-60"
-        >
-          {isSubmitting ? "Sending…" : "Send Reset Link"}
-        </button>
+        <div className="flex flex-wrap gap-3 pt-6">
+          <Button type="submit" variant="cobalt" size="xl" className="flex-1" disabled={isSubmitting}>
+            <Send className="h-5 w-5" />
+            {isSubmitting ? "Sending…" : "Send the link"}
+          </Button>
+          <Button variant="outline" size="xl" onClick={onBack}>
+            Back
+          </Button>
+        </div>
       </form>
-
-      <button
-        type="button"
-        onClick={onBack}
-        className="mt-3 flex items-center gap-1 py-2 text-sm font-medium text-[#5f6875] hover:text-[#17263a]"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back to Login
-      </button>
     </AuthLayout>
   );
 }

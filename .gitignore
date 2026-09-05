@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Playwright failure artifacts (traces, screenshots, zips)
+test-results
+playwright-report
+
 # Environment variables (contains Supabase keys)
 .env
 
@@ -28,3 +32,9 @@ dist-ssr
 
 # Stray nested npm install, if it ever comes back
 lsbHandicraft/
+
+# Internal security audit / remediation notes. Kept out of the repo: this is
+# a public GitHub project, and a list of live vulnerabilities is not something
+# to publish alongside the code it describes.
+BUGS_AND_FIX_PLAN.txt
+*_AUDIT.txt

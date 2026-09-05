@@ -6,52 +6,86 @@ import { cn } from "@/lib/utils";
 /**
  * The app's card shell.
  *
- * There were four of these, spread across eight files, differing in border
- * alpha, corner radius and shadow blur:
+ * There were four of these across eight files, differing in border alpha,
+ * radius and shadow blur, plus a fifth set on the legacy workspace screens
+ * using zinc borders and their own dark mode. They collapse to one: 14px
+ * radius, a single hairline at #111d2b1f, and the flat 1px card shadow.
  *
- *   rounded-xl     #17263a14  0_1px_4px                 x4
- *   rounded-2xl    #17263a12  0_4px_32px + 0_1px_6px    x3
- *   rounded-[14px] #17263a1a  0_1px_4px                 x1
- *   rounded-[14px] #17263a14  0_1px_6px                 x1
+ * `lift` is the only genuine variant, and it earns its place on exactly one
+ * element per screen — the "needs your attention" card on the dashboards. The
+ * extra shadow is what makes that card read as the thing to look at first;
+ * spending it anywhere else spends it everywhere.
  *
- * The first two are a real distinction and both are kept: the ManagementShell
- * screens (dashboards, profiles) sit on a flat, quiet card, while the AppShell
- * screens (user management) sit on a more lifted one. Same reasoning as the two
- * Button primaries -- picking one would silently restyle half the app.
- *
- * The last two were not a distinction, just drift. They snap to `flat`, which
- * is what they were already all but identical to.
- *
- * `overflow-hidden` is the default because most of these cards have a header
- * or footer strip that needs clipping to the radius. Pass `overflow-visible`
- * to opt out -- cn() resolves the conflict.
+ * `overflow-hidden` is the default because most of these cards carry a header
+ * band or a footer strip that has to be clipped to the radius. Pass
+ * `clip={false}` to opt out — cn() is tailwind-merge, so the conflict resolves.
  */
-const cardVariants = cva("bg-white", {
-  variants: {
-    variant: {
-      flat: "rounded-xl border border-[#17263a14] shadow-[0_1px_4px_rgba(23,38,58,0.05)]",
-      raised:
-        "rounded-2xl border border-[#17263a12] shadow-[0_4px_32px_rgba(17,30,50,0.08),0_1px_6px_rgba(17,30,50,0.05)]",
+const cardVariants = cva(
+  "border border-card bg-surface",
+  {
+    variants: {
+      variant: {
+        default: "rounded-card shadow-card",
+        /** Deliberately lifted off the canvas. One per screen. */
+        lift: "rounded-card shadow-lift",
+        /** The large destination tiles on the large-text dashboard. */
+        feature: "rounded-feature shadow-card",
+      },
+      clip: { true: "overflow-hidden", false: "" },
     },
-    clip: {
-      true: "overflow-hidden",
-      false: "",
-    },
-  },
-  defaultVariants: { variant: "flat", clip: true },
+    defaultVariants: { variant: "default", clip: true },
+  }
+);
+
+const Card = forwardRef(function Card({ className, variant, clip, ...props }, ref) {
+  return (
+    <div ref={ref} className={cn(cardVariants({ variant, clip }), className)} {...props} />
+  );
 });
 
-const Card = forwardRef(function Card(
-  { className, variant, clip, ...props },
-  ref
-) {
+/**
+ * A card's header row: 18px/22px padding, a hairline under it, and room for a
+ * trailing "Updated 4 minutes ago" or "See all" on the right.
+ */
+const CardHeader = forwardRef(function CardHeader({ className, ...props }, ref) {
   return (
     <div
       ref={ref}
-      className={cn(cardVariants({ variant, clip }), className)}
+      className={cn(
+        "flex items-center gap-3 border-b border-hair2 px-5.5 py-4.5",
+        className
+      )}
       {...props}
     />
   );
 });
 
-export { Card, cardVariants };
+/** 18px/800 — the card heading size from the handoff. */
+const CardTitle = forwardRef(function CardTitle({ className, ...props }, ref) {
+  return (
+    <h3
+      ref={ref}
+      className={cn("text-[18px] font-extrabold text-ink", className)}
+      {...props}
+    />
+  );
+});
+
+/**
+ * The footer band: paper-2, no shadow, and the place a "Showing 1–6 of 148"
+ * line or a pair of pager buttons goes.
+ */
+const CardFooter = forwardRef(function CardFooter({ className, ...props }, ref) {
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 bg-paper-2 px-5.5 py-4",
+        className
+      )}
+      {...props}
+    />
+  );
+});
+
+export { Card, CardHeader, CardTitle, CardFooter, cardVariants };

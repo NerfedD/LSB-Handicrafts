@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"><script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script><style>
+body{margin:0;background:#e5e2db;font-family:Manrope,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:#1462c8}a:hover{color:#0e4b9c}
+svg.lucide{width:1em;height:1em;flex:none;stroke-width:2.1px}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.1)}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}
+.dv-tid{font:700 11px ui-monospace,Menlo,monospace;padding:4px 8px;background:#111d2b;color:#fff;border-radius:5px;text-decoration:none}
+.dv-tname{font:700 15px/1.2 Manrope,system-ui,sans-serif;color:#111d2b}
+.dv-tsub{margin:0 0 26px;font:400 13px/1.6 Manrope,system-ui,sans-serif;color:rgba(17,29,43,.6);max-width:760px}
+.dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:700 11px ui-monospace,Menlo,monospace;padding:4px 8px;background:rgba(17,29,43,.1);color:#111d2b;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:9px;font:500 12.5px/1.4 Manrope,system-ui,sans-serif;color:rgba(17,29,43,.62);max-width:100%}
+.dv-card{max-width:100%;background:#fff;border:1px solid rgba(17,29,43,.12);border-radius:10px;box-shadow:0 3px 16px rgba(17,29,43,.1);overflow:hidden}
+.dv-opt:target .dv-oid{background:#1462c8;color:#fff}
+.dv-grp{margin:34px 0 18px;font:800 11px/1 Manrope,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(17,29,43,.42)}
+.dv-next{margin:26px 0 0;font:13px/1.6 Manrope,system-ui,sans-serif;color:rgba(17,29,43,.55)}
+</style></helmet>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Every screen, in the shared system</span></div>
+<p class="dv-tsub">The nav and header from <a class="dv-oid" href="#1b">1b</a> wrap all of these — shown once on <a class="dv-oid" href="#2f">2f</a> and then dropped so the content is readable at a glance. Plain-language labels throughout (&ldquo;Can sign in&rdquo; not &ldquo;Status: Active&rdquo;, &ldquo;Running low&rdquo; not &ldquo;LOW&rdquo;), every icon has a word beside it, every row is 60px+, every control 48px+.</p>
+
+<p class="dv-grp">Signing in</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Sign in — the brand panel earns its space with a real product image slot instead of a boxed monogram</div>
+<div class="dv-card" style="width:1100px">
+<div style="display:flex;min-height:700px;background:#f4f2ec;color:#111d2b">
+  <div style="width:44%;flex:none;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:40px;background:#0e2f5c;color:#fff;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:13px">
+      <img src="assets/Logo-128.png" alt="" style="width:48px;height:48px;border-radius:11px;object-fit:cover;flex:none">
+      <div><p style="margin:0;font-size:18px;font-weight:800">LSB Handicrafts</p><p style="margin:2px 0 0;font-size:11px;font-weight:700;letter-spacing:.13em;color:rgba(255,255,255,.6)">MANAGEMENT SYSTEM</p></div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;padding:36px 0">
+      <div style="width:100%;aspect-ratio:4/3;border-radius:14px;border:1px dashed rgba(255,255,255,.34);background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 8px,transparent 8px 16px);display:flex;align-items:center;justify-content:center">
+        <p style="margin:0;font:500 12.5px/1.6 ui-monospace,Menlo,monospace;letter-spacing:.05em;color:rgba(255,255,255,.72);text-align:center">workshop / product photo<br>1600 × 1200</p>
+      </div>
+    </div>
+    <div>
+      <p style="margin:0;font-size:18px;line-height:1.55;font-weight:600;max-width:340px">Styrofoam decor made in Davao City — centrepieces, wall art, stage backdrops, custom sculptures.</p>
+      <p style="margin:18px 0 0;font-size:12px;font-weight:700;letter-spacing:.13em;color:rgba(255,255,255,.55)">STAFF ACCESS ONLY</p>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:40px 32px">
+    <div style="width:100%;max-width:420px">
+      <h1 style="margin:0;font-size:34px;font-weight:800;letter-spacing:-.03em">Sign in</h1>
+      <p style="margin:8px 0 0;font-size:16.5px;color:#4b5768">Use the username or email your administrator gave you.</p>
+      <div style="margin-top:28px">
+        <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:8px">Username or email</label>
+        <div style="height:56px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:17px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="at-sign"></i></span>maria.santos</div>
+      </div>
+      <div style="margin-top:20px">
+        <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:8px">Password</label>
+        <div style="height:56px;border-radius:11px;border:2px solid #1462c8;box-shadow:0 0 0 4px #1462c826;background:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:17px"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="lock"></i></span><span style="flex:1;letter-spacing:.2em">••••••••</span><span style="display:inline-flex;align-items:center;gap:7px;font-size:14.5px;font-weight:700;color:#1462c8"><span style="display:inline-flex;font-size:18px"><i data-lucide="eye"></i></span>Show</span></div>
+      </div>
+      <div style="margin-top:18px;display:flex;align-items:center;justify-content:space-between">
+        <span style="display:inline-flex;align-items:center;gap:10px;font-size:15.5px;font-weight:600"><span style="width:24px;height:24px;border-radius:6px;border:2px solid #111d2b3d;background:#fff"></span>Keep me signed in</span>
+        <span style="font-size:15.5px;font-weight:700;color:#1462c8;text-decoration:underline;text-underline-offset:3px">Forgot password?</span>
+      </div>
+      <div style="margin-top:26px;height:56px;border-radius:11px;background:#1462c8;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:18px;font-weight:800;box-shadow:0 3px 12px rgba(20,98,200,.34)"><span style="display:inline-flex;font-size:21px"><i data-lucide="log-in"></i></span>Sign in</div>
+      <p style="margin:24px 0 0;font-size:14.5px;line-height:1.6;color:#4b5768">Accounts are created by your administrator. If you cannot get in, call the office on <strong style="color:#111d2b">(082) 000 0000</strong>.</p>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2b">
+<div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Sign-in problems — each says what happened, then what to do about it</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="dv-card" style="width:470px;padding:26px">
+  <p style="margin:0 0 14px;font:700 11px/1 Manrope;letter-spacing:.13em;text-transform:uppercase;color:rgba(17,29,43,.42)">Wrong details</p>
+  <div style="display:flex;gap:14px;padding:16px;border-radius:12px;background:#fbeceb;border:1px solid #a8332f2e">
+    <span style="display:inline-flex;font-size:22px;color:#a8332f;flex:none"><i data-lucide="circle-alert"></i></span>
+    <div><p style="margin:0;font-size:16.5px;font-weight:800;color:#7d2521">That username or password did not match.</p><p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#4b5768">Check for capital letters and extra spaces, then try again. After 5 tries the account locks for 15 minutes.</p></div>
+  </div>
+  <p style="margin:18px 0 14px;font:700 11px/1 Manrope;letter-spacing:.13em;text-transform:uppercase;color:rgba(17,29,43,.42)">Account blocked</p>
+  <div style="display:flex;gap:14px;padding:16px;border-radius:12px;background:#fdf3e4;border:1px solid #8a50002e">
+    <span style="display:inline-flex;font-size:22px;color:#8a5000;flex:none"><i data-lucide="user-x"></i></span>
+    <div><p style="margin:0;font-size:16.5px;font-weight:800;color:#6b3f00">An administrator has blocked this account.</p><p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#4b5768">Your password was correct. Ask Maria Santos to unblock you — she can do it in seconds.</p><div style="margin-top:14px;display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;background:#fff;border:1.5px solid #111d2b29;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="phone"></i></span>Call the office</div></div>
+  </div>
+  <p style="margin:18px 0 14px;font:700 11px/1 Manrope;letter-spacing:.13em;text-transform:uppercase;color:rgba(17,29,43,.42)">No access yet</p>
+  <div style="display:flex;gap:14px;padding:16px;border-radius:12px;background:#e8f1fd;border:1px solid #1462c82e">
+    <span style="display:inline-flex;font-size:22px;color:#1462c8;flex:none"><i data-lucide="info"></i></span>
+    <div><p style="margin:0;font-size:16.5px;font-weight:800;color:#0e4b9c">This account is not set up in the system yet.</p><p style="margin:6px 0 0;font-size:15px;line-height:1.5;color:#4b5768">Your password was correct, but nobody has given the account a role. An administrator needs to do that once.</p></div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:470px;padding:26px">
+  <p style="margin:0 0 16px;font:700 11px/1 Manrope;letter-spacing:.13em;text-transform:uppercase;color:rgba(17,29,43,.42)">Forgot password — step 1 of 3</p>
+  <div style="display:flex;gap:8px;margin-bottom:22px">
+    <div style="flex:1;height:8px;border-radius:9999px;background:#1462c8"></div>
+    <div style="flex:1;height:8px;border-radius:9999px;background:#111d2b1a"></div>
+    <div style="flex:1;height:8px;border-radius:9999px;background:#111d2b1a"></div>
+  </div>
+  <h2 style="margin:0;font-size:25px;font-weight:800;letter-spacing:-.02em">What is your email?</h2>
+  <p style="margin:8px 0 0;font-size:16px;line-height:1.55;color:#4b5768">We will send you a link that lets you choose a new password. The link works for one hour.</p>
+  <div style="margin-top:22px"><label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:8px">Email address</label><div style="height:56px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:17px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="mail"></i></span>you@example.com</div></div>
+  <div style="margin-top:22px;display:flex;gap:12px">
+    <div style="flex:1;height:56px;border-radius:11px;background:#1462c8;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:800"><span style="display:inline-flex;font-size:20px"><i data-lucide="send"></i></span>Send the link</div>
+    <div style="height:56px;padding:0 22px;border-radius:11px;border:1.5px solid #111d2b29;display:flex;align-items:center;font-size:17px;font-weight:700">Back</div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">Dashboards per role</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2c">
+<div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Sales staff — same shape as <a class="dv-oid" href="#1b">1b</a>, but the work is customers and orders, and admin data is simply absent</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em">Dashboard</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Sales · Wednesday, 2 September 2026</p></div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="circle-help"></i></span>Help</div><div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 12px 0 6px;border-radius:11px;border:1.5px solid #111d2b26;background:#fff"><span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:9999px;background:#6b3fa0;color:#fff;font-size:13.5px;font-weight:800">AR</span><div style="min-width:0"><p style="margin:0;font-size:14.5px;font-weight:700;line-height:1.2;color:#111d2b">Ana Reyes</p><p style="margin:1px 0 0;font-size:12.5px;line-height:1.2;color:#4b5768">Sales staff</p></div><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div></div>
+  </header>
+  <main style="padding:28px 30px 34px">
+    <h2 style="margin:0;font-size:27px;font-weight:800;letter-spacing:-.025em">Good morning, Ana.</h2>
+    <p style="margin:6px 0 0;font-size:16px;color:#4b5768">You have 5 orders to follow up and 2 new customer enquiries.</p>
+
+    <div style="margin-top:22px;background:#fff;border:1px solid #111d2b1f;border-left:5px solid #1462c8;border-radius:14px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:11px;padding:17px 20px;border-bottom:1px solid #111d2b14"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:#e8f1fd;color:#1462c8;font-size:18px"><i data-lucide="list-checks"></i></span><h3 style="margin:0;font-size:18.5px;font-weight:800">Your follow-ups</h3></div>
+      <sc-for list="{{ salesTasks }}" as="t" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #111d2b12">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:none;border-radius:11px;font-size:20px;background:{{ t.tint }};color:{{ t.tone }}"><i data-lucide="{{ t.icon }}"></i></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ t.title }}</p><p style="margin:3px 0 0;font-size:14.5px;color:#4b5768">{{ t.body }}</p></div>
+          <div style="display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 18px;flex:none;border-radius:10px;border:1.5px solid #111d2b29;background:#fff;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="arrow-right"></i></span>{{ t.cta }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px">
+      <sc-for list="{{ salesStats }}" as="s" hint-placeholder-count="3">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;font-size:19px;color:{{ s.tone }}"><i data-lucide="{{ s.icon }}"></i></span><p style="margin:0;font-size:14.5px;font-weight:700;color:#4b5768">{{ s.label }}</p></div>
+          <p style="margin:12px 0 0;font-size:34px;line-height:1;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">{{ s.value }}</p>
+          <p style="margin:6px 0 0;font-size:14px;color:#4b5768">{{ s.hint }}</p>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px">
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="clipboard-list"></i></span>Write a new order</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-plus"></i></span>Add a customer</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="search"></i></span>Look up a price</div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2d">
+<div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Production staff — the clay accent leads here; the whole screen is one question: what do we make next?</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em">Dashboard</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Production · Wednesday, 2 September 2026</p></div>
+    <div style="display:flex;align-items:center;gap:10px"><div style="display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="circle-help"></i></span>Help</div><div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 12px 0 6px;border-radius:11px;border:1.5px solid #111d2b26;background:#fff"><span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:9999px;background:#b4531f;color:#fff;font-size:13.5px;font-weight:800">RG</span><div style="min-width:0"><p style="margin:0;font-size:14.5px;font-weight:700;line-height:1.2;color:#111d2b">Ramon Garcia</p><p style="margin:1px 0 0;font-size:12.5px;line-height:1.2;color:#4b5768">Production staff</p></div><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div></div>
+  </header>
+  <main style="padding:28px 30px 34px">
+    <h2 style="margin:0;font-size:27px;font-weight:800;letter-spacing:-.025em">Good morning, Ramon.</h2>
+    <p style="margin:6px 0 0;font-size:16px;color:#4b5768">Nine products need making or restocking. Start at the top.</p>
+
+    <div style="margin-top:22px;background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:11px;padding:17px 20px;border-bottom:1px solid #111d2b14;background:#fdefe6"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:#fff;color:#b4531f;font-size:18px"><i data-lucide="hammer"></i></span><h3 style="margin:0;font-size:18.5px;font-weight:800">Make list — most urgent first</h3><span style="margin-left:auto;font-size:14px;font-weight:700;color:#8a4318">9 products</span></div>
+      <div style="display:grid;grid-template-columns:1fr 130px 130px 150px;gap:16px;padding:12px 20px;background:#faf9f5;border-bottom:1px solid #111d2b14">
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Product</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">On shelf</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Needed</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">How urgent</span>
+      </div>
+      <sc-for list="{{ makeList }}" as="m" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1fr 130px 130px 150px;gap:16px;align-items:center;padding:15px 20px;border-bottom:1px solid #111d2b12">
+          <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ m.name }}</p><p style="margin:2px 0 0;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;color:#4b5768">{{ m.sku }}</p></div>
+          <span style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ m.tone }}">{{ m.onShelf }}</span>
+          <span style="font-size:19px;font-weight:800;font-variant-numeric:tabular-nums">{{ m.needed }}</span>
+          <span><span style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9999px;font-size:14px;font-weight:700;background:{{ m.tint }};color:{{ m.tone }}"><span style="display:inline-flex;font-size:16px"><i data-lucide="{{ m.icon }}"></i></span>{{ m.urgency }}</span></span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px">
+      <sc-for list="{{ prodStats }}" as="s" hint-placeholder-count="3">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-flex;font-size:19px;color:{{ s.tone }}"><i data-lucide="{{ s.icon }}"></i></span><p style="margin:0;font-size:14.5px;font-weight:700;color:#4b5768">{{ s.label }}</p></div>
+          <p style="margin:12px 0 0;font-size:34px;line-height:1;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">{{ s.value }}</p>
+          <p style="margin:6px 0 0;font-size:14px;color:#4b5768">{{ s.hint }}</p>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px">
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;background:#b4531f;color:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="package-plus"></i></span>Record what we made</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="package"></i></span>Add a new product</div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">Products &amp; stock</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2f">
+<div class="dv-olabel"><a class="dv-oid" href="#2f">2f</a>Products &amp; stock, with the full shell — 62px rows, one clear primary button, filters that name themselves, and a stock bar you can read from across the room</div>
+<div class="dv-card" style="width:1240px">
+<div style="display:flex;min-height:990px;background:#f4f2ec;color:#111d2b">
+  <aside style="width:260px;flex:none;display:flex;flex-direction:column;background:#0e2f5c;color:#fff">
+    <div style="display:flex;align-items:center;gap:12px;padding:22px 20px;border-bottom:1px solid rgba(255,255,255,.14)">
+      <img src="assets/Logo-128.png" alt="" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex:none">
+      <div style="min-width:0"><p style="margin:0;font-size:16px;font-weight:800">LSB Handicrafts</p><p style="margin:2px 0 0;font-size:10.5px;font-weight:700;letter-spacing:.13em;color:rgba(255,255,255,.62)">MANAGEMENT SYSTEM</p></div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:3px;padding:18px 12px;flex:1">
+      <p style="margin:0 0 8px;padding-left:10px;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.5)">MAIN</p>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="layout-dashboard"></i></span>Dashboard</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;background:#1462c8;font-size:16px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)"><span style="display:inline-flex;font-size:19px"><i data-lucide="package"></i></span><span style="flex:1">Products &amp; stock</span><span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:9999px;background:#e0873f;color:#2b1405;font-size:12.5px;font-weight:800">7</span></div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="shopping-cart"></i></span><span style="flex:1">Orders</span><span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:9999px;background:rgba(255,255,255,.18);font-size:12.5px;font-weight:800">12</span></div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="truck"></i></span>Deliveries</div>
+      <p style="margin:20px 0 8px;padding-left:10px;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.5)">PEOPLE</p>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-round"></i></span>Customers</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="handshake"></i></span>Suppliers</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="users"></i></span>Staff &amp; accounts</div>
+    </nav>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="height:76px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+      <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Products &amp; stock</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">148 products · 7 running low</p></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="circle-help"></i></span>Help</div>
+        <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800;box-shadow:0 2px 8px rgba(20,98,200,.28)"><span style="display:inline-flex;font-size:19px"><i data-lucide="package-plus"></i></span>Add a product</div>
+        <div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 12px 0 6px;border-radius:11px;border:1.5px solid #111d2b26;background:#fff"><span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:9999px;background:#b4531f;color:#fff;font-size:13.5px;font-weight:800">MS</span><div style="min-width:0"><p style="margin:0;font-size:14.5px;font-weight:700;line-height:1.2;color:#111d2b">Maria Santos</p><p style="margin:1px 0 0;font-size:12.5px;line-height:1.2;color:#4b5768">Administrator</p></div><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      </div>
+    </header>
+
+    <main style="flex:1;padding:24px 30px">
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <div style="flex:1;min-width:280px;height:52px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:11px;padding:0 16px;font-size:16px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="search"></i></span>Search by name or SKU</div>
+        <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Kind:</span>All<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+        <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Sort:</span>Name A–Z<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      </div>
+
+      <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#111d2b;color:#fff;font-size:15px;font-weight:700">All 148</span>
+        <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#0f6b46"></span>Plenty in stock 139</span>
+        <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fdf3e4;border:1.5px solid #8a500040;color:#6b3f00;font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#c07800"></span>Running low 7</span>
+        <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fbeceb;border:1.5px solid #a8332f40;color:#7d2521;font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#a8332f"></span>Run out 2</span>
+      </div>
+
+      <div style="margin-top:16px;background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(17,29,43,.05)">
+        <div style="display:grid;grid-template-columns:1.6fr 160px 1fr 130px 200px;gap:16px;padding:14px 22px;background:#faf9f5;border-bottom:1px solid #111d2b1a">
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Product</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Size</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Stock on shelf</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Price</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Actions</span>
+        </div>
+        <sc-for list="{{ products }}" as="p" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:1.6fr 160px 1fr 130px 200px;gap:16px;align-items:center;padding:15px 22px;border-bottom:1px solid #111d2b12;min-height:62px">
+            <div style="display:flex;align-items:center;gap:13px;min-width:0">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:#f0eee8;color:#4b5768;font-size:20px"><i data-lucide="{{ p.icon }}"></i></span>
+              <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ p.name }}</p><p style="margin:2px 0 0;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;color:#4b5768">{{ p.sku }} · {{ p.category }}</p></div>
+            </div>
+            <span style="font-size:15.5px;color:#324054">{{ p.size }}</span>
+            <div>
+              <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ p.tone }}">{{ p.available }}</span><span style="font-size:14px;color:#4b5768">{{ p.statusLabel }}</span></div>
+              <div style="margin-top:7px;height:9px;width:100%;max-width:170px;border-radius:9999px;background:#111d2b14;overflow:hidden"><div style="height:100%;width:{{ p.pct }};border-radius:9999px;background:{{ p.tone }}"></div></div>
+            </div>
+            <div><p style="margin:0;font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.price }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ p.unit }}</p></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <span style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="eye"></i></span>View</span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="pencil"></i></span>Edit</span>
+            </div>
+          </div>
+        </sc-for>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;background:#faf9f5">
+          <p style="margin:0;font-size:15px;color:#4b5768">Showing 1–6 of 148 products</p>
+          <div style="display:flex;gap:9px">
+            <span style="display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;background:#fff;font-size:15px;font-weight:700;color:#8a93a1"><span style="display:inline-flex;font-size:17px"><i data-lucide="chevron-left"></i></span>Previous</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;background:#fff;font-size:15px;font-weight:700">Next<span style="display:inline-flex;font-size:17px"><i data-lucide="chevron-right"></i></span></span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2g">
+<div class="dv-olabel"><a class="dv-oid" href="#2g">2g</a>Add a product — one question at a time down a single column, help text under every field, and the fields change with the kind of product</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div style="display:flex;align-items:center;gap:16px">
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+      <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Add a product</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Products &amp; stock → Add a product</p></div>
+    </div>
+  </header>
+  <main style="padding:26px 30px 34px;display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:20px 24px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:18.5px;font-weight:800">1. What is it?</h3></div>
+      <div style="padding:22px 24px;display:flex;flex-direction:column;gap:20px">
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Kind of product</label>
+          <p style="margin:0 0 10px;font-size:14px;color:#4b5768">This decides which measurements we ask for next.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;background:#0e2f5c;color:#fff;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="circle"></i></span>Styro ball</span>
+            <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="square"></i></span>Styro sheet</span>
+            <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="box"></i></span>Styro block</span>
+            <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="shapes"></i></span>Something else</span>
+          </div>
+        </div>
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Product name</label>
+          <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px">Styro Ball 4 inch</div>
+          <p style="margin:8px 0 0;font-size:14px;color:#4b5768">Write it the way staff say it out loud.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div>
+            <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Diameter (inches)</label>
+            <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px;font-variant-numeric:tabular-nums">4</div>
+          </div>
+          <div>
+            <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Category</label>
+            <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:16.5px">Balls<span style="display:inline-flex;font-size:19px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:20px 24px;border-top:1px solid #111d2b14;border-bottom:1px solid #111d2b14;background:#faf9f5"><h3 style="margin:0;font-size:18.5px;font-weight:800">2. How is it sold and counted?</h3></div>
+      <div style="padding:22px 24px;display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Price</label>
+          <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:16.5px"><span style="font-weight:700;color:#4b5768">₱</span><span style="font-variant-numeric:tabular-nums">12.00</span></div>
+        </div>
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Sold by</label>
+          <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:16.5px">The piece<span style="display:inline-flex;font-size:19px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+        </div>
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">How many on the shelf now</label>
+          <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px;font-variant-numeric:tabular-nums">240</div>
+        </div>
+        <div>
+          <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:6px">Warn me when it drops below</label>
+          <div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px;font-variant-numeric:tabular-nums">40</div>
+          <p style="margin:8px 0 0;font-size:14px;color:#4b5768">This is what puts it on the make list.</p>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 24px;border-top:1px solid #111d2b14;background:#faf9f5">
+        <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Cancel</span>
+        <div style="display:flex;gap:10px">
+          <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="save"></i></span>Save as draft</span>
+          <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 22px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800;box-shadow:0 2px 8px rgba(20,98,200,.28)"><span style="display:inline-flex;font-size:19px"><i data-lucide="check"></i></span>Save this product</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:20px">
+        <h3 style="margin:0 0 12px;font-size:16.5px;font-weight:800">Photo</h3>
+        <div style="aspect-ratio:1;border-radius:12px;border:1.5px dashed #111d2b33;background:repeating-linear-gradient(135deg,rgba(17,29,43,.045) 0 8px,transparent 8px 16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+          <span style="display:inline-flex;font-size:28px;color:#4b5768"><i data-lucide="image-plus"></i></span>
+          <p style="margin:0;font:500 12.5px/1.5 ui-monospace,Menlo,monospace;color:#4b5768;text-align:center">drop a product photo<br>800 × 800</p>
+        </div>
+      </div>
+      <div style="background:#e8f1fd;border:1px solid #1462c82e;border-radius:14px;padding:18px 20px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="display:inline-flex;font-size:20px;color:#1462c8"><i data-lucide="lightbulb"></i></span><h3 style="margin:0;font-size:16px;font-weight:800;color:#0e4b9c">The SKU is made for you</h3></div>
+        <p style="margin:0;font-size:14.5px;line-height:1.55;color:#324054">From the kind and the size: <strong style="font-family:ui-monospace,Menlo,monospace">SB-04-001</strong>. You never have to invent a code.</p>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2h">
+<div class="dv-olabel"><a class="dv-oid" href="#2h">2h</a>One product — the stock story up front, and where it has been going</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:16px;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Styro Ball 4 inch</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Products &amp; stock → Styro Ball 4 inch</p></div>
+    <div style="margin-left:auto;display:flex;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="package-plus"></i></span>Record new stock</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:18px"><i data-lucide="pencil"></i></span>Edit</span>
+    </div>
+  </header>
+  <main style="padding:26px 30px 34px;display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:16px">
+        <div style="aspect-ratio:1;border-radius:11px;border:1.5px dashed #111d2b33;background:repeating-linear-gradient(135deg,rgba(17,29,43,.045) 0 8px,transparent 8px 16px);display:flex;align-items:center;justify-content:center"><p style="margin:0;font:500 12.5px/1.5 ui-monospace,Menlo,monospace;color:#4b5768;text-align:center">product photo<br>800 × 800</p></div>
+        <p style="margin:14px 0 0;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;color:#4b5768">SB-04-001</p>
+      </div>
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+        <sc-for list="{{ productFacts }}" as="f" hint-placeholder-count="5">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid #111d2b12"><span style="font-size:14.5px;color:#4b5768">{{ f.k }}</span><span style="font-size:15.5px;font-weight:700;text-align:right">{{ f.v }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:22px 24px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+          <div>
+            <p style="margin:0;font-size:14.5px;font-weight:700;color:#4b5768">On the shelf right now</p>
+            <p style="margin:8px 0 0;font-size:52px;line-height:1;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:#0f6b46">240</p>
+            <p style="margin:10px 0 0;font-size:15.5px;color:#4b5768">Plenty in stock — warn level is 40</p>
+          </div>
+          <div style="display:flex;gap:12px">
+            <div style="text-align:right"><p style="margin:0;font-size:14px;color:#4b5768">Set aside for orders</p><p style="margin:5px 0 0;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">36</p></div>
+            <div style="width:1px;background:#111d2b1a"></div>
+            <div style="text-align:right"><p style="margin:0;font-size:14px;color:#4b5768">Free to sell</p><p style="margin:5px 0 0;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">204</p></div>
+          </div>
+        </div>
+        <div style="margin-top:20px;height:14px;border-radius:9999px;background:#111d2b12;overflow:hidden;display:flex"><div style="width:70%;background:#0f6b46"></div><div style="width:15%;background:#8fc0aa"></div></div>
+        <div style="display:flex;gap:20px;margin-top:12px;font-size:14px;color:#4b5768"><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:3px;background:#0f6b46"></span>Free to sell</span><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:3px;background:#8fc0aa"></span>Set aside</span><span style="display:inline-flex;align-items:center;gap:8px"><span style="width:11px;height:11px;border-radius:3px;background:#111d2b12"></span>Room to fill</span></div>
+      </div>
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+        <div style="padding:18px 22px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:18px;font-weight:800">Stock movements</h3></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 120px 120px;gap:16px;padding:12px 22px;background:#faf9f5;border-bottom:1px solid #111d2b14">
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">When</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">What happened</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Change</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Left</span>
+        </div>
+        <sc-for list="{{ movements }}" as="m" hint-placeholder-count="5">
+          <div style="display:grid;grid-template-columns:150px 1fr 120px 120px;gap:16px;align-items:center;padding:15px 22px;border-bottom:1px solid #111d2b12">
+            <span style="font-size:14.5px;color:#4b5768">{{ m.when }}</span>
+            <div><p style="margin:0;font-size:15.5px;font-weight:600">{{ m.what }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">by {{ m.who }}</p></div>
+            <span style="font-size:17px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:{{ m.tone }}">{{ m.delta }}</span>
+            <span style="font-size:17px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums">{{ m.after }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-grp">Orders &amp; deliveries</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2i">
+<div class="dv-olabel"><a class="dv-oid" href="#2i">2i</a>Orders — status is a labelled pill, not a dropdown you can change by accident. Changing it is a deliberate action on the order itself.</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Orders</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">62 this month · 12 still waiting</p></div>
+    <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800;box-shadow:0 2px 8px rgba(20,98,200,.28)"><span style="display:inline-flex;font-size:19px"><i data-lucide="clipboard-list"></i></span>Write a new order</div>
+  </header>
+  <main style="padding:24px 30px 34px">
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#111d2b;color:#fff;font-size:15px;font-weight:700">All 62</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fdf3e4;border:1.5px solid #8a500040;color:#6b3f00;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="clock"></i></span>Waiting 12</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="check"></i></span>Done 46</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="x"></i></span>Cancelled 4</span>
+    </div>
+    <div style="margin-top:16px;background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:110px 1.4fr 1fr 150px 150px 120px;gap:14px;padding:14px 22px;background:#faf9f5;border-bottom:1px solid #111d2b1a">
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Order</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Customer</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">What they ordered</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Total</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Where it is</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Actions</span>
+      </div>
+      <sc-for list="{{ orders }}" as="o" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:110px 1.4fr 1fr 150px 150px 120px;gap:14px;align-items:center;padding:15px 22px;border-bottom:1px solid #111d2b12;min-height:62px">
+          <span style="font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,monospace">#{{ o.id }}</span>
+          <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ o.customer }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ o.date }}</p></div>
+          <div style="min-width:0"><p style="margin:0;font-size:15px">{{ o.itemsCount }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ o.itemsList }}</p></div>
+          <span style="font-size:17px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums">{{ o.total }}</span>
+          <span><span style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9999px;font-size:14px;font-weight:700;background:{{ o.tint }};color:{{ o.tone }}"><span style="display:inline-flex;font-size:16px"><i data-lucide="{{ o.icon }}"></i></span>{{ o.status }}</span></span>
+          <div style="text-align:right"><span style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="eye"></i></span>Open</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2j">
+<div class="dv-olabel"><a class="dv-oid" href="#2j">2j</a>One order — a stage tracker instead of a status word, so anyone can see what happens next</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:16px;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Order #1043</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Orders → Order #1043</p></div>
+    <div style="margin-left:auto;display:flex;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="printer"></i></span>Print</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:10px;background:#0f6b46;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:18px"><i data-lucide="check"></i></span>Mark as done</span>
+    </div>
+  </header>
+  <main style="padding:26px 30px 34px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:24px">
+      <div style="display:flex;align-items:center;gap:0">
+        <sc-for list="{{ stages }}" as="s" hint-placeholder-count="4">
+          <div style="flex:1;display:flex;align-items:center;gap:0;min-width:0">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:9px;flex:none;width:130px">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:9999px;font-size:21px;background:{{ s.bg }};color:{{ s.fg }};border:2px solid {{ s.border }}"><i data-lucide="{{ s.icon }}"></i></span>
+              <p style="margin:0;font-size:15px;font-weight:700;text-align:center;color:{{ s.label }}">{{ s.name }}</p>
+              <p style="margin:-4px 0 0;font-size:13px;text-align:center;color:#4b5768">{{ s.when }}</p>
+            </div>
+            <div style="flex:1;height:4px;border-radius:9999px;background:{{ s.line }};margin:0 -8px 32px"></div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 320px;gap:18px;margin-top:18px;align-items:start">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+        <div style="padding:18px 22px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:18px;font-weight:800">What they ordered</h3></div>
+        <div style="display:grid;grid-template-columns:1fr 110px 130px 140px;gap:14px;padding:12px 22px;background:#faf9f5;border-bottom:1px solid #111d2b14">
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Item</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Quantity</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Each</span>
+          <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Line total</span>
+        </div>
+        <sc-for list="{{ orderLines }}" as="l" hint-placeholder-count="4">
+          <div style="display:grid;grid-template-columns:1fr 110px 130px 140px;gap:14px;align-items:center;padding:15px 22px;border-bottom:1px solid #111d2b12">
+            <div><p style="margin:0;font-size:16px;font-weight:700">{{ l.name }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ l.note }}</p></div>
+            <span style="font-size:16px;text-align:right;font-variant-numeric:tabular-nums">{{ l.qty }}</span>
+            <span style="font-size:16px;text-align:right;font-variant-numeric:tabular-nums">{{ l.each }}</span>
+            <span style="font-size:16.5px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums">{{ l.total }}</span>
+          </div>
+        </sc-for>
+        <div style="padding:18px 22px;background:#faf9f5;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;justify-content:space-between;font-size:15.5px;color:#4b5768"><span>Items total</span><span style="font-variant-numeric:tabular-nums">₱ 14,880.00</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15.5px;color:#4b5768"><span>Delivery</span><span style="font-variant-numeric:tabular-nums">₱ 800.00</span></div>
+          <div style="height:1px;background:#111d2b1a;margin:4px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:18px;font-weight:800">Total to pay</span><span style="font-size:28px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums">₱ 15,680.00</span></div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:20px">
+          <h3 style="margin:0 0 14px;font-size:16.5px;font-weight:800">Customer</h3>
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none;border-radius:9999px;background:#0e2f5c;color:#fff;font-size:16px;font-weight:800">BE</span>
+            <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">Bantayan Events</p><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Regular customer since 2024</p></div>
+          </div>
+          <div style="margin-top:16px;display:flex;flex-direction:column;gap:11px">
+            <span style="display:inline-flex;align-items:center;gap:10px;font-size:15px"><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="phone"></i></span>0917 000 0000</span>
+            <span style="display:inline-flex;align-items:center;gap:10px;font-size:15px"><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="mail"></i></span>hello@bantayan.ph</span>
+            <span style="display:flex;align-items:flex-start;gap:10px;font-size:15px;line-height:1.5"><span style="display:inline-flex;font-size:18px;color:#4b5768;margin-top:2px"><i data-lucide="map-pin"></i></span>21 Quimpo Blvd, Davao City</span>
+          </div>
+        </div>
+        <div style="background:#fdf3e4;border:1px solid #8a50002e;border-radius:14px;padding:18px 20px">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span style="display:inline-flex;font-size:20px;color:#8a5000"><i data-lucide="clock"></i></span><h3 style="margin:0;font-size:16px;font-weight:800;color:#6b3f00">Waiting 4 days</h3></div>
+          <p style="margin:0;font-size:14.5px;line-height:1.55;color:#324054">Nobody is assigned to this order yet. Assign someone so it stops sitting here.</p>
+          <div style="margin-top:14px;display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 16px;border-radius:10px;background:#fff;border:1.5px solid #111d2b29;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="user-plus"></i></span>Assign someone</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2k">
+<div class="dv-olabel"><a class="dv-oid" href="#2k">2k</a>Deliveries — a board, because a delivery is always in one of five places and moving it is the whole job</div>
+<div class="dv-card" style="width:1240px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Deliveries</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">17 in progress · 4 out today</p></div>
+    <div style="display:flex;gap:10px">
+      <span style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 18px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="list"></i></span>Show as a list</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="truck"></i></span>New delivery</span>
+    </div>
+  </header>
+  <main style="padding:24px 30px 34px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px;height:52px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:11px;padding:0 16px;font-size:16px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="search"></i></span>Search by delivery number or customer</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Due:</span>Today<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Driver:</span>Anyone<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Area:</span>All of Davao<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <span style="display:inline-flex;align-items:center;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700">Everything 48</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fbeceb;border:1.5px solid #a8332f40;color:#7d2521;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="calendar-clock"></i></span>Late 3</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#111d2b;color:#fff;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="calendar"></i></span>Due today 4</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="calendar-days"></i></span>This week 17</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="user-x"></i></span>No driver yet 6</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="circle-check"></i></span>Arrived 31</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-top:14px;padding:13px 16px;border-radius:11px;background:#e8f1fd;border:1px solid #1462c82e">
+      <span style="display:inline-flex;font-size:19px;color:#1462c8"><i data-lucide="filter"></i></span>
+      <p style="margin:0;flex:1;font-size:15px;color:#324054">Showing <strong style="font-weight:800">deliveries due today</strong> · <strong style="font-weight:800">all of Davao</strong> · <strong style="font-weight:800">any driver</strong></p>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 15px;border-radius:10px;background:#fff;border:1.5px solid #111d2b29;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="x"></i></span>Clear filters</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-items:start;margin-top:16px">
+      <sc-for list="{{ board }}" as="c" hint-placeholder-count="5">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-top:4px solid {{ c.tone }};border-radius:14px;overflow:hidden">
+          <div style="padding:15px 16px;border-bottom:1px solid #111d2b14">
+            <div style="display:flex;align-items:center;gap:9px"><span style="display:inline-flex;font-size:18px;color:{{ c.tone }}"><i data-lucide="{{ c.icon }}"></i></span><p style="margin:0;font-size:15px;font-weight:800">{{ c.name }}</p></div>
+            <p style="margin:6px 0 0;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ c.tone }}">{{ c.count }}</p>
+          </div>
+          <div style="padding:12px;display:flex;flex-direction:column;gap:10px;min-height:200px">
+            <sc-if value="{{ c.isEmpty }}" hint-placeholder-val="{{ false }}">
+              <p style="margin:0;padding:22px 8px;text-align:center;font-size:14px;line-height:1.5;color:#8a93a1">Nothing due today</p>
+            </sc-if>
+            <sc-for list="{{ c.cards }}" as="d" hint-placeholder-count="2">
+              <div style="border:1px solid #111d2b1f;border-radius:11px;padding:13px;background:#faf9f5">
+                <p style="margin:0;font-size:14.5px;font-weight:800;font-family:ui-monospace,Menlo,monospace">#{{ d.id }}</p>
+                <p style="margin:5px 0 0;font-size:15px;font-weight:700;line-height:1.35">{{ d.customer }}</p>
+                <p style="margin:5px 0 0;font-size:13.5px;color:#4b5768;line-height:1.4">{{ d.detail }}</p>
+                <div style="margin-top:9px;display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;color:#4b5768"><span style="display:inline-flex;font-size:15px"><i data-lucide="calendar"></i></span>{{ d.when }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2l">
+<div class="dv-olabel"><a class="dv-oid" href="#2l">2l</a>One delivery — moving it forward is a single big button, and the history writes itself</div>
+<div class="dv-card" style="width:720px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:16px;padding:0 26px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em">Delivery #D-2088</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">For order #1051 · Bantayan Events</p></div>
+  </header>
+  <main style="padding:24px 26px 32px;display:flex;flex-direction:column;gap:16px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:22px">
+      <p style="margin:0;font-size:14.5px;font-weight:700;color:#4b5768">Where it is now</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:10px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:13px;background:#fdf3e4;color:#8a5000;font-size:25px"><i data-lucide="truck"></i></span>
+        <div><p style="margin:0;font-size:24px;font-weight:800;letter-spacing:-.02em">On the way</p><p style="margin:3px 0 0;font-size:15px;color:#4b5768">Left the workshop at 7:40 AM today</p></div>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:11px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;gap:10px;flex:1;height:56px;border-radius:11px;background:#0f6b46;color:#fff;font-size:17px;font-weight:800"><span style="display:inline-flex;font-size:20px"><i data-lucide="package-check"></i></span>It arrived</span>
+        <span style="display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:17px;font-weight:700"><span style="display:inline-flex;font-size:20px"><i data-lucide="undo-2"></i></span>Move back</span>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:18px 22px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17.5px;font-weight:800">Where it is going</h3></div>
+      <sc-for list="{{ deliveryFacts }}" as="f" hint-placeholder-count="4">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:15px 22px;border-bottom:1px solid #111d2b12"><span style="font-size:14.5px;color:#4b5768;flex:none">{{ f.k }}</span><span style="font-size:15.5px;font-weight:700;text-align:right">{{ f.v }}</span></div>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:18px 22px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17.5px;font-weight:800">History</h3></div>
+      <sc-for list="{{ deliveryLog }}" as="h" hint-placeholder-count="3">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:15px 22px;border-bottom:1px solid #111d2b12">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border-radius:9999px;background:#f0eee8;color:#4b5768;font-size:16px"><i data-lucide="{{ h.icon }}"></i></span>
+          <div><p style="margin:0;font-size:15.5px;font-weight:600">{{ h.what }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ h.when }} · {{ h.who }}</p></div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">Customers, suppliers &amp; product profiles</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2m">
+<div class="dv-olabel"><a class="dv-oid" href="#2m">2m</a>Customers — cards, not a table. A person is a face and a phone number, and this is the screen sales staff use standing at a counter.</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Customers</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">312 on record</p></div>
+    <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-plus"></i></span>Add a customer</div>
+  </header>
+  <main style="padding:24px 30px 34px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:260px;height:52px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:11px;padding:0 16px;font-size:16px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="search"></i></span>Search by name, phone or business</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Area:</span>Anywhere<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Sort:</span>Name A–Z<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+    </div>
+
+    <div style="display:flex;gap:9px;margin-top:14px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;height:44px;padding:0 17px;border-radius:9999px;background:#111d2b;color:#fff;font-size:15px;font-weight:700">Everyone 312</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="building-2"></i></span>Businesses 84</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="user-round"></i></span>Walk-ins 228</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#e6f2ec;border:1.5px solid #0f6b4640;color:#0b4f34;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="repeat"></i></span>Regulars 46</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fdf3e4;border:1.5px solid #8a500040;color:#6b3f00;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="clipboard-list"></i></span>Has an open order 23</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="user-plus"></i></span>New this month 8</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="moon"></i></span>Not ordered in a year 31</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px">
+      <sc-for list="{{ customers }}" as="c" hint-placeholder-count="6">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:18px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;flex:none;border-radius:9999px;font-size:16px;font-weight:800;color:#fff;background:{{ c.color }}">{{ c.initials }}</span>
+            <div style="min-width:0"><p style="margin:0;font-size:17px;font-weight:800;line-height:1.25">{{ c.name }}</p><p style="margin:3px 0 0;font-size:14px;color:#4b5768">{{ c.kind }}</p></div>
+          </div>
+          <div style="margin-top:15px;display:flex;flex-direction:column;gap:9px">
+            <span style="display:inline-flex;align-items:center;gap:9px;font-size:15px"><span style="display:inline-flex;font-size:17px;color:#4b5768"><i data-lucide="phone"></i></span>{{ c.phone }}</span>
+            <span style="display:inline-flex;align-items:center;gap:9px;font-size:15px;color:#324054"><span style="display:inline-flex;font-size:17px;color:#4b5768"><i data-lucide="map-pin"></i></span>{{ c.city }}</span>
+          </div>
+          <div style="margin-top:15px;padding-top:14px;border-top:1px solid #111d2b14;display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:14.5px;color:#4b5768">{{ c.orders }}</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700">Open<span style="display:inline-flex;font-size:16px"><i data-lucide="arrow-right"></i></span></span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2n">
+<div class="dv-olabel"><a class="dv-oid" href="#2n">2n</a>One customer / one supplier — same layout, so learning one teaches the other</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="dv-card" style="width:640px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Bantayan Events</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Customers → Bantayan Events</p></div>
+  </header>
+  <main style="padding:22px 24px 30px;display:flex;flex-direction:column;gap:14px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:22px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <span style="display:flex;align-items:center;justify-content:center;width:60px;height:60px;flex:none;border-radius:9999px;background:#0e2f5c;color:#fff;font-size:20px;font-weight:800">BE</span>
+        <div><p style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Bantayan Events</p><p style="margin:3px 0 0;font-size:15px;color:#4b5768">Business customer · on record since March 2024</p></div>
+      </div>
+      <div style="margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div style="border:1px solid #111d2b1a;border-radius:11px;padding:14px 16px"><p style="margin:0;font-size:14px;color:#4b5768">Orders placed</p><p style="margin:6px 0 0;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">18</p></div>
+        <div style="border:1px solid #111d2b1a;border-radius:11px;padding:14px 16px"><p style="margin:0;font-size:14px;color:#4b5768">Spent with us</p><p style="margin:6px 0 0;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums">₱ 214,300</p></div>
+      </div>
+      <div style="margin-top:18px;display:flex;gap:10px">
+        <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:18px"><i data-lucide="clipboard-list"></i></span>Write them an order</span>
+        <span style="display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:15.5px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="pencil"></i></span>Edit details</span>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:17px 20px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17px;font-weight:800">Contact details</h3></div>
+      <sc-for list="{{ customerFacts }}" as="f" hint-placeholder-count="5">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:14px 20px;border-bottom:1px solid #111d2b12"><span style="display:inline-flex;align-items:center;gap:10px;font-size:14.5px;color:#4b5768;flex:none"><span style="display:inline-flex;font-size:17px"><i data-lucide="{{ f.icon }}"></i></span>{{ f.k }}</span><span style="font-size:15.5px;font-weight:700;text-align:right">{{ f.v }}</span></div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+
+<div class="dv-card" style="width:640px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Suppliers</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">18 on record</p></div>
+    <div style="display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 18px;border-radius:10px;background:#b4531f;color:#fff;font-size:15px;font-weight:800"><span style="display:inline-flex;font-size:18px"><i data-lucide="plus"></i></span>Add a supplier</div>
+  </header>
+  <main style="padding:22px 24px 30px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <sc-for list="{{ suppliers }}" as="s" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid #111d2b12;min-height:64px">
+          <span style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none;border-radius:12px;background:#fdefe6;color:#b4531f;font-size:20px"><i data-lucide="handshake"></i></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ s.name }}</p><p style="margin:3px 0 0;font-size:14px;color:#4b5768">{{ s.supplies }}</p></div>
+          <div style="text-align:right;flex:none"><p style="margin:0;font-size:14.5px;font-weight:700">{{ s.phone }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ s.city }}</p></div>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 14px;flex:none;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700">Open<span style="display:inline-flex;font-size:16px"><i data-lucide="arrow-right"></i></span></span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-grp">Staff &amp; accounts</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2o">
+<div class="dv-olabel"><a class="dv-oid" href="#2o">2o</a>Staff accounts — &ldquo;Can sign in&rdquo; replaces Active/Blocked, because that is the thing an administrator actually wants to know</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Staff accounts</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">24 accounts · 3 cannot sign in</p></div>
+    <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-plus"></i></span>Add an account</div>
+  </header>
+  <main style="padding:24px 30px 34px">
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:240px;height:52px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:11px;padding:0 16px;font-size:16px;color:#8a93a1"><span style="display:inline-flex;font-size:20px;color:#4b5768"><i data-lucide="search"></i></span>Search staff by name or email</div>
+      <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;font-size:15.5px;font-weight:700"><span style="font-weight:500;color:#4b5768">Role:</span>All<span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+    </div>
+    <div style="margin-top:16px;background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1.5fr 1fr 170px 180px;gap:16px;padding:14px 22px;background:#faf9f5;border-bottom:1px solid #111d2b1a">
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Person</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">What they do</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768">Can sign in</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#4b5768;text-align:right">Actions</span>
+      </div>
+      <sc-for list="{{ accounts }}" as="a" hint-placeholder-count="6">
+        <div style="display:grid;grid-template-columns:1.5fr 1fr 170px 180px;gap:16px;align-items:center;padding:15px 22px;border-bottom:1px solid #111d2b12;min-height:64px">
+          <div style="display:flex;align-items:center;gap:13px;min-width:0">
+            <span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:9999px;font-size:15px;font-weight:800;color:#fff;background:{{ a.color }}">{{ a.initials }}</span>
+            <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ a.name }}<span style="margin-left:8px;font-size:12.5px;font-weight:800;padding:3px 8px;border-radius:9999px;background:{{ a.badgeTint }};color:{{ a.badgeTone }}">{{ a.badge }}</span></p><p style="margin:2px 0 0;font-size:14px;color:#4b5768">{{ a.email }}</p></div>
+          </div>
+          <span style="font-size:15.5px;color:#324054">{{ a.role }}</span>
+          <span><span style="display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:9999px;font-size:14.5px;font-weight:700;background:{{ a.tint }};color:{{ a.tone }}"><span style="display:inline-flex;font-size:16px"><i data-lucide="{{ a.icon }}"></i></span>{{ a.canSignIn }}</span></span>
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <span style="display:inline-flex;align-items:center;gap:7px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="settings"></i></span>Manage</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2p">
+<div class="dv-olabel"><a class="dv-oid" href="#2p">2p</a>Manage one account — the dangerous action lives in its own outlined block at the bottom, spelled out, never a red icon you might mis-tap</div>
+<div class="dv-card" style="width:680px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Ana Reyes</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Staff accounts → Ana Reyes</p></div>
+  </header>
+  <main style="padding:22px 24px 30px;display:flex;flex-direction:column;gap:14px">
+    <div style="background:#fbeceb;border:1px solid #a8332f2e;border-radius:14px;padding:20px;display:flex;gap:14px;align-items:flex-start">
+      <span style="display:inline-flex;font-size:24px;color:#a8332f;flex:none"><i data-lucide="user-x"></i></span>
+      <div style="flex:1">
+        <p style="margin:0;font-size:17.5px;font-weight:800;color:#7d2521">Ana cannot sign in right now</p>
+        <p style="margin:5px 0 0;font-size:15px;line-height:1.5;color:#324054">You blocked this account on 28 August. Her password still works — she just cannot get past the sign-in screen.</p>
+        <div style="margin-top:15px;display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;background:#0f6b46;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-check"></i></span>Let Ana sign in again</div>
+      </div>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:18px 20px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17.5px;font-weight:800">Her details</h3></div>
+      <div style="padding:20px;display:flex;flex-direction:column;gap:18px">
+        <div><label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">Full name</label><div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px">Ana Reyes</div></div>
+        <div><label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">Email</label><div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#f0eee8;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:16.5px;color:#4b5768">ana.reyes@lsb.ph<span style="display:inline-flex;font-size:18px"><i data-lucide="lock"></i></span></div><p style="margin:7px 0 0;font-size:14px;color:#4b5768">Email cannot be changed here — it is how she signs in.</p></div>
+        <div><label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">Phone</label><div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:16.5px">0999 000 0000</div></div>
+        <div>
+          <label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">What she does</label>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 16px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff">
+            <span style="display:inline-flex;align-items:center;gap:11px;font-size:16.5px;font-weight:700"><span style="display:inline-flex;font-size:20px;color:#1462c8"><i data-lucide="badge-check"></i></span>Sales staff</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 15px;border-radius:10px;border:1.5px solid #111d2b29;font-size:14.5px;font-weight:700">Change this</span>
+          </div>
+        </div>
+      </div>
+      <div style="padding:18px 20px;background:#faf9f5;border-top:1px solid #111d2b14;display:flex;justify-content:flex-end;gap:10px">
+        <span style="display:inline-flex;align-items:center;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Cancel</span>
+        <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 22px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="check"></i></span>Save changes</span>
+      </div>
+    </div>
+    <div style="border:1.5px solid #a8332f45;border-radius:14px;padding:20px;background:#fff">
+      <h3 style="margin:0;font-size:16.5px;font-weight:800;color:#7d2521">Remove this account for good</h3>
+      <p style="margin:7px 0 0;font-size:15px;line-height:1.55;color:#4b5768">Ana disappears from the staff list and her sign-in stops working. Orders and stock records she made stay exactly as they are. This cannot be undone.</p>
+      <div style="margin-top:15px;display:inline-flex;align-items:center;gap:9px;height:50px;padding:0 18px;border-radius:11px;border:1.5px solid #a8332f;color:#a8332f;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="trash-2"></i></span>Remove Ana Reyes</div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2q">
+<div class="dv-olabel"><a class="dv-oid" href="#2q">2q</a>Change what someone does — each role spells out what it unlocks, so nobody guesses</div>
+<div class="dv-card" style="width:680px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">What does Ana do?</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Ana Reyes → change role</p></div>
+  </header>
+  <main style="padding:22px 24px 30px">
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <sc-for list="{{ roles }}" as="r" hint-placeholder-count="5">
+        <div style="display:flex;align-items:flex-start;gap:15px;padding:18px 20px;border-radius:13px;background:#fff;border:{{ r.border }}">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:9999px;border:2px solid {{ r.ringColor }};background:{{ r.ringFill }};margin-top:2px"><span style="width:11px;height:11px;border-radius:9999px;background:{{ r.dot }}"></span></span>
+          <div style="flex:1;min-width:0">
+            <p style="margin:0;font-size:17.5px;font-weight:800">{{ r.name }}</p>
+            <p style="margin:5px 0 0;font-size:15px;line-height:1.55;color:#4b5768">{{ r.desc }}</p>
+          </div>
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:{{ r.tint }};color:{{ r.tone }};font-size:21px"><i data-lucide="{{ r.icon }}"></i></span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
+      <span style="display:inline-flex;align-items:center;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Cancel</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 22px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="check"></i></span>Save this role</span>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2r">
+<div class="dv-olabel"><a class="dv-oid" href="#2r">2r</a>Staff directory and the activity log — read-only screens, so they lose the buttons and gain breathing room</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="dv-card" style="width:700px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Staff directory</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Who to call for what</p></div>
+  </header>
+  <main style="padding:22px 24px 30px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <sc-for list="{{ directory }}" as="d" hint-placeholder-count="6">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:18px;display:flex;gap:13px;align-items:flex-start">
+          <span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;flex:none;border-radius:9999px;font-size:16px;font-weight:800;color:#fff;background:{{ d.color }}">{{ d.initials }}</span>
+          <div style="min-width:0">
+            <p style="margin:0;font-size:16.5px;font-weight:800;line-height:1.25">{{ d.name }}</p>
+            <p style="margin:3px 0 0;font-size:14.5px;color:#4b5768">{{ d.role }}</p>
+            <p style="margin:9px 0 0;display:inline-flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700"><span style="display:inline-flex;font-size:16px;color:#4b5768"><i data-lucide="phone"></i></span>{{ d.phone }}</p>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+
+<div class="dv-card" style="width:700px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Activity log</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">Everything staff have done, newest first</p></div>
+    <span style="display:inline-flex;align-items:center;gap:9px;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;background:#fff;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="download"></i></span>Export</span>
+  </header>
+  <main style="padding:22px 24px 30px">
+    <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px">
+      <span style="display:inline-flex;align-items:center;height:44px;padding:0 17px;border-radius:9999px;background:#111d2b;color:#fff;font-size:15px;font-weight:700">Everything</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="log-in"></i></span>Sign-ins</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="package"></i></span>Stock changes</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="tag"></i></span>Price changes</span>
+    </div>
+    <p style="margin:0 0 10px;font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#4b5768">Today</p>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <sc-for list="{{ activity }}" as="a" hint-placeholder-count="5">
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid #111d2b12;min-height:64px">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none;border-radius:11px;font-size:18px;background:{{ a.tint }};color:{{ a.tone }}"><i data-lucide="{{ a.icon }}"></i></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16px;line-height:1.45"><strong style="font-weight:800">{{ a.staff }}</strong> {{ a.action }}</p></div>
+          <span style="font-size:14.5px;color:#4b5768;flex:none">{{ a.when }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">My own account</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2s">
+<div class="dv-olabel"><a class="dv-oid" href="#2s">2s</a>My profile and changing my password — the two screens people visit once and must not get lost in</div>
+<div style="display:flex;gap:16px;flex-wrap:wrap">
+<div class="dv-card" style="width:600px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">My profile</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">What the system knows about you</p></div>
+  </header>
+  <main style="padding:22px 24px 30px;display:flex;flex-direction:column;gap:14px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:24px;text-align:center">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:88px;height:88px;border-radius:9999px;background:#0e2f5c;color:#fff;font-size:30px;font-weight:800">MS</span>
+      <p style="margin:16px 0 0;font-size:25px;font-weight:800;letter-spacing:-.02em">Maria Santos</p>
+      <p style="margin:6px 0 0;display:inline-flex;align-items:center;gap:9px;font-size:15.5px;font-weight:700;padding:7px 14px;border-radius:9999px;background:#e8f1fd;color:#0e4b9c"><span style="display:inline-flex;font-size:18px"><i data-lucide="badge-check"></i></span>Administrator</p>
+      <p style="margin:14px 0 0;font-size:15px;color:#4b5768">You can do everything in the system, including managing other people&rsquo;s accounts.</p>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <sc-for list="{{ myFacts }}" as="f" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 20px;border-bottom:1px solid #111d2b12"><span style="display:inline-flex;align-items:center;gap:11px;font-size:15px;color:#4b5768"><span style="display:inline-flex;font-size:18px"><i data-lucide="{{ f.icon }}"></i></span>{{ f.k }}</span><span style="font-size:16px;font-weight:700">{{ f.v }}</span></div>
+      </sc-for>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:18px 20px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17.5px;font-weight:800">How your dashboard looks</h3><p style="margin:5px 0 0;font-size:14.5px;line-height:1.5;color:#4b5768">Only changes what you see. Everyone else keeps their own choice.</p></div>
+      <div style="padding:18px 20px;display:flex;flex-direction:column;gap:11px">
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-radius:12px;border:2px solid #1462c8;background:#fff">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:9999px;border:2px solid #1462c8;background:#1462c8;margin-top:2px"><span style="width:11px;height:11px;border-radius:9999px;background:#fff"></span></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16.5px;font-weight:800">Standard</p><p style="margin:4px 0 0;font-size:14.5px;line-height:1.5;color:#4b5768">More on screen at once. Best if you work here all day.</p></div>
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:#e8f1fd;color:#1462c8;font-size:21px"><i data-lucide="layout-dashboard"></i></span>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-radius:12px;border:1.5px solid #111d2b1f;background:#fff">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;flex:none;border-radius:9999px;border:2px solid #111d2b2e;background:#fff;margin-top:2px"></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16.5px;font-weight:800">Large text</p><p style="margin:4px 0 0;font-size:14.5px;line-height:1.5;color:#4b5768">Bigger words and buttons, fewer things per screen.</p></div>
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:#fdefe6;color:#b4531f;font-size:21px"><i data-lucide="a-large-small"></i></span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:11px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;gap:9px;flex:1;height:54px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="pencil"></i></span>Edit my details</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;gap:9px;flex:1;height:54px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="key-round"></i></span>Change password</span>
+    </div>
+  </main>
+</div>
+</div>
+
+<div class="dv-card" style="width:600px">
+<div style="background:#f4f2ec;color:#111d2b">
+  <header style="height:76px;display:flex;align-items:center;gap:14px;padding:0 24px;background:#fff;border-bottom:1px solid #111d2b1f">
+    <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 14px;border-radius:10px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="arrow-left"></i></span>Back</span>
+    <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Change password</h1><p style="margin:2px 0 0;font-size:14px;color:#4b5768">My profile → Change password</p></div>
+  </header>
+  <main style="padding:22px 24px 30px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:24px;display:flex;flex-direction:column;gap:20px">
+      <div><label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:7px">Your password now</label><div style="height:56px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 16px;font-size:17px;letter-spacing:.2em">••••••••<span style="display:inline-flex;align-items:center;gap:7px;font-size:14.5px;font-weight:700;color:#1462c8;letter-spacing:0"><span style="display:inline-flex;font-size:18px"><i data-lucide="eye"></i></span>Show</span></div></div>
+      <div>
+        <label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:7px">Your new password</label>
+        <div style="height:56px;border-radius:11px;border:2px solid #1462c8;box-shadow:0 0 0 4px #1462c826;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:17px;letter-spacing:.2em">•••••••••••</div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:14.5px;color:#0f6b46;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="circle-check"></i></span>At least 10 characters</span>
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:14.5px;color:#0f6b46;font-weight:700"><span style="display:inline-flex;font-size:17px"><i data-lucide="circle-check"></i></span>Has a number in it</span>
+          <span style="display:inline-flex;align-items:center;gap:10px;font-size:14.5px;color:#4b5768"><span style="display:inline-flex;font-size:17px"><i data-lucide="circle"></i></span>Has a capital letter</span>
+        </div>
+      </div>
+      <div><label style="display:block;font-size:15.5px;font-weight:700;margin-bottom:7px">Type the new password again</label><div style="height:56px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;padding:0 16px;font-size:17px;color:#8a93a1">so we know there is no typo</div></div>
+      <div style="display:flex;gap:11px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;gap:9px;flex:1;height:56px;border-radius:11px;background:#1462c8;color:#fff;font-size:17px;font-weight:800"><span style="display:inline-flex;font-size:20px"><i data-lucide="check"></i></span>Save new password</span>
+        <span style="display:inline-flex;align-items:center;height:56px;padding:0 22px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:17px;font-weight:700">Cancel</span>
+      </div>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">Dialogs, empty screens &amp; problems</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2t">
+<div class="dv-olabel"><a class="dv-oid" href="#2t">2t</a>Dialogs — the confirm names the thing being deleted and the button says the verb, never just &ldquo;OK&rdquo;</div>
+<div style="display:flex;flex-direction:column;gap:16px">
+<div class="dv-card" style="width:520px;background:#e8e5de;padding:28px">
+  <div style="background:#fff;border-radius:16px;border:1px solid #111d2b1f;box-shadow:0 20px 50px -18px rgba(17,29,43,.55);overflow:hidden">
+    <div style="padding:26px 26px 0;display:flex;gap:15px">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:50px;height:50px;flex:none;border-radius:13px;background:#fbeceb;color:#a8332f;font-size:24px"><i data-lucide="trash-2"></i></span>
+      <div><h2 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Delete &ldquo;Styro Ball 6 inch&rdquo;?</h2><p style="margin:8px 0 0;font-size:16px;line-height:1.55;color:#4b5768">It leaves the product list and staff can no longer add it to orders. Past orders that used it stay unchanged. This cannot be undone.</p></div>
+    </div>
+    <div style="margin-top:24px;padding:18px 26px;background:#faf9f5;border-top:1px solid #111d2b14;display:flex;gap:11px;justify-content:flex-end">
+      <span style="display:inline-flex;align-items:center;height:52px;padding:0 22px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Keep it</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 22px;border-radius:11px;background:#a8332f;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="trash-2"></i></span>Yes, delete it</span>
+    </div>
+  </div>
+</div>
+
+<div class="dv-card" style="width:520px;background:#e8e5de;padding:28px">
+  <div style="background:#fff;border-radius:16px;border:1px solid #111d2b1f;box-shadow:0 20px 50px -18px rgba(17,29,43,.55);overflow:hidden">
+    <div style="padding:24px 26px;border-bottom:1px solid #111d2b14;display:flex;align-items:center;justify-content:space-between">
+      <div><h2 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Add a staff account</h2><p style="margin:5px 0 0;font-size:15px;color:#4b5768">They will get an email to set their own password.</p></div>
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;border:1.5px solid #111d2b26;font-size:20px"><i data-lucide="x"></i></span>
+    </div>
+    <div style="padding:24px 26px;display:flex;flex-direction:column;gap:18px">
+      <div><label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">Full name</label><div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;display:flex;align-items:center;padding:0 16px;font-size:16.5px;color:#8a93a1">e.g. Liza Villanueva</div></div>
+      <div><label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">Email</label><div style="height:54px;border-radius:11px;border:1.5px solid #111d2b2e;display:flex;align-items:center;padding:0 16px;font-size:16.5px;color:#8a93a1">name@lsb.ph</div></div>
+      <div>
+        <label style="display:block;font-size:15px;font-weight:700;margin-bottom:7px">What will they do?</label>
+        <div style="display:flex;flex-wrap:wrap;gap:9px">
+          <span style="display:inline-flex;align-items:center;height:46px;padding:0 16px;border-radius:10px;background:#0e2f5c;color:#fff;font-size:15px;font-weight:700">Sales staff</span>
+          <span style="display:inline-flex;align-items:center;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b29;font-size:15px;font-weight:700">Production staff</span>
+          <span style="display:inline-flex;align-items:center;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b29;font-size:15px;font-weight:700">Delivery staff</span>
+          <span style="display:inline-flex;align-items:center;height:46px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b29;font-size:15px;font-weight:700">Manager</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:18px 26px;background:#faf9f5;border-top:1px solid #111d2b14;display:flex;gap:11px;justify-content:flex-end">
+      <span style="display:inline-flex;align-items:center;height:52px;padding:0 22px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Cancel</span>
+      <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 22px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-plus"></i></span>Create the account</span>
+    </div>
+  </div>
+  <div style="margin-top:20px;display:flex;align-items:center;gap:13px;padding:16px 18px;border-radius:13px;background:#0e2f5c;color:#fff;box-shadow:0 12px 32px -14px rgba(17,29,43,.6)">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex:none;border-radius:10px;background:#0f6b46;font-size:19px"><i data-lucide="check"></i></span>
+    <div style="flex:1"><p style="margin:0;font-size:16px;font-weight:800">Account created for Liza Villanueva</p><p style="margin:2px 0 0;font-size:14px;color:rgba(255,255,255,.75)">She has been emailed a link to set her password.</p></div>
+    <span style="font-size:14.5px;font-weight:800;text-decoration:underline;text-underline-offset:3px">View</span>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2u">
+<div class="dv-olabel"><a class="dv-oid" href="#2u">2u</a>Nothing there, still loading, went wrong, not allowed — four screens people only see on a bad day, so each one gives them a way out</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+<div class="dv-card" style="width:440px;padding:0">
+  <div style="padding:56px 32px;text-align:center;background:#f4f2ec">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:76px;height:76px;border-radius:9999px;background:#fff;border:1.5px solid #111d2b1f;color:#4b5768;font-size:32px"><i data-lucide="package-open"></i></span>
+    <p style="margin:20px 0 0;font-size:21px;font-weight:800;letter-spacing:-.02em;color:#111d2b">No products yet</p>
+    <p style="margin:9px auto 0;max-width:300px;font-size:15.5px;line-height:1.55;color:#4b5768">Add your first product and it will show up here with its stock level.</p>
+    <span style="margin-top:20px;display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 20px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="package-plus"></i></span>Add a product</span>
+  </div>
+</div>
+<div class="dv-card" style="width:440px;padding:0">
+  <div style="padding:24px;background:#f4f2ec">
+    <p style="margin:0 0 16px;font:800 11px/1 Manrope;letter-spacing:.13em;text-transform:uppercase;color:rgba(17,29,43,.42)">Still loading</p>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="4">
+        <div style="display:flex;align-items:center;gap:14px;padding:16px 18px;border-bottom:1px solid #111d2b12">
+          <div style="width:44px;height:44px;flex:none;border-radius:11px;background:#111d2b0f"></div>
+          <div style="flex:1"><div style="height:14px;width:{{ s.w1 }};border-radius:7px;background:#111d2b12"></div><div style="margin-top:9px;height:11px;width:{{ s.w2 }};border-radius:6px;background:#111d2b0a"></div></div>
+          <div style="width:70px;height:26px;border-radius:9999px;background:#111d2b0f;flex:none"></div>
+        </div>
+      </sc-for>
+    </div>
+    <p style="margin:16px 0 0;display:inline-flex;align-items:center;gap:10px;font-size:15px;color:#4b5768"><span style="display:inline-flex;font-size:18px"><i data-lucide="loader-circle"></i></span>Fetching your products…</p>
+  </div>
+</div>
+<div class="dv-card" style="width:440px;padding:0">
+  <div style="padding:48px 32px;text-align:center;background:#f4f2ec">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:76px;height:76px;border-radius:9999px;background:#fbeceb;border:1.5px solid #a8332f2e;color:#a8332f;font-size:32px"><i data-lucide="cloud-off"></i></span>
+    <p style="margin:20px 0 0;font-size:21px;font-weight:800;letter-spacing:-.02em;color:#111d2b">We could not reach the system</p>
+    <p style="margin:9px auto 0;max-width:320px;font-size:15.5px;line-height:1.55;color:#4b5768">Nothing you did was lost. Check the internet connection and try again — if it keeps happening, tell your administrator.</p>
+    <div style="margin-top:20px;display:flex;gap:11px;justify-content:center">
+      <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 20px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="rotate-cw"></i></span>Try again</span>
+      <span style="display:inline-flex;align-items:center;height:52px;padding:0 20px;border-radius:11px;border:1.5px solid #111d2b29;background:#fff;font-size:16px;font-weight:700">Go to dashboard</span>
+    </div>
+  </div>
+</div>
+<div class="dv-card" style="width:440px;padding:0">
+  <div style="padding:48px 32px;text-align:center;background:#f4f2ec">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:76px;height:76px;border-radius:9999px;background:#fdf3e4;border:1.5px solid #8a50002e;color:#8a5000;font-size:32px"><i data-lucide="shield-alert"></i></span>
+    <p style="margin:20px 0 0;font-size:21px;font-weight:800;letter-spacing:-.02em;color:#111d2b">This screen is not part of your job</p>
+    <p style="margin:9px auto 0;max-width:320px;font-size:15.5px;line-height:1.55;color:#4b5768">Production staff cannot open customer records. If you need to, ask Maria Santos to change what your account can do.</p>
+    <div style="margin-top:20px;display:flex;gap:11px;justify-content:center">
+      <span style="display:inline-flex;align-items:center;gap:9px;height:52px;padding:0 20px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="arrow-left"></i></span>Back to dashboard</span>
+    </div>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-grp">Dark mode &amp; smaller screens</p>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2v">
+<div class="dv-olabel"><a class="dv-oid" href="#2v">2v</a>Dark mode for the two screens staff sit on all day — warm-neutral darks, never pure black, and the clay accent brightens rather than dulls</div>
+<div class="dv-card" style="width:1060px">
+<div style="background:#12161c;color:#eef1f5">
+  <header style="height:76px;display:flex;align-items:center;justify-content:space-between;padding:0 30px;background:#1a2029;border-bottom:1px solid rgba(255,255,255,.09)">
+    <div><h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Products &amp; stock</h1><p style="margin:2px 0 0;font-size:14px;color:#a3adba">148 products · 7 running low</p></div>
+    <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;border-radius:10px;background:#3b8ae5;color:#08131f;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="package-plus"></i></span>Add a product</div>
+  </header>
+  <main style="padding:24px 30px 34px">
+    <div style="display:flex;gap:9px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;height:44px;padding:0 17px;border-radius:9999px;background:#eef1f5;color:#12161c;font-size:15px;font-weight:700">All 148</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#1a2029;border:1.5px solid rgba(255,255,255,.14);font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#4dbb8c"></span>Plenty 139</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#2a2113;border:1.5px solid #e0a04a4d;color:#f0be74;font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#e0a04a"></span>Running low 7</span>
+      <span style="display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 17px;border-radius:9999px;background:#2b1717;border:1.5px solid #e0705f4d;color:#f09b8e;font-size:15px;font-weight:700"><span style="width:10px;height:10px;border-radius:9999px;background:#e0705f"></span>Run out 2</span>
+    </div>
+    <div style="margin-top:16px;background:#1a2029;border:1px solid rgba(255,255,255,.09);border-radius:14px;overflow:hidden">
+      <div style="display:grid;grid-template-columns:1.6fr 160px 1fr 130px;gap:16px;padding:14px 22px;background:#20272f;border-bottom:1px solid rgba(255,255,255,.09)">
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#a3adba">Product</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#a3adba">Size</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#a3adba">Stock on shelf</span>
+        <span style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#a3adba">Price</span>
+      </div>
+      <sc-for list="{{ productsDark }}" as="p" hint-placeholder-count="5">
+        <div style="display:grid;grid-template-columns:1.6fr 160px 1fr 130px;gap:16px;align-items:center;padding:15px 22px;border-bottom:1px solid rgba(255,255,255,.07);min-height:62px">
+          <div style="display:flex;align-items:center;gap:13px;min-width:0">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:#252c35;color:#a3adba;font-size:20px"><i data-lucide="{{ p.icon }}"></i></span>
+            <div style="min-width:0"><p style="margin:0;font-size:16.5px;font-weight:700">{{ p.name }}</p><p style="margin:2px 0 0;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;color:#a3adba">{{ p.sku }}</p></div>
+          </div>
+          <span style="font-size:15.5px;color:#c9d1da">{{ p.size }}</span>
+          <div>
+            <div style="display:flex;align-items:baseline;gap:8px"><span style="font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ p.tone }}">{{ p.available }}</span><span style="font-size:14px;color:#a3adba">{{ p.statusLabel }}</span></div>
+            <div style="margin-top:7px;height:9px;max-width:170px;border-radius:9999px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;width:{{ p.pct }};border-radius:9999px;background:{{ p.tone }}"></div></div>
+          </div>
+          <span style="font-size:16.5px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.price }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </main>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="2w">
+<div class="dv-olabel"><a class="dv-oid" href="#2w">2w</a>Phone — the nav becomes a five-target bottom bar with words under the icons; tables become cards; nothing is ever a horizontal scroll</div>
+<div style="display:flex;gap:16px">
+<div class="dv-card" style="width:390px">
+<div style="min-height:800px;display:flex;flex-direction:column;background:#f4f2ec;color:#111d2b">
+  <header style="padding:16px 18px 14px;background:#0e2f5c;color:#fff;flex:none">
+    <div style="display:flex;align-items:center;gap:11px">
+      <img src="assets/Logo-128.png" alt="" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex:none">
+      <div style="flex:1;min-width:0"><p style="margin:0;font-size:15px;font-weight:800">Good morning, Maria</p><p style="margin:1px 0 0;font-size:12.5px;color:rgba(255,255,255,.7)">Wednesday, 2 September</p></div>
+      <span style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;background:rgba(255,255,255,.14);font-size:20px"><i data-lucide="bell"></i><span style="position:absolute;top:8px;right:8px;width:9px;height:9px;border-radius:9999px;background:#e0705f;border:1.5px solid #0e2f5c"></span></span>
+    </div>
+  </header>
+  <div style="flex:1;overflow:hidden;padding:16px 16px 0;display:flex;flex-direction:column;gap:12px">
+    <div style="background:#fff;border:1px solid #111d2b1f;border-left:5px solid #b4531f;border-radius:14px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #111d2b14"><span style="display:inline-flex;font-size:19px;color:#b4531f"><i data-lucide="triangle-alert"></i></span><h3 style="margin:0;font-size:16.5px;font-weight:800">Needs your attention</h3></div>
+      <div style="padding:14px 16px;border-bottom:1px solid #111d2b12">
+        <p style="margin:0;font-size:16px;font-weight:700;line-height:1.35">2 products have run out</p>
+        <p style="margin:4px 0 0;font-size:14.5px;line-height:1.45;color:#4b5768">Styro Sheet 1 inch and Letter Cutout Set A–Z.</p>
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:9px;height:50px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:800"><span style="display:inline-flex;font-size:19px"><i data-lucide="package-plus"></i></span>Restock these</div>
+      </div>
+      <div style="padding:14px 16px">
+        <p style="margin:0;font-size:16px;font-weight:700;line-height:1.35">3 orders waiting 4 days or more</p>
+        <p style="margin:4px 0 0;font-size:14.5px;line-height:1.45;color:#4b5768">Oldest is #1043 for Bantayan Events.</p>
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:center;gap:9px;height:50px;border-radius:11px;border:1.5px solid #111d2b29;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:19px"><i data-lucide="clipboard-list"></i></span>Open these orders</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:15px"><div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;font-size:17px;color:#1462c8"><i data-lucide="clipboard-list"></i></span><p style="margin:0;font-size:13.5px;font-weight:700;color:#4b5768">Orders open</p></div><p style="margin:9px 0 0;font-size:30px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">12</p></div>
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:15px"><div style="display:flex;align-items:center;gap:8px"><span style="display:inline-flex;font-size:17px;color:#b4531f"><i data-lucide="package"></i></span><p style="margin:0;font-size:13.5px;font-weight:700;color:#4b5768">Low on stock</p></div><p style="margin:9px 0 0;font-size:30px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">7</p></div>
+    </div>
+    <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden">
+      <div style="padding:14px 16px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:16.5px;font-weight:800">Recently</h3></div>
+      <div style="display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid #111d2b12"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border-radius:10px;background:#fdefe6;color:#b4531f;font-size:16px"><i data-lucide="package"></i></span><div><p style="margin:0;font-size:15px;line-height:1.4"><strong style="font-weight:800">Ramon</strong> recorded 120 Styro Ball 4 inch</p><p style="margin:2px 0 0;font-size:13px;color:#4b5768">9:04 AM</p></div></div>
+      <div style="display:flex;gap:12px;padding:13px 16px"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;flex:none;border-radius:10px;background:#e6f2ec;color:#0f6b46;font-size:16px"><i data-lucide="tag"></i></span><div><p style="margin:0;font-size:15px;line-height:1.4"><strong style="font-weight:800">Ana</strong> changed a price to ₱ 85.00</p><p style="margin:2px 0 0;font-size:13px;color:#4b5768">9:31 AM</p></div></div>
+    </div>
+  </div>
+  <nav style="flex:none;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid #111d2b1f;padding:8px 6px 12px">
+    <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:56px;border-radius:11px;background:{{ t.bg }};color:{{ t.fg }}">
+        <span style="display:inline-flex;font-size:22px"><i data-lucide="{{ t.icon }}"></i></span>
+        <span style="font-size:11.5px;font-weight:700">{{ t.label }}</span>
+      </div>
+    </sc-for>
+  </nav>
+</div>
+</div>
+
+<div class="dv-card" style="width:390px">
+<div style="min-height:870px;display:flex;flex-direction:column;background:#f4f2ec;color:#111d2b">
+  <header style="padding:14px 16px;background:#fff;border-bottom:1px solid #111d2b1f;flex:none;display:flex;align-items:center;gap:12px">
+    <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:11px;border:1.5px solid #111d2b26;font-size:20px"><i data-lucide="arrow-left"></i></span>
+    <div style="flex:1;min-width:0"><h1 style="margin:0;font-size:18px;font-weight:800">Products &amp; stock</h1><p style="margin:1px 0 0;font-size:13px;color:#4b5768">148 products · 7 low</p></div>
+  </header>
+  <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:11px">
+    <div style="height:50px;border-radius:11px;border:1.5px solid #111d2b2e;background:#fff;display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15.5px;color:#8a93a1"><span style="display:inline-flex;font-size:19px;color:#4b5768"><i data-lucide="search"></i></span>Search products</div>
+    <div style="display:flex;gap:8px;overflow:hidden">
+      <span style="display:inline-flex;align-items:center;height:42px;padding:0 15px;flex:none;border-radius:9999px;background:#111d2b;color:#fff;font-size:14.5px;font-weight:700">All 148</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px;flex:none;border-radius:9999px;background:#fdf3e4;border:1.5px solid #8a500040;color:#6b3f00;font-size:14.5px;font-weight:700">Low 7</span>
+      <span style="display:inline-flex;align-items:center;gap:7px;height:42px;padding:0 15px;flex:none;border-radius:9999px;background:#fbeceb;border:1.5px solid #a8332f40;color:#7d2521;font-size:14.5px;font-weight:700">Out 2</span>
+    </div>
+    <sc-for list="{{ productsMobile }}" as="p" hint-placeholder-count="4">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:15px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none;border-radius:12px;background:#f0eee8;color:#4b5768;font-size:21px"><i data-lucide="{{ p.icon }}"></i></span>
+          <div style="flex:1;min-width:0"><p style="margin:0;font-size:16.5px;font-weight:800;line-height:1.25">{{ p.name }}</p><p style="margin:3px 0 0;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;color:#4b5768">{{ p.sku }} · {{ p.size }}</p></div>
+        </div>
+        <div style="margin-top:13px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+          <div style="flex:1"><div style="display:flex;align-items:baseline;gap:7px"><span style="font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;color:{{ p.tone }}">{{ p.available }}</span><span style="font-size:14px;color:#4b5768">{{ p.statusLabel }}</span></div><div style="margin-top:7px;height:9px;border-radius:9999px;background:#111d2b14;overflow:hidden"><div style="height:100%;width:{{ p.pct }};border-radius:9999px;background:{{ p.tone }}"></div></div></div>
+          <p style="margin:0;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;flex:none">{{ p.price }}</p>
+        </div>
+        <div style="margin-top:13px;display:flex;gap:10px">
+          <span style="display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:1;height:48px;border-radius:11px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="eye"></i></span>View</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:1;height:48px;border-radius:11px;border:1.5px solid #111d2b26;font-size:15px;font-weight:700"><span style="display:inline-flex;font-size:18px"><i data-lucide="pencil"></i></span>Edit</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="flex:none;padding:12px 16px 16px;background:#fff;border-top:1px solid #111d2b1f">
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;height:56px;border-radius:12px;background:#1462c8;color:#fff;font-size:17px;font-weight:800;box-shadow:0 3px 12px rgba(20,98,200,.32)"><span style="display:inline-flex;font-size:21px"><i data-lucide="package-plus"></i></span>Add a product</div>
+  </div>
+</div>
+</div>
+
+<div class="dv-card" style="width:834px">
+<div style="height:800px;display:flex;background:#f4f2ec;color:#111d2b">
+  <aside style="width:84px;flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 10px;background:#0e2f5c;color:#fff">
+    <img src="assets/Logo-128.png" alt="" style="width:44px;height:44px;border-radius:11px;object-fit:cover;margin-bottom:10px">
+    <sc-for list="{{ railTabs }}" as="t" hint-placeholder-count="6">
+      <div style="width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;height:62px;border-radius:12px;background:{{ t.bg }}">
+        <span style="display:inline-flex;font-size:21px"><i data-lucide="{{ t.icon }}"></i></span>
+        <span style="font-size:10.5px;font-weight:700;text-align:center;line-height:1.15">{{ t.label }}</span>
+      </div>
+    </sc-for>
+  </aside>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="height:70px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 22px;background:#fff;border-bottom:1px solid #111d2b1f">
+      <div><h1 style="margin:0;font-size:21px;font-weight:800;letter-spacing:-.02em">Order #1043</h1><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">Bantayan Events · waiting 4 days</p></div>
+      <span style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 18px;border-radius:10px;background:#0f6b46;color:#fff;font-size:15.5px;font-weight:800"><span style="display:inline-flex;font-size:18px"><i data-lucide="check"></i></span>Mark as done</span>
+    </header>
+    <main style="flex:1;overflow:hidden;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:20px;display:flex;align-items:center;gap:14px">
+        <sc-for list="{{ stages }}" as="s" hint-placeholder-count="4">
+          <div style="flex:1;display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex:none;border-radius:9999px;font-size:19px;background:{{ s.bg }};color:{{ s.fg }};border:2px solid {{ s.border }}"><i data-lucide="{{ s.icon }}"></i></span>
+            <div style="min-width:0"><p style="margin:0;font-size:14px;font-weight:700;color:{{ s.label }}">{{ s.name }}</p><p style="margin:1px 0 0;font-size:12.5px;color:#4b5768">{{ s.when }}</p></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden;flex:1">
+        <div style="padding:16px 20px;border-bottom:1px solid #111d2b14"><h3 style="margin:0;font-size:17px;font-weight:800">What they ordered</h3></div>
+        <sc-for list="{{ orderLines }}" as="l" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid #111d2b12">
+            <div style="flex:1;min-width:0"><p style="margin:0;font-size:16px;font-weight:700">{{ l.name }}</p><p style="margin:2px 0 0;font-size:13.5px;color:#4b5768">{{ l.qty }} × {{ l.each }}</p></div>
+            <span style="font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;flex:none">{{ l.total }}</span>
+          </div>
+        </sc-for>
+        <div style="padding:16px 20px;background:#faf9f5;display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:17px;font-weight:800">Total to pay</span><span style="font-size:26px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums">₱ 15,680.00</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<p class="dv-next">Every screen here is the shared system, so it looks the same in either view — only the dashboard changes. The account block now lives top right on every screen, next to Alerts.</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Two dashboard views — a preference each person picks, not a decision made for them</span></div>
+<p class="dv-tsub">Both are the same system — warm paper canvas, deep navy nav, cobalt actions, a clay accent for anything craft or production. Same data, same navigation, same rules. What differs is how much the dashboard assumes you already know, so each person chooses in <a href="#2s">My profile</a> and their choice sticks. <strong>Standard</strong> is what a new account starts on; <strong>Large text</strong> is one tap away for anyone who wants it.</p>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><span><strong>Standard view</strong> — the default. Opens with what needs doing, in sentences, each with one button; numbers demoted to a strip. Teaches the system to a first-time user without training.</span></div>
+<div class="dv-card" style="width:1240px">
+<div style="display:flex;min-height:1200px;background:#f4f2ec;color:#111d2b">
+
+  <aside style="width:260px;flex:none;display:flex;flex-direction:column;background:#0e2f5c;color:#fff">
+    <div style="display:flex;align-items:center;gap:12px;padding:22px 20px;border-bottom:1px solid rgba(255,255,255,.14)">
+      <img src="assets/Logo-128.png" alt="" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex:none">
+      <div style="min-width:0">
+        <p style="margin:0;font-size:16px;font-weight:800;letter-spacing:-.01em">LSB Handicrafts</p>
+        <p style="margin:2px 0 0;font-size:10.5px;font-weight:700;letter-spacing:.13em;color:rgba(255,255,255,.62)">MANAGEMENT SYSTEM</p>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:3px;padding:18px 12px;flex:1">
+      <p style="margin:0 0 8px;padding-left:10px;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.5)">MAIN</p>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;background:#1462c8;font-size:16px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.22)"><span style="display:inline-flex;font-size:19px"><i data-lucide="layout-dashboard"></i></span>Dashboard</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="package"></i></span><span style="flex:1">Products &amp; stock</span><span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:9999px;background:#e0873f;color:#2b1405;font-size:12.5px;font-weight:800">7</span></div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="shopping-cart"></i></span><span style="flex:1">Orders</span><span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 7px;border-radius:9999px;background:rgba(255,255,255,.18);font-size:12.5px;font-weight:800">12</span></div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="truck"></i></span>Deliveries</div>
+      <p style="margin:20px 0 8px;padding-left:10px;font-size:10.5px;font-weight:800;letter-spacing:.14em;color:rgba(255,255,255,.5)">PEOPLE</p>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="user-round"></i></span>Customers</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="handshake"></i></span>Suppliers</div>
+      <div style="display:flex;align-items:center;gap:13px;height:52px;padding:0 14px;border-radius:11px;font-size:16px;font-weight:600;color:rgba(255,255,255,.86)"><span style="display:inline-flex;font-size:19px"><i data-lucide="users"></i></span>Staff &amp; accounts</div>
+    </nav>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="height:76px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:#fff;border-bottom:1px solid #111d2b1f">
+      <div>
+        <h1 style="margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em">Dashboard</h1>
+        <p style="margin:2px 0 0;font-size:14px;color:#4b5768">Wednesday, 2 September 2026</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700;color:#17232f"><span style="display:inline-flex;font-size:18px"><i data-lucide="circle-help"></i></span>Help</div>
+        <div style="position:relative;display:inline-flex;align-items:center;gap:9px;height:44px;padding:0 16px;border-radius:10px;border:1.5px solid #111d2b26;font-size:14.5px;font-weight:700;color:#17232f"><span style="display:inline-flex;font-size:18px"><i data-lucide="bell"></i></span>Alerts<span style="margin-left:2px;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:9999px;background:#a8332f;color:#fff;font-size:12px;font-weight:800">3</span></div>
+        <div style="display:flex;align-items:center;gap:11px;height:48px;padding:0 12px 0 6px;border-radius:11px;border:1.5px solid #111d2b26;background:#fff"><span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:9999px;background:#b4531f;color:#fff;font-size:13.5px;font-weight:800">MS</span><div style="min-width:0"><p style="margin:0;font-size:14.5px;font-weight:700;line-height:1.2;color:#111d2b">Maria Santos</p><p style="margin:1px 0 0;font-size:12.5px;line-height:1.2;color:#4b5768">Administrator</p></div><span style="display:inline-flex;font-size:18px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      </div>
+    </header>
+
+    <main style="flex:1;padding:30px 32px">
+      <h2 style="margin:0;font-size:29px;font-weight:800;letter-spacing:-.025em">Good morning, Maria.</h2>
+      <p style="margin:6px 0 0;font-size:16px;color:#4b5768">Three things need you today. Everything else is running normally.</p>
+
+      <div style="margin-top:22px;background:#fff;border:1px solid #111d2b1f;border-left:5px solid #b4531f;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(17,29,43,.05),0 12px 32px -22px rgba(17,29,43,.4)">
+        <div style="display:flex;align-items:center;gap:11px;padding:18px 22px;border-bottom:1px solid #111d2b14">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:10px;background:#fdefe6;color:#b4531f;font-size:19px"><i data-lucide="triangle-alert"></i></span>
+          <h3 style="margin:0;font-size:19px;font-weight:800">Needs your attention</h3>
+          <span style="margin-left:auto;font-size:14px;color:#4b5768">Updated 4 minutes ago</span>
+        </div>
+        <sc-for list="{{ attention }}" as="t" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:18px;padding:18px 22px;border-bottom:1px solid #111d2b12">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:none;border-radius:12px;font-size:22px;background:{{ t.tint }};color:{{ t.tone }}"><i data-lucide="{{ t.icon }}"></i></span>
+            <div style="flex:1;min-width:0">
+              <p style="margin:0;font-size:17.5px;font-weight:700;line-height:1.35">{{ t.title }}</p>
+              <p style="margin:4px 0 0;font-size:15px;color:#4b5768;line-height:1.45">{{ t.body }}</p>
+            </div>
+            <div style="display:inline-flex;align-items:center;gap:9px;height:48px;padding:0 20px;flex:none;border-radius:10px;background:#1462c8;color:#fff;font-size:15.5px;font-weight:700;box-shadow:0 2px 8px rgba(20,98,200,.28)"><span style="display:inline-flex;font-size:18px"><i data-lucide="{{ t.ctaIcon }}"></i></span>{{ t.cta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:18px;background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(17,29,43,.05)">
+        <sc-for list="{{ strip }}" as="s" hint-placeholder-count="4">
+          <div style="padding:18px 20px;border-right:1px solid #111d2b14">
+            <div style="display:flex;align-items:center;gap:9px">
+              <span style="display:inline-flex;font-size:18px;color:{{ s.tone }}"><i data-lucide="{{ s.icon }}"></i></span>
+              <p style="margin:0;font-size:14px;font-weight:700;color:#4b5768">{{ s.label }}</p>
+            </div>
+            <p style="margin:10px 0 0;font-size:32px;line-height:1;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums">{{ s.value }}</p>
+            <p style="margin:6px 0 0;font-size:13.5px;color:#4b5768">{{ s.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 380px;gap:18px;margin-top:18px">
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(17,29,43,.05)">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #111d2b1a">
+            <h3 style="margin:0;font-size:18px;font-weight:800">What happened recently</h3>
+            <span style="display:inline-flex;align-items:center;gap:7px;font-size:14.5px;font-weight:700;color:#1462c8">See all<span style="display:inline-flex;font-size:17px"><i data-lucide="arrow-right"></i></span></span>
+          </div>
+          <sc-for list="{{ activity }}" as="a" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:15px 20px;border-bottom:1px solid #111d2b12">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:none;border-radius:10px;font-size:17px;background:{{ a.tint }};color:{{ a.tone }}"><i data-lucide="{{ a.icon }}"></i></span>
+              <div style="min-width:0;flex:1">
+                <p style="margin:0;font-size:15.5px;line-height:1.45"><strong style="font-weight:800">{{ a.staff }}</strong> {{ a.action }}</p>
+                <p style="margin:3px 0 0;font-size:13.5px;color:#4b5768">{{ a.when }}</p>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="background:#fff;border:1px solid #111d2b1f;border-radius:14px;padding:20px;box-shadow:0 1px 2px rgba(17,29,43,.05)">
+          <h3 style="margin:0 0 16px;font-size:18px;font-weight:800">Things you do often</h3>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:11px;background:#1462c8;color:#fff;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:20px"><i data-lucide="clipboard-list"></i></span>Write a new order</div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b26;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:20px"><i data-lucide="package-plus"></i></span>Add a product</div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b26;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:20px"><i data-lucide="user-plus"></i></span>Add a staff account</div>
+            <div style="display:flex;align-items:center;gap:12px;height:56px;padding:0 16px;border-radius:11px;border:1.5px solid #111d2b26;font-size:16px;font-weight:700"><span style="display:inline-flex;font-size:20px"><i data-lucide="history"></i></span>Open the activity log</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a><span><strong>Large text view</strong> — the same system at kiosk scale. 300px nav, 20px labels, six destination tiles, three oversized numbers. Nothing smaller than 15px anywhere on screen.</span></div>
+<div class="dv-card" style="width:1240px">
+<div style="display:flex;min-height:900px;background:#f4f2ec;color:#111d2b">
+
+  <aside style="width:300px;flex:none;display:flex;flex-direction:column;background:#0e2f5c;color:#fff">
+    <div style="display:flex;align-items:center;gap:14px;padding:26px 22px;border-bottom:1px solid rgba(255,255,255,.14)">
+      <img src="assets/Logo-128.png" alt="" style="width:52px;height:52px;border-radius:12px;object-fit:cover;flex:none">
+      <div style="min-width:0">
+        <p style="margin:0;font-size:19px;font-weight:800;letter-spacing:-.01em">LSB Handicrafts</p>
+        <p style="margin:3px 0 0;font-size:12px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.65)">MANAGEMENT SYSTEM</p>
+      </div>
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:5px;padding:20px 14px;flex:1">
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;background:#1462c8;font-size:20px;font-weight:700"><span style="display:inline-flex;font-size:26px"><i data-lucide="layout-dashboard"></i></span>Dashboard</div>
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;font-size:20px;font-weight:600;color:rgba(255,255,255,.88)"><span style="display:inline-flex;font-size:26px"><i data-lucide="package"></i></span>Products</div>
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;font-size:20px;font-weight:600;color:rgba(255,255,255,.88)"><span style="display:inline-flex;font-size:26px"><i data-lucide="shopping-cart"></i></span>Orders</div>
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;font-size:20px;font-weight:600;color:rgba(255,255,255,.88)"><span style="display:inline-flex;font-size:26px"><i data-lucide="truck"></i></span>Deliveries</div>
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;font-size:20px;font-weight:600;color:rgba(255,255,255,.88)"><span style="display:inline-flex;font-size:26px"><i data-lucide="user-round"></i></span>Customers</div>
+      <div style="display:flex;align-items:center;gap:16px;height:64px;padding:0 18px;border-radius:13px;font-size:20px;font-weight:600;color:rgba(255,255,255,.88)"><span style="display:inline-flex;font-size:26px"><i data-lucide="users"></i></span>Staff</div>
+    </nav>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <header style="height:88px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 36px;background:#fff;border-bottom:1px solid #111d2b1f">
+      <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-.02em">Dashboard</h1>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="display:inline-flex;align-items:center;gap:10px;height:52px;padding:0 20px;border-radius:11px;border:2px solid #111d2b26;font-size:17px;font-weight:700"><span style="display:inline-flex;font-size:21px"><i data-lucide="circle-help"></i></span>Help</div>
+        <div style="display:inline-flex;align-items:center;gap:10px;height:60px;padding:0 20px;border-radius:11px;border:2px solid #111d2b26;font-size:17px;font-weight:700"><span style="display:inline-flex;font-size:21px"><i data-lucide="bell"></i></span>Alerts<span style="margin-left:2px;display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border-radius:9999px;background:#a8332f;color:#fff;font-size:14px;font-weight:800">3</span></div>
+        <div style="display:flex;align-items:center;gap:14px;height:60px;padding:0 16px 0 8px;border-radius:12px;border:2px solid #111d2b26;background:#fff"><span style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;flex:none;border-radius:9999px;background:#b4531f;color:#fff;font-size:16px;font-weight:800">MS</span><div style="min-width:0"><p style="margin:0;font-size:17px;font-weight:700;line-height:1.2;color:#111d2b">Maria Santos</p><p style="margin:2px 0 0;font-size:14.5px;line-height:1.2;color:#4b5768">Administrator</p></div><span style="display:inline-flex;font-size:22px;color:#4b5768"><i data-lucide="chevron-down"></i></span></div>
+      </div>
+    </header>
+
+    <main style="flex:1;padding:32px 36px">
+      <p style="margin:0;font-size:20px;color:#4b5768">Good morning,</p>
+      <h2 style="margin:4px 0 0;font-size:40px;font-weight:800;letter-spacing:-.03em">Maria Santos</h2>
+
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:28px">
+        <sc-for list="{{ bigStats }}" as="s" hint-placeholder-count="3">
+          <div style="background:#fff;border:2px solid {{ s.border }};border-radius:18px;padding:24px 26px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:13px;font-size:25px;background:{{ s.tint }};color:{{ s.tone }}"><i data-lucide="{{ s.icon }}"></i></span>
+              <p style="margin:0;font-size:18px;font-weight:700;color:#4b5768">{{ s.label }}</p>
+            </div>
+            <p style="margin:18px 0 0;font-size:56px;line-height:1;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;color:{{ s.tone }}">{{ s.value }}</p>
+            <p style="margin:10px 0 0;font-size:16.5px;color:#4b5768">{{ s.hint }}</p>
+          </div>
+        </sc-for>
+      </div>
+
+      <p style="margin:32px 0 0;font-size:15px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#4b5768">Where do you want to go?</p>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:16px">
+        <sc-for list="{{ tiles }}" as="t" hint-placeholder-count="6">
+          <div style="display:flex;align-items:center;gap:18px;background:#fff;border:2px solid #111d2b1f;border-radius:16px;padding:22px;min-height:96px">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;flex:none;border-radius:15px;font-size:30px;background:{{ t.tint }};color:{{ t.tone }}"><i data-lucide="{{ t.icon }}"></i></span>
+            <div style="min-width:0">
+              <p style="margin:0;font-size:21px;font-weight:800;line-height:1.2">{{ t.label }}</p>
+              <p style="margin:5px 0 0;font-size:15.5px;color:#4b5768;line-height:1.35">{{ t.hint }}</p>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+  </div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Both views ship — <a class="dv-oid" href="#1b">1b</a> as the default, <a class="dv-oid" href="#1c">1c</a> a tap away in <a href="#2s">My profile</a>. Tell me if the preference belongs somewhere more findable than the profile screen (a first-run question, or in the account menu itself).</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1400,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  componentDidMount() {
+    this.tick = setInterval(() => {
+      if (window.lucide) { window.lucide.createIcons(); clearInterval(this.tick); }
+    }, 80);
+  }
+  componentDidUpdate() { window.lucide?.createIcons(); }
+  componentWillUnmount() { clearInterval(this.tick); }
+
+  renderVals() {
+    return {
+      accounts: [
+        { initials: "MS", name: "Maria Santos", email: "maria.santos@lsb.ph", role: "Administrator", canSignIn: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#0e2f5c", badge: "Owner", badgeTint: "#e8f1fd", badgeTone: "#0e4b9c" },
+        { initials: "JD", name: "Juan Dela Cruz", email: "juan.delacruz@lsb.ph", role: "Manager", canSignIn: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#1462c8", badge: "", badgeTint: "transparent", badgeTone: "transparent" },
+        { initials: "RG", name: "Ramon Garcia", email: "ramon.garcia@lsb.ph", role: "Production staff", canSignIn: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#b4531f", badge: "", badgeTint: "transparent", badgeTone: "transparent" },
+        { initials: "AR", name: "Ana Reyes", email: "ana.reyes@lsb.ph", role: "Sales staff", canSignIn: "Blocked", icon: "x", tint: "#fbeceb", tone: "#a8332f", color: "#6b3fa0", badge: "", badgeTint: "transparent", badgeTone: "transparent" },
+        { initials: "CM", name: "Carlos Mendoza", email: "carlos.mendoza@lsb.ph", role: "Delivery staff", canSignIn: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#0f6b46", badge: "", badgeTint: "transparent", badgeTone: "transparent" },
+        { initials: "LV", name: "Liza Villanueva", email: "liza.villanueva@lsb.ph", role: "Sales staff", canSignIn: "Not set up", icon: "clock", tint: "#fdf3e4", tone: "#8a5000", color: "#4b5768", badge: "New", badgeTint: "#fdf3e4", badgeTone: "#6b3f00" },
+      ],
+      roles: [
+        { name: "Administrator", desc: "Everything, including creating and blocking other people's accounts.", icon: "shield", tint: "#e8f1fd", tone: "#1462c8", border: "1.5px solid #111d2b1f", ringColor: "#111d2b2e", ringFill: "#fff", dot: "transparent" },
+        { name: "Manager", desc: "Sees everything and can change orders, stock and prices — but cannot touch staff accounts.", icon: "clipboard-check", tint: "#efeaf8", tone: "#6b3fa0", border: "1.5px solid #111d2b1f", ringColor: "#111d2b2e", ringFill: "#fff", dot: "transparent" },
+        { name: "Sales staff", desc: "Writes orders, looks after customers and can check prices and stock. Cannot change prices.", icon: "badge-check", tint: "#e8f1fd", tone: "#1462c8", border: "2px solid #1462c8", ringColor: "#1462c8", ringFill: "#1462c8", dot: "#fff" },
+        { name: "Production staff", desc: "Sees the make list, records what was made and manages product details. No customer records.", icon: "hammer", tint: "#fdefe6", tone: "#b4531f", border: "1.5px solid #111d2b1f", ringColor: "#111d2b2e", ringFill: "#fff", dot: "transparent" },
+        { name: "Delivery staff", desc: "Sees deliveries and moves them along. Nothing else.", icon: "truck", tint: "#e6f2ec", tone: "#0f6b46", border: "1.5px solid #111d2b1f", ringColor: "#111d2b2e", ringFill: "#fff", dot: "transparent" },
+      ],
+      directory: [
+        { initials: "MS", name: "Maria Santos", role: "Administrator", phone: "0917 000 0010", color: "#0e2f5c" },
+        { initials: "JD", name: "Juan Dela Cruz", role: "Manager", phone: "0917 000 0011", color: "#1462c8" },
+        { initials: "RG", name: "Ramon Garcia", role: "Production staff", phone: "0917 000 0012", color: "#b4531f" },
+        { initials: "AR", name: "Ana Reyes", role: "Sales staff", phone: "0917 000 0013", color: "#6b3fa0" },
+        { initials: "CM", name: "Carlos Mendoza", role: "Delivery staff", phone: "0917 000 0014", color: "#0f6b46" },
+        { initials: "LV", name: "Liza Villanueva", role: "Sales staff", phone: "0917 000 0015", color: "#4b5768" },
+      ],
+      myFacts: [
+        { icon: "mail", k: "Email", v: "maria.santos@lsb.ph" },
+        { icon: "at-sign", k: "Username", v: "maria.santos" },
+        { icon: "phone", k: "Phone", v: "0917 000 0010" },
+        { icon: "calendar", k: "With LSB since", v: "March 2024" },
+      ],
+      skeletons: [
+        { w1: "70%", w2: "45%" }, { w1: "55%", w2: "38%" }, { w1: "78%", w2: "50%" }, { w1: "62%", w2: "42%" },
+      ],
+      productsDark: [
+        { icon: "circle", name: "Styro Ball 4 inch", sku: "SB-04-001", size: "4 in across", available: "240", statusLabel: "plenty", pct: "82%", tone: "#4dbb8c", price: "₱ 12.00" },
+        { icon: "circle", name: "Styro Ball 6 inch", sku: "SB-06-002", size: "6 in across", available: "18", statusLabel: "running low", pct: "14%", tone: "#e0a04a", price: "₱ 24.00" },
+        { icon: "square", name: "Styro Sheet 1/2 inch", sku: "SS-12-004", size: "24 × 48 × ½ in", available: "96", statusLabel: "plenty", pct: "68%", tone: "#4dbb8c", price: "₱ 85.00" },
+        { icon: "square", name: "Styro Sheet 1 inch", sku: "SS-10-005", size: "24 × 48 × 1 in", available: "0", statusLabel: "run out", pct: "3%", tone: "#e0705f", price: "₱ 150.00" },
+        { icon: "box", name: "Styro Block Standard", sku: "BL-24-008", size: "12 × 12 × 24 in", available: "34", statusLabel: "plenty", pct: "55%", tone: "#4dbb8c", price: "₱ 320.00" },
+      ],
+      productsMobile: [
+        { icon: "circle", name: "Styro Ball 4 inch", sku: "SB-04-001", size: "4 in across", available: "240", statusLabel: "plenty in stock", pct: "82%", tone: "#0f6b46", price: "₱ 12.00" },
+        { icon: "circle", name: "Styro Ball 6 inch", sku: "SB-06-002", size: "6 in across", available: "18", statusLabel: "running low", pct: "14%", tone: "#c07800", price: "₱ 24.00" },
+        { icon: "square", name: "Styro Sheet 1 inch", sku: "SS-10-005", size: "24 × 48 × 1 in", available: "0", statusLabel: "run out", pct: "3%", tone: "#a8332f", price: "₱ 150.00" },
+      ],
+      tabs: [
+        { icon: "layout-dashboard", label: "Home", bg: "#e8f1fd", fg: "#1462c8" },
+        { icon: "package", label: "Products", bg: "transparent", fg: "#4b5768" },
+        { icon: "shopping-cart", label: "Orders", bg: "transparent", fg: "#4b5768" },
+        { icon: "truck", label: "Delivery", bg: "transparent", fg: "#4b5768" },
+        { icon: "user-round", label: "Me", bg: "transparent", fg: "#4b5768" },
+      ],
+      railTabs: [
+        { icon: "layout-dashboard", label: "Home", bg: "transparent" },
+        { icon: "package", label: "Products", bg: "transparent" },
+        { icon: "shopping-cart", label: "Orders", bg: "#1462c8" },
+        { icon: "truck", label: "Delivery", bg: "transparent" },
+        { icon: "user-round", label: "People", bg: "transparent" },
+        { icon: "users", label: "Staff", bg: "transparent" },
+      ],
+      orders: [
+        { id: "1043", customer: "Bantayan Events", date: "29 Aug 2026", itemsCount: "3 items", itemsList: "Styro Ball 4 in, Letter Cutout Set, Arch Panel", total: "₱ 15,680", status: "Waiting", icon: "clock", tint: "#fdf3e4", tone: "#8a5000" },
+        { id: "1051", customer: "Rosalie Ibañez", date: "31 Aug 2026", itemsCount: "1 item", itemsList: "Styro Ball 4 inch × 48", total: "₱ 576", status: "Waiting", icon: "clock", tint: "#fdf3e4", tone: "#8a5000" },
+        { id: "1052", customer: "Sto. Niño Parish", date: "1 Sep 2026", itemsCount: "5 items", itemsList: "Styro Sheet ½ in, Styro Block, Cut to size…", total: "₱ 8,940", status: "Done", icon: "check", tint: "#e6f2ec", tone: "#0f6b46" },
+        { id: "1053", customer: "Davao Party Supplies", date: "1 Sep 2026", itemsCount: "2 items", itemsList: "Styro Ball 6 in × 200, Styro Ball 8 in × 60", total: "₱ 6,240", status: "Waiting", icon: "clock", tint: "#fdf3e4", tone: "#8a5000" },
+        { id: "1054", customer: "Elena Bautista", date: "2 Sep 2026", itemsCount: "1 item", itemsList: "Custom shape — swan centrepiece", total: "₱ 2,400", status: "Done", icon: "check", tint: "#e6f2ec", tone: "#0f6b46" },
+        { id: "1055", customer: "Matina Hotel", date: "2 Sep 2026", itemsCount: "4 items", itemsList: "Arch Panel × 12, Styro Sheet 1 in × 30…", total: "₱ 22,150", status: "Cancelled", icon: "x", tint: "#fbeceb", tone: "#a8332f" },
+      ],
+      stages: [
+        { name: "Written", when: "29 Aug", icon: "check", bg: "#0f6b46", fg: "#fff", border: "#0f6b46", label: "#111d2b", line: "#0f6b46" },
+        { name: "Being made", when: "30 Aug", icon: "check", bg: "#0f6b46", fg: "#fff", border: "#0f6b46", label: "#111d2b", line: "#0f6b46" },
+        { name: "Ready to go", when: "Today", icon: "package", bg: "#1462c8", fg: "#fff", border: "#1462c8", label: "#111d2b", line: "#111d2b1f" },
+        { name: "Delivered", when: "not yet", icon: "truck", bg: "#fff", fg: "#8a93a1", border: "#111d2b26", label: "#8a93a1", line: "#111d2b00" },
+      ],
+      orderLines: [
+        { name: "Styro Ball 4 inch", note: "SB-04-001 · catalogue price", qty: "240", each: "₱ 12.00", total: "₱ 2,880.00" },
+        { name: "Letter Cutout Set A–Z", note: "LT-01-011 · 8 in tall", qty: "12", each: "₱ 480.00", total: "₱ 5,760.00" },
+        { name: "Arch Backdrop Panel", note: "BD-AR-019 · agreed price", qty: "8", each: "₱ 780.00", total: "₱ 6,240.00" },
+      ],
+      board: [
+        { name: "Not sent yet", icon: "inbox", count: "1", tone: "#a8332f", cards: [
+          { id: "D-2093", customer: "Sto. Niño Parish", detail: "Styro Block × 6", when: "Due today" },
+        ]},
+        { name: "Being made", icon: "hammer", count: "0", tone: "#b4531f", cards: [], isEmpty: true },
+        { name: "Ready to go", icon: "package-check", count: "2", tone: "#1462c8", cards: [
+          { id: "D-2087", customer: "Bantayan Events", detail: "Letter Cutout Set × 12", when: "Due today" },
+          { id: "D-2089", customer: "Elena Bautista", detail: "Swan centrepiece × 1", when: "Due today" },
+        ]},
+        { name: "On the way", icon: "truck", count: "1", tone: "#8a5000", cards: [
+          { id: "D-2088", customer: "Bantayan Events", detail: "Styro Ball 4 in × 240", when: "Left 7:40 AM" },
+        ]},
+        { name: "Arrived", icon: "circle-check", count: "0", tone: "#0f6b46", cards: [], isEmpty: true },
+      ],
+      deliveryFacts: [
+        { k: "Customer", v: "Bantayan Events" },
+        { k: "Address", v: "21 Quimpo Blvd, Davao City" },
+        { k: "Contact on arrival", v: "0917 000 0000" },
+        { k: "Carrying", v: "Styro Ball 4 inch × 240" },
+        { k: "Expected", v: "Today before 5:00 PM" },
+      ],
+      deliveryLog: [
+        { icon: "truck", what: "Marked on the way", when: "Today, 7:40 AM", who: "Carlos Mendoza" },
+        { icon: "package-check", what: "Marked ready to go", when: "Yesterday, 3:15 PM", who: "Ramon Garcia" },
+        { icon: "plus", what: "Delivery created from order #1051", when: "31 Aug, 10:02 AM", who: "Ana Reyes" },
+      ],
+      customers: [
+        { initials: "BE", name: "Bantayan Events", kind: "Business · events", phone: "0917 000 0000", city: "Davao City", orders: "18 orders", color: "#0e2f5c" },
+        { initials: "RI", name: "Rosalie Ibañez", kind: "Walk-in", phone: "0918 000 0000", city: "Toril", orders: "4 orders", color: "#b4531f" },
+        { initials: "SN", name: "Sto. Niño Parish", kind: "Business · church", phone: "(082) 000 0000", city: "Davao City", orders: "11 orders", color: "#0f6b46" },
+        { initials: "DP", name: "Davao Party Supplies", kind: "Business · reseller", phone: "0920 000 0000", city: "Buhangin", orders: "27 orders", color: "#1462c8" },
+        { initials: "EB", name: "Elena Bautista", kind: "Walk-in", phone: "0999 000 0000", city: "Matina", orders: "2 orders", color: "#6b3fa0" },
+        { initials: "MH", name: "Matina Hotel", kind: "Business · hospitality", phone: "(082) 000 0001", city: "Davao City", orders: "9 orders", color: "#4b5768" },
+      ],
+      customerFacts: [
+        { icon: "user-round", k: "Contact person", v: "Grace Bantayan" },
+        { icon: "phone", k: "Phone", v: "0917 000 0000" },
+        { icon: "mail", k: "Email", v: "hello@bantayan.ph" },
+        { icon: "map-pin", k: "Address", v: "21 Quimpo Blvd, Davao City" },
+        { icon: "notebook-pen", k: "Note", v: "Prefers delivery before noon" },
+      ],
+      suppliers: [
+        { name: "Mindanao Foam Supply", supplies: "Raw styrofoam blocks, sheets", phone: "(082) 000 0100", city: "Davao City" },
+        { name: "Southern Adhesives", supplies: "Glue, spray adhesive", phone: "(082) 000 0101", city: "Tagum" },
+        { name: "Panabo Paints", supplies: "Acrylic paint, primer", phone: "0917 000 0102", city: "Panabo" },
+        { name: "Toril Hardware", supplies: "Cutting wire, blades, tools", phone: "0918 000 0103", city: "Toril" },
+        { name: "Davao Packaging Co.", supplies: "Cartons, bubble wrap, tape", phone: "(082) 000 0104", city: "Davao City" },
+      ],
+      salesTasks: [
+        { icon: "clock", tint: "#fdf3e4", tone: "#8a5000", title: "Order #1043 for Bantayan Events", body: "Waiting 4 days. Customer asked for an update yesterday.", cta: "Open order" },
+        { icon: "phone", tint: "#e8f1fd", tone: "#1462c8", title: "Call back Rosalie Ibañez", body: "Wants a price for 200 letter cutouts, 12 inch.", cta: "Open customer" },
+        { icon: "user-plus", tint: "#e6f2ec", tone: "#0f6b46", title: "2 new customers not on record yet", body: "Both walked in on Monday. Add them so orders can be linked.", cta: "Add customers" },
+      ],
+      salesStats: [
+        { icon: "clipboard-list", label: "Orders you wrote this month", value: "23", hint: "5 still open", tone: "#1462c8" },
+        { icon: "wallet", label: "Value of those orders", value: "₱ 184,500", hint: "Cancelled not counted", tone: "#0f6b46" },
+        { icon: "user-round", label: "Customers on record", value: "312", hint: "8 added this month", tone: "#b4531f" },
+      ],
+      makeList: [
+        { name: "Styro Sheet 1 inch", sku: "SS-10-005", onShelf: "0", needed: "80", urgency: "Run out", icon: "circle-x", tint: "#fbeceb", tone: "#a8332f" },
+        { name: "Letter Cutout Set A–Z", sku: "LT-01-011", onShelf: "0", needed: "12", urgency: "Run out", icon: "circle-x", tint: "#fbeceb", tone: "#a8332f" },
+        { name: "Styro Ball 6 inch", sku: "SB-06-002", onShelf: "18", needed: "120", urgency: "Running low", icon: "triangle-alert", tint: "#fdf3e4", tone: "#8a5000" },
+        { name: "Styro Ball 8 inch", sku: "SB-08-003", onShelf: "24", needed: "60", urgency: "Running low", icon: "triangle-alert", tint: "#fdf3e4", tone: "#8a5000" },
+        { name: "Arch Backdrop Panel", sku: "BD-AR-019", onShelf: "31", needed: "40", urgency: "Running low", icon: "triangle-alert", tint: "#fdf3e4", tone: "#8a5000" },
+      ],
+      prodStats: [
+        { icon: "hammer", label: "Products to make", value: "9", hint: "2 have run out entirely", tone: "#b4531f" },
+        { icon: "package", label: "Pieces you made this week", value: "1,240", hint: "Across 14 products", tone: "#0f6b46" },
+        { icon: "boxes", label: "Products you look after", value: "148", hint: "3,420 pieces on the shelves", tone: "#1462c8" },
+      ],
+      products: [
+        { icon: "circle", name: "Styro Ball 4 inch", sku: "SB-04-001", category: "Balls", size: "4 in across", available: "240", statusLabel: "plenty", pct: "82%", tone: "#0f6b46", price: "₱ 12.00", unit: "each" },
+        { icon: "circle", name: "Styro Ball 6 inch", sku: "SB-06-002", category: "Balls", size: "6 in across", available: "18", statusLabel: "running low", pct: "14%", tone: "#c07800", price: "₱ 24.00", unit: "each" },
+        { icon: "square", name: "Styro Sheet 1/2 inch", sku: "SS-12-004", category: "Sheets", size: "24 × 48 × ½ in", available: "96", statusLabel: "plenty", pct: "68%", tone: "#0f6b46", price: "₱ 85.00", unit: "per sheet" },
+        { icon: "square", name: "Styro Sheet 1 inch", sku: "SS-10-005", category: "Sheets", size: "24 × 48 × 1 in", available: "0", statusLabel: "run out", pct: "3%", tone: "#a8332f", price: "₱ 150.00", unit: "per sheet" },
+        { icon: "box", name: "Styro Block Standard", sku: "BL-24-008", category: "Blocks", size: "12 × 12 × 24 in", available: "34", statusLabel: "plenty", pct: "55%", tone: "#0f6b46", price: "₱ 320.00", unit: "each" },
+        { icon: "shapes", name: "Letter Cutout Set A–Z", sku: "LT-01-011", category: "Cutouts", size: "8 in tall", available: "0", statusLabel: "run out", pct: "3%", tone: "#a8332f", price: "₱ 480.00", unit: "per bundle" },
+      ],
+      productFacts: [
+        { k: "Kind", v: "Styro ball" },
+        { k: "Category", v: "Balls" },
+        { k: "Diameter", v: "4 inches" },
+        { k: "Price", v: "₱ 12.00 each" },
+        { k: "Warn level", v: "40 pieces" },
+        { k: "Added", v: "12 March 2026" },
+      ],
+      movements: [
+        { when: "Today, 9:04 AM", what: "New stock recorded", who: "Ramon Garcia", delta: "+120", after: "240", tone: "#0f6b46" },
+        { when: "Yesterday, 4:12 PM", what: "Order #1051 filled", who: "Ana Reyes", delta: "−48", after: "120", tone: "#a8332f" },
+        { when: "28 Aug, 11:20 AM", what: "Order #1043 filled", who: "Ana Reyes", delta: "−24", after: "168", tone: "#a8332f" },
+        { when: "26 Aug, 8:40 AM", what: "New stock recorded", who: "Ramon Garcia", delta: "+90", after: "192", tone: "#0f6b46" },
+        { when: "22 Aug, 2:05 PM", what: "Counted and corrected", who: "Maria Santos", delta: "−6", after: "102", tone: "#a8332f" },
+      ],
+      ledgerStats: [
+        { icon: "users", label: "People with accounts", value: "24", hint: "21 can sign in right now", tint: "#e8f1fd", tone: "#1462c8" },
+        { icon: "package", label: "Products in the catalogue", value: "148", hint: "3,420 pieces on the shelves", tint: "#fdefe6", tone: "#b4531f" },
+        { icon: "clipboard-list", label: "Orders this month", value: "62", hint: "12 still waiting to be filled", tint: "#e6f2ec", tone: "#0f6b46" },
+        { icon: "triangle-alert", label: "Products running low", value: "7", hint: "2 have run out completely", tint: "#fbeceb", tone: "#a8332f" },
+      ],
+      strip: [
+        { icon: "clipboard-list", label: "Orders this month", value: "62", hint: "12 still open", tone: "#1462c8" },
+        { icon: "wallet", label: "Money earned", value: "₱ 486,200", hint: "Cancelled orders not counted", tone: "#0f6b46" },
+        { icon: "package", label: "Pieces in stock", value: "3,420", hint: "Across 148 products", tone: "#b4531f" },
+        { icon: "users", label: "Staff signed in today", value: "9", hint: "Of 24 accounts", tone: "#4b5768" },
+      ],
+      bigStats: [
+        { icon: "clipboard-list", label: "Orders waiting", value: "12", hint: "Oldest one is 4 days old", tint: "#e8f1fd", tone: "#1462c8", border: "#1462c833" },
+        { icon: "triangle-alert", label: "Products running low", value: "7", hint: "2 have run out", tint: "#fbeceb", tone: "#a8332f", border: "#a8332f33" },
+        { icon: "truck", label: "Deliveries out today", value: "4", hint: "1 arriving this afternoon", tint: "#fdefe6", tone: "#b4531f", border: "#b4531f33" },
+      ],
+      tiles: [
+        { icon: "package", label: "Products", hint: "148 items, 7 running low", tint: "#fdefe6", tone: "#b4531f" },
+        { icon: "shopping-cart", label: "Orders", hint: "12 waiting to be filled", tint: "#e8f1fd", tone: "#1462c8" },
+        { icon: "truck", label: "Deliveries", hint: "4 out for delivery", tint: "#e6f2ec", tone: "#0f6b46" },
+        { icon: "user-round", label: "Customers", hint: "312 on record", tint: "#e8f1fd", tone: "#1462c8" },
+        { icon: "handshake", label: "Suppliers", hint: "18 on record", tint: "#fdefe6", tone: "#b4531f" },
+        { icon: "users", label: "Staff", hint: "24 accounts, 3 blocked", tint: "#f0eee8", tone: "#4b5768" },
+      ],
+      attention: [
+        { icon: "triangle-alert", tint: "#fbeceb", tone: "#a8332f", title: "2 products have run out", body: "Styro Sheet 1 inch and Letter Cutout Set A–Z. Orders using them cannot be filled.", cta: "Restock these", ctaIcon: "package-plus" },
+        { icon: "clock", tint: "#fdf3e4", tone: "#8a5000", title: "3 orders have been waiting 4 days or more", body: "The oldest is order #1043 for Bantayan Events. Nobody has been assigned to it yet.", cta: "Open these orders", ctaIcon: "clipboard-list" },
+        { icon: "user-x", tint: "#e8f1fd", tone: "#1462c8", title: "1 staff account is blocked", body: "Ana Reyes cannot sign in. She has asked twice this week to have access restored.", cta: "Review the account", ctaIcon: "user-round" },
+      ],
+      staff: [
+        { initials: "MS", name: "Maria Santos", role: "Administrator", statusLabel: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#0e2f5c" },
+        { initials: "JD", name: "Juan Dela Cruz", role: "Manager", statusLabel: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#1462c8" },
+        { initials: "RG", name: "Ramon Garcia", role: "Production staff", statusLabel: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#b4531f" },
+        { initials: "AR", name: "Ana Reyes", role: "Sales staff", statusLabel: "Blocked", icon: "x", tint: "#fbeceb", tone: "#a8332f", color: "#6b3fa0" },
+        { initials: "CM", name: "Carlos Mendoza", role: "Delivery staff", statusLabel: "Yes", icon: "check", tint: "#e6f2ec", tone: "#0f6b46", color: "#0f6b46" },
+      ],
+      activity: [
+        { icon: "log-in", tint: "#e8f1fd", tone: "#1462c8", staff: "Maria Santos", action: "signed in.", when: "Today at 8:02 AM" },
+        { icon: "user-cog", tint: "#efeaf8", tone: "#6b3fa0", staff: "Juan Dela Cruz", action: "changed Ana Reyes' role to Sales staff.", when: "Today at 8:15 AM" },
+        { icon: "package", tint: "#fdefe6", tone: "#b4531f", staff: "Ramon Garcia", action: "recorded 120 new Styro Ball 4 inch.", when: "Today at 9:04 AM" },
+        { icon: "tag", tint: "#e6f2ec", tone: "#0f6b46", staff: "Ana Reyes", action: "changed the price of Styro Sheet 1/2 inch to ₱ 85.00.", when: "Today at 9:31 AM" },
+        { icon: "log-in", tint: "#e8f1fd", tone: "#1462c8", staff: "Carlos Mendoza", action: "signed in.", when: "Yesterday at 7:58 AM" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

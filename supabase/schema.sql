@@ -500,12 +500,70 @@ create policy "Active staff can manage orders"       on public.orders       for 
   using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Active staff can manage activity_log" on public.activity_log for all
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage customers"    on public.customers    for all
-  using (private.is_active_staff()) with check (private.is_active_staff());
 create policy "Active staff can manage products"     on public.products     for all
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage suppliers"    on public.suppliers    for all
+
+-- ------------------------------------------------------------
+-- suppliers: everyone works with them, only an admin removes one
+-- ------------------------------------------------------------
+--
+-- WHY THIS TABLE IS SPLIT OUT of the `for all` group above. `for all` covers
+-- DELETE, so while suppliers sat in that list any active staff member could
+-- remove a supplier row -- including a Delivery Staff account that has no
+-- reason to. There was no delete button anywhere in the app, so nothing
+-- exercised it; adding one makes the gap reachable, and a UI-only check is
+-- not a permission. The four verbs are therefore spelled out separately and
+-- DELETE alone asks for is_admin().
+--
+-- Read, add and edit stay open to any active staff member: knowing who to ring
+-- for materials, and correcting a wrong phone number, is everybody's job.
+--
+-- Nothing references public.suppliers, so removing one orphans no orders and
+-- no deliveries -- which is what makes a hard delete the honest thing here
+-- rather than an "archived" flag.
+drop policy if exists "Active staff read suppliers"   on public.suppliers;
+drop policy if exists "Active staff insert suppliers" on public.suppliers;
+drop policy if exists "Active staff update suppliers" on public.suppliers;
+drop policy if exists "Admins delete suppliers"       on public.suppliers;
+
+create policy "Active staff read suppliers"   on public.suppliers for select
+  using (private.is_active_staff());
+create policy "Active staff insert suppliers" on public.suppliers for insert
+  with check (private.is_active_staff());
+create policy "Active staff update suppliers" on public.suppliers for update
   using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Admins delete suppliers"       on public.suppliers for delete
+  using (private.is_admin());
+
+-- ------------------------------------------------------------
+-- customers: same split, for a sharper reason
+-- ------------------------------------------------------------
+--
+-- `orders` has NO foreign key to `customers` -- it carries customer_name as
+-- text -- so the database will not stop a delete and will not cascade one
+-- either. Past orders survive with the name on them. What a delete actually
+-- destroys is the only record of how to REACH the person: phone, email,
+-- address. That is not something a Sales Staff account should be able to do
+-- to the customer list on a bad afternoon, and there is no undo.
+--
+-- The app additionally refuses while the customer has an order still open,
+-- which the database cannot express in a policy -- it would need a subquery
+-- over orders joined on a text name. That check lives in App.deleteCustomer
+-- and on the screen. This policy is the part that stops the wrong ROLE; the
+-- open-order rule is the part that stops the wrong MOMENT.
+drop policy if exists "Active staff read customers"   on public.customers;
+drop policy if exists "Active staff insert customers" on public.customers;
+drop policy if exists "Active staff update customers" on public.customers;
+drop policy if exists "Admins delete customers"       on public.customers;
+
+create policy "Active staff read customers"   on public.customers for select
+  using (private.is_active_staff());
+create policy "Active staff insert customers" on public.customers for insert
+  with check (private.is_active_staff());
+create policy "Active staff update customers" on public.customers for update
+  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Admins delete customers"       on public.customers for delete
+  using (private.is_admin());
 
 -- ------------------------------------------------------------
 -- staff: the one table where "any active staff member" is too broad
@@ -629,6 +687,328 @@ $fn$;
 
 revoke all on function public.update_own_profile(text, text) from public, anon;
 grant execute on function public.update_own_profile(text, text) to authenticated;
+
+-- ============================================================
+-- UI overhaul: what happened recently, and per-account preferences
+-- ============================================================
+-- Added for design_handoff_lsb_ui_overhaul. Both are additive and guarded, so
+-- this file stays safe to re-run on a database that already has them.
+
+-- ------------------------------------------------------------
+-- activity_log becomes real
+-- ------------------------------------------------------------
+-- This table existed but nothing ever wrote to it: the "Recent Activity" panel
+-- and the whole activity-log screen were rendering a hardcoded array of twelve
+-- fake entries in src/utils/activityData.js, which is why the screen looked
+-- identical on every install and why the dashboard's "Activity Entries: 12"
+-- counter never moved.
+--
+-- The overhaul makes "What happened recently" a feed of sentences naming the
+-- person who did the thing, and the product detail screen shows stock
+-- movements. Both need three things the original seven columns cannot carry:
+--
+--   staff_name  who did it. `title` held an event NAME ("Order Deleted"), not a
+--               person, and the feed's whole shape is "<person> <did what>".
+--   subject     what it was done to, as a stable key -- an item code, an order
+--               id -- so one record's own screen can filter the feed to itself
+--               without string-matching a sentence.
+--   at          when, as a real timestamp. `date` is text holding a display
+--               string, so ordering by it sorts alphabetically by month name:
+--               'August 30' outranks 'July 2' and 'April' outranks everything.
+--               That is the same bug the customers/products/suppliers
+--               timestamptz migration above fixed, in the one table it missed.
+--
+-- The original columns stay. Rows written by the legacy workspace screens are
+-- still readable, they simply have nulls in the new ones, and the reader in
+-- src/utils/activityLog.js falls back to `date` when `at` is null.
+alter table public.activity_log
+  add column if not exists staff_name text,
+  add column if not exists subject    text,
+  add column if not exists at         timestamptz default now();
+
+-- Bounded like every other numeric column: `amount` carries a stock change
+-- here, and an unbounded integer column is how a typo in a quantity box
+-- rejected an entire write during class testing.
+alter table public.activity_log drop constraint if exists activity_log_amount_check;
+alter table public.activity_log add constraint activity_log_amount_check
+  check (amount is null or (amount >= -2000000000 and amount <= 2000000000));
+
+-- The feed is always "most recent first", and the product detail screen always
+-- filters to one subject before ordering.
+create index if not exists activity_log_at_idx      on public.activity_log (at desc);
+create index if not exists activity_log_subject_idx on public.activity_log (subject, at desc);
+
+-- ------------------------------------------------------------
+-- deliveries.driver
+-- ------------------------------------------------------------
+-- Who is taking it out.
+--
+-- The deliveries board filters by driver and has a "No driver yet" chip, and
+-- the order screen offers "Assign someone" on an order that has been waiting —
+-- none of which can exist without somewhere to put the name. There was nowhere:
+-- the table had product, size, location, amount and status.
+--
+-- Free text rather than a foreign key to `staff`, deliberately. Deliveries are
+-- sometimes taken by somebody without a system account — an owner, a hired van
+-- — and a constraint that made those undeliverable would be a constraint staff
+-- worked around by writing the name into the location field.
+alter table public.deliveries
+  add column if not exists driver text;
+
+-- ------------------------------------------------------------
+-- deliveries.due_on
+-- ------------------------------------------------------------
+-- When it is expected to arrive.
+--
+-- The board's filters are "Late", "Due today" and "This week", and its default
+-- view is today's work. None of that means anything against `created_at`, which
+-- is when the delivery was RAISED — a delivery raised on Monday for Friday is
+-- neither late on Tuesday nor due today.
+--
+-- A `date`, not a timestamptz: deliveries are promised for a day, not a minute,
+-- and storing a time nobody supplied would make "due today" depend on what hour
+-- the row happened to be created.
+--
+-- Nullable, because a delivery with no promised date is a real state — it is
+-- simply one that never appears in the "late" or "due today" columns.
+alter table public.deliveries
+  add column if not exists due_on date;
+
+-- The board groups by stage and its chips read the due date, so both are
+-- indexed.
+create index if not exists deliveries_status_idx on public.deliveries (status);
+create index if not exists deliveries_due_on_idx on public.deliveries (due_on);
+
+-- ------------------------------------------------------------
+-- customers.kind
+-- ------------------------------------------------------------
+-- A business or a walk-in.
+--
+-- The customers screen splits on it — it is two of the chips and the line under
+-- every name — and it cannot be derived from anything already stored. Guessing
+-- it (from whether an email was filled in, say) would be worse than not having
+-- it: sales staff would filter to "Businesses", not see a customer they know is
+-- one, and stop trusting the filter.
+--
+-- Defaulted to 'walk-in' because that is the larger group and the safer wrong
+-- answer: a business miscategorised as a walk-in is still found by name, where
+-- the reverse pollutes the list a salesperson uses to plan calls.
+alter table public.customers
+  add column if not exists kind text not null default 'walk-in';
+
+alter table public.customers drop constraint if exists customers_kind_check;
+alter table public.customers add constraint customers_kind_check
+  check (kind in ('business', 'walk-in'));
+
+-- ------------------------------------------------------------
+-- staff.dashboard_view
+-- ------------------------------------------------------------
+-- Which of the two dashboards a person sees: 'standard' (more on screen at
+-- once) or 'large' (bigger words and buttons, fewer things per screen).
+--
+-- PER ACCOUNT, NOT GLOBAL. It changes only what that person sees, which is the
+-- point -- the owner and the production floor do not have to agree, and nobody
+-- has to be talked out of their preference. Defaulted to 'standard' so a new
+-- account behaves exactly as before.
+alter table public.staff
+  add column if not exists dashboard_view text not null default 'standard';
+
+alter table public.staff drop constraint if exists staff_dashboard_view_check;
+alter table public.staff add constraint staff_dashboard_view_check
+  check (dashboard_view in ('standard', 'large'));
+
+-- Same reasoning as update_own_profile above, and the reason this is a separate
+-- function rather than two more parameters on it: that function is granted by
+-- exact signature, so changing its arity would revoke the grant from every
+-- client still calling the old shape. One column, one function, one grant.
+create or replace function public.set_own_dashboard_view(p_view text)
+returns void
+language sql
+security definer
+set search_path = public
+as $fn$
+  update public.staff
+  set dashboard_view = p_view
+  where lower(email) = lower((select auth.jwt()) ->> 'email')
+    and status = 'Active'
+    and p_view in ('standard', 'large');
+$fn$;
+
+revoke all on function public.set_own_dashboard_view(text) from public, anon;
+grant execute on function public.set_own_dashboard_view(text) to authenticated;
+
+-- ============================================================
+-- Goods left behind, money given back, and prices put right
+-- ============================================================
+-- Three things that happen in this shop every week and that the schema had no
+-- room for. All additive and guarded, so this file stays safe to re-run on a
+-- database that already has them.
+--
+-- NOTHING HERE TRACKS PER-LINE QUANTITIES, and that is deliberate. How much of
+-- each line has physically left the building, and how much was refunded, are
+-- counters on the line objects inside `orders.items` -- which is untyped jsonb
+-- and passed through wholesale by the mapper, so they cost no migration at all.
+-- See the header of src/utils/stockLedger.js. What is below is only what SQL
+-- reporting genuinely cannot dig out of jsonb: money, and history.
+
+-- ------------------------------------------------------------
+-- orders.backorder_status
+-- ------------------------------------------------------------
+-- Whether an order still owes the customer goods after part of it went out.
+--
+-- A CACHE, NOT THE TRUTH. The app never reads this column -- it derives the
+-- answer from the line counters, for the same reason the stage tracker is
+-- derived rather than stored: a word in a column and the lines it summarises
+-- are two places that can disagree about one fact, and the column is the one
+-- that will be wrong. It exists so a report can ask "how often are we sending
+-- half an order?" without unpacking jsonb, exactly as inventory.reserved caches
+-- a number the orders array is the real source of.
+--
+-- Defaulted to 'none' so every existing row reads as what it is: an order that
+-- has never been split.
+--
+-- ------------------------------------------------------------
+-- orders.refund_history / orders.refunded_amount
+-- ------------------------------------------------------------
+-- What went back, to whom, why, and what happened to the goods.
+--
+-- A LIST, NOT A FLAG, because a partial refund can happen more than once on one
+-- order -- two sheets rejected on Tuesday, a third on Friday -- and a single
+-- amount column would answer "how much" while losing every "why". Each entry
+-- carries { id, amount, refundedAt, refundedByStaffId, reason, method,
+-- restockedItems: [{ productId, quantity, disposition }] }.
+--
+-- `refunded_amount` is the running total kept beside it. Denormalised on
+-- purpose: the orders list filters and totals on it, and summing a jsonb array
+-- in a WHERE clause on every list read is a cost paid forever to avoid storing
+-- one number.
+--
+-- ------------------------------------------------------------
+-- orders.price_adjustments
+-- ------------------------------------------------------------
+-- Every time the total moved after the customer had already been told one.
+--
+-- APPEND ONLY, AND THE OLD FIGURE IS KEPT. Correcting a price used to mean
+-- overwriting total_amount, which destroyed the only record of what the
+-- customer was actually quoted -- so a disputed invoice had no evidence on
+-- either side. Each entry carries { oldTotal, newTotal, difference, reason,
+-- changedBy, changedAt } and the screen prints the most recent one as a banner.
+--
+-- One column, not two: an earlier draft of this work had `price_adjustments`
+-- and a separate `audit_history` holding the same six fields. Two columns that
+-- must agree are one column and a bug.
+alter table public.orders
+  add column if not exists backorder_status  text    not null default 'none',
+  add column if not exists refund_history    jsonb   not null default '[]'::jsonb,
+  add column if not exists price_adjustments jsonb   not null default '[]'::jsonb,
+  add column if not exists refunded_amount   numeric not null default 0;
+
+alter table public.orders drop constraint if exists orders_backorder_status_check;
+alter table public.orders add constraint orders_backorder_status_check
+  check (backorder_status in ('none', 'partial', 'resolved'));
+
+-- Bounded like every other numeric column in this file. A refund cannot be
+-- negative -- that is a charge, and it goes through the price correction path
+-- where it is recorded as one.
+alter table public.orders drop constraint if exists orders_refunded_amount_check;
+alter table public.orders add constraint orders_refunded_amount_check
+  check (refunded_amount >= 0 and refunded_amount <= 1000000000);
+
+-- Partial: the overwhelming majority of orders never split, and an index over
+-- 'none' repeated ten thousand times answers no question anybody asks.
+create index if not exists orders_backorder_idx on public.orders (backorder_status)
+  where backorder_status <> 'none';
+
+-- ------------------------------------------------------------
+-- deliveries.parent_delivery_id / deliveries.items_manifest
+-- ------------------------------------------------------------
+-- When part of an order is left behind, a second delivery is raised for the
+-- rest. These are how the two runs know about each other, and what each one
+-- actually carried.
+--
+-- A REAL FOREIGN KEY THIS TIME. An order finds its deliveries by matching the
+-- free text in `product` ("Order #12 - Ana Reyes"), which is a weakness this
+-- work deliberately did not widen: the follow-up run keeps that exact prefix so
+-- every existing matcher goes on working untouched. But nothing forced the
+-- run-to-run link to be a second parsed string, so it is not one.
+--
+-- Null on every original run, which is most of them.
+--
+-- `items_manifest` is what was actually loaded onto that van --
+-- [{ productId, name, orderedQty, deliveredQty, backorderQty }] -- kept per
+-- DELIVERY rather than per order, because it is a record of one departure. The
+-- order's own line counters are the running total; this is the receipt.
+alter table public.deliveries
+  add column if not exists parent_delivery_id bigint references public.deliveries(id),
+  add column if not exists items_manifest jsonb not null default '[]'::jsonb;
+
+create index if not exists deliveries_parent_idx on public.deliveries (parent_delivery_id)
+  where parent_delivery_id is not null;
+
+-- ------------------------------------------------------------
+-- The money guard
+-- ------------------------------------------------------------
+-- Only an administrator or a manager may refund, or change what an order costs.
+--
+-- WHY A TRIGGER AND NOT A POLICY. RLS decides which ROWS you may write, not
+-- which COLUMNS -- and every member of staff needs UPDATE on public.orders to
+-- mark one done, so the row permission cannot be narrowed without breaking the
+-- ordinary case. Admins, managers and sales staff are all the same
+-- `authenticated` database role, so column grants cannot separate them either.
+-- This is the same problem, and the same answer, as staff_guard_self_update
+-- above.
+--
+-- WHAT IT PROTECTS is exactly the four things that move money or rewrite what a
+-- customer was told. Everything else on an order -- status, items, the
+-- delivery stamp -- is untouched, so marking an order done and recording what
+-- went out stay open to whoever is doing the work.
+--
+-- THIS IS THE PERMISSION. The Order screen hides the block from anyone else and
+-- App.jsx refuses before it writes, but those are a courtesy and a guard
+-- against a stale render. The anon key ships in the JS bundle; only this runs
+-- on the server.
+create or replace function private.is_manager_or_admin()
+returns boolean language sql stable security definer set search_path = public as $fn$
+  select exists (
+    select 1 from public.staff
+    where lower(email) = lower((select auth.jwt()) ->> 'email')
+      and status = 'Active' and role in ('Admin', 'Manager')
+  );
+$fn$;
+
+revoke all on function private.is_manager_or_admin() from public;
+grant execute on function private.is_manager_or_admin() to authenticated;
+
+create or replace function public.orders_guard_money_update()
+returns trigger language plpgsql security definer set search_path = public as $fn$
+begin
+  -- No JWT at all means the table owner or the service role: SQL editor,
+  -- migrations, seeds. Those bypass RLS already, so guarding them here only
+  -- blocks legitimate maintenance - including running this very file.
+  if (select auth.jwt()) is null then return new; end if;
+
+  if private.is_manager_or_admin() then return new; end if;
+
+  if new.total_amount      is distinct from old.total_amount
+     or new.refunded_amount   is distinct from old.refunded_amount
+     or new.refund_history    is distinct from old.refund_history
+     or new.price_adjustments is distinct from old.price_adjustments then
+    -- Written for a person: humanizeError in src/utils/storageManager.js passes
+    -- messages shaped like this straight through to the toast rather than
+    -- replacing them with a generic one.
+    raise exception 'Only an administrator or a manager can give money back or change what an order costs';
+  end if;
+
+  return new;
+end;
+$fn$;
+
+revoke all on function public.orders_guard_money_update() from public, anon, authenticated;
+
+drop trigger if exists orders_guard_money_update on public.orders;
+create trigger orders_guard_money_update
+  before update on public.orders
+  for each row execute function public.orders_guard_money_update();
 
 -- ============================================================
 -- Auth hook: staff claims on the access token
