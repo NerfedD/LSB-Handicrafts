@@ -1,13 +1,20 @@
 import {
   Boxes,
   ClipboardList,
+  Hammer,
   Handshake,
   LayoutDashboard,
   Truck,
   UserRound,
   Users,
 } from "../icons";
+import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import IconChip from "../shared/Chip";
 import { DestinationTile, HeroStat } from "../shared/dashboard";
+import { EmptySlot } from "../shared/PageStates";
+import { productIcon } from "../shared/productIcons";
+import StatusPill from "../shared/StatusPill";
 import { greeting } from "../../utils/profileFormat";
 import { isAdminRole } from "../../utils/permissions";
 
@@ -28,6 +35,13 @@ import { isAdminRole } from "../../utils/permissions";
  * "WHERE DO YOU WANT TO GO?" replaces reading down a sidebar. Six tiles, each a
  * 96px target with a 60px icon and a line saying what is behind it, so choosing
  * a destination is one large deliberate press rather than a small accurate one.
+ *
+ * PRODUCTION KEEPS ITS MAKE LIST HERE TOO. This screen used to show the same
+ * six destination tiles to every role, which meant choosing large text — an
+ * accessibility preference, not a role — quietly cost a Production Staff
+ * member the one dashboard built for their actual job: knowing what to make
+ * next. The make list below is the standard dashboard's own data, at the
+ * sizes this screen already uses everywhere else.
  */
 export default function LargeTextDashboard({
   profile,
@@ -38,10 +52,13 @@ export default function LargeTextDashboard({
   customerCount,
   supplierCount,
   role,
+  makeList = [],
   onNavigate,
+  onRecordMade,
 }) {
   const isAdmin = isAdminRole(role);
   const isProduction = role === "Production Staff";
+  const topOfList = makeList.slice(0, 5);
 
   const destinations = [
     {
@@ -138,6 +155,58 @@ export default function LargeTextDashboard({
           hint={late === 0 ? "Everything is on time." : "Past the day promised."}
         />
       </div>
+
+      {isProduction && (
+        <Card variant="lift" className="border-l-[5px] border-l-clay">
+          <CardHeader className="bg-tint-clay">
+            <IconChip icon={<Hammer />} tone="clay" size="md" className="bg-white/70 dark:bg-white/[0.08]" />
+            <CardTitle className="text-[19px]">Make list — most urgent first</CardTitle>
+          </CardHeader>
+
+          {topOfList.length === 0 ? (
+            <EmptySlot className="py-10 text-[16px]">
+              Nothing is running low. The shelves are where they should be.
+            </EmptySlot>
+          ) : (
+            <ul>
+              {topOfList.map(({ product, onShelf, needed, urgency, tone, backorder }) => (
+                <li
+                  key={`${backorder ? "owed" : "low"}-${product.id}`}
+                  className="flex flex-wrap items-center gap-4.5 border-b border-hair px-5.5 py-4.5 last:border-b-0"
+                >
+                  <IconChip icon={productIcon(product.productType)} tone={backorder ? "red" : "neutral"} size="lg" />
+                  <div className="min-w-[220px] flex-1">
+                    <p className="text-[18px] font-extrabold leading-[1.3] text-ink">
+                      {product.name}
+                    </p>
+                    <p
+                      className={
+                        backorder
+                          ? "pt-1 text-[16px] font-bold leading-[1.4] text-red-text"
+                          : "pt-1 text-[16px] leading-[1.4] text-muted"
+                      }
+                    >
+                      {backorder
+                        ? "Somebody is already waiting for this"
+                        : `${onShelf} on the shelf — need ${needed} more`}
+                    </p>
+                  </div>
+                  <StatusPill label={urgency} tone={tone} mark="dot" />
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {onRecordMade && (
+            <div className="border-t border-hair p-4">
+              <Button variant="clay" size="xl" block onClick={onRecordMade}>
+                <Hammer className="h-5 w-5" />
+                Record what we made
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
 
       <div>
         <h3 className="pb-4 text-[15px] font-extrabold uppercase tracking-[0.1em] text-muted">

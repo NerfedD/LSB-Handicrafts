@@ -151,7 +151,9 @@ export default function DashboardPage({
         customerCount={customers.length}
         supplierCount={suppliers.length}
         role={role}
+        makeList={list}
         onNavigate={onNavigate}
+        onRecordMade={onRecordMade}
       />
     );
   }

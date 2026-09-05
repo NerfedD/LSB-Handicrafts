@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-05T08:10:38Z",
+  "title": "Design System: LSB Handicrafts — Management System",
+  "extensions": {
+    "colorMeta": {
+      "cobalt": {
+        "role": "primary",
+        "displayName": "Working Cobalt",
+        "canonical": "#1462c8",
+        "tonalRamp": ["#072246", "#0d4082", "#135bb9", "#2077e9", "#5899ee", "#86b5f3", "#b5d2f8", "#dfebfc"]
+      },
+      "navy": {
+        "role": "tertiary",
+        "displayName": "Chrome Navy",
+        "canonical": "#0e2f5c",
+        "tonalRamp": ["#0a2242", "#133f7c", "#1b5ab1", "#2b77df", "#6099e7", "#8cb5ed", "#b8d2f4", "#e0ebfa"]
+      },
+      "clay": {
+        "role": "secondary",
+        "displayName": "Kiln Clay",
+        "canonical": "#b4531f",
+        "tonalRamp": ["#411e0b", "#7a3815", "#ae501e", "#db6a2e", "#e49062", "#ecaf8e", "#f3cdb9", "#fae9e1"]
+      },
+      "green": {
+        "role": "state-confirm",
+        "displayName": "Confirm Green",
+        "canonical": "#0f6b46",
+        "tonalRamp": ["#09432c", "#127d52", "#19b375", "#28e197", "#5ee8b1", "#8befc6", "#b7f5dc", "#e0fbf0"]
+      },
+      "amber": {
+        "role": "state-caution",
+        "displayName": "Caution Amber",
+        "canonical": "#c07800",
+        "tonalRamp": ["#4d3000", "#8f5900", "#cc8000", "#ffa30a", "#ffba47", "#ffcd7a", "#ffe0ad", "#fff2db"]
+      },
+      "red": {
+        "role": "state-danger",
+        "displayName": "Alert Red",
+        "canonical": "#a8332f",
+        "tonalRamp": ["#3c1211", "#70221f", "#9f302d", "#c94440", "#d77370", "#e29a97", "#edc1bf", "#f7e4e3"]
+      },
+      "purple": {
+        "role": "state-activity",
+        "displayName": "Activity Purple",
+        "canonical": "#6b3fa0",
+        "tonalRamp": ["#251637", "#452866", "#623a92", "#804fba", "#9f7bcb", "#baa0da", "#d5c4e8", "#ece5f5"]
+      },
+      "paper": { "role": "neutral", "displayName": "Warm Paper", "canonical": "rgb(244 242 236)" },
+      "paper-2": { "role": "neutral", "displayName": "Paper Wash", "canonical": "rgb(250 249 245)" },
+      "surface": { "role": "neutral", "displayName": "Pure Surface", "canonical": "rgb(255 255 255)" },
+      "ink": { "role": "neutral", "displayName": "Deep Ink", "canonical": "rgb(17 29 43)" },
+      "ink-2": { "role": "neutral", "displayName": "Ink Wash", "canonical": "rgb(50 64 84)" },
+      "muted": { "role": "neutral", "displayName": "Slate Muted", "canonical": "rgb(75 87 104)" },
+      "muted-2": { "role": "neutral", "displayName": "Muted Fade", "canonical": "rgb(138 147 161)" }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The screen's single <h1> in the header only. 27px in the large-text dashboard preference." },
+      "headline": { "displayName": "Headline", "purpose": "Dialog titles and empty/error/loading state headings." },
+      "title": { "displayName": "Title", "purpose": "Card headings and numbered form-band headings." },
+      "body": { "displayName": "Body", "purpose": "The universal floor — table cells, paragraphs, and field labels at the bold end of this size." },
+      "label": { "displayName": "Label", "purpose": "Tracked uppercase table headers and sidebar group captions. The one exception below the 16px floor." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px rgba(17,29,43,.05)", "purpose": "Ambient resting shadow for every card, dialog trigger, and stat tile." },
+      { "name": "lift", "value": "0 1px 2px rgba(17,29,43,.05), 0 12px 32px -22px rgba(17,29,43,.4)", "purpose": "The one 'needs your attention' card per screen — spend once only." },
+      { "name": "cobalt", "value": "0 2px 8px rgba(20,98,200,.28)", "purpose": "Colored glow under the primary cobalt button." },
+      { "name": "cobalt-lg", "value": "0 3px 12px rgba(20,98,200,.32)", "purpose": "Larger cobalt glow for a prominent primary CTA." },
+      { "name": "nav", "value": "0 2px 8px rgba(0,0,0,.22)", "purpose": "Under the active sidebar nav item." },
+      { "name": "modal", "value": "0 20px 50px -18px rgba(17,29,43,.55)", "purpose": "Dialog surfaces, lifted clear of the dimmed backdrop." },
+      { "name": "toast", "value": "0 12px 32px -14px rgba(17,29,43,.6)", "purpose": "The one floating, non-modal surface in the system." }
+    ],
+    "motion": [
+      { "name": "ease-panel", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Panel/dialog entry, 200ms — the only decorative-adjacent motion in the system." },
+      { "name": "duration-panel", "value": "200ms", "purpose": "Panel/dialog entry duration." },
+      { "name": "duration-control", "value": "120-160ms", "purpose": "Hover and press transitions on buttons, chips, and rows; lives on the components themselves." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce collapses all transitions/animations to 1ms", "purpose": "Global reduced-motion guard in index.css." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "tab", "value": "834px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "desk", "value": "1280px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action per screen: solid cobalt fill, white text, cobalt-tinted shadow.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border: none; border-radius: 10px; background: #1462c8; color: #fff; font-family: Manrope, system-ui, sans-serif; font-weight: 700; font-size: 15.5px; box-shadow: 0 2px 8px rgba(20,98,200,.28); transition: background 150ms; } .ds-btn-primary:hover { background: #0e4b9c; } .ds-btn-primary:focus-visible { outline: 2px solid #1462c8; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(20,98,200,.15); }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "The standard secondary action: 1.5px chip border, surface fill.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 48px; padding: 0 20px; border: 1.5px solid rgba(17,29,43,.15); border-radius: 10px; background: #fff; color: #111d2b; font-family: Manrope, system-ui, sans-serif; font-weight: 700; font-size: 15.5px; transition: background 150ms; } .ds-btn-outline:hover { background: rgba(17,29,43,.03); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "54px field, 11px radius, 1.5px border, cobalt focus glow.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Item name\" />",
+      "css": ".ds-input { width: 100%; height: 54px; padding: 0 16px; border-radius: 11px; border: 1.5px solid rgba(17,29,43,.18); background: #fff; color: #111d2b; font-family: Manrope, system-ui, sans-serif; font-size: 16px; transition: border-color 150ms, box-shadow 150ms; } .ds-input::placeholder { color: #8a93a1; } .ds-input:hover { border-color: rgba(17,29,43,.16); } .ds-input:focus { outline: none; border-color: #1462c8; box-shadow: 0 0 0 4px rgba(20,98,200,.15); }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "status-pill",
+      "description": "The one status chip — tone-derived tint, always paired with a dot or glyph, never color alone.",
+      "html": "<span class=\"ds-pill\"><span class=\"ds-pill-dot\"></span>Running low</span>",
+      "css": ".ds-pill { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 9999px; border: 1.5px solid rgba(192,120,0,.25); background: #fdf3e4; color: #6b3f00; font-family: Manrope, system-ui, sans-serif; font-weight: 700; font-size: 15px; white-space: nowrap; } .ds-pill-dot { width: 10px; height: 10px; border-radius: 9999px; background: #c07800; flex-shrink: 0; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The default card shell: 14px radius, single hairline border, flat ambient shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Recent orders</div><div class=\"ds-card-body\">Card content goes here.</div></div>",
+      "css": ".ds-card { border: 1px solid rgba(17,29,43,.12); border-radius: 14px; background: #fff; box-shadow: 0 1px 2px rgba(17,29,43,.05); overflow: hidden; } .ds-card-header { padding: 18px 22px; border-bottom: 1px solid rgba(17,29,43,.08); font-family: Manrope, system-ui, sans-serif; font-weight: 800; font-size: 18px; color: #111d2b; } .ds-card-body { padding: 22px; font-family: Manrope, system-ui, sans-serif; font-size: 16px; color: #111d2b; }"
+    },
+    {
+      "name": "Icon Chip",
+      "kind": "custom",
+      "description": "A tinted square holding one icon; the most-repeated shape in the system, fronting nearly every row.",
+      "html": "<span class=\"ds-icon-chip\"><svg viewBox=\"0 0 24 24\" width=\"20\" height=\"20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 2v20M2 12h20\"/></svg></span>",
+      "css": ".ds-icon-chip { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 11px; background: #e8f1fd; color: #1462c8; }"
+    },
+    {
+      "name": "Stage Tracker Step",
+      "kind": "custom",
+      "description": "One node of the stage tracker signature component: done (green check), current (cobalt number), or future (outlined, transparent connector).",
+      "html": "<div class=\"ds-stage-group\"><span class=\"ds-stage ds-stage-done\">✓</span><span class=\"ds-stage-line ds-stage-line-done\"></span><span class=\"ds-stage ds-stage-current\">2</span><span class=\"ds-stage-line ds-stage-line-future\"></span><span class=\"ds-stage ds-stage-future\">3</span></div>",
+      "css": ".ds-stage-group { display: flex; align-items: center; } .ds-stage { display: flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 9999px; border: 2px solid; font-family: Manrope, system-ui, sans-serif; font-weight: 800; font-size: 17px; } .ds-stage-done { border-color: #0f6b46; background: #0f6b46; color: #fff; } .ds-stage-current { border-color: #1462c8; background: #1462c8; color: #fff; } .ds-stage-future { border-color: rgba(17,29,43,.15); background: #fff; color: #8a93a1; } .ds-stage-line { height: 4px; min-width: 24px; flex: 1; border-radius: 9999px; margin: 0 4px; } .ds-stage-line-done { background: #0f6b46; } .ds-stage-line-future { background: transparent; }"
+    },
+    {
+      "name": "Stock Bar",
+      "kind": "custom",
+      "description": "A 9px pill-radius proportional bar, readable from a standing distance; never labeled on its own.",
+      "html": "<div class=\"ds-stock-bar\"><div class=\"ds-stock-bar-fill\" style=\"width: 62%\"></div></div>",
+      "css": ".ds-stock-bar { height: 9px; width: 100%; max-width: 170px; border-radius: 9999px; background: rgba(17,29,43,.08); overflow: hidden; } .ds-stock-bar-fill { height: 100%; border-radius: 9999px; background: #0f6b46; transition: width 200ms; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Workshop Ledger",
+    "overview": "This is a ledger built for a workshop floor, not a dashboard built for an office. Every decision answers to two people at once: the owner who needs it to look like software a real business runs on, and the staff member counting styrofoam sheets who has never been confident with a computer. The system resolves that tension by trusting scale and words over subtlety — 62px table rows, 16px as an absolute floor, a status that reads \"Can sign in: Yes\" instead of \"Status: Active\" — while keeping the palette restrained enough (one action color, two supporting accents, everything else a warm, muted neutral) that the result reads as considered rather than shouted.\n\nThe palette itself is a small cast with fixed jobs, not a decorative range: navy is the chrome the workshop is built inside (sidebar, structure), cobalt is the one thing you can act on per screen, and clay is craft and production's own accent — the color of the kiln, not the office. Green, amber, red and purple are reserved entirely for state (confirm, caution, danger, activity) and never compete with cobalt for attention. Depth stays almost flat; a single lifted card per screen is the only place shadow is spent, so it still means something when it appears.\n\nType is one family (Manrope) doing every job, sized off a tap-target floor rather than a decorative scale — nothing a person reads as a sentence drops below 16px, and the only exception (a tracked uppercase table header or sidebar caption) is read once as a label, not parsed as prose. Numbers are always tabular, because every screen in this system exists to be compared down a column: stock counts, prices, order totals.",
+    "keyCharacteristics": [
+      "One action color (cobalt) per screen; clay and green are jobs, not competing primaries.",
+      "Nothing readable as a sentence below 16px; table rows are 62px, controls are 44px or taller.",
+      "Near-flat depth — a single lift shadow per screen marks the one thing to look at first.",
+      "Status is always stated as a plain-language answer, never a raw system value, and never color alone — every state pill carries a dot or glyph.",
+      "Warm, near-black neutrals (never pure black, never pure white behind content) that flip fully to a warm dark theme through role-based tokens rather than per-screen overrides."
+    ],
+    "rules": [
+      { "name": "The One Accent Rule", "body": "Cobalt is the only color that means \"act on this,\" on any given screen. Clay and green are jobs (craft work, the one confirm-forward action) and navy is structure — none of them is a second primary button competing for the eye.", "section": "colors" },
+      { "name": "The Color-Plus-Glyph Rule", "body": "No state is communicated by hue alone. Every status pill carries a dot, a check, an X, or a clock beside its color, because color alone is not a distinction for someone who cannot separate the amber chip from the green one.", "section": "colors" },
+      { "name": "The 16px Floor Rule", "body": "Nothing meant to be read as a sentence drops below 16px. The only exceptions are tracked uppercase signposts (a column header, a sidebar group label) read once rather than parsed — and even those never go below 13px.", "section": "typography" },
+      { "name": "The Tabular Numerals Rule", "body": "Every number in the system is compared down a column — stock counts, prices, order totals — so font-variant-numeric: tabular-nums is set globally rather than per table, and proportional digits never make a column ragged.", "section": "typography" },
+      { "name": "The One Lift Rule", "body": "The lift shadow is spent on exactly one element per screen — the dashboard's \"needs your attention\" card. Using it anywhere else spends the same signal everywhere, which is the same as not having it.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every readable-as-a-sentence text at 16px or larger, and every tappable control at 44px or taller — the only exception is a tracked uppercase signpost read once, never a sentence.",
+      "Do pair every icon with a visible word, except a dialog's 44px outlined close control.",
+      "Do spell out a destructive action fully: name the record, state the consequence and what survives, label the button with the verb, and keep it inside its own outlined block.",
+      "Do derive a displayed value (reserved stock, a stage tracker's position) from its live source of truth rather than trusting a cached column.",
+      "Do spend the lift shadow and the cobalt-toned button on exactly one element per screen each.",
+      "Do flip every neutral surface and text color through the shared CSS-variable roles so dark mode is inherited automatically, never hand-written per screen."
+    ],
+    "donts": [
+      "Don't put a second solid-fill \"primary-looking\" button on a screen next to the cobalt one — clay and green are jobs, not alternate primaries.",
+      "Don't put a bare icon (a pencil, a trash glyph) alone in a table row as an action; row actions are always an icon plus a word (\"View\", \"Edit\").",
+      "Don't lay a form out as a dense multi-column grid; it runs down a single numbered column, with the sole exception of a genuinely paired two-value Row.",
+      "Don't draw a gray connector between two not-yet-reached stage-tracker steps — a future connector is transparent, or it silently reads as a completed one.",
+      "Don't let type shrink below 16px through a fluid/viewport-driven clamp; the large-text accessibility need is served by an explicit dashboard-view choice instead.",
+      "Don't substitute a stock photo for missing product or brand photography; an honest dashed placeholder at the correct aspect ratio is preferred until real photography exists."
+    ]
+  }
+}

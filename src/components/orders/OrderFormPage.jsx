@@ -41,15 +41,27 @@ import { stockLabel } from "../../utils/copy";
  * can be changed, because the real business negotiates. What it cannot do is
  * pretend the change did not happen: the line is marked as an agreed price so
  * the order shows why the total is not the sum of the list prices.
+ *
+ * A LINE CAN ALSO BE MADE BY HAND. LSB's own product line is custom sculptures
+ * and made-to-order pieces, and `LINE_KIND.CUSTOM` has existed since the data
+ * model did — OrderDetail already prints a custom line's note beside its name.
+ * This screen used to have no way to WRITE one: every line required a
+ * `productId` from the shelf, so an order for anything not already in the
+ * catalogue could not be entered at all. Toggling a line to "not in the
+ * catalogue" swaps the Select for two plain fields (a name, and what makes it
+ * custom) and draws no stock — the same thing `normalizeItem` already assumes
+ * a custom line does.
  */
 
 const emptyLine = () => ({
   key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   productId: "",
   name: "",
+  notes: "",
   quantity: 1,
   unitPrice: 0,
   listPrice: 0,
+  custom: false,
 });
 
 export default function OrderFormPage({
@@ -77,7 +89,9 @@ export default function OrderFormPage({
     [products, inventory, existingOrders]
   );
 
-  const filled = lines.filter((line) => line.productId && Number(line.quantity) > 0);
+  const filled = lines.filter(
+    (line) => (line.custom ? line.name.trim() : line.productId) && Number(line.quantity) > 0
+  );
   const itemsTotal = orderTotal(
     filled.map((line) => ({
       productId: line.productId,
@@ -106,9 +120,23 @@ export default function OrderFormPage({
     });
   }
 
+  /** Swap a line between "pick from the shelf" and "made by hand". */
+  function toggleCustom(key) {
+    setLines((previous) =>
+      previous.map((line) => {
+        if (line.key !== key) return line;
+        return line.custom
+          ? { ...line, custom: false, productId: "", name: "", notes: "", unitPrice: 0, listPrice: 0 }
+          : { ...line, custom: true, productId: "", name: "", notes: "", unitPrice: 0, listPrice: 0 };
+      })
+    );
+    setError(null);
+  }
+
   // Warn, do not block. Selling something we are short of is a real decision
   // somebody is allowed to make — they may be about to make more — so the
-  // screen says what it knows and leaves the choice with the person.
+  // screen says what it knows and leaves the choice with the person. A custom
+  // line draws no catalog stock, so it never appears here.
   const shortages = filled
     .map((line) => {
       const match = shelf.find(({ product }) => String(product.id) === String(line.productId));
@@ -133,17 +161,20 @@ export default function OrderFormPage({
     onSave({
       customerName: customerName.trim(),
       items: filled.map((line) => ({
-        kind:
-          Number(line.unitPrice) !== Number(line.listPrice)
+        kind: line.custom
+          ? LINE_KIND.CUSTOM
+          : Number(line.unitPrice) !== Number(line.listPrice)
             ? LINE_KIND.NEGOTIATED
             : LINE_KIND.CATALOG,
-        productId: Number(line.productId),
+        productId: line.custom ? null : Number(line.productId),
         name: line.name,
+        notes: line.custom ? line.notes.trim() || undefined : undefined,
         quantity: Number(line.quantity),
         unitPrice: Number(line.unitPrice),
         listPrice: Number(line.listPrice),
         lineTotal: Number(line.unitPrice) * Number(line.quantity),
-        stockUnits: Number(line.quantity),
+        // A custom shape consumes no catalog stock — see normalizeItem.
+        stockUnits: line.custom ? 0 : Number(line.quantity),
       })),
       totalAmount: total,
       delivery: address.trim()
@@ -205,27 +236,62 @@ export default function OrderFormPage({
                   key={line.key}
                   className="rounded-field border border-card bg-surface p-4"
                 >
-                  <div className="grid gap-3.5 sm:grid-cols-[minmax(0,2fr)_100px_140px]">
-                    <Field label="Item">
-                      {(props) => (
-                        <Select
-                          value={String(line.productId)}
-                          onValueChange={(next) => chooseProduct(line.key, next)}
+                  {/* One question at a time, per rule 5 — the same reason the
+                      rest of this form is a single column, not a grid. */}
+                  <div className="flex flex-col gap-3.5">
+                    {line.custom ? (
+                      <>
+                        <Field label="What is it" hint="A name a customer would recognise.">
+                          {(props) => (
+                            <Input
+                              {...props}
+                              value={line.name}
+                              onChange={(event) =>
+                                setLine(line.key, { name: event.target.value })
+                              }
+                              placeholder="Carved rose centrepiece"
+                            />
+                          )}
+                        </Field>
+
+                        <Field
+                          label="Details"
+                          hint="Size, shape, or whatever makes this one custom — it's the only record of why the price is what it is."
                         >
-                          <SelectTrigger id={props.id}>
-                            <SelectValue placeholder="Pick a product" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {shelf.map(({ product, stock }) => (
-                              <SelectItem key={product.id} value={String(product.id)}>
-                                {product.name}
-                                {stock.tracked ? ` — ${stock.available} left` : ""}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </Field>
+                          {(props) => (
+                            <Input
+                              {...props}
+                              value={line.notes}
+                              onChange={(event) =>
+                                setLine(line.key, { notes: event.target.value })
+                              }
+                              placeholder="18 inch, gold trim, matches the sample photo"
+                            />
+                          )}
+                        </Field>
+                      </>
+                    ) : (
+                      <Field label="Item">
+                        {(props) => (
+                          <Select
+                            value={String(line.productId)}
+                            onValueChange={(next) => chooseProduct(line.key, next)}
+                          >
+                            <SelectTrigger id={props.id}>
+                              <SelectValue placeholder="Pick a product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {shelf.map(({ product, stock }) => (
+                                <SelectItem key={product.id} value={String(product.id)}>
+                                  {product.name}
+                                  {stock.tracked ? ` — ${stock.available} left` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </Field>
+                    )}
 
                     <Field label="How many">
                       {(props) => (
@@ -247,7 +313,9 @@ export default function OrderFormPage({
                       hint={
                         match && Number(line.unitPrice) !== Number(line.listPrice)
                           ? `List price is ${formatPeso(line.listPrice)}`
-                          : undefined
+                          : line.custom
+                            ? "Priced by hand — there is no list price to compare it to."
+                            : undefined
                       }
                     >
                       {(props) => (
@@ -268,9 +336,11 @@ export default function OrderFormPage({
 
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5">
                     <span className="text-[15px] text-muted">
-                      {match?.stock.tracked
-                        ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
-                        : "Stock not tracked for this one"}
+                      {line.custom
+                        ? "Made by hand — nothing drawn from stock"
+                        : match?.stock.tracked
+                          ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
+                          : "Stock not tracked for this one"}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-[16.5px] font-bold tabular-nums">
@@ -289,6 +359,20 @@ export default function OrderFormPage({
                         </Button>
                       )}
                     </div>
+                  </div>
+
+                  <div className="pt-3.5">
+                    <Button
+                      type="button"
+                      variant="link"
+                      size="sm"
+                      className="h-auto px-0 py-0"
+                      onClick={() => toggleCustom(line.key)}
+                    >
+                      {line.custom
+                        ? "Pick from the catalogue instead"
+                        : "Not in the catalogue? Add it by hand"}
+                    </Button>
                   </div>
                 </div>
               );

@@ -298,9 +298,17 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
               disabled={saving}
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              Keep it
             </Button>
-            <Button type="submit" variant="danger-solid" size="lg" disabled={saving}>
+            <Button
+              type="submit"
+              variant="danger-solid"
+              size="lg"
+              // A button that is always pressable reads as ready even at
+              // ₱0.00 — the one figure that is guaranteed to fail on submit.
+              // Disabled here is the honest default; enabled is the promise.
+              disabled={saving || givingBack <= 0}
+            >
               <Banknote className="h-5 w-5" />
               {saving ? "Working…" : `Give back ${formatPeso(givingBack)}`}
             </Button>

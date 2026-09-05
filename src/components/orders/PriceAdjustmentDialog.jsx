@@ -191,9 +191,16 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
               disabled={saving}
               onClick={() => handleOpenChange(false)}
             >
-              Cancel
+              Keep the old price
             </Button>
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
+            <Button
+              type="submit"
+              variant="cobalt"
+              size="lg"
+              // Same price in, same price out is guaranteed to fail on
+              // submit — don't leave the button looking ready for it.
+              disabled={saving || difference === 0}
+            >
               <Tag className="h-5 w-5" />
               {saving ? "Saving…" : "Save the new price"}
             </Button>
