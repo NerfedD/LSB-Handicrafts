@@ -17,6 +17,7 @@ import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
 import { FilterChips, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import StatusPill, { InlineBadge } from "../shared/StatusPill";
+import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
 import { roleLabel, signInState } from "../../utils/copy";
@@ -63,6 +64,9 @@ export default function StaffAccountsPage({
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
   const [chip, setChip] = useState(initialFilter ?? "all");
+  // Which layout to mount. Only one of the table/card renders below ever
+  // reaches the DOM -- see useMediaQuery for why that used to not be true.
+  const isDesktop = useMediaQuery(TAB_QUERY);
 
   const rows = useMemo(
     () => users.map((user) => ({ user, signIn: signInState(user) })),
@@ -149,7 +153,8 @@ export default function StaffAccountsPage({
         />
       ) : (
         <>
-          <Card className="hidden tab:block">
+          {isDesktop && (
+          <Card>
             <Table minWidth={820}>
               <TableCaption>Everyone with an account, and whether they can sign in</TableCaption>
               <TableHeader>
@@ -213,8 +218,10 @@ export default function StaffAccountsPage({
               <Pager {...paged} noun="accounts" className="w-full" />
             </CardFooter>
           </Card>
+          )}
 
-          <div className="flex flex-col gap-3 tab:hidden">
+          {!isDesktop && (
+          <div className="flex flex-col gap-3">
             {paged.visible.map(({ user, signIn }) => (
               <RecordCard key={user.id}>
                 <div className="flex min-w-0 items-center gap-3">
@@ -244,6 +251,7 @@ export default function StaffAccountsPage({
               <Pager {...paged} noun="accounts" />
             </Card>
           </div>
+          )}
 
           <StickyCta>
             <Button variant="cobalt" size="xl" block onClick={onAdd}>

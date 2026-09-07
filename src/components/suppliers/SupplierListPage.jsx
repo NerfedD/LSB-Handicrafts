@@ -14,8 +14,9 @@ import {
 } from "@/components/ui/table";
 import IconChip from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
-import { FilterSelect, Pager, SearchField } from "../shared/filters";
+import { ActiveFilterSummary, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
+import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
 import { citiesOf, cityOf } from "../../utils/customers";
@@ -60,6 +61,11 @@ const SORTS = [
   { value: "newest", label: "Newest first" },
 ];
 
+// Same strip SupplierDetailPage's `tel:` link uses -- a `tel:` href chokes on
+// spaces and punctuation, not on the digits and leading `+` a phone number
+// actually needs.
+const dialableNumber = (number) => String(number || "").replace(/[^\d+]/g, "");
+
 export default function SupplierListPage({
   isLoaded = true,
   loadError = null,
@@ -73,6 +79,9 @@ export default function SupplierListPage({
   const [query, setQuery] = useState("");
   const [area, setArea] = useState("any");
   const [sort, setSort] = useState("name");
+  // Which layout to mount. Only one of the table/card renders below ever
+  // reaches the DOM -- see useMediaQuery for why that used to not be true.
+  const isDesktop = useMediaQuery(TAB_QUERY);
 
   const cities = useMemo(() => citiesOf(suppliers), [suppliers]);
 
@@ -105,7 +114,45 @@ export default function SupplierListPage({
     }
   }, [suppliers, area, query, sort]);
 
+  // The header's count is deliberately the UNFILTERED total, like every list
+  // screen's chip counts -- nobody should apply a filter to discover the
+  // system was empty. That leaves nothing on screen saying a filter IS
+  // narrowing the list, which is what this names instead: only the filters
+  // actually doing something, same convention as the deliveries board.
+  const summaryParts = [
+    area !== "any" ? area : null,
+    query.trim() ? `matching “${query.trim()}”` : null,
+  ].filter(Boolean);
+
+  const clearFilters = () => {
+    setArea("any");
+    setQuery("");
+  };
+
   const paged = usePaged(filtered);
+
+  // The X in the search box and the "Clear the search box" button below both
+  // unmount the moment they are pressed -- the second one takes its whole
+  // empty-state panel with it -- which would otherwise drop focus to <body>.
+  // Sending it back to the search box keeps a keyboard or screen-reader user
+  // exactly where they were, ready to type the next search.
+  function clearSearch() {
+    setQuery("");
+    document.getElementById("supplier-search")?.focus();
+  }
+
+  // A visible list swaps its whole subtree between loading, empty and
+  // populated -- states a screen reader has no other way to notice, since
+  // nothing about the swap itself is announced. This is the one stable
+  // element that stays mounted throughout, so changing its text is what
+  // actually reaches assistive tech.
+  const statusMessage = !isLoaded
+    ? ""
+    : filtered.length === 0
+      ? query.trim()
+        ? `No suppliers match “${query.trim()}”.`
+        : "No suppliers yet."
+      : `${filtered.length} ${filtered.length === 1 ? "supplier" : "suppliers"} shown.`;
 
   if (loadError) {
     return <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="suppliers" />;
@@ -113,6 +160,10 @@ export default function SupplierListPage({
 
   return (
     <div className="flex flex-col gap-3.5">
+      <p role="status" aria-live="polite" className="sr-only">
+        {statusMessage}
+      </p>
+
       <FilterBar>
         <SearchField
           value={query}
@@ -132,6 +183,8 @@ export default function SupplierListPage({
         <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
       </FilterBar>
 
+      <ActiveFilterSummary parts={summaryParts} onClear={clearFilters} />
+
       {!isLoaded ? (
         <LoadingState noun="suppliers" />
       ) : filtered.length === 0 ? (
@@ -140,14 +193,17 @@ export default function SupplierListPage({
           title="No suppliers yet"
           description="Add the people you buy materials from, so anyone can find their number without asking."
           query={query.trim()}
-          onClearSearch={() => setQuery("")}
+          onClearSearch={clearSearch}
+          filtered={area !== "any"}
+          onClearFilters={clearFilters}
           actionLabel="Add a supplier"
           onAction={onAdd}
         />
       ) : (
         <>
           {/* ≥834px: the table. */}
-          <Card className="hidden tab:block">
+          {isDesktop && (
+          <Card>
             <Table minWidth={820}>
               <TableCaption>Suppliers, who to ask for and how to reach them</TableCaption>
               <TableHeader>
@@ -176,10 +232,20 @@ export default function SupplierListPage({
                     </TableCell>
 
                     <TableCell className="text-[15.5px] text-ink-2">
-                      <span className="flex items-center gap-2">
-                        <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                        {supplier.contactNumber || "—"}
-                      </span>
+                      {supplier.contactNumber ? (
+                        <a
+                          href={`tel:${dialableNumber(supplier.contactNumber)}`}
+                          className="flex items-center gap-2 font-bold text-clay hover:underline dark:text-dk-clay"
+                        >
+                          <Phone className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                          {supplier.contactNumber}
+                        </a>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
+                          —
+                        </span>
+                      )}
                     </TableCell>
 
                     <TableCell className="text-[15.5px] text-ink-2">
@@ -206,9 +272,11 @@ export default function SupplierListPage({
               <Pager {...paged} noun="suppliers" className="w-full" />
             </CardFooter>
           </Card>
+          )}
 
           {/* <834px: cards. */}
-          <div className="flex flex-col gap-3 tab:hidden">
+          {!isDesktop && (
+          <div className="flex flex-col gap-3">
             {paged.visible.map((supplier) => (
               <RecordCard key={supplier.id}>
                 <div className="flex min-w-0 items-center gap-3">
@@ -224,18 +292,25 @@ export default function SupplierListPage({
                 </div>
 
                 <div className="flex flex-col gap-2 pt-3.5">
-                  <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
-                    <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                    <span className="truncate">
-                      {supplier.contactNumber || (
-                        <span className="text-muted-2">No phone number</span>
-                      )}
-                    </span>
-                  </p>
+                  {supplier.contactNumber ? (
+                    <a
+                      href={`tel:${dialableNumber(supplier.contactNumber)}`}
+                      className="flex items-center gap-2.5 text-[15.5px] font-bold text-clay dark:text-dk-clay"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Phone className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+                      <span className="truncate underline">{supplier.contactNumber}</span>
+                    </a>
+                  ) : (
+                    <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
+                      <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
+                      <span className="truncate text-muted">No phone number</span>
+                    </p>
+                  )}
                   <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
                     <MapPin className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
                     <span className="truncate">
-                      {cityOf(supplier) || <span className="text-muted-2">No address</span>}
+                      {cityOf(supplier) || <span className="text-muted">No address</span>}
                     </span>
                   </p>
                 </div>
@@ -253,6 +328,7 @@ export default function SupplierListPage({
               <Pager {...paged} noun="suppliers" />
             </Card>
           </div>
+          )}
 
           <StickyCta>
             <Button variant="clay" size="xl" block onClick={onAdd}>

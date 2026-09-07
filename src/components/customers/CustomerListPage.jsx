@@ -112,12 +112,47 @@ export default function CustomerListPage({
 
   const paged = usePaged(filtered, 12);
 
+  // The X in the search box and the "Clear the search box" button below both
+  // unmount the moment they are pressed -- the second one takes its whole
+  // empty-state panel with it -- which would otherwise drop focus to <body>.
+  // Sending it back to the search box keeps a keyboard or screen-reader user
+  // exactly where they were, ready to type the next search.
+  function clearSearch() {
+    setQuery("");
+    document.getElementById("customer-search")?.focus();
+  }
+
+  // A chip (e.g. "Regulars") or the area dropdown can narrow a real, populated
+  // list down to zero rows same as a search can -- the chip's own count says
+  // "0" before it's even clicked. "Show everyone" undoes both at once.
+  function clearFilters() {
+    setChip("all");
+    setArea("any");
+  }
+
+  // A visible list swaps its whole subtree between loading, empty and
+  // populated -- states a screen reader has no other way to notice, since
+  // nothing about the swap itself is announced. This is the one stable
+  // element that stays mounted throughout, so changing its text is what
+  // actually reaches assistive tech.
+  const statusMessage = !isLoaded
+    ? ""
+    : filtered.length === 0
+      ? query.trim()
+        ? `No customers match “${query.trim()}”.`
+        : "No customers found."
+      : `${filtered.length} ${filtered.length === 1 ? "customer" : "customers"} shown.`;
+
   if (loadError) {
     return <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="customers" />;
   }
 
   return (
     <div className="flex flex-col gap-3.5">
+      <p role="status" aria-live="polite" className="sr-only">
+        {statusMessage}
+      </p>
+
       <FilterBar>
         <SearchField
           value={query}
@@ -147,7 +182,9 @@ export default function CustomerListPage({
           title="No customers yet"
           description="Add the people and businesses you sell to, and their orders will build up here."
           query={query.trim()}
-          onClearSearch={() => setQuery("")}
+          onClearSearch={clearSearch}
+          filtered={chip !== "all" || area !== "any"}
+          onClearFilters={clearFilters}
           actionLabel="Add a customer"
           onAction={onAdd}
         />
@@ -184,14 +221,14 @@ export default function CustomerListPage({
                       <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
                       <span className="truncate">
                         {customer.contactNumber || (
-                          <span className="text-muted-2">No phone number</span>
+                          <span className="text-muted">No phone number</span>
                         )}
                       </span>
                     </p>
                     <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
                       <MapPin className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
                       <span className="truncate">
-                        {cityOf(customer) || <span className="text-muted-2">No address</span>}
+                        {cityOf(customer) || <span className="text-muted">No address</span>}
                       </span>
                     </p>
                   </div>

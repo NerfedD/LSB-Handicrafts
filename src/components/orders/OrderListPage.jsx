@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Mono } from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
 import { FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
@@ -84,6 +85,9 @@ export default function OrderListPage({
   // afterwards -- clearable, and not a mode.
   const [group, setGroup] = useState(initialFilter ?? "all");
   const [sort, setSort] = useState("newest");
+  // Which layout to mount. Only one of the table/card renders below ever
+  // reaches the DOM -- see useMediaQuery for why that used to not be true.
+  const isDesktop = useMediaQuery(TAB_QUERY);
 
   const counts = useMemo(() => orderCounts(orders), [orders]);
 
@@ -165,7 +169,8 @@ export default function OrderListPage({
         />
       ) : (
         <>
-          <Card className="hidden tab:block">
+          {isDesktop && (
+          <Card>
             <Table minWidth={960}>
               <TableCaption>Every order and where it stands</TableCaption>
               <TableHeader>
@@ -242,8 +247,10 @@ export default function OrderListPage({
               <Pager {...paged} noun="orders" className="w-full" />
             </CardFooter>
           </Card>
+          )}
 
-          <div className="flex flex-col gap-3 tab:hidden">
+          {!isDesktop && (
+          <div className="flex flex-col gap-3">
             {paged.visible.map((order) => {
               const items = itemSummary(order);
               return (
@@ -285,6 +292,7 @@ export default function OrderListPage({
               <Pager {...paged} noun="orders" />
             </Card>
           </div>
+          )}
 
           <StickyCta>
             <Button variant="cobalt" size="xl" block onClick={onWriteOrder}>

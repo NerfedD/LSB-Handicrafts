@@ -1975,7 +1975,7 @@ export default function App() {
             openFiltered("products", navCounts.products ? "low" : "all")
           }
           onHelp={() =>
-            toast.info("Ask whoever set this up for you.", {
+            toast.info(`Ask whoever set this up for you about “${meta.title}.”`, {
               description:
                 "Every screen also explains itself as you go — the grey text under a field is there to be read.",
             })

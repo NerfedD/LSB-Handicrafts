@@ -1,3 +1,5 @@
+import { useRef } from "react";
+
 import { ChevronDown, Filter, Search, X } from "../icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -49,6 +51,17 @@ export function SearchField({
   id = "list-search",
 }) {
   const hasQuery = String(value ?? "").trim() !== "";
+  const inputRef = useRef(null);
+
+  // The clear button unmounts the instant it is pressed (hasQuery flips to
+  // false), which would otherwise drop focus to <body> -- a keyboard or
+  // screen-reader user loses their place in the page entirely. Putting focus
+  // back on the input it sits beside keeps them exactly where they were.
+  function handleClear() {
+    onChange("");
+    inputRef.current?.focus();
+  }
+
   return (
     <div className={cn("relative min-w-[280px] flex-1", className)}>
       <Search
@@ -56,6 +69,7 @@ export function SearchField({
         aria-hidden="true"
       />
       <Input
+        ref={inputRef}
         id={id}
         type="search"
         hasLeadingIcon
@@ -71,7 +85,7 @@ export function SearchField({
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => onChange("")}
+          onClick={handleClear}
           aria-label="Clear the search box"
           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-ink"
         >

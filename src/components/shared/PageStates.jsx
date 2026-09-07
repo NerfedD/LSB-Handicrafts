@@ -71,10 +71,14 @@ function Actions({ children }) {
 /**
  * Nothing there yet.
  *
- * Two flavours, decided by whether a search is active: a never-populated list
- * gets the button that populates it, a filtered-to-nothing list gets the
- * control that undoes the filter. Offering "Add a product" to somebody who has
- * simply mistyped a search is answering a question they did not ask.
+ * Three flavours. A never-populated list gets the button that populates it. A
+ * search that matched nothing gets the control that undoes the search, and
+ * names what was typed. A CHIP OR DROPDOWN that narrowed a real list to zero
+ * rows is neither of those — the list is not empty and nothing was typed —
+ * and used to fall through to the never-populated copy, telling somebody who
+ * clicked a filter chip that already showed "0" that their data was gone.
+ * `filtered` names that third case explicitly instead of leaving it to
+ * masquerade as the first.
  */
 export function EmptyState({
   icon = <Inbox />,
@@ -82,21 +86,28 @@ export function EmptyState({
   description,
   query,
   onClearSearch,
+  filtered = false,
+  onClearFilters,
   actionLabel,
   onAction,
 }) {
   const isSearch = Boolean(query);
+  const isFiltered = !isSearch && filtered;
 
   return (
     <Frame>
       <StateIcon icon={icon} />
-      <Heading>{isSearch ? "Nothing matched that" : title}</Heading>
+      <Heading>
+        {isSearch ? "Nothing matched that" : isFiltered ? "Nothing matches that filter" : title}
+      </Heading>
       <Body>
         {isSearch ? (
           <>
             Nothing here matches &ldquo;<strong className="font-bold text-ink">{query}</strong>&rdquo;.
             Check the spelling, or clear the search box to see everything again.
           </>
+        ) : isFiltered ? (
+          "Nothing here matches the filter you have on right now. The list is not empty — clear the filter to see everyone again."
         ) : (
           description
         )}
@@ -105,6 +116,10 @@ export function EmptyState({
         {isSearch ? (
           <Button variant="outline" size="lg" onClick={onClearSearch}>
             Clear the search box
+          </Button>
+        ) : isFiltered ? (
+          <Button variant="outline" size="lg" onClick={onClearFilters}>
+            Show everyone
           </Button>
         ) : (
           onAction && (

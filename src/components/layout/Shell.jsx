@@ -13,6 +13,7 @@ import {
   LoaderCircle,
   LogOut,
   Moon,
+  MoreHorizontal,
   Package,
   PackagePlus,
   ShoppingCart,
@@ -401,6 +402,7 @@ function Header({
           onNavigate={onNavigate}
           onSignOut={onSignOut}
           onSetDashboardView={onSetDashboardView}
+          onHelp={onHelp}
         />
       </div>
     </header>
@@ -419,6 +421,12 @@ function Header({
  * The handoff flags that burying that preference on the profile screen may be
  * too deep, and this is the cheap half of the answer — it costs one menu item
  * and does not need a first-run flow to be worth having.
+ *
+ * HELP LIVES HERE TOO, not only in the header's own outlined Help button.
+ * That button carries `hidden sm:inline-flex` -- it does not exist at all
+ * below 640px, on the exact phone width this system is designed for. This
+ * chip has no such breakpoint, so it is the one place Help is reachable
+ * whatever the screen size.
  */
 function AccountChip({
   profile,
@@ -429,6 +437,7 @@ function AccountChip({
   onNavigate,
   onSignOut,
   onSetDashboardView,
+  onHelp,
 }) {
   const name = profile?.name || "Signed in";
 
@@ -474,6 +483,11 @@ function AccountChip({
         <DropdownMenuItem onSelect={() => onNavigate("profile")}>
           <UserRound className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
           My profile
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onSelect={onHelp}>
+          <CircleHelp className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
+          Help
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
@@ -562,14 +576,21 @@ function ViewMark({ selected, icon }) {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The phone's bottom tab bar: five 56px targets, each an icon over a word.
+ * The phone's bottom tab bar: at most five 56px targets, each an icon over a
+ * word.
  *
- * FIVE, and the first five the role can reach. A tab bar that scrolls is not a
- * tab bar, and a sixth item at phone width makes every label truncate — which
- * is the same as having no label.
+ * FIVE, never more — a tab bar that scrolls is not a tab bar, and a sixth
+ * item at phone width makes every label truncate, which is the same as
+ * having no label. When a role can reach more than five sections (Admin sees
+ * all seven), the first four stay direct tabs and the fifth slot becomes
+ * "More", a menu over everything past those four — Suppliers and Staff &
+ * accounts included, never silently dropped.
  */
 function BottomTabs({ items, section, onNavigate }) {
-  const tabs = items.slice(0, 5);
+  const overflowing = items.length > 5;
+  const tabs = overflowing ? items.slice(0, 4) : items;
+  const moreItems = overflowing ? items.slice(4) : [];
+  const moreActive = moreItems.some((item) => item.key === section);
 
   return (
     <nav
@@ -598,6 +619,36 @@ function BottomTabs({ items, section, onNavigate }) {
           </button>
         );
       })}
+
+      {moreItems.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-current={moreActive ? "page" : undefined}
+              className={cn(
+                "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition duration-150",
+                moreActive ? "bg-tint-cobalt text-cobalt-deep" : "text-muted"
+              )}
+            >
+              <MoreHorizontal className="size-6 shrink-0" aria-hidden="true" />
+              <span className="w-full truncate text-center text-[11.5px] font-bold">More</span>
+              <span className="sr-only">More sections</span>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="end" sideOffset={8}>
+            {moreItems.map((item) => {
+              const Icon = ICONS[item.icon] ?? Package;
+              return (
+                <DropdownMenuItem key={item.key} onSelect={() => onNavigate(item.views[0])}>
+                  <Icon className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
+                  {item.label}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </nav>
   );
 }

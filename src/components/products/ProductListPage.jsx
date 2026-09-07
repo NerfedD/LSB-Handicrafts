@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import IconChip, { Mono } from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
 import { FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
@@ -96,6 +97,9 @@ export default function ProductListPage({
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
   const [group, setGroup] = useState(initialFilter ?? "all");
+  // Which layout to mount. Only one of the table/card renders below ever
+  // reaches the DOM -- see useMediaQuery for why that used to not be true.
+  const isDesktop = useMediaQuery(TAB_QUERY);
 
   const rows = useMemo(
     () => shelfItems(products, inventory, orders),
@@ -199,7 +203,8 @@ export default function ProductListPage({
       ) : (
         <>
           {/* ≥834px: the table. */}
-          <Card className="hidden tab:block">
+          {isDesktop && (
+          <Card>
             <Table minWidth={900}>
               <TableCaption>Products and how many are on the shelf</TableCaption>
               <TableHeader>
@@ -279,9 +284,11 @@ export default function ProductListPage({
               <Pager {...paged} noun="products" className="w-full" />
             </CardFooter>
           </Card>
+          )}
 
           {/* <834px: cards. */}
-          <div className="flex flex-col gap-3 tab:hidden">
+          {!isDesktop && (
+          <div className="flex flex-col gap-3">
             {paged.visible.map(({ product, stock }) => (
               <RecordCard key={product.id}>
                 <div className="flex min-w-0 items-center gap-3">
@@ -334,6 +341,7 @@ export default function ProductListPage({
               <Pager {...paged} noun="products" />
             </Card>
           </div>
+          )}
 
           <StickyCta>
             <Button variant="cobalt" size="xl" block onClick={onAdd}>
