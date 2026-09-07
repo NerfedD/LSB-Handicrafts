@@ -23,10 +23,15 @@ import { cn } from "@/lib/utils";
  * card rather than pushing the whole page sideways. On a phone these lists
  * become cards instead — see the `<834px` branch on each list screen. Nothing
  * in this system is ever a horizontal scroll on a phone.
+ *
+ * `scroll-shadow-x` (index.css) marks that this scrolls when it needs to —
+ * the tablet-width icon rail is narrower than several tables' minWidth, and
+ * an "Open" button scrolled out of view with no visible cue is not a
+ * discoverable control.
  */
 const Table = forwardRef(function Table({ className, minWidth = 860, ...props }, ref) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="scroll-shadow-x w-full overflow-x-auto">
       <table
         ref={ref}
         style={{ minWidth }}

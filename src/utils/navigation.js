@@ -55,6 +55,12 @@ export const NAV_TREE = [
   {
     key: "products",
     label: "Products & stock",
+    // The word the icon rail and phone tab bar lead with when there is only
+    // room for one -- a DELIBERATE choice, not `label.split(" ")[0]` picked
+    // for you. Falls back to that split when omitted (see Shell's
+    // `shortLabel`), which happens to agree here, but a label edit can no
+    // longer silently change what the compact nav says.
+    shortLabel: "Products",
     icon: "Package",
     group: "main",
     // `count` names the nav count this entry shows. "products" is an ATTENTION
@@ -99,6 +105,7 @@ export const NAV_TREE = [
   {
     key: "staff",
     label: "Staff & accounts",
+    shortLabel: "Staff",
     icon: "Users",
     group: "people",
     adminOnly: true,

@@ -95,10 +95,11 @@ const ICONS = {
  * rail and the phone tab bar.
  *
  * "Products & stock" at 10.5px in an 84px column truncates to "Produc…", which
- * is the same as having no label at all. The first word survives, and the full
- * label is still announced to assistive tech, so nothing is actually lost.
+ * is the same as having no label at all. `item.shortLabel` (utils/navigation.js)
+ * is the deliberate choice; the first word is only a fallback for an entry
+ * that never needed one, not the actual decision.
  */
-const shortLabel = (label) => label.split(" ")[0];
+const shortLabel = (item) => item.shortLabel ?? item.label.split(" ")[0];
 
 export default function Shell({
   view,
@@ -275,11 +276,22 @@ function NavItem({ item, active, count, isLarge, onNavigate }) {
   // white-on-navy would read as neutral information.
   const attention = item.count === "products";
 
+  // ONE label source, not two concurrent ones. The rail used to show the
+  // short word AND keep an `sr-only` full label in the accessibility tree at
+  // the same time -- a screen reader announced "Dashboard Dashboard," every
+  // destination doubled, on the exact breakpoint (the tablet rail) this
+  // system was built for. `aria-label` on the button is now the only source
+  // of its accessible name; the visible spans are decoration for sighted
+  // users, which is what letting `aria-label` override name-from-content
+  // already means -- it does not need every child marked `aria-hidden` too.
+  const accessibleName = count ? `${item.label}, ${count} need attention` : item.label;
+
   return (
     <button
       type="button"
       onClick={() => onNavigate(item.views[0])}
       aria-current={active ? "page" : undefined}
+      aria-label={accessibleName}
       className={cn(
         "flex w-full items-center rounded-field text-left transition duration-150",
         // Rail: a stacked icon over a word, 62px tall.
@@ -296,15 +308,11 @@ function NavItem({ item, active, count, isLarge, onNavigate }) {
         className={cn("shrink-0", isLarge ? "size-6 desk:size-6.5" : "size-6 desk:size-5")}
         aria-hidden="true"
       />
-      <span className="w-full truncate text-center desk:hidden">{shortLabel(item.label)}</span>
+      <span className="w-full truncate text-center desk:hidden">{shortLabel(item)}</span>
       <span className="hidden min-w-0 flex-1 truncate desk:block">{item.label}</span>
-      <span className="sr-only desk:hidden">{item.label}</span>
       {count ? (
         <CountBadge count={count} attention={attention} className="hidden desk:inline-flex" />
       ) : null}
-      {/* On the rail the count has nowhere to sit, so it is spoken rather than
-          dropped: the number is why somebody would open that screen next. */}
-      {count ? <span className="sr-only desk:hidden">{count} need attention</span> : null}
     </button>
   );
 }
@@ -606,6 +614,7 @@ function BottomTabs({ items, section, onNavigate }) {
             type="button"
             onClick={() => onNavigate(item.views[0])}
             aria-current={active ? "page" : undefined}
+            aria-label={item.label}
             className={cn(
               "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition duration-150",
               active ? "bg-tint-cobalt text-cobalt-deep" : "text-muted"
@@ -613,9 +622,8 @@ function BottomTabs({ items, section, onNavigate }) {
           >
             <Icon className="size-6 shrink-0" aria-hidden="true" />
             <span className="w-full truncate text-center text-[11.5px] font-bold">
-              {shortLabel(item.label)}
+              {shortLabel(item)}
             </span>
-            <span className="sr-only">{item.label}</span>
           </button>
         );
       })}
@@ -626,6 +634,7 @@ function BottomTabs({ items, section, onNavigate }) {
             <button
               type="button"
               aria-current={moreActive ? "page" : undefined}
+              aria-label="More sections"
               className={cn(
                 "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition duration-150",
                 moreActive ? "bg-tint-cobalt text-cobalt-deep" : "text-muted"
@@ -633,7 +642,6 @@ function BottomTabs({ items, section, onNavigate }) {
             >
               <MoreHorizontal className="size-6 shrink-0" aria-hidden="true" />
               <span className="w-full truncate text-center text-[11.5px] font-bold">More</span>
-              <span className="sr-only">More sections</span>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="end" sideOffset={8}>

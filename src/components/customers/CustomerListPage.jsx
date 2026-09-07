@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "../shared/Chip";
 import { FilterBar, StickyCta } from "../shared/ListScreen";
-import { FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
+import { ActiveFilterSummary, FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import usePaged from "../../hooks/usePaged";
-import { matches } from "../../utils/search";
+import { hasActiveFilters, matches } from "../../utils/search";
 import {
   cityOf,
   citiesOf,
@@ -124,11 +124,23 @@ export default function CustomerListPage({
 
   // A chip (e.g. "Regulars") or the area dropdown can narrow a real, populated
   // list down to zero rows same as a search can -- the chip's own count says
-  // "0" before it's even clicked. "Show everyone" undoes both at once.
+  // "0" before it's even clicked. "Show everyone"/"Clear filters" undoes all
+  // three filter axes at once, matching ActiveFilterSummary's own convention
+  // (suppliers, the deliveries board) rather than leaving one behind.
   function clearFilters() {
     setChip("all");
     setArea("any");
+    setQuery("");
   }
+
+  // Three independent filter axes (a chip, an area, a search) can combine
+  // silently -- only the ones actually narrowing anything are named, same
+  // rule as the deliveries board's summary sentence.
+  const summaryParts = [
+    chip !== "all" ? chips.find((c) => c.value === chip)?.label.toLowerCase() : null,
+    area !== "any" ? area : null,
+    query.trim() ? `matching “${query.trim()}”` : null,
+  ].filter(Boolean);
 
   // A visible list swaps its whole subtree between loading, empty and
   // populated -- states a screen reader has no other way to notice, since
@@ -174,6 +186,8 @@ export default function CustomerListPage({
 
       <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which customers" />
 
+      <ActiveFilterSummary parts={summaryParts} onClear={clearFilters} />
+
       {!isLoaded ? (
         <LoadingState noun="customers" />
       ) : filtered.length === 0 ? (
@@ -183,7 +197,7 @@ export default function CustomerListPage({
           description="Add the people and businesses you sell to, and their orders will build up here."
           query={query.trim()}
           onClearSearch={clearSearch}
-          filtered={chip !== "all" || area !== "any"}
+          filtered={hasActiveFilters(chip !== "all", area !== "any")}
           onClearFilters={clearFilters}
           actionLabel="Add a customer"
           onAction={onAdd}

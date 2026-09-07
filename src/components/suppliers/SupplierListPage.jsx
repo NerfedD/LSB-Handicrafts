@@ -18,7 +18,7 @@ import { ActiveFilterSummary, FilterSelect, Pager, SearchField } from "../shared
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
-import { matches } from "../../utils/search";
+import { hasActiveFilters, matches } from "../../utils/search";
 import { citiesOf, cityOf } from "../../utils/customers";
 
 /**
@@ -194,7 +194,7 @@ export default function SupplierListPage({
           description="Add the people you buy materials from, so anyone can find their number without asking."
           query={query.trim()}
           onClearSearch={clearSearch}
-          filtered={area !== "any"}
+          filtered={hasActiveFilters(area !== "any")}
           onClearFilters={clearFilters}
           actionLabel="Add a supplier"
           onAction={onAdd}
@@ -296,7 +296,6 @@ export default function SupplierListPage({
                     <a
                       href={`tel:${dialableNumber(supplier.contactNumber)}`}
                       className="flex items-center gap-2.5 text-[15.5px] font-bold text-clay dark:text-dk-clay"
-                      onClick={(event) => event.stopPropagation()}
                     >
                       <Phone className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
                       <span className="truncate underline">{supplier.contactNumber}</span>

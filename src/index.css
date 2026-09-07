@@ -164,6 +164,30 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   Scroll-shadow cue for a horizontally-scrollable table — see Table in
+   ui/table.jsx. The tablet-width icon-rail band (834-1279px) is narrower
+   than several tables' minWidth, so the ONLY interactive control in a row
+   (an "Open" button) could sit scrolled off-screen with nothing on screen
+   suggesting a sideways drag would reveal it.
+
+   CSS-only, no JS: two gradients scroll with the table and fade themselves
+   out once an edge is actually reached (background-attachment: local), two
+   more stay pinned to paint the shadow itself (background-attachment:
+   scroll). Reuses --c-surface (what it fades into) and the existing
+   --c-chip2 border-strength alpha rather than inventing a one-off token.
+   --------------------------------------------------------------------------- */
+.scroll-shadow-x {
+  background:
+    linear-gradient(to right, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) left,
+    linear-gradient(to left, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) right,
+    linear-gradient(to right, var(--c-chip2), transparent) left,
+    linear-gradient(to left, var(--c-chip2), transparent) right;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* ---------------------------------------------------------------------------
    Focus.
 
    Rule 4 of the six: "Focus rings visible, not hinted." This is a global
