@@ -8,6 +8,7 @@ import {
   activityLogCollection,
   customersCollection,
   deliveriesCollection,
+  deleteStaffAuthUser,
   inventoryCollection,
   ordersCollection,
   productsCollection,
@@ -24,16 +25,23 @@ import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigatio
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
 import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
 import { deliveryStage } from "./utils/copy";
-import { commitOrder, commitPartialDelivery, handleRefundStock } from "./utils/stockLedger";
+import {
+  commitOrder,
+  commitPartialDelivery,
+  handleRefundStock,
+  uncommitOrder,
+} from "./utils/stockLedger";
 import { normalizeItems } from "./utils/orderItems";
 import {
   BACKORDER_SUFFIX,
   backorderStatusOf,
   deliveryBelongsToOrder,
   deliveryForOrder,
+  orderEditBlocker,
+  orderIsEditable,
   orderRefunded,
 } from "./utils/orders";
-import { stockCounts } from "./utils/productStock";
+import { stockCounts, stockForProduct } from "./utils/productStock";
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
 import { Toaster, toast } from "@/components/ui/sonner";
@@ -555,7 +563,7 @@ export default function App() {
       return;
     }
 
-    await persistStaff(
+    const result = await persistStaff(
       () => staffCollection.remove(account.id),
       () => {
         setStaff((prev) => prev.filter((s) => s.id !== account.id));
@@ -571,6 +579,24 @@ export default function App() {
         setView("staff");
       }
     );
+    if (!result.ok || !account.email) return;
+
+    // AND THE SIGN-IN BEHIND IT. Removing the row already revoked everything --
+    // every RLS predicate gates on having an Active staff row -- so this is not
+    // closing an access hole. It is stopping the address squatting: Supabase
+    // Auth enforces uniqueness on email, so leaving the user in place means
+    // this person can never be added again, and a typo'd address is burned for
+    // good. See utils/storageManager and the Edge Function it calls.
+    //
+    // IT DOES NOT FAIL THE DELETE. The account is gone and the person is out;
+    // a leftover credential is a tidying job, not a reason to tell somebody
+    // their removal did not work. So it warns, and names what is left.
+    const cleanup = await deleteStaffAuthUser({ email: account.email });
+    if (!cleanup.ok) {
+      toast.warning("Their sign-in is still on file.", {
+        description: `${account.email} cannot be used for a new account until it is removed. ${cleanup.message}`,
+      });
+    }
   }
 
   // ---- customers and suppliers -------------------------------------------
@@ -840,6 +866,77 @@ export default function App() {
     });
   }
 
+  /**
+   * Removes a product — the catalogue entry AND its stock row.
+   *
+   * TWO TABLES, ONE PRODUCT. saveProduct writes both, because the split between
+   * a catalogue entry and its shelf count is a database fact nobody using this
+   * app is asked to care about. Deleting only one half would leave a stock row
+   * no screen can reach and nothing can ever edit again, so both go — catalogue
+   * first, the same order saveProduct writes them in.
+   *
+   * ADMIN ONLY, CHECKED IN THREE PLACES, exactly as deleteSupplier is: the
+   * detail screen renders the block only for an admin, this refuses outright,
+   * and the RLS policies on public.products and public.inventory grant DELETE
+   * to is_admin() alone. Only the last of those is the permission.
+   *
+   * REFUSED WHILE STOCK IS PROMISED, the way deleteCustomer refuses while an
+   * order is open. `reserved` is derived from the units still owed on orders
+   * that have not gone out, so anything above zero means somebody is waiting
+   * for one of these — and an order pointing at a product the system has
+   * forgotten how to count is not something to leave behind.
+   */
+  async function deleteProduct(product) {
+    if (!isAdminRole(profile?.role)) {
+      toast.error("Only an administrator can remove a product.");
+      return;
+    }
+
+    const stock = stockForProduct(product, inventory, orders);
+    if (stock.tracked && (stock.reserved ?? 0) > 0) {
+      toast.error(`${product.name} is promised to an order that is still waiting.`, {
+        description: "Finish or cancel that order before removing it.",
+      });
+      return;
+    }
+
+    const result = await productsState.remove(product.id);
+    if (!result.ok) {
+      toast.error(result.message || "That product was not removed.");
+      return;
+    }
+
+    // The stock half, found on the same sku == itemCode join saveProduct uses.
+    // A product with no stock row is an ordinary state, not a failure.
+    const stockRow = inventory.find(
+      (row) =>
+        String(row.sku || "").toLowerCase() === String(product.itemCode || "").toLowerCase()
+    );
+    const stockRemoved = stockRow ? (await inventoryState.remove(stockRow.id)).ok : true;
+
+    if (selectedProductId === product.id) setSelectedProductId(null);
+
+    if (stockRemoved) {
+      toast.success(`${product.name} was removed.`, {
+        description: "Past orders keep the lines they were written with.",
+      });
+    } else {
+      // Half a delete, reported as half a delete. Claiming a clean removal here
+      // would leave a stock row in the ledger that no screen can show and
+      // nobody knows about — the same reasoning as saveProduct's split failure.
+      toast.error("The product was removed, but its shelf count was not.", {
+        description: `The stock record against ${product.itemCode} is still in the system with nothing pointing at it.`,
+      });
+    }
+
+    logActivity({
+      kind: ACTIVITY_KIND.PRODUCT,
+      what: `removed ${product.name}`,
+      subject: product.itemCode,
+    });
+    navigate("products");
+  }
+
   /** Adds to a product's shelf count, and says so in the feed. */
   async function recordMade({ product, made }) {
     const row = inventory.find(
@@ -933,6 +1030,278 @@ export default function App() {
    * deduction, since no later reading of the orders array can tell whether the
    * goods have already left.
    */
+  /**
+   * Rewrites an order that nothing has happened to yet.
+   *
+   * WHY THIS IS NARROW ON PURPOSE. Every other screen in this app can correct a
+   * record; an order could not, and the workaround people found was a full
+   * refund — which wrote money going back to a customer who had never paid any,
+   * into the one list schema.sql calls the evidence in a disputed invoice.
+   * Fixing a typo by corrupting the money record is worse than the typo.
+   *
+   * So the window is exactly "nothing has happened": still Waiting, no stock
+   * off the shelf, nothing gone out, no refund, no price correction. See
+   * orderEditBlocker in utils/orders for what each of those protects. Outside
+   * that window the lines are a receipt for something real and the money path
+   * is the honest route.
+   *
+   * ADMIN AND MANAGER ONLY, because rewriting the lines changes what the order
+   * costs, and orders_guard_money_update() in the database already refuses that
+   * from anybody else. Widening it here would only produce a save that the
+   * server rejects — the gate belongs where the rule already is.
+   *
+   * RESERVED STOCK NEEDS NO FIXING, which is the quiet luxury of deriving it:
+   * nothing is stored against the old lines, so replacing them re-derives every
+   * count on the next read. See utils/productStock.
+   */
+  async function updateOrder({ customerName, items, totalAmount, delivery }) {
+    const order = selectedOrder;
+    if (!order) return;
+
+    if (!canHandleMoney(profile?.role)) {
+      toast.error("Only an administrator or a manager can change an order.");
+      return;
+    }
+    const blocker = orderEditBlocker(order);
+    if (blocker) {
+      toast.error("This order can no longer be changed.", { description: blocker });
+      return;
+    }
+
+    setBusy(true);
+    const result = await ordersState.update(order.id, {
+      ...order,
+      customerName,
+      items,
+      totalAmount,
+    });
+    if (!result.ok) {
+      setBusy(false);
+      toast.error(result.message || "Those changes were not saved.");
+      return;
+    }
+
+    // The delivery side. An order's delivery is found by the "Order #12 - Name"
+    // convention (see utils/orders), so a changed customer name has to be
+    // written through or the two stop pointing at each other.
+    const existing = deliveryForOrder(order, deliveries);
+    const summary = items.map((item) => `${item.quantity} × ${item.name}`).join(", ");
+    let deliveryNote;
+
+    if (delivery && existing) {
+      const moved = await deliveriesState.update(existing.id, {
+        ...existing,
+        product: `Order #${order.id} - ${customerName}`,
+        size: summary,
+        location: delivery.location,
+        amount: delivery.amount,
+        driver: delivery.driver,
+        dueOn: delivery.dueOn,
+      });
+      if (!moved.ok) deliveryNote = "The order was saved, but its delivery was not updated.";
+    } else if (delivery && !existing) {
+      const raised = await deliveriesState.create({
+        id: Date.now(),
+        product: `Order #${order.id} - ${customerName}`,
+        size: summary,
+        location: delivery.location,
+        amount: delivery.amount,
+        status: DELIVERY_STAGE.NOT_SENT,
+        driver: delivery.driver,
+        dueOn: delivery.dueOn,
+        createdAt: nowIso(),
+      });
+      if (!raised.ok) deliveryNote = "The order was saved, but the delivery was not raised.";
+    } else if (!delivery && existing) {
+      // The address was cleared, so the run is not happening. Safe to remove
+      // because this only runs inside the edit window — nothing has gone out,
+      // so the delivery is a plan rather than a record of a journey.
+      const dropped = await deliveriesState.remove(existing.id);
+      if (!dropped.ok) deliveryNote = "The order was saved, but its delivery is still on the board.";
+    }
+
+    setBusy(false);
+    toast[deliveryNote ? "warning" : "success"](
+      deliveryNote ? "Saved, with one thing left over." : `Order #${order.id} was changed.`,
+      { description: deliveryNote }
+    );
+    logActivity({
+      kind: ACTIVITY_KIND.ORDER,
+      what: `changed order #${order.id}`,
+      subject: `order:${order.id}`,
+    });
+    navigate("order-detail");
+  }
+
+  /**
+   * Calls an order off, without pretending money moved.
+   *
+   * THE POINT IS WHAT IT DOES NOT WRITE. Cancelling used to mean issuing a full
+   * refund, because that was the only path to a Cancelled status — so an order
+   * nobody had paid for ended up with an entry in refund_history saying money
+   * had gone back. That list is the evidence in a disputed invoice; filling it
+   * with cancellations makes it useless for the one job it has. This writes
+   * nothing to refunded_amount, refund_history or price_adjustments.
+   *
+   * Any goods already committed go back on the shelf — the same uncommitOrder
+   * the reopen path uses — because an order that is not happening is not
+   * holding stock.
+   */
+  async function cancelOrder(order) {
+    if (!canHandleMoney(profile?.role)) {
+      toast.error("Only an administrator or a manager can call an order off.");
+      return;
+    }
+    if (order.status === ORDER_STATUS.CANCELLED) return;
+    if (orderRefunded(order) > 0) {
+      toast.error("Money has already gone back on this order.", {
+        description: "It is part of the money record now, so it cannot simply be called off.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    const { inventory: nextInventory, items } = uncommitOrder(inventory, order);
+    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
+    if (!stockOk) {
+      setBusy(false);
+      toast.error("The stock could not be put back, so the order was left as it was.");
+      return;
+    }
+
+    const result = await ordersState.update(order.id, {
+      ...order,
+      items,
+      status: ORDER_STATUS.CANCELLED,
+      stockCommittedAt: null,
+    });
+    setBusy(false);
+
+    if (!result.ok) {
+      toast.error(result.message || "That order was not called off.");
+      return;
+    }
+
+    // THE RUN THAT WAS GOING TO CARRY IT. A cancelled order leaving a live
+    // delivery on the board is a van still scheduled for goods nobody is
+    // sending -- the delivery crew works off that board and has no way of
+    // knowing the order behind it is dead.
+    //
+    // Only a run that has NOT left is removed. Once something is on the way or
+    // has arrived, the delivery is a record of a journey that really happened,
+    // and a record is not ours to delete because the order was called off
+    // afterwards. That one is left alone and named in the toast instead.
+    const run = deliveryForOrder(order, deliveries);
+    const hasLeft =
+      run &&
+      ([DELIVERY_STAGE.ON_THE_WAY, DELIVERY_STAGE.ARRIVED].includes(run.status) ||
+        (run.itemsManifest || []).length > 0);
+    let runNote;
+    if (run && !hasLeft) {
+      const dropped = await deliveriesState.remove(run.id);
+      runNote = dropped.ok
+        ? "Its delivery has come off the board too."
+        : "Its delivery is still on the board — take it off there.";
+    } else if (hasLeft) {
+      runNote = "Its delivery stays on the board, because it already went out.";
+    }
+
+    toast.success(`Order #${order.id} was called off.`, {
+      description: [
+        changed.length > 0
+          ? "What it was holding has gone back on the shelf."
+          : "No money was recorded as moving, because none did.",
+        runNote,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.ORDER,
+      what: `called order #${order.id} off`,
+      subject: `order:${order.id}`,
+    });
+    for (const row of changed) {
+      const before = inventory.find((item) => item.id === row.id);
+      logActivity({
+        kind: ACTIVITY_KIND.STOCK,
+        what: `put ${row.stock - (before?.stock ?? 0)} × ${row.name} back from the called-off order #${order.id}`,
+        subject: row.sku,
+        amount: row.stock - (before?.stock ?? 0),
+      });
+    }
+  }
+
+  /**
+   * Puts a finished order back to Waiting, and the goods back on the shelf.
+   *
+   * WHY THIS EXISTS. "Mark as done" was a one-way door: every role could push
+   * it, and nothing in the app could undo it. An order finished by mistake —
+   * the wrong row clicked, goods that turned out not to have gone — left the
+   * shelf count permanently wrong and the order permanently lying, with a
+   * database edit as the only way back. uncommitOrder() has done exactly this
+   * work correctly since the stock ledger was written; it simply had no caller.
+   *
+   * ADMIN AND MANAGER ONLY, and the same three places as every other gated
+   * action: the screen shows the block only to them, this refuses outright, and
+   * orders_guard_money_update() in schema.sql raises if anyone else moves an
+   * order out of Completed. Only the last of those is the permission. Undoing a
+   * sale is the same KIND of decision as refunding one — it moves goods and
+   * contradicts what a customer was told — which is why it sits with the roles
+   * that already handle money rather than with whoever wrote the order.
+   *
+   * STOCK GOES BACK FIRST, mirroring markOrderDone: an order left Completed
+   * whose stock has already returned is a shelf that lies, and that is the
+   * worse of the two half-finished states.
+   */
+  async function reopenOrder(order) {
+    if (!canHandleMoney(profile?.role)) {
+      toast.error("Only an administrator or a manager can put an order back to waiting.");
+      return;
+    }
+
+    setBusy(true);
+    const { inventory: nextInventory, items, stockCommittedAt } = uncommitOrder(inventory, order);
+
+    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
+    if (!stockOk) {
+      setBusy(false);
+      toast.error("The stock could not be put back, so the order was left as it was.");
+      return;
+    }
+
+    const reopened = { ...order, items, status: ORDER_STATUS.PENDING, stockCommittedAt };
+    const result = await ordersState.update(order.id, {
+      ...reopened,
+      backorderStatus: backorderStatusOf(reopened),
+    });
+    setBusy(false);
+
+    if (!result.ok) {
+      toast.error(result.message || "That order was not put back.");
+      return;
+    }
+
+    toast.success(`Order #${order.id} is waiting again.`, {
+      description:
+        changed.length > 0 ? "What it took off the shelf has been put back." : undefined,
+    });
+    logActivity({
+      kind: ACTIVITY_KIND.ORDER,
+      what: `put order #${order.id} back to waiting`,
+      subject: `order:${order.id}`,
+    });
+    for (const row of changed) {
+      const before = inventory.find((item) => item.id === row.id);
+      logActivity({
+        kind: ACTIVITY_KIND.STOCK,
+        what: `put ${row.stock - (before?.stock ?? 0)} × ${row.name} back on the shelf from order #${order.id}`,
+        subject: row.sku,
+        amount: row.stock - (before?.stock ?? 0),
+      });
+    }
+  }
+
   async function markOrderDone(order) {
     setBusy(true);
     const {
@@ -1466,6 +1835,8 @@ export default function App() {
             inventory={inventory}
             orders={orders}
             activity={activity}
+            canDelete={isAdminRole(profile?.role)}
+            onDelete={deleteProduct}
             onBack={() => navigate("products")}
             onEdit={(id) => {
               setSelectedProductId(id);
@@ -1528,6 +1899,11 @@ export default function App() {
             onPrint={() => window.print()}
             onRefund={() => setRefundFor(selectedOrder.id)}
             onAdjustPrice={() => setAdjustPriceFor(selectedOrder.id)}
+            onReopen={reopenOrder}
+            canEdit={canHandleMoney(profile?.role) && orderIsEditable(selectedOrder)}
+            editBlocker={orderEditBlocker(selectedOrder)}
+            onEdit={() => navigate("order-edit")}
+            onCancelOrder={() => cancelOrder(selectedOrder)}
             onOpenDelivery={(id) => {
               setSelectedDeliveryId(id);
               setView("delivery-detail");
@@ -1557,6 +1933,25 @@ export default function App() {
               setOrderDraftFor(null);
               navigate("orders");
             }}
+          />
+        );
+
+      case "order-edit":
+        return (
+          <OrderFormPage
+            key={`edit-${selectedOrderId ?? "none"}`}
+            mode="edit"
+            order={selectedOrder}
+            delivery={deliveryForOrder(selectedOrder, deliveries)}
+            customers={customers}
+            products={products}
+            inventory={inventory}
+            // Its own reservations are excluded, or the order would be shown as
+            // competing with itself for the stock it has already asked for.
+            existingOrders={orders.filter((o) => o.id !== selectedOrderId)}
+            saving={busy}
+            onSave={updateOrder}
+            onCancel={() => navigate("order-detail")}
           />
         );
 
@@ -1877,6 +2272,11 @@ export default function App() {
         onOpenChange={(next) => !next && setProfileDialog(null)}
         mode={profileDialog?.id == null ? "add" : "edit"}
         customer={customers.find((c) => c.id === profileDialog?.id)}
+        // The list is handed over so the dialog can ask "there is already a
+        // customer with this name — is this a different one?". A question, not
+        // a rule: two real customers can genuinely share a name, so there is no
+        // unique constraint behind this and there should not be one.
+        customers={customers}
         onSave={makeRecordSaveHandler("customer")}
       />
       <SupplierFormDialog
@@ -1885,12 +2285,16 @@ export default function App() {
         onOpenChange={(next) => !next && setProfileDialog(null)}
         mode={profileDialog?.id == null ? "add" : "edit"}
         supplier={suppliers.find((s) => s.id === profileDialog?.id)}
+        suppliers={suppliers}
         onSave={makeRecordSaveHandler("supplier")}
       />
       <CreateAccountDialog
         open={isCreateStaffOpen}
         onOpenChange={setIsCreateStaffOpen}
         onAccountCreated={handleAccountCreated}
+        // For the duplicate email/username check before submit. The unique
+        // indexes in schema.sql are still the boundary; this is only faster.
+        staff={staff}
       />
       <RecordMadeDialog
         key={`made-${recordMadeFor ?? "any"}`}

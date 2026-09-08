@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { Field } from "../shared/forms";
+import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
 
 /**
  * Add or edit a supplier.
@@ -22,6 +23,13 @@ import { Field } from "../shared/forms";
  * "Who do you ask for" rather than "Contact person": the supplier list's second
  * line reads "Ask for Ramon", and a field labelled the way its output reads is
  * a field people fill in correctly.
+ *
+ * A REPEATED NAME IS A QUESTION, NOT A REFUSAL — the same treatment as the
+ * customer dialog, for the same reason. Two branches of one supplier can share
+ * a name, so there is no unique constraint and there should not be one; but a
+ * second "Davao Foam Supply" is far more likely to be somebody adding a record
+ * that already exists, and a duplicate leaves two phone numbers where one is
+ * out of date and nobody knows which. So the first submit asks once.
  */
 
 const EMPTY = {
@@ -37,6 +45,12 @@ function validate(values) {
   if (!values.name.trim()) errors.name = "We need the supplier's name.";
   if (!values.contactNumber.trim()) {
     errors.contactNumber = "A phone number is the whole reason to have this record.";
+  } else {
+    // Only what cannot be a phone number at all — see utils/phone. A supplier
+    // is the likeliest record in the system to hold a number in a shape nobody
+    // here expected, which is exactly why this refuses so little.
+    const problem = phoneProblem(values.contactNumber);
+    if (problem) errors.contactNumber = problem;
   }
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
     errors.email = "That does not look like an email address. Check for a missing @ or dot.";
@@ -55,21 +69,53 @@ const seed = (supplier, isEdit) =>
       }
     : EMPTY;
 
+/** Anybody else already filed under this name, case- and space-insensitively. */
+const nameTwin = (name, suppliers, ownId) => {
+  const wanted = String(name || "").trim().toLowerCase();
+  if (!wanted) return null;
+  return (
+    suppliers.find(
+      (one) => one.id !== ownId && String(one.name || "").trim().toLowerCase() === wanted
+    ) ?? null
+  );
+};
+
 export default function SupplierFormDialog({
   open,
   onOpenChange,
   mode = "add",
   supplier,
+  suppliers = [],
   onSave,
 }) {
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(supplier, isEdit));
   const [errors, setErrors] = useState({});
+  // Asked once per field, cleared when that field is edited — see the customer
+  // dialog for the full reasoning.
+  const [warnings, setWarnings] = useState({});
+  const [asked, setAsked] = useState({});
   const [saving, setSaving] = useState(false);
 
   function setField(field, value) {
     setValues((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => (previous[field] ? { ...previous, [field]: undefined } : previous));
+    setWarnings((previous) => (previous[field] ? { ...previous, [field]: undefined } : previous));
+    setAsked((previous) => (previous[field] ? { ...previous, [field]: false } : previous));
+  }
+
+  /** Everything worth asking about, as field -> question. */
+  function doubts(next) {
+    const raised = {};
+    const twin = nameTwin(next.name, suppliers, supplier?.id);
+    if (twin) {
+      raised.name = `There is already a supplier called ${twin.name}${
+        twin.contactNumber ? ` on ${twin.contactNumber}` : ""
+      }. Add this one anyway?`;
+    }
+    const doubt = phoneDoubt(next.contactNumber);
+    if (doubt) raised.contactNumber = doubt;
+    return raised;
   }
 
   function handleOpenChange(next) {
@@ -77,6 +123,8 @@ export default function SupplierFormDialog({
     if (!next) {
       setValues(seed(supplier, isEdit));
       setErrors({});
+      setWarnings({});
+      setAsked({});
     }
     onOpenChange?.(next);
   }
@@ -88,6 +136,18 @@ export default function SupplierFormDialog({
       setErrors(found);
       return;
     }
+
+    const raised = doubts(values);
+    const unanswered = Object.keys(raised).filter((field) => !asked[field]);
+    setWarnings(raised);
+    if (unanswered.length > 0) {
+      setAsked((previous) => ({
+        ...previous,
+        ...Object.fromEntries(unanswered.map((field) => [field, true])),
+      }));
+      return;
+    }
+
     setSaving(true);
     const id = await onSave(values);
     setSaving(false);
@@ -106,7 +166,7 @@ export default function SupplierFormDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
-            <Field label="Supplier name" required error={errors.name}>
+            <Field label="Supplier name" required error={errors.name} warning={warnings.name}>
               {(props) => (
                 <Input
                   {...props}
@@ -128,13 +188,18 @@ export default function SupplierFormDialog({
               )}
             </Field>
 
-            <Field label="Phone number" required error={errors.contactNumber}>
+            <Field
+              label="Phone number"
+              required
+              error={errors.contactNumber}
+              warning={warnings.contactNumber}
+            >
               {(props) => (
                 <Input
                   {...props}
                   inputMode="tel"
                   value={values.contactNumber}
-                  onChange={(event) => setField("contactNumber", event.target.value)}
+                  onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
                   placeholder="09XX XXX XXXX"
                 />
               )}
@@ -172,7 +237,15 @@ export default function SupplierFormDialog({
               Cancel
             </Button>
             <Button type="submit" variant="clay" size="lg" disabled={saving}>
-              {saving ? "Saving…" : isEdit ? "Save the changes" : "Add this supplier"}
+              {saving
+                ? "Saving…"
+                : Object.keys(warnings).some((field) => warnings[field])
+                  ? isEdit
+                    ? "Save it anyway"
+                    : "Add them anyway"
+                  : isEdit
+                    ? "Save the changes"
+                    : "Add this supplier"}
             </Button>
           </DialogFooter>
         </form>

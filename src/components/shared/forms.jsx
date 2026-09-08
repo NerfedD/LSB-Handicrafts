@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-import { Check, Circle, CircleAlert, ImagePlus, Lock } from "../icons";
+import { Check, Circle, CircleAlert, ImagePlus, Lock, TriangleAlert } from "../icons";
 import { cn } from "@/lib/utils";
 import { Input, LockedInput, Textarea } from "@/components/ui/input";
 import { BandHeading, FieldHint, Label } from "@/components/ui/label";
@@ -58,10 +58,25 @@ export function FormBand({ step, title, tinted = false, children, className }) {
  * the message that matters is what is wrong with it, and stacking a hint under
  * an error gives two instructions at the moment somebody is least able to read
  * two.
+ *
+ * A `warning` IS A THIRD THING, AND IT IS NOT AN ERROR. It is for a value that
+ * is allowed but worth a second look — "there is already a customer with this
+ * name" — where a hard error would be a lie, because two customers really can
+ * share a name. So it is amber rather than red, it deliberately does NOT set
+ * aria-invalid (the field is not invalid), and it is announced politely rather
+ * than asserted. It sits in the same slot as the other two: error wins over
+ * warning, warning over hint, because whichever is showing is the one sentence
+ * that matters about this field right now.
  */
-export function Field({ label, hint, error, required, children, className }) {
+export function Field({ label, hint, error, warning, required, children, className }) {
   const id = useId();
-  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const describedBy = error
+    ? `${id}-error`
+    : warning
+      ? `${id}-warning`
+      : hint
+        ? `${id}-hint`
+        : undefined;
   // A render-prop child takes the generated id, so the label can point at it.
   // A plain child is a GROUP -- choice buttons, radio cards -- which has no
   // single control to point at, and a `for` attribute naming an element that
@@ -85,7 +100,17 @@ export function Field({ label, hint, error, required, children, className }) {
           ? children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })
           : children}
       </div>
-      {hint && !error && <FieldHint id={`${id}-hint`}>{hint}</FieldHint>}
+      {hint && !error && !warning && <FieldHint id={`${id}-hint`}>{hint}</FieldHint>}
+      {warning && !error && (
+        <p
+          id={`${id}-warning`}
+          aria-live="polite"
+          className="flex items-start gap-2 pt-2 text-[14.5px] font-bold leading-[1.45] text-amber-icon"
+        >
+          <TriangleAlert className="mt-0.5 h-4.5 w-4.5 shrink-0" aria-hidden="true" />
+          {warning}
+        </p>
+      )}
       {error && (
         <p
           id={`${id}-error`}

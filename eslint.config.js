@@ -10,7 +10,11 @@ export default defineConfig([
   // src reference it as the source of truth for every token and measurement.
   // It is reference material, not application source, and linting it reports
   // problems in a file nobody is going to change.
-  globalIgnores(['dist', 'Professional UI mockups project']),
+  // '**/dist' rather than 'dist': a build output is a build output wherever it
+  // lands, and a stray one (an older `lsbHandicraft/dist` left in a working
+  // copy, say) otherwise fails `npm run lint` with a hundred errors in minified
+  // vendor code nobody wrote.
+  globalIgnores(['**/dist', 'Professional UI mockups project']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

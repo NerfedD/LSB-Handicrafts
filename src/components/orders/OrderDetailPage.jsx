@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import {
   ArrowLeft,
@@ -9,6 +9,7 @@ import {
   Info,
   MapPin,
   PackageOpen,
+  Pencil,
   Phone,
   Printer,
   Tag,
@@ -28,11 +29,12 @@ import {
 } from "@/components/ui/table";
 import Callout, { DangerBlock } from "../shared/Callout";
 import IconChip, { Avatar, Mono } from "../shared/Chip";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StageTracker from "../shared/StageTracker";
 import StatusPill from "../shared/StatusPill";
-import { ORDER_STATUS } from "../../utils/constants";
+import { DELIVERY_STAGE, ORDER_STATUS } from "../../utils/constants";
 import {
   dispositionLabel,
   orderLabel,
@@ -98,9 +100,16 @@ export default function OrderDetailPage({
   onPrint,
   onRefund,
   onAdjustPrice,
+  onReopen,
+  canEdit = false,
+  editBlocker = null,
+  onEdit,
+  onCancelOrder,
   onOpenDelivery,
   busy = false,
 }) {
+  const [reopening, setReopening] = useState(false);
+  const [callingOff, setCallingOff] = useState(false);
   const items = useMemo(() => normalizeItems(order?.items), [order]);
   const progress = useMemo(() => orderProgress(order, deliveries), [order, deliveries]);
   const totals = useMemo(() => orderTotals(order, deliveries), [order, deliveries]);
@@ -133,6 +142,12 @@ export default function OrderDetailPage({
             <Printer className="h-5 w-5" />
             Print
           </Button>
+          {canEdit && (
+            <Button variant="outline" onClick={onEdit} disabled={busy}>
+              <Pencil className="h-5 w-5" />
+              Change this order
+            </Button>
+          )}
           {!isDone && order.status !== ORDER_STATUS.CANCELLED && (
             <Button variant="green" onClick={onMarkDone} disabled={busy}>
               <CircleCheck className="h-5 w-5" />
@@ -413,6 +428,68 @@ export default function OrderDetailPage({
               shows at the top of this screen from then on.
             </DangerBlock>
           )}
+
+          {/* ---- calling it off, which is NOT a refund ---- */}
+          {canHandleMoney && !isCancelled && !isDone && (
+            <DangerBlock
+              title="Call this order off"
+              action={
+                <Button
+                  variant="danger"
+                  size="lg"
+                  disabled={busy}
+                  onClick={() => setCallingOff(true)}
+                >
+                  <CircleX className="h-5 w-5" />
+                  Call off order #{order.id}
+                </Button>
+              }
+            >
+              The order reads Cancelled and anything it was holding goes back on the shelf.
+              Nothing is written to the money records, because no money moved — this is not
+              a refund, and using one to cancel an order is what put money that never
+              changed hands into the refund history.
+              {!canEdit && editBlocker && (
+                <>
+                  <br />
+                  <br />
+                  {editBlocker}
+                </>
+              )}
+            </DangerBlock>
+          )}
+
+          {/* ---- undoing "done", which is a correction and not a refund ---- */}
+          {canHandleMoney && isDone && (
+            <Callout
+              tone="amber"
+              icon={<Clock />}
+              title="Marked as done by mistake?"
+              action={
+                <Button
+                  variant="outline"
+                  size="lg"
+                  disabled={busy}
+                  onClick={() => setReopening(true)}
+                >
+                  <PackageOpen className="h-5 w-5" />
+                  Put it back to waiting
+                </Button>
+              }
+            >
+              Everything this order took off the shelf goes back on it, and the order
+              returns to Waiting so it can be finished again properly. What stays is the
+              record: the activity log keeps who marked it done and when, because this is
+              a correction rather than an erasure.
+              {order.stockCommittedAt == null && (
+                <>
+                  <br />
+                  <br />
+                  Nothing was taken off the shelf for this one, so only the status changes.
+                </>
+              )}
+            </Callout>
+          )}
         </div>
 
         {/* ---- who it is for ---- */}
@@ -504,6 +581,61 @@ export default function OrderDetailPage({
           )}
         </div>
       </div>
+
+      {/* Green, not red: this puts goods BACK and undoes nothing anyone was
+          told — the design system reserves the red confirm for a loss. */}
+      <ConfirmDialog
+        open={reopening}
+        onOpenChange={(next) => !next && setReopening(false)}
+        title={`Put order #${order.id} back to waiting?`}
+        intent="forward"
+        consequences={
+          <>
+            {order.stockCommittedAt == null
+              ? "Nothing was taken off the shelf for this order, so only its status changes."
+              : "Everything this order took off the shelf goes back on it."}{" "}
+            The order returns to Waiting. The activity log keeps the record of it having
+            been marked done — this is a correction, not an erasure.
+          </>
+        }
+        confirmLabel="Yes, put it back"
+        keepLabel="Leave it done"
+        busy={busy}
+        onConfirm={async () => {
+          await onReopen?.(order);
+          setReopening(false);
+        }}
+      />
+
+      <ConfirmDialog
+        open={callingOff}
+        onOpenChange={(next) => !next && setCallingOff(false)}
+        title={`Call off order #${order.id} for ${order.customerName}?`}
+        consequences={
+          <>
+            The order reads Cancelled from now on and anything it was holding goes back on
+            the shelf. It stays in the orders list and in the activity log, so there is
+            still a record that it was written and called off. No money is recorded as
+            moving, because none did.
+            {delivery && (
+              <>
+                <br />
+                <br />
+                {[DELIVERY_STAGE.ON_THE_WAY, DELIVERY_STAGE.ARRIVED].includes(delivery.status)
+                  ? "Its delivery has already gone out, so that record stays on the board."
+                  : "The delivery waiting to carry it comes off the deliveries board, so nobody sets out with goods that are not going."}
+              </>
+            )}
+          </>
+        }
+        confirmLabel="Yes, call it off"
+        keepLabel="Keep the order"
+        busy={busy}
+        onConfirm={async () => {
+          await onCancelOrder?.(order);
+          setCallingOff(false);
+        }}
+      />
     </div>
   );
 }

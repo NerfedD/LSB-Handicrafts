@@ -43,6 +43,10 @@ function Toaster(props) {
           closeButton:
             "!border-white/20 !bg-navy !text-white hover:!bg-[#0b2547]",
           success: "[&_[data-icon]]:text-[#4dbb8c]",
+          // Caution amber, lightened to hold against navy the way the green and
+          // red above are — a warning is "this worked, but something is left
+          // over", which is neither of those two.
+          warning: "[&_[data-icon]]:text-[#f2c46b]",
           error: "[&_[data-icon]]:text-[#f09b8e]",
         },
       }}

@@ -278,3 +278,53 @@ export function orderCounts(orders = []) {
     refunded: orders.filter(hasRefund).length,
   };
 }
+
+/**
+ * Whether an order can still be rewritten, and why not when it cannot.
+ *
+ * THE WINDOW IS "NOTHING HAS HAPPENED YET". An order that is still Waiting,
+ * whose goods have not been taken off the shelf, that nobody has been refunded
+ * for and whose price has never been corrected, is a piece of paper somebody
+ * typed a few minutes ago. Rewriting it costs nothing and destroys no record.
+ *
+ * Every one of those conditions is the boundary of a record that WOULD be
+ * destroyed:
+ *
+ *   status        a finished or cancelled order is history, not a draft.
+ *   stock         once goods have left, the lines are the receipt for what
+ *                 went; editing them would make the shelf count unexplainable.
+ *   committed     the same thing per line, for an order that went out in part.
+ *   refunds       a refund names lines and quantities. Change the lines and the
+ *                 refund refers to something that never existed.
+ *   corrections   a price correction records what the total WAS. Editing the
+ *                 lines moves the total again with nothing recording it, which
+ *                 is the exact hole price_adjustments was added to close.
+ *
+ * Returns a reason string when the answer is no, so the screen can say which of
+ * these it hit rather than hiding the button and leaving somebody guessing.
+ */
+export function orderEditBlocker(order) {
+  if (!order) return "That order is not here any more.";
+  if (order.status === ORDER_STATUS.COMPLETED) {
+    return "This order is finished. Put it back to waiting first, and only an administrator or a manager can do that.";
+  }
+  if (order.status === ORDER_STATUS.CANCELLED) {
+    return "This order was called off, so there is nothing to change.";
+  }
+  if (order.stockCommittedAt) {
+    return "Goods have already been taken off the shelf for this order.";
+  }
+  if (normalizeItems(order.items).some((line) => committedOf(line) > 0)) {
+    return "Part of this order has already gone out, so the lines are a record of what went.";
+  }
+  if ((order.refundHistory || []).length > 0) {
+    return "Money has already gone back on this order. Changing the lines would leave the refund naming things that were never on it.";
+  }
+  if ((order.priceAdjustments || []).length > 0) {
+    return "The price on this order has already been corrected once, and that correction records what the old total was.";
+  }
+  return null;
+}
+
+/** True when nothing has happened to this order yet. */
+export const orderIsEditable = (order) => orderEditBlocker(order) === null;

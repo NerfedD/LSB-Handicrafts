@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { ChoiceButtons, Field } from "../shared/forms";
+import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
 
 /**
  * Add or edit a customer.
@@ -29,6 +30,16 @@ import { ChoiceButtons, Field } from "../shared/forms";
  * On success the dialog closes and App raises a toast carrying a "View" action,
  * which is what replaced the full success panel this screen used to show — an
  * extra screen to dismiss after every save.
+ *
+ * A REPEATED NAME IS A QUESTION, NOT A REFUSAL. Two customers can genuinely be
+ * called "Ana Reyes", so there is no unique constraint on the column and there
+ * should not be one — a hard error would make the app refuse to record a real
+ * customer. But the far more likely case is somebody adding a person who is
+ * already on the list, and the cost of that is real: `orders` matches customers
+ * by NAME with no foreign key (see utils/customers), so two identical names are
+ * indistinguishable everywhere afterwards, including in the open-order check
+ * that decides whether one can be deleted. So the first submit stops once and
+ * asks; the second goes through unchanged.
  */
 
 const EMPTY = { name: "", kind: "walk-in", contactNumber: "", email: "", address: "" };
@@ -43,6 +54,11 @@ function validate(values) {
   if (!values.name.trim()) errors.name = "We need a name to file them under.";
   if (!values.contactNumber.trim()) {
     errors.contactNumber = "A phone number is how anyone reaches them later.";
+  } else {
+    // Only what cannot be a phone number at all. A number that is merely
+    // surprising is a question asked below, not a refusal — see utils/phone.
+    const problem = phoneProblem(values.contactNumber);
+    if (problem) errors.contactNumber = problem;
   }
   // Email is optional, but a typo in one that WAS filled in is still an error —
   // an address that bounces is worse than no address, because nobody finds out.
@@ -63,21 +79,56 @@ const seed = (customer, isEdit) =>
       }
     : EMPTY;
 
+/** Anybody else already filed under this name, case- and space-insensitively. */
+const nameTwin = (name, customers, ownId) => {
+  const wanted = String(name || "").trim().toLowerCase();
+  if (!wanted) return null;
+  return (
+    customers.find(
+      (one) => one.id !== ownId && String(one.name || "").trim().toLowerCase() === wanted
+    ) ?? null
+  );
+};
+
 export default function CustomerFormDialog({
   open,
   onOpenChange,
   mode = "add",
   customer,
+  customers = [],
   onSave,
 }) {
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(customer, isEdit));
   const [errors, setErrors] = useState({});
+  // Two things this form can be unsure about — a name already on the list, and
+  // a phone number in an unexpected shape — and neither is a refusal. Each is
+  // asked ONCE, per field: `warnings` is what is on screen, `asked` is what has
+  // been answered. Both clear when that field is edited, so a new doubt is put
+  // again rather than waved through by an answer given about a different value.
+  const [warnings, setWarnings] = useState({});
+  const [asked, setAsked] = useState({});
   const [saving, setSaving] = useState(false);
 
   function setField(field, value) {
     setValues((previous) => ({ ...previous, [field]: value }));
     setErrors((previous) => (previous[field] ? { ...previous, [field]: undefined } : previous));
+    setWarnings((previous) => (previous[field] ? { ...previous, [field]: undefined } : previous));
+    setAsked((previous) => (previous[field] ? { ...previous, [field]: false } : previous));
+  }
+
+  /** Everything worth asking about, as field -> question. */
+  function doubts(next) {
+    const raised = {};
+    const twin = nameTwin(next.name, customers, customer?.id);
+    if (twin) {
+      raised.name = `There is already a customer called ${twin.name}${
+        twin.contactNumber ? ` on ${twin.contactNumber}` : ""
+      }. Add this one anyway?`;
+    }
+    const doubt = phoneDoubt(next.contactNumber);
+    if (doubt) raised.contactNumber = doubt;
+    return raised;
   }
 
   // A dialog stays mounted between opens, so add -> add -> add would otherwise
@@ -88,6 +139,8 @@ export default function CustomerFormDialog({
     if (!next) {
       setValues(seed(customer, isEdit));
       setErrors({});
+      setWarnings({});
+      setAsked({});
     }
     onOpenChange?.(next);
   }
@@ -99,6 +152,20 @@ export default function CustomerFormDialog({
       setErrors(found);
       return;
     }
+
+    // Ask about anything new, then stop. A second submit with the same values
+    // has nothing left unanswered and goes through.
+    const raised = doubts(values);
+    const unanswered = Object.keys(raised).filter((field) => !asked[field]);
+    setWarnings(raised);
+    if (unanswered.length > 0) {
+      setAsked((previous) => ({
+        ...previous,
+        ...Object.fromEntries(unanswered.map((field) => [field, true])),
+      }));
+      return;
+    }
+
     setSaving(true);
     const id = await onSave(values);
     setSaving(false);
@@ -121,7 +188,7 @@ export default function CustomerFormDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
-            <Field label="Their name" required error={errors.name}>
+            <Field label="Their name" required error={errors.name} warning={warnings.name}>
               {(props) => (
                 <Input
                   {...props}
@@ -144,13 +211,18 @@ export default function CustomerFormDialog({
               />
             </Field>
 
-            <Field label="Phone number" required error={errors.contactNumber}>
+            <Field
+              label="Phone number"
+              required
+              error={errors.contactNumber}
+              warning={warnings.contactNumber}
+            >
               {(props) => (
                 <Input
                   {...props}
                   inputMode="tel"
                   value={values.contactNumber}
-                  onChange={(event) => setField("contactNumber", event.target.value)}
+                  onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
                   placeholder="09XX XXX XXXX"
                 />
               )}
@@ -188,7 +260,15 @@ export default function CustomerFormDialog({
               Cancel
             </Button>
             <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
-              {saving ? "Saving…" : isEdit ? "Save the changes" : "Add this customer"}
+              {saving
+                ? "Saving…"
+                : Object.keys(warnings).some((field) => warnings[field])
+                  ? isEdit
+                    ? "Save it anyway"
+                    : "Add them anyway"
+                  : isEdit
+                    ? "Save the changes"
+                    : "Add this customer"}
             </Button>
           </DialogFooter>
         </form>

@@ -583,6 +583,58 @@ export const saveOwnDashboardView = async (view) => {
   return { ok: true };
 };
 
+// ---- the sign-in behind a staff account ------------------------------------
+
+/**
+ * Deletes the Supabase Auth user for a staff account.
+ *
+ * WHY THIS IS NOT A CALL FROM HERE. auth.admin.deleteUser() needs the
+ * service-role key, which bypasses RLS entirely -- putting it in this bundle
+ * would hand every visitor the whole database. So the work happens in the
+ * `delete-staff-auth-user` Edge Function (supabase/functions), which holds the
+ * key server-side and re-checks that the caller is an active administrator
+ * before it does anything. This is only the request.
+ *
+ * WHY IT NEEDS DOING AT ALL. Removing somebody's `staff` row already revokes
+ * every scrap of access -- the RLS predicates all gate on having an Active row
+ * there. What the leftover Auth user does is squat on the email address for
+ * ever: Auth enforces uniqueness on it, so re-hiring that person, or fixing a
+ * typo by recreating the account, fails at signUp with "user already
+ * registered" and nothing in the app can clear it.
+ *
+ * Accepts either half of the identity: `userId` where the caller has it (the
+ * create dialog gets one back from signUp), `email` otherwise (a staff row
+ * carries no auth id).
+ */
+export const deleteStaffAuthUser = async ({ userId = null, email = null } = {}) => {
+  const { data, error } = await supabase.functions.invoke('delete-staff-auth-user', {
+    body: { userId, email },
+  });
+
+  if (error) {
+    // supabase-js flattens every non-2xx into the same "returned a non-2xx
+    // status code" message, which tells a person nothing. The function writes
+    // a real sentence into the body, so dig that out before falling back.
+    let detail = null;
+    try {
+      detail = (await error.context?.json())?.error ?? null;
+    } catch {
+      // The body was not JSON -- a gateway error, or the function is not
+      // deployed. The fallback message covers it.
+    }
+    console.error('Failed to remove the sign-in behind a staff account:', error);
+    return {
+      ok: false,
+      error,
+      message: detail || humanizeError(error, "Couldn't remove their sign-in."),
+    };
+  }
+
+  // `deleted: false` means there was no Auth user to remove, which is the state
+  // the caller wanted to reach anyway. Success either way.
+  return { ok: true, deleted: !!data?.deleted };
+};
+
 // ---- export / backup --------------------------------------------------
 
 /**

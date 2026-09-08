@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
+import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
 
 /**
  * Edit my details.
@@ -23,14 +24,39 @@ import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
 export default function EditProfilePage({ profile, onBack, onSave }) {
   const [name, setName] = useState(profile?.name ?? "");
   const [contactNumber, setContactNumber] = useState(profile?.contactNumber ?? "");
+  const [phoneError, setPhoneError] = useState(null);
+  // Asked once. Your own number is the one you are most likely to be typing
+  // from memory, and the least likely to want an argument about.
+  const [phoneWarning, setPhoneWarning] = useState(null);
+  const [asked, setAsked] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const changed =
     name !== (profile?.name ?? "") || contactNumber !== (profile?.contactNumber ?? "");
 
+  function setPhone(next) {
+    setContactNumber(next);
+    setPhoneError(null);
+    setPhoneWarning(null);
+    setAsked(false);
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!changed || saving) return;
+
+    const problem = phoneProblem(contactNumber);
+    if (problem) {
+      setPhoneError(problem);
+      return;
+    }
+    const doubt = phoneDoubt(contactNumber);
+    if (doubt && !asked) {
+      setPhoneWarning(doubt);
+      setAsked(true);
+      return;
+    }
+
     setSaving(true);
     await onSave?.({ name: name.trim(), contactNumber: contactNumber.trim() });
     setSaving(false);
@@ -56,13 +82,18 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
               )}
             </Field>
 
-            <Field label="Phone number" hint="So colleagues can reach you without asking around.">
+            <Field
+              label="Phone number"
+              error={phoneError}
+              warning={phoneWarning}
+              hint="So colleagues can reach you without asking around."
+            >
               {(props) => (
                 <Input
                   {...props}
                   inputMode="tel"
                   value={contactNumber}
-                  onChange={(event) => setContactNumber(event.target.value)}
+                  onChange={(event) => setPhone(cleanPhoneInput(event.target.value))}
                   placeholder="09XX XXX XXXX"
                 />
               )}
@@ -90,7 +121,7 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
             right={
               <Button type="submit" variant="cobalt" size="lg" disabled={!changed || saving}>
                 <Save className="h-5 w-5" />
-                {saving ? "Saving…" : "Save my details"}
+                {saving ? "Saving…" : phoneWarning ? "Save it anyway" : "Save my details"}
               </Button>
             }
           />

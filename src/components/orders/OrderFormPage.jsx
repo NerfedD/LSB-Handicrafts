@@ -15,7 +15,7 @@ import Callout from "../shared/Callout";
 import { EmptySlot } from "../shared/PageStates";
 import { Field, FormBand, FormFooter, Row } from "../shared/forms";
 import { LINE_KIND } from "../../utils/constants";
-import { orderTotal } from "../../utils/orderItems";
+import { normalizeItems, orderTotal } from "../../utils/orderItems";
 import { formatPeso } from "../../utils/profileFormat";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
@@ -64,6 +64,49 @@ const emptyLine = () => ({
   custom: false,
 });
 
+/**
+ * Turns a stored order's lines back into rows this form can edit.
+ *
+ * THE ID HAS TO BE TRANSLATED BACK. A saved line carries the INVENTORY row's
+ * id, because that is what the stock maths reads (see stockRowIdFor below);
+ * this form's Select works in CATALOGUE ids. Going in, the translation runs the
+ * other way, through the same item_code = sku join.
+ *
+ * A line whose product has since been deleted becomes a by-hand line keeping
+ * its name and price, rather than an empty row or a silently dropped one. The
+ * order said what it said; editing the delivery address should not quietly
+ * throw a line away.
+ */
+function seedLines(order, products, inventory) {
+  const items = normalizeItems(order?.items);
+  if (items.length === 0) return [emptyLine()];
+
+  const rowIdByCode = new Map(
+    inventory.map((row) => [String(row.sku || "").toLowerCase(), row.id])
+  );
+  const catalogueIdByRowId = new Map();
+  for (const product of products) {
+    const rowId = rowIdByCode.get(String(product.itemCode || "").toLowerCase());
+    if (rowId != null) catalogueIdByRowId.set(rowId, product.id);
+  }
+
+  return items.map((item) => {
+    const catalogueId =
+      item.productId == null ? null : catalogueIdByRowId.get(item.productId) ?? null;
+    const byHand = item.kind === LINE_KIND.CUSTOM || catalogueId == null;
+    return {
+      ...emptyLine(),
+      custom: byHand,
+      productId: byHand ? "" : String(catalogueId),
+      name: item.name ?? "",
+      notes: item.notes ?? "",
+      quantity: String(item.quantity ?? ""),
+      unitPrice: String(item.unitPrice ?? 0),
+      listPrice: Number(item.listPrice ?? item.unitPrice ?? 0),
+    };
+  });
+}
+
 export default function OrderFormPage({
   customers = [],
   products = [],
@@ -72,17 +115,35 @@ export default function OrderFormPage({
   existingOrders = [],
   /** Pre-selected when the order was started from a customer's own screen. */
   customer,
+  /** The order being rewritten, when this screen is opened as an edit. */
+  order,
+  /** Its delivery, if one was raised — the address fields are seeded from it. */
+  delivery,
+  mode = "add",
   saving = false,
   onSave,
   onCancel,
 }) {
-  const [customerName, setCustomerName] = useState(customer?.name ?? "");
-  const [lines, setLines] = useState(() => [emptyLine()]);
-  const [address, setAddress] = useState(customer?.address ?? "");
-  const [dueOn, setDueOn] = useState("");
-  const [driver, setDriver] = useState("");
-  const [deliveryCharge, setDeliveryCharge] = useState("");
+  const isEdit = mode === "edit";
+  const [customerName, setCustomerName] = useState(
+    isEdit ? order?.customerName ?? "" : customer?.name ?? ""
+  );
+  const [lines, setLines] = useState(() =>
+    isEdit ? seedLines(order, products, inventory) : [emptyLine()]
+  );
+  const [address, setAddress] = useState(
+    isEdit ? delivery?.location ?? "" : customer?.address ?? ""
+  );
+  const [dueOn, setDueOn] = useState(isEdit ? delivery?.dueOn ?? "" : "");
+  const [driver, setDriver] = useState(isEdit ? delivery?.driver ?? "" : "");
+  const [deliveryCharge, setDeliveryCharge] = useState(
+    isEdit && delivery?.amount ? String(delivery.amount) : ""
+  );
   const [error, setError] = useState(null);
+  // Asked once, then it goes through — the same shape as the duplicate-name and
+  // phone-number questions on the record dialogs.
+  const [deliveryDoubt, setDeliveryDoubt] = useState(null);
+  const [askedAboutDelivery, setAskedAboutDelivery] = useState(false);
 
   const shelf = useMemo(
     () => shelfItems(products, inventory, existingOrders),
@@ -119,6 +180,25 @@ export default function OrderFormPage({
       listPrice: Number(match.product.unitPrice) || 0,
     });
   }
+
+  /**
+   * The id an order line has to carry so the stock maths can find it.
+   *
+   * NOT THE CATALOGUE ID. `products` and `inventory` are two tables joined on
+   * code, with their own separate primary keys, and every stock function keys
+   * on the INVENTORY one — see the note on `rowId` in utils/productStock. This
+   * screen picks from the catalogue, so it has the wrong id in hand and has to
+   * translate before it saves. It did not, and the first real order written
+   * here reserved nothing and deducted nothing while reporting itself
+   * Completed.
+   *
+   * Null for a catalogue entry nobody is counting yet. That is honest rather
+   * than lossy: with no ledger row there is no stock to draw, and a line
+   * pointing at an id that matches nothing is what caused this in the first
+   * place.
+   */
+  const stockRowIdFor = (productId) =>
+    shelf.find(({ product }) => String(product.id) === String(productId))?.stock.rowId ?? null;
 
   /** Swap a line between "pick from the shelf" and "made by hand". */
   function toggleCustom(key) {
@@ -158,6 +238,21 @@ export default function OrderFormPage({
       return;
     }
 
+    // AN EMPTY ADDRESS SILENTLY MEANT "NO DELIVERY", and silence is the wrong
+    // way to communicate a decision that big: the order saved, the deliveries
+    // board never mentioned it, and nobody found out until the customer rang
+    // asking where their goods were. It is still allowed — plenty of orders are
+    // collected at the shop — so this asks once and then gets out of the way.
+    if (!address.trim() && !askedAboutDelivery) {
+      setDeliveryDoubt(
+        delivery
+          ? "Clearing this removes the delivery already raised for this order. Is it being collected from the shop instead?"
+          : "Nothing here means no delivery is raised for this order. Is it being collected from the shop?"
+      );
+      setAskedAboutDelivery(true);
+      return;
+    }
+
     onSave({
       customerName: customerName.trim(),
       items: filled.map((line) => ({
@@ -166,7 +261,8 @@ export default function OrderFormPage({
           : Number(line.unitPrice) !== Number(line.listPrice)
             ? LINE_KIND.NEGOTIATED
             : LINE_KIND.CATALOG,
-        productId: line.custom ? null : Number(line.productId),
+        // The ledger row's id, not the catalogue row's — see stockRowIdFor.
+        productId: line.custom ? null : stockRowIdFor(line.productId),
         name: line.name,
         notes: line.custom ? line.notes.trim() || undefined : undefined,
         quantity: Number(line.quantity),
@@ -410,13 +506,19 @@ export default function OrderFormPage({
         <FormBand step={3} title="Is it going out?">
           <Field
             label="Where to"
+            warning={deliveryDoubt}
             hint="Leave this empty if they are collecting. Put the district or city last."
           >
             {(props) => (
               <Input
                 {...props}
                 value={address}
-                onChange={(event) => setAddress(event.target.value)}
+                onChange={(event) => {
+                  setAddress(event.target.value);
+                  // Typing an address answers the question outright.
+                  setDeliveryDoubt(null);
+                  setAskedAboutDelivery(false);
+                }}
                 placeholder="12 Mabini St, Poblacion, Davao City"
               />
             )}
@@ -484,7 +586,15 @@ export default function OrderFormPage({
           right={
             <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
               <Save className="h-5 w-5" />
-              {saving ? "Saving…" : "Write this order"}
+              {saving
+                ? "Saving…"
+                : deliveryDoubt
+                  ? isEdit
+                    ? "Save it anyway"
+                    : "Write it anyway"
+                  : isEdit
+                    ? "Save the changes"
+                    : "Write this order"}
             </Button>
           }
         />
