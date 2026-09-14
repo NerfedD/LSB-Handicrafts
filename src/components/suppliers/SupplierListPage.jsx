@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { ArrowRight, Handshake, MapPin, Phone } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -76,9 +77,9 @@ export default function SupplierListPage({
   onGoToDashboard,
   onContext,
 }) {
-  const [query, setQuery] = useState("");
-  const [area, setArea] = useState("any");
-  const [sort, setSort] = useState("name");
+  const [query, setQuery] = useUrlState("query", "", "suppliers");
+  const [area, setArea] = useUrlState("area", "any", "suppliers");
+  const [sort, setSort] = useUrlState("sort", "name", "suppliers");
   // Which layout to mount. Only one of the table/card renders below ever
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);

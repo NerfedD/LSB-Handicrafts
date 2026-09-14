@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
 import { Plus, Save, Trash2, TriangleAlert } from "../icons";
@@ -226,15 +228,23 @@ export default function OrderFormPage({
     })
     .filter(Boolean);
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
+    const formElement = event.currentTarget;
+    const fail = (message) => { setError(message); reportFormError(formElement, message); };
+    if (!guardForm(formElement)) return;
+    if (filled.length !== lines.length || lines.some((line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) <= 0 || !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0)) {
+      fail('Complete every order line with a product, a whole quantity above zero and a price of zero or more.');
+      return;
+    }
 
     if (!customerName.trim()) {
-      setError("Say who the order is for. A name is enough.");
+      fail("Say who the order is for. A name is enough.");
       return;
     }
     if (filled.length === 0) {
-      setError("Add at least one thing to the order, with how many they want.");
+      fail("Add at least one thing to the order, with how many they want.");
       return;
     }
 
@@ -253,7 +263,8 @@ export default function OrderFormPage({
       return;
     }
 
-    onSave({
+    try {
+    const result = await onSave({
       customerName: customerName.trim(),
       items: filled.map((line) => ({
         kind: line.custom
@@ -282,17 +293,17 @@ export default function OrderFormPage({
           }
         : null,
     });
+    if (!result?.ok) fail(result?.message || 'The order was not saved. Check the details and retry.');
+    } catch {
+      fail('The request failed. Your entries are still here; check the connection and retry.');
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mx-auto w-full max-w-[820px]">
       <Card>
         <FormBand step={1} title="Who is it for?">
-          {error && (
-            <Callout tone="red" icon={<TriangleAlert />} title="Not saved yet.">
-              {error}
-            </Callout>
-          )}
+          <FormError message={error} />
 
           <Field
             label="Customer"

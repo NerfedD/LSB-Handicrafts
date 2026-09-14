@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { BookUser, History, Settings, UserPlus, Users } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -58,12 +59,12 @@ export default function StaffAccountsPage({
   onContext,
   initialFilter,
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlState("query", "", "staff");
   // Seeded from the dashboard. An attention row's button names a verb and
   // lands here with the matching chip already on, so the sentence somebody
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
-  const [chip, setChip] = useState(initialFilter ?? "all");
+  const [chip, setChip] = useUrlState("tab", initialFilter ?? "all", "staff");
   // Which layout to mount. Only one of the table/card renders below ever
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);

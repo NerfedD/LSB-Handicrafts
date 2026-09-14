@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { ArrowLeft, Mail, Phone } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ export default function StaffDirectoryPage({
   onBack,
   onContext,
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlState("query", "", "directory");
 
   useEffect(() => {
     if (!isLoaded) return;

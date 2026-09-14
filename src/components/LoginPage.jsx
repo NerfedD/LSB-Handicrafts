@@ -56,12 +56,14 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
     });
     // A username nobody holds is a failed sign-in, not a distinct error — it
     // would otherwise tell a stranger which usernames exist.
-    if (error || !data) return null;
+    if (error) throw error;
+    if (!data) return null;
     return data;
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (isSubmitting || !identifier.trim() || !password) { setStatus("wrong"); return; }
     setIsSubmitting(true);
 
     // Before signInWithPassword, not after: this decides WHERE the client
@@ -77,7 +79,9 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
 
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setStatus("wrong");
+        setStatus(error.code === 'user_banned' || /banned|blocked|suspended/i.test(error.message)
+          ? 'blocked' : error.status === 429 ? 'rate-limited'
+          : error.status >= 500 || error.name === 'AuthRetryableFetchError' ? 'offline' : 'wrong');
         return;
       }
 
@@ -87,7 +91,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       const result = await onLoginAttempt?.(data.user.email);
       if (result !== "ok") {
         await supabase.auth.signOut();
-        setStatus(result === "blocked" ? "blocked" : "not-set-up");
+        setStatus(result === "blocked" ? "blocked" : result === "offline" ? "offline" : "not-set-up");
         return;
       }
 
@@ -120,6 +124,9 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
         Use the username or email your administrator gave you.
       </p>
 
+      <div aria-live="assertive" aria-atomic="true">
+      {status === "rate-limited" && <Callout tone="amber" title="Too many sign-in attempts.">Please wait a few minutes before trying again.</Callout>}
+
       {status === "wrong" && (
         <Callout
           tone="red"
@@ -127,8 +134,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
           title="That username or password did not match."
           className="mt-6"
         >
-          Check for capital letters and extra spaces, then try again. After 5 tries the
-          account locks for 15 minutes.
+          Check for capital letters and extra spaces, then try again.
         </Callout>
       )}
 
@@ -140,8 +146,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
           className="mt-6"
           action={callTheOffice}
         >
-          Your password was correct. Ask an administrator to unblock you — it takes them
-          seconds.
+          This account has been suspended/blocked. Please contact an administrator.
         </Callout>
       )}
 
@@ -170,6 +175,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
         </Callout>
       )}
 
+      </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5 pt-7" noValidate>
         <AuthField
           label="Username or email"

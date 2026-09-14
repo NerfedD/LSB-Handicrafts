@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
 import { Info, Save } from "../icons";
@@ -117,6 +119,8 @@ export default function ProductFormPage({
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(isEdit ? product : null, stock));
   const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState(null);
+  const [submittedCode, setSubmittedCode] = useState(null);
 
   function setField(field, value) {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -132,6 +136,7 @@ export default function ProductFormPage({
   // An existing product keeps the code it was given. Regenerating it on edit
   // would rename a code already written on a shelf label.
   const itemCode = useMemo(() => {
+    if (submittedCode) return submittedCode;
     if (isEdit && product?.itemCode) return product.itemCode;
     return suggestItemCode(
       {
@@ -141,7 +146,7 @@ export default function ProductFormPage({
       },
       takenCodes
     );
-  }, [isEdit, product?.itemCode, values.productType, values.diameterIn, values.thicknessIn, takenCodes]);
+  }, [submittedCode, isEdit, product?.itemCode, values.productType, values.diameterIn, values.thicknessIn, takenCodes]);
 
   // Offered, never imposed: the suggestion keeps the catalogue from drifting
   // into a dozen naming styles, and staff can still overwrite it.
@@ -153,14 +158,29 @@ export default function ProductFormPage({
     widthFt: values.widthFt,
   });
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
+    const formElement = event.currentTarget;
+    setSaveError(null);
     const found = validate(values);
     if (Object.keys(found).length > 0) {
       setErrors(found);
+      reportFormError(event.currentTarget, Object.values(found)[0]);
       return;
     }
-    onSave({ ...values, itemCode });
+    if (!guardForm(formElement)) return;
+    setSubmittedCode(itemCode);
+    try {
+      const result = await onSave({ ...values, itemCode });
+      if (!result?.ok) {
+        const message = result?.message || 'The product was not saved. Check your entries and retry.';
+        setSaveError(message); reportFormError(formElement, message);
+      }
+    } catch {
+      const message = 'The request failed. Your entries are still here; check your connection and retry.';
+      setSaveError(message); reportFormError(formElement, message);
+    }
   }
 
   const number = (field, extra = {}) => (props) => (
@@ -177,6 +197,7 @@ export default function ProductFormPage({
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card className="min-w-0">
+        <FormError message={saveError} />
         <FormBand step={1} title="What is it?">
           <Field
             label="Kind of product"
@@ -217,7 +238,7 @@ export default function ProductFormPage({
           {isBall && (
             <Row>
               <Field label="How wide across" required error={errors.diameterIn} hint="In inches.">
-                {number("diameterIn", { step: "0.25", min: "0", placeholder: "4" })}
+                {number("diameterIn", { step: "0.25", min: "0.25", placeholder: "4" })}
               </Field>
               <Field label="Category" hint="How it is grouped on the shelf.">
                 {(props) => (
@@ -236,7 +257,7 @@ export default function ProductFormPage({
             <>
               <Row>
                 <Field label="How thick" required error={errors.thicknessIn} hint="In inches.">
-                  {number("thicknessIn", { step: "0.25", min: "0", placeholder: "1" })}
+                  {number("thicknessIn", { step: "0.25", min: "0.25", placeholder: "1" })}
                 </Field>
                 <Field label="Category" hint="How it is grouped on the shelf.">
                   {(props) => (
@@ -251,7 +272,7 @@ export default function ProductFormPage({
               </Row>
               <Row>
                 <Field label="How long" hint="In feet.">
-                  {number("lengthFt", { step: "0.5", min: "0", placeholder: "4" })}
+                  {number("lengthFt", { step: "0.5", min: "0.25", placeholder: "4" })}
                 </Field>
                 <Field label="How wide" hint="In feet.">
                   {number("widthFt", { step: "0.5", min: "0", placeholder: "2" })}

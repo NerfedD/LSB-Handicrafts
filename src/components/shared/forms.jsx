@@ -97,7 +97,7 @@ export function Field({ label, hint, error, warning, required, children, classNa
       </Label>
       <div className="pt-2">
         {isControl
-          ? children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })
+          ? children({ id, required, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })
           : children}
       </div>
       {hint && !error && !warning && <FieldHint id={`${id}-hint`}>{hint}</FieldHint>}

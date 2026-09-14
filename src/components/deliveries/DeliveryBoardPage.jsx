@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import {
   CalendarClock,
@@ -84,15 +85,15 @@ export default function DeliveryBoardPage({
   onContext,
   initialFilter,
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlState("query", "", "deliveries");
   // Seeded from the dashboard. An attention row's button names a verb and
   // lands here with the matching chip already on, so the sentence somebody
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
-  const [chip, setChip] = useState(initialFilter ?? "all");
-  const [due, setDue] = useState("any");
-  const [driver, setDriver] = useState("any");
-  const [area, setArea] = useState("any");
+  const [chip, setChip] = useUrlState("tab", initialFilter ?? "all", "deliveries");
+  const [due, setDue] = useUrlState("due", "any", "deliveries");
+  const [driver, setDriver] = useUrlState("driver", "any", "deliveries");
+  const [area, setArea] = useUrlState("area", "any", "deliveries");
 
   const chips = useMemo(() => deliveryChips(deliveries), [deliveries]);
   const areas = useMemo(() => areasOf(deliveries), [deliveries]);

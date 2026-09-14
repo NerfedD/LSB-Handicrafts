@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { ArrowLeft, Download, History } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -34,8 +35,8 @@ export default function ActivityLogPage({
   onExport,
   onContext,
 }) {
-  const [query, setQuery] = useState("");
-  const [chip, setChip] = useState("all");
+  const [query, setQuery] = useUrlState("query", "", "activity");
+  const [chip, setChip] = useUrlState("tab", "all", "activity");
 
   useEffect(() => {
     if (!isLoaded) return;

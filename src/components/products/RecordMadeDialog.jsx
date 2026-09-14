@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
 import { Hammer, TriangleAlert } from "../icons";
@@ -19,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Callout from "../shared/Callout";
 import { Field } from "../shared/forms";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
@@ -75,25 +76,36 @@ export default function RecordMadeDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
+    const formElement = event.currentTarget;
+    const fail = (message) => { setError(message); reportFormError(formElement, message); };
     if (!selected) {
-      setError("Pick which product was made.");
+      fail("Pick which product was made.");
       return;
     }
     if (!match?.stock.tracked) {
-      setError(
+      fail(
         "Nobody is counting this product yet, so there is nothing to add to. Set a shelf count on the product first."
       );
       return;
     }
     if (!valid) {
-      setError("Put in how many were made. It has to be more than zero.");
+      fail("Put in how many were made. It has to be more than zero.");
       return;
     }
 
+    if (!guardForm(formElement)) return;
     setSaving(true);
-    const ok = await onSave({ product: match.product, made: count });
-    setSaving(false);
-    if (ok !== false) handleOpenChange(false);
+    try {
+      const result = await onSave({ product: match.product, made: count });
+      if (result === false || result?.ok === false) {
+        fail(result?.message || 'The shelf count was not saved. Check the connection and try again.');
+        return;
+      }
+      setMade(''); setError(null); onOpenChange?.(false);
+    } catch {
+      fail('We could not save the count. Your entry is still here; please retry.');
+    } finally { setSaving(false); }
   }
 
   return (
@@ -108,11 +120,7 @@ export default function RecordMadeDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
-            {error && (
-              <Callout tone="red" icon={<TriangleAlert />} title="Not recorded.">
-                {error}
-              </Callout>
-            )}
+            <FormError message={error} />
 
             <Field label="What did you make" required>
               {(props) => (

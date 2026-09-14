@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useState } from "react";
 
 import { CircleAlert, ClipboardList, Hammer, Shield, Truck, UserCog } from "../icons";
@@ -12,10 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import Callout from "../shared/Callout";
 import { ChoiceButtons, Field, RequirementList } from "../shared/forms";
-import { createSignupClient } from "../../lib/supabaseSignupClient";
-import { deleteStaffAuthUser } from "../../utils/storageManager";
 import { passwordIsAcceptable, passwordRequirements } from "../../utils/password";
 import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
 import { ROLES } from "../../utils/staffData";
@@ -23,35 +22,27 @@ import { ROLES } from "../../utils/staffData";
 /**
  * Add a staff account — the create dialog from screen 2t.
  *
- * TWO WRITES TO TWO SYSTEMS, and the reason the error handling here is longer
- * than the form: creating an account means a Supabase Auth user AND a `staff`
- * row, and only the second one actually grants access. Treating the first as
- * the whole job is how this project accumulated auth users with no staff row —
- * people who could sign in, saw nothing, and were signed straight back out with
- * no explanation. If the staff row fails, this says so plainly and tells the
- * administrator what to do about it rather than closing on a success that did
- * not happen.
- *
- * The signup runs on a SEPARATE Supabase client (see lib/supabaseSignupClient)
- * because `signUp` on the normal one would replace the administrator's own
- * session with the account they are creating.
+ * ONE REQUEST TO THE SERVER, NOT TWO WRITES FROM HERE. Creating an account
+ * means a Supabase Auth user AND a `staff` row, and only the second one
+ * actually grants access. This dialog used to do both from the browser, which
+ * is how the project accumulated auth users with no staff row — people who
+ * could sign in, saw nothing, and were signed straight back out with no
+ * explanation. The admin-accounts function now provisions both halves or
+ * neither, so there is no half-made account left for this screen to explain,
+ * and the administrator's own session stays intact — `signUp` on the normal
+ * client would have replaced it with the account being created.
  *
  * THE ROLE IS A ROW OF BUTTONS, not a dropdown — the same treatment as the
  * product kind. Five options that all fit on screen do not need to be hidden
  * behind a click, and the choice decides what the account can reach.
- *
- * A HALF-CREATED ACCOUNT IS NOW CLEANED UP RATHER THAN EXPLAINED. When signUp
- * succeeds and the staff row does not, the Auth user it just made is deleted
- * again — otherwise that email address is unusable for ever, because Auth
- * enforces uniqueness on it and nothing in this app could clear it. If the
- * cleanup itself fails, the old message is still there telling the
- * administrator exactly what to do about the orphan.
  *
  * DUPLICATES ARE CAUGHT ON THIS SIDE FIRST, against the staff list already
  * loaded. That is a courtesy and not the guarantee: the unique indexes on
  * lower(email) and lower(username) in schema.sql are the real boundary and
  * they still run. This only means somebody finds out before they have invented
  * a password, rather than after two round trips.
+ *
+ * A failed request retains every field for correction.
  */
 
 const EMPTY = {
@@ -140,16 +131,20 @@ export default function CreateAccountDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (submitting) return;
+    const formElement = event.currentTarget;
+    const fail = (message) => { setError(message); reportFormError(formElement, message); };
     setError(null);
+    if (!guardForm(formElement)) return;
     setFieldErrors({});
     setFieldWarnings({});
 
     if (!form.name.trim() || !form.email.trim()) {
-      setError("A name and an email address are both needed — the email is how they sign in.");
+      fail("A name and an email address are both needed — the email is how they sign in.");
       return;
     }
     if (!form.role) {
-      setError("Say what this person does. Without it the account cannot open anything.");
+      fail("Say what this person does. Without it the account cannot open anything.");
       return;
     }
     // Before the password, not after: being told the email is taken is a reason
@@ -164,7 +159,7 @@ export default function CreateAccountDialog({
     }
 
     if (!passwordIsAcceptable(form.password)) {
-      setError("The first password needs to meet all three requirements below.");
+      fail("The first password needs to meet all three requirements below.");
       return;
     }
 
@@ -179,48 +174,19 @@ export default function CreateAccountDialog({
 
     setSubmitting(true);
     try {
-      const signupClient = createSignupClient();
-      const { data, error: signUpError } = await signupClient.auth.signUp({
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
-
-      if (signUpError) {
-        setError(signUpError.message);
+      const result = await onAccountCreated({ ...form, name: form.name.trim(), email: form.email.trim().toLowerCase() });
+      if (!result?.ok) {
+        fail(result?.message || 'The account was not created. Check the details and retry.');
         return;
       }
-
-      const created = await onAccountCreated?.({
-        name: form.name.trim(),
-        role: form.role,
-        contactNumber: form.contactNumber,
-        email: form.email.trim().toLowerCase(),
-        username: form.username,
-      });
-
-      if (created === false) {
-        // The sign-in exists and the access does not. Undo the half that
-        // worked, because leaving it burns this email address permanently:
-        // Auth refuses a second signUp on the same address, so the
-        // administrator could not even retry with the details they just typed.
-        const cleanup = await deleteStaffAuthUser({
-          userId: data?.user?.id ?? null,
-          email: form.email.trim().toLowerCase(),
-        });
-        setError(
-          cleanup.ok
-            ? "Granting access failed, so nothing was created — the half-made sign-in was " +
-                "removed with it. Check the username is not already taken and try again."
-            : "The sign-in was created, but granting access failed. Add this person under " +
-                "Staff & accounts before they try to sign in, or they will be turned away " +
-                "with no explanation."
-        );
-        return;
-      }
-
-      handleOpenChange(false);
+      setForm(EMPTY);
+      setError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
+      setAsked({});
+      onOpenChange?.(false);
     } catch {
-      setError("We could not reach the system, so nothing was created. Try again.");
+      fail('The account could not be confirmed. Your entries are still here; check the connection and retry.');
     } finally {
       setSubmitting(false);
     }
@@ -239,16 +205,13 @@ export default function CreateAccountDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
-            {error && (
-              <Callout tone="red" icon={<CircleAlert />} title="Not created.">
-                {error}
-              </Callout>
-            )}
+            <FormError message={error} />
 
             <Field label="Their name" required>
               {(props) => (
                 <Input
                   {...props}
+                  maxLength={200}
                   value={form.name}
                   onChange={(event) => setField("name")(event.target.value)}
                   placeholder="Ana Reyes"
@@ -295,6 +258,9 @@ export default function CreateAccountDialog({
               {(props) => (
                 <Input
                   {...props}
+                  pattern="[a-zA-Z0-9._\-]{3,50}"
+                  maxLength={50}
+                  title="Use 3 to 50 letters, numbers, dots, underscores or hyphens."
                   value={form.username}
                   onChange={(event) => setField("username")(event.target.value)}
                   placeholder="ana.reyes"
@@ -328,6 +294,7 @@ export default function CreateAccountDialog({
                 <Input
                   {...props}
                   type="text"
+                  maxLength={128}
                   value={form.password}
                   onChange={(event) => setField("password")(event.target.value)}
                   placeholder="Something they can type"

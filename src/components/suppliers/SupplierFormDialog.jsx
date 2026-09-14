@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -91,6 +93,7 @@ export default function SupplierFormDialog({
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(supplier, isEdit));
   const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState(null);
   // Asked once per field, cleared when that field is edited — see the customer
   // dialog for the full reasoning.
   const [warnings, setWarnings] = useState({});
@@ -131,11 +134,16 @@ export default function SupplierFormDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
+    const formElement = event.currentTarget;
+    setSaveError(null);
     const found = validate(values);
     if (Object.keys(found).length > 0) {
       setErrors(found);
+      reportFormError(event.currentTarget, Object.values(found)[0]);
       return;
     }
+    if (!guardForm(formElement)) return;
 
     const raised = doubts(values);
     const unanswered = Object.keys(raised).filter((field) => !asked[field]);
@@ -149,9 +157,23 @@ export default function SupplierFormDialog({
     }
 
     setSaving(true);
-    const id = await onSave(values);
-    setSaving(false);
-    if (id !== null && id !== undefined) handleOpenChange(false);
+    try {
+      const result = await onSave(values);
+      if (result == null || result === false || result?.ok === false) {
+        const message = result?.message || 'The record was not saved. Check your details and try again.';
+        setSaveError(message);
+        reportFormError(formElement, message);
+        return;
+      }
+      setValues(seed(supplier, isEdit));
+      setErrors({});
+      setWarnings({});
+      setAsked({});
+      onOpenChange?.(false);
+    } catch {
+      const message = 'The request failed. Your entries are still here; check your connection and retry.';
+      setSaveError(message); reportFormError(formElement, message);
+    } finally { setSaving(false); }
   }
 
   return (
@@ -166,6 +188,7 @@ export default function SupplierFormDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
+            <FormError message={saveError} />
             <Field label="Supplier name" required error={errors.name} warning={warnings.name}>
               {(props) => (
                 <Input

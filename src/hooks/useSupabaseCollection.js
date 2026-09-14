@@ -1,100 +1,78 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
-/**
- * Loads a Supabase-backed collection and mutates it one row at a time.
- *
- * WHAT CHANGED AND WHY
- * This hook used to hold the rows in state and persist the WHOLE array back to
- * Supabase whenever its identity changed, via a reconciling upsert that also
- * deleted any row missing from memory. That effect was the single biggest
- * source of the bugs found in class testing:
- *
- *   - A read denied by RLS came back empty. The app appended one row to that
- *     emptiness, and the sync deleted every other row in the table. That is how
- *     the staff table was wiped, and how the owner account disappeared.
- *   - Nothing awaited the write or looked at its result, so a rejected save
- *     still rendered "saved successfully".
- *   - Editing one field re-uploaded every row in the table.
- *
- * So the effect is gone. Callers now mutate through `create`, `update` and
- * `remove`, each of which touches exactly one row, awaits the result, and only
- * updates local state once the database has confirmed the change. A failure
- * leaves the UI showing what is actually stored.
- *
- * `enabled` gates the read, so a signed-out visitor doesn't pay for table reads
- * they can't see the results of — and, more importantly, so an anonymous read
- * can't be mistaken for real state.
- *
- * @param {{load:Function, create:Function, update:Function, remove:Function}} col
- *   a collection from utils/storageManager (e.g. `customersCollection`)
- * @returns {{rows, isLoaded, error, create, update, remove, reload, setRows}}
- */
+/** Reads are invalidated by writes; an earlier snapshot cannot undo a save. */
 export default function useSupabaseCollection(col, { enabled = true } = {}) {
   const [rows, setRows] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [error, setError] = useState(null);
-
-  // `col` is a module-level object in practice, but pin it so an inline literal
-  // at a call site can't re-trigger the read on every render.
-  const colRef = useRef(col);
-  useEffect(() => {
-    colRef.current = col;
-  });
-
   const [reloadToken, setReloadToken] = useState(0);
+  const revision = useRef(0);
+  const epoch = useRef(0);
+  const pending = useRef(new Set());
   const reload = useCallback(() => setReloadToken((n) => n + 1), []);
 
   useEffect(() => {
-    if (!enabled) return undefined;
-    let cancelled = false;
+    const generation = ++epoch.current;
+    if (!enabled) {
+      queueMicrotask(() => {
+        if (epoch.current !== generation) return;
+        setRows([]); setIsLoaded(false); setError(null);
+      });
+      return;
+    }
+  }, [enabled]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const generation = epoch.current;
+    let cancelled = false;
+    const readRevision = revision.current;
     (async () => {
-      const result = await colRef.current.load([]);
-      if (cancelled) return;
+      const result = await col.load([]);
+      if (cancelled || generation !== epoch.current) return;
+      if (readRevision !== revision.current || pending.current.size) return;
       if (!result.ok) {
-        // Leave isLoaded false so the screen can show a retry affordance rather
-        // than an empty list. A failed read and an empty table used to be
-        // indistinguishable, permanently.
-        setError(result.error || new Error("Could not reach the database."));
+        setError(result.error || new Error('Could not reach the database.'));
+        toast.error('Could not refresh the records. Check your connection and try again.');
         return;
       }
-      setError(null);
-      setRows(result.data);
-      setIsLoaded(true);
+      setRows(result.data); setIsLoaded(true); setError(null);
     })();
+    const refresh = () => { if (document.visibilityState === 'visible' && !pending.current.size) reload(); };
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { cancelled = true; window.removeEventListener('focus', refresh); window.clearInterval(timer); };
+  }, [col, enabled, reloadToken, reload]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, reloadToken]);
-
-  const create = useCallback(async (row) => {
-    const result = await colRef.current.create(row);
-    if (result.ok) {
-      // Prefer the row the database returned: it carries server defaults and
-      // any value a trigger rewrote.
-      const saved = result.data ? colRef.current.fromRow(result.data) : row;
-      setRows((prev) => [...prev, saved]);
+  const mutate = useCallback(async (method, id, payload) => {
+    if (!enabled) return { ok: false, message: 'Please sign in again.' };
+    const key = id ?? payload?.id;
+    if (pending.current.has(key)) return { ok: false, message: 'This record is already being saved.' };
+    pending.current.add(key);
+    revision.current += 1;
+    const generation = epoch.current;
+    try {
+      const result = await (method === 'create' ? col.create(payload) : col[method](id, payload));
+      if (generation !== epoch.current) return { ok: false, message: 'The session changed. Reload to check the saved record.' };
+      if (result.ok) {
+        const saved = result.data ? col.fromRow(result.data) : payload;
+        setRows((prev) => method === 'remove' ? prev.filter((row) => row.id !== id)
+          : method === 'create' ? [...prev.filter((row) => row.id !== saved.id), saved]
+          : prev.map((row) => row.id === id ? { ...row, ...saved } : row));
+      }
+      return result;
+    } catch (cause) {
+      return { ok: false, error: cause, message: 'The request failed. Check your connection and retry.' };
+    } finally {
+      pending.current.delete(key);
+      revision.current += 1;
+      if (generation === epoch.current && !pending.current.size) reload();
     }
-    return result;
-  }, []);
-
-  const update = useCallback(async (id, patch) => {
-    const result = await colRef.current.update(id, patch);
-    if (result.ok) {
-      const saved = result.data ? colRef.current.fromRow(result.data) : patch;
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...saved } : r)));
-    }
-    return result;
-  }, []);
-
-  const remove = useCallback(async (id) => {
-    const result = await colRef.current.remove(id);
-    if (result.ok) {
-      setRows((prev) => prev.filter((r) => r.id !== id));
-    }
-    return result;
-  }, []);
-
-  return { rows, isLoaded, error, create, update, remove, reload, setRows };
+  }, [col, enabled, reload]);
+  const create = useCallback((row) => mutate('create', null, row), [mutate]);
+  const update = useCallback((id, patch) => mutate('update', id, patch), [mutate]);
+  const remove = useCallback((id) => mutate('remove', id), [mutate]);
+  const replaceRows = useCallback((next) => { revision.current += 1; setRows(next); }, []);
+  return { rows: enabled ? rows : [], isLoaded: enabled && isLoaded, error, create, update, remove, reload, setRows: replaceRows };
 }
