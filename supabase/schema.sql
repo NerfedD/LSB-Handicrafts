@@ -157,6 +157,49 @@ alter table public.staff drop constraint if exists staff_contact_number_len;
 alter table public.staff add constraint staff_contact_number_len
   check (contact_number is null or char_length(contact_number) <= 32);
 
+-- ------------------------------------------------------------
+-- A contact number has to be dialable
+-- ------------------------------------------------------------
+-- Nothing checked these for the life of the project, and it shows: a supplier
+-- was saved as '0917 234 5a' and a staff account with a 23-digit number. A
+-- phone number nobody can ring is a customer you cannot reach, and the app
+-- never said a word about either.
+--
+-- The rule matches src/utils/phone.js exactly -- the punctuation people
+-- actually type, and E.164's 7-to-15 digit bounds -- because a check here that
+-- disagreed with the form would reject writes the screen had just approved.
+--
+-- EMPTY IS STILL ALLOWED. Whether the field is REQUIRED is the form's question,
+-- and the two disagree on purpose: a customer must have a number, a staff
+-- account need not.
+--
+-- NOT VALID, deliberately. The two bad rows above already exist, and only
+-- somebody who knows the real numbers can fix them -- refusing to load them
+-- would not help. New writes are checked from now on, and editing either record
+-- forces the correction at the moment somebody is looking at it.
+create or replace function public.contact_number_ok(value text)
+returns boolean language sql immutable as $fn$
+  select value is null
+     or btrim(value) = ''
+     or (
+       char_length(value) <= 32
+       and value ~ '^[0-9 ()+.-]+$'
+       and char_length(regexp_replace(value, '[^0-9]', '', 'g')) between 7 and 15
+     );
+$fn$;
+
+alter table public.customers drop constraint if exists customers_contact_number_shape;
+alter table public.customers add constraint customers_contact_number_shape
+  check (public.contact_number_ok(contact_number)) not valid;
+
+alter table public.suppliers drop constraint if exists suppliers_contact_number_shape;
+alter table public.suppliers add constraint suppliers_contact_number_shape
+  check (public.contact_number_ok(contact_number)) not valid;
+
+alter table public.staff drop constraint if exists staff_contact_number_shape;
+alter table public.staff add constraint staff_contact_number_shape
+  check (public.contact_number_ok(contact_number)) not valid;
+
 alter table public.staff drop constraint if exists staff_name_len;
 alter table public.staff add constraint staff_name_len
   check (char_length(trim(name)) between 1 and 120);
@@ -492,16 +535,123 @@ drop policy if exists "Active staff can manage customers"    on public.customers
 drop policy if exists "Active staff can manage products"     on public.products;
 drop policy if exists "Active staff can manage suppliers"    on public.suppliers;
 
-create policy "Active staff can manage inventory"    on public.inventory    for all
+-- ------------------------------------------------------------
+-- products, inventory, deliveries, orders: everyone works with them,
+-- only an admin removes one
+-- ------------------------------------------------------------
+--
+-- WHY THESE ARE NO LONGER `for all`. That form covers DELETE, so every one of
+-- these five tables was handing every active staff account the right to remove
+-- any row in it through a direct API call -- a Delivery Staff session could
+-- have emptied the catalogue, the stock ledger or the orders table. The UI
+-- offers no such button, but the UI is not the only way in: the anon key ships
+-- in the JS bundle, so anyone holding a valid session can call PostgREST
+-- directly. A missing button is not a permission.
+--
+-- Read, add and edit stay open to any active staff member, which is the whole
+-- point of the app: counting stock, writing an order and moving a delivery on
+-- are everybody's job. Only removal narrows, and it narrows to is_admin() --
+-- exactly the split already spelled out for suppliers and customers below.
+--
+-- This is the same four-verb shape repeated four times rather than a loop,
+-- because a policy is not a thing you can write once and apply to a list, and
+-- because each table's DELETE is worth being able to read on its own line.
+drop policy if exists "Active staff read products"   on public.products;
+drop policy if exists "Active staff insert products" on public.products;
+drop policy if exists "Active staff update products" on public.products;
+drop policy if exists "Admins delete products"       on public.products;
+
+create policy "Active staff read products"   on public.products for select
+  using (private.is_active_staff());
+create policy "Active staff insert products" on public.products for insert
+  with check (private.is_active_staff());
+create policy "Active staff update products" on public.products for update
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage deliveries"   on public.deliveries   for all
+-- Deleting a product also deletes its stock row (the catalogue entry and the
+-- ledger row are one thing to the user -- see App.deleteProduct), which is why
+-- both tables' DELETE ask for the same thing.
+create policy "Admins delete products"       on public.products for delete
+  using (private.is_admin());
+
+drop policy if exists "Active staff read inventory"   on public.inventory;
+drop policy if exists "Active staff insert inventory" on public.inventory;
+drop policy if exists "Active staff update inventory" on public.inventory;
+drop policy if exists "Admins delete inventory"       on public.inventory;
+
+create policy "Active staff read inventory"   on public.inventory for select
+  using (private.is_active_staff());
+create policy "Active staff insert inventory" on public.inventory for insert
+  with check (private.is_active_staff());
+create policy "Active staff update inventory" on public.inventory for update
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage orders"       on public.orders       for all
+create policy "Admins delete inventory"       on public.inventory for delete
+  using (private.is_admin());
+
+drop policy if exists "Active staff read deliveries"   on public.deliveries;
+drop policy if exists "Active staff insert deliveries" on public.deliveries;
+drop policy if exists "Active staff update deliveries" on public.deliveries;
+drop policy if exists "Admins delete deliveries"       on public.deliveries;
+
+create policy "Active staff read deliveries"   on public.deliveries for select
+  using (private.is_active_staff());
+create policy "Active staff insert deliveries" on public.deliveries for insert
+  with check (private.is_active_staff());
+create policy "Active staff update deliveries" on public.deliveries for update
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage activity_log" on public.activity_log for all
+-- A delivery is a record that something was promised and something happened.
+-- Deleting one destroys the only evidence of a run; moving it back a stage is
+-- the recoverable answer, and that is an UPDATE.
+create policy "Admins delete deliveries"       on public.deliveries for delete
+  using (private.is_admin());
+
+drop policy if exists "Active staff read orders"   on public.orders;
+drop policy if exists "Active staff insert orders" on public.orders;
+drop policy if exists "Active staff update orders" on public.orders;
+drop policy if exists "Admins delete orders"       on public.orders;
+
+create policy "Active staff read orders"   on public.orders for select
+  using (private.is_active_staff());
+create policy "Active staff insert orders" on public.orders for insert
+  with check (private.is_active_staff());
+-- UPDATE stays open to everyone because marking an order done is the ordinary
+-- case. WHICH COLUMNS may change is a separate question, and it is answered by
+-- orders_guard_money_update() further down -- refunds and price corrections are
+-- manager/admin only regardless of this policy.
+create policy "Active staff update orders" on public.orders for update
   using (private.is_active_staff()) with check (private.is_active_staff());
-create policy "Active staff can manage products"     on public.products     for all
-  using (private.is_active_staff()) with check (private.is_active_staff());
+create policy "Admins delete orders"       on public.orders for delete
+  using (private.is_admin());
+
+-- ------------------------------------------------------------
+-- activity_log: append only, for everybody
+-- ------------------------------------------------------------
+--
+-- THE MISSING POLICIES ARE THE POINT. There is a SELECT policy and an INSERT
+-- policy and there is deliberately NO policy for UPDATE and NO policy for
+-- DELETE -- not for staff, not for admins, not for the superadmin. RLS denies
+-- any verb it has no permissive policy for, so those two statements fail for
+-- every caller who goes through PostgREST. That is what makes this table an
+-- audit trail rather than a list of things somebody has not got round to
+-- editing yet.
+--
+-- It matters because `for all` covered DELETE here too: any signed-in account
+-- could have removed the record of what it had just done, which is precisely
+-- the entry an audit trail exists to keep.
+--
+-- The table owner and the service role still bypass RLS entirely, so a genuine
+-- correction remains possible from the SQL editor -- deliberately, because that
+-- leaves a trace of its own and cannot be done from the app.
+--
+-- Nothing in the app wants either verb: utils/activityLog.js only ever calls
+-- create(). If a screen ever needs to edit an entry, the honest answer is a
+-- second entry saying so, not an UPDATE policy.
+drop policy if exists "Active staff read activity_log"   on public.activity_log;
+drop policy if exists "Active staff insert activity_log" on public.activity_log;
+
+create policy "Active staff read activity_log"   on public.activity_log for select
+  using (private.is_active_staff());
+create policy "Active staff insert activity_log" on public.activity_log for insert
+  with check (private.is_active_staff());
 
 -- ------------------------------------------------------------
 -- suppliers: everyone works with them, only an admin removes one
@@ -642,11 +792,20 @@ begin
   if private.is_admin() then return new; end if;
 
   -- Everyone else may edit only their own name and contact number.
-  if new.role      is distinct from old.role
-     or new.status is distinct from old.status
-     or new.email  is distinct from old.email
-     or new.id     is distinct from old.id then
-    raise exception 'Only an administrator can change a staff role, status, email or id';
+  --
+  -- USERNAME IS IN THIS LIST, and was not. A username is an identity, not a
+  -- display preference: email_for_username() resolves one to an email before
+  -- the password is checked, so it is half of how somebody signs in. Without
+  -- this line any non-admin could rename themselves to any name not yet taken
+  -- -- including the one an administrator had just told a new hire to expect.
+  -- The unique index stops two accounts HOLDING the same username; it has
+  -- nothing to say about who may change one.
+  if new.role        is distinct from old.role
+     or new.status   is distinct from old.status
+     or new.email    is distinct from old.email
+     or new.username is distinct from old.username
+     or new.id       is distinct from old.id then
+    raise exception 'Only an administrator can change a staff role, status, email, username or id';
   end if;
 
   return new;
@@ -997,6 +1156,20 @@ begin
     -- messages shaped like this straight through to the toast rather than
     -- replacing them with a generic one.
     raise exception 'Only an administrator or a manager can give money back or change what an order costs';
+  end if;
+
+  -- UNDOING A FINISHED ORDER IS THE SAME KIND OF DECISION as refunding one, so
+  -- it is gated with them rather than left to whoever wrote the order.
+  --
+  -- Marking an order done stays open to everybody -- it is the ordinary work of
+  -- the shop, and old.status is 'Pending' on that path, so this never fires for
+  -- it. What this catches is the way BACK: Completed to anything else puts
+  -- goods back on the shelf and contradicts what a customer was already told.
+  -- App.reopenOrder refuses first and the screen shows the block only to an
+  -- admin or a manager, but the anon key ships in the JS bundle and only this
+  -- runs on the server.
+  if old.status = 'Completed' and new.status is distinct from old.status then
+    raise exception 'Only an administrator or a manager can put a finished order back to waiting';
   end if;
 
   return new;

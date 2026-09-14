@@ -16,10 +16,34 @@ import {
 import { Input } from "@/components/ui/input";
 import { ChoiceButtons, Field, RequirementList } from "../shared/forms";
 import { passwordIsAcceptable, passwordRequirements } from "../../utils/password";
+import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
 import { ROLES } from "../../utils/staffData";
 
-/** The administrator's session stays intact: the server provisions Auth and
- * staff together. A failed request retains every field for correction. */
+/**
+ * Add a staff account — the create dialog from screen 2t.
+ *
+ * ONE REQUEST TO THE SERVER, NOT TWO WRITES FROM HERE. Creating an account
+ * means a Supabase Auth user AND a `staff` row, and only the second one
+ * actually grants access. This dialog used to do both from the browser, which
+ * is how the project accumulated auth users with no staff row — people who
+ * could sign in, saw nothing, and were signed straight back out with no
+ * explanation. The admin-accounts function now provisions both halves or
+ * neither, so there is no half-made account left for this screen to explain,
+ * and the administrator's own session stays intact — `signUp` on the normal
+ * client would have replaced it with the account being created.
+ *
+ * THE ROLE IS A ROW OF BUTTONS, not a dropdown — the same treatment as the
+ * product kind. Five options that all fit on screen do not need to be hidden
+ * behind a click, and the choice decides what the account can reach.
+ *
+ * DUPLICATES ARE CAUGHT ON THIS SIDE FIRST, against the staff list already
+ * loaded. That is a courtesy and not the guarantee: the unique indexes on
+ * lower(email) and lower(username) in schema.sql are the real boundary and
+ * they still run. This only means somebody finds out before they have invented
+ * a password, rather than after two round trips.
+ *
+ * A failed request retains every field for correction.
+ */
 
 const EMPTY = {
   name: "",
@@ -38,12 +62,57 @@ const ROLE_ICONS = {
   "Delivery Staff": <Truck className="h-5 w-5" />,
 };
 
-export default function CreateAccountDialog({ open, onOpenChange, onAccountCreated }) {
+/**
+ * Which of the two identity fields somebody else already has.
+ *
+ * Case-insensitively, because that is how both the database and the sign-in
+ * screen compare them: staff_email_lower_idx and staff_username_lower_idx are
+ * built over lower(), and email_for_username() looks up on lower(trim()). A
+ * check that disagreed with those would pass here and fail there, which is
+ * worse than not checking at all.
+ */
+function takenBy(form, staff) {
+  const found = {};
+  const email = form.email.trim().toLowerCase();
+  const username = form.username.trim().toLowerCase();
+  const matches = (value, wanted) => String(value || "").trim().toLowerCase() === wanted;
+
+  if (email && staff.some((person) => matches(person.email, email))) {
+    found.email = "Somebody already signs in with that email address.";
+  }
+  if (username && staff.some((person) => matches(person.username, username))) {
+    found.username = "That username is taken. Add a surname or an initial to it.";
+  }
+  return found;
+}
+
+export default function CreateAccountDialog({
+  open,
+  onOpenChange,
+  onAccountCreated,
+  staff = [],
+}) {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  // A phone number in an unexpected shape is asked about once, not refused —
+  // the same treatment as a duplicate name on the customer dialog.
+  const [fieldWarnings, setFieldWarnings] = useState({});
+  const [asked, setAsked] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
-  const setField = (field) => (value) => setForm((f) => ({ ...f, [field]: value }));
+  // A field's own error clears as it is retyped: leaving "that username is
+  // taken" under a box somebody has just changed is a form arguing with itself.
+  const setField = (field) => (value) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setFieldErrors((previous) =>
+      previous[field] ? { ...previous, [field]: undefined } : previous
+    );
+    setFieldWarnings((previous) =>
+      previous[field] ? { ...previous, [field]: undefined } : previous
+    );
+    setAsked((previous) => (previous[field] ? { ...previous, [field]: false } : previous));
+  };
   const requirements = passwordRequirements(form.password);
 
   function handleOpenChange(next) {
@@ -53,6 +122,9 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
     if (!next) {
       setForm(EMPTY);
       setError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
+      setAsked({});
     }
     onOpenChange?.(next);
   }
@@ -64,6 +136,8 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
     const fail = (message) => { setError(message); reportFormError(formElement, message); };
     setError(null);
     if (!guardForm(formElement)) return;
+    setFieldErrors({});
+    setFieldWarnings({});
 
     if (!form.name.trim() || !form.email.trim()) {
       fail("A name and an email address are both needed — the email is how they sign in.");
@@ -73,8 +147,28 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
       fail("Say what this person does. Without it the account cannot open anything.");
       return;
     }
+    // Before the password, not after: being told the email is taken is a reason
+    // to stop, and there is no sense making somebody invent a password for an
+    // account that is not going to be created.
+    const taken = takenBy(form, staff);
+    const phoneIssue = phoneProblem(form.contactNumber);
+    if (phoneIssue) taken.contactNumber = phoneIssue;
+    if (Object.keys(taken).length > 0) {
+      setFieldErrors(taken);
+      return;
+    }
+
     if (!passwordIsAcceptable(form.password)) {
       fail("The first password needs to meet all three requirements below.");
+      return;
+    }
+
+    // Asked once, then it goes through. Last of the checks, because it is the
+    // only one that does not stop the account being created.
+    const doubt = phoneDoubt(form.contactNumber);
+    if (doubt && !asked.contactNumber) {
+      setFieldWarnings({ contactNumber: doubt });
+      setAsked((previous) => ({ ...previous, contactNumber: true }));
       return;
     }
 
@@ -87,6 +181,9 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
       }
       setForm(EMPTY);
       setError(null);
+      setFieldErrors({});
+      setFieldWarnings({});
+      setAsked({});
       onOpenChange?.(false);
     } catch {
       fail('The account could not be confirmed. Your entries are still here; check the connection and retry.');
@@ -136,7 +233,12 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
               />
             </Field>
 
-            <Field label="Email address" required hint="This is what they type to sign in.">
+            <Field
+              label="Email address"
+              required
+              error={fieldErrors.email}
+              hint="This is what they type to sign in."
+            >
               {(props) => (
                 <Input
                   {...props}
@@ -150,6 +252,7 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
 
             <Field
               label="Username"
+              error={fieldErrors.username}
               hint="Optional. A shorter thing to type than an email — they can use either."
             >
               {(props) => (
@@ -165,13 +268,18 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
               )}
             </Field>
 
-            <Field label="Phone number" hint="So colleagues can reach them without asking around.">
+            <Field
+              label="Phone number"
+              error={fieldErrors.contactNumber}
+              warning={fieldWarnings.contactNumber}
+              hint="So colleagues can reach them without asking around."
+            >
               {(props) => (
                 <Input
                   {...props}
                   inputMode="tel"
                   value={form.contactNumber}
-                  onChange={(event) => setField("contactNumber")(event.target.value)}
+                  onChange={(event) => setField("contactNumber")(cleanPhoneInput(event.target.value))}
                   placeholder="09XX XXX XXXX"
                 />
               )}
@@ -211,7 +319,11 @@ export default function CreateAccountDialog({ open, onOpenChange, onAccountCreat
               Cancel
             </Button>
             <Button type="submit" variant="cobalt" size="lg" disabled={submitting}>
-              {submitting ? "Creating…" : "Create the account"}
+              {submitting
+                ? "Creating…"
+                : fieldWarnings.contactNumber
+                  ? "Create it anyway"
+                  : "Create the account"}
             </Button>
           </DialogFooter>
         </form>

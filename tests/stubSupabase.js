@@ -79,6 +79,20 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
     return json(route, {});
   });
 
+  // Edge Functions. The staff-delete and create-account flows ask
+  // `delete-staff-auth-user` to clear the Supabase Auth user behind a staff
+  // row — a real network call that would otherwise escape this stub, fail, and
+  // land in the console check as an error the app did not actually make.
+  //
+  // It answers the shape the function answers, not a bare 200: the client
+  // reads `deleted` to tell "there was nothing to remove" from "it was
+  // removed", and a test that asserted on the wrong one would pass for the
+  // wrong reason.
+  await page.route("**/functions/v1/**", async (route) => {
+    onWrite?.({ table: "functions", method: route.request().method(), row: null });
+    return json(route, { ok: true, deleted: true });
+  });
+
   await page.route("**/rest/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());

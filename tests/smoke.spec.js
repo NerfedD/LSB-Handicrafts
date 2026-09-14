@@ -209,6 +209,62 @@ test.describe("products & stock", () => {
     expectClean();
   });
 
+  test("a product promised to an open order cannot be removed, and is told why", async ({
+    page,
+  }) => {
+    // Order #1041 is still Waiting on 40 of these, so the block explains the
+    // refusal rather than disappearing -- the same treatment as a customer with
+    // an order open. "Why can't I delete this" deserves an answer on screen.
+    await page
+      .getByRole("row", { name: /Styro Ball 4 inch/ })
+      .getByRole("button", { name: "View" })
+      .click();
+
+    await expect(
+      page.getByRole("heading", { name: "Remove this product for good" })
+    ).toBeVisible();
+    await expect(page.getByText(/promised to an order that has not gone out/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Remove Styro Ball 4 inch/ })).toHaveCount(0);
+
+    expectClean();
+  });
+
+  test("removing a product takes its stock record with it", async ({ page }) => {
+    // Nothing is waiting on the 6 inch ball -- its only order is Completed --
+    // so removal is offered. Both tables are watched, because the whole point
+    // of this delete is that a catalogue entry and its shelf count are one
+    // product: leaving the ledger row behind would strand a stock record no
+    // screen can reach.
+    const deleted = [];
+    page.on("request", (request) => {
+      if (request.method() === "DELETE") deleted.push(new URL(request.url()).pathname);
+    });
+
+    await page
+      .getByRole("row", { name: /Styro Ball 6 inch/ })
+      .getByRole("button", { name: "View" })
+      .click();
+
+    await expect(page.getByText(/the stock record against SB-060 goes with it/)).toBeVisible();
+    await expect(page.getByText(/Past orders are NOT changed/)).toBeVisible();
+
+    await page.getByRole("button", { name: "Remove Styro Ball 6 inch" }).click();
+
+    // The confirm names the record and says what survives.
+    await expect(page.getByRole("heading", { name: "Remove Styro Ball 6 inch?" })).toBeVisible();
+    await expect(page.getByText(/Past orders keep their lines/)).toBeVisible();
+    await page.getByRole("button", { name: "Yes, remove it" }).click();
+
+    await expect(page.getByRole("heading", { level: 1, name: "Products & stock" })).toBeVisible();
+    await expect(page.getByRole("table").getByText("Styro Ball 6 inch")).toHaveCount(0);
+    await expect(page.getByRole("table").getByText("Styro Ball 4 inch")).toBeVisible();
+
+    expect(deleted.filter((path) => path.endsWith("/products"))).toHaveLength(1);
+    expect(deleted.filter((path) => path.endsWith("/inventory"))).toHaveLength(1);
+
+    expectClean();
+  });
+
   test("the add form is adaptive and generates the code", async ({ page }) => {
     await page.getByRole("button", { name: "Add a product" }).first().click();
     await expect(page.getByRole("heading", { level: 1, name: "Add a product" })).toBeVisible();
@@ -253,6 +309,58 @@ test.describe("orders and deliveries", () => {
     }
     await expect(page.getByText("Total to pay")).toBeVisible();
     await expect(page.getByRole("button", { name: "Mark as done" })).toBeVisible();
+
+    expectClean();
+  });
+
+  test("a written order carries the id the stock maths reads", async ({ page }) => {
+    // THE ONE ASSERTION THAT MATTERS IS ON THE SAVED ROW, not on the screen.
+    //
+    // `products` and `inventory` are separate tables joined on code, with
+    // separate primary keys. Every stock function keys on the INVENTORY id, and
+    // this form picks from the CATALOGUE — so a line saved with the id it has
+    // in hand reserves nothing and deducts nothing, silently, while the order
+    // looks perfectly normal in every screen. That is precisely what happened
+    // to the first real order written here, and nothing caught it: the seed
+    // data and these fixtures both already store inventory ids, so every other
+    // test agreed with itself.
+    //
+    // Styro Ball 4 inch is products id 1 and inventory id 101. Storing 1 is the
+    // bug; storing 101 is the fix, and only reading the request body can tell
+    // them apart.
+    const saved = [];
+    page.on("request", (request) => {
+      if (request.method() === "POST" && request.url().includes("/rest/v1/orders")) {
+        saved.push(JSON.parse(request.postData()));
+      }
+    });
+
+    await page.getByRole("button", { name: navName("Orders") }).click();
+    await page.getByRole("button", { name: "Write a new order" }).click();
+
+    // Scoped to <main>: the sidebar's "Customers" nav button carries that as
+    // its aria-label, and an unscoped getByLabel finds it first.
+    const form = page.getByRole("main");
+    await form.getByLabel(/^Customer/).fill("Luis Benito");
+    await form.getByLabel("Item").click();
+    await page.getByRole("option", { name: /Styro Ball 4 inch/ }).click();
+    await form.getByLabel("How many").fill("5");
+
+    // No address, so the form asks once whether this is a shop collection
+    // before it writes an order with no delivery behind it. It asks, it does
+    // not refuse — the second press goes through.
+    await page.getByRole("button", { name: "Write this order" }).click();
+    await expect(page.getByText(/no delivery is raised for this order/)).toBeVisible();
+    expect(saved).toHaveLength(0);
+
+    await page.getByRole("button", { name: "Write it anyway" }).click();
+    // A written order opens on its own screen, not back on the list.
+    await expect(page.getByRole("heading", { level: 1, name: "One order" })).toBeVisible();
+
+    expect(saved).toHaveLength(1);
+    const line = saved[0].items[0];
+    expect(line.name).toBe("Styro Ball 4 inch");
+    expect(line.productId).toBe(101); // the inventory row, not products id 1
 
     expectClean();
   });

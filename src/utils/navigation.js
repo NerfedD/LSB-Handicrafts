@@ -75,7 +75,7 @@ export const NAV_TREE = [
     icon: "ShoppingCart",
     group: "main",
     count: "orders",
-    views: ["orders", "order-detail", "order-form"],
+    views: ["orders", "order-detail", "order-form", "order-edit"],
   },
   {
     key: "deliveries",
@@ -184,6 +184,10 @@ const VIEW_META = {
   orders: { title: "Orders" },
   "order-detail": { title: "One order" },
   "order-form": { title: "Write a new order" },
+  // Its own key rather than a flag on order-form, so the heading is not lying
+  // about what the screen is doing. Same tree, same permission as the rest of
+  // orders -- see NAV_TREE above.
+  "order-edit": { title: "Change this order" },
 
   deliveries: { title: "Deliveries" },
   "delivery-detail": { title: "One delivery" },

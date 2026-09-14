@@ -72,6 +72,20 @@ export function stockFor(product, index) {
 
   return {
     tracked: true,
+    // THE INVENTORY ROW'S OWN ID, and the reason it is exposed at all.
+    //
+    // Everything that moves stock — reservedByProduct, moveStock,
+    // applyReservations, stockIssuesForOrder in utils/stockLedger — keys on
+    // this id. An order line that stores the CATALOGUE id instead looks up
+    // nothing, is skipped in silence, and the goods on it are never reserved
+    // and never deducted. That is exactly what happened to the first order
+    // written through the new order form, and it is invisible from the
+    // outside: the order says Completed, the shelf count never moves.
+    //
+    // The two tables are joined on code, not on id (see the header), so this
+    // is the only place a caller can learn the ledger id for a catalogue
+    // entry without re-doing the join by hand.
+    rowId: row.id,
     onHand,
     reserved,
     available,
