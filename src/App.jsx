@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 
 import { supabase } from "./lib/supabaseClient";
-import { isAdminEmail } from "./utils/adminAccess";
 import { canAccess, canHandleMoney, isAdminRole } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
@@ -19,7 +18,8 @@ import {
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
-import { staffClaimsFromSession } from "./utils/sessionClaims";
+import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
+import { provisionAccount } from "./utils/accounts";
 import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigation";
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
 import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
@@ -116,7 +116,7 @@ function RouteFallback() {
 }
 
 /**
- * The view-state "router" — swap this for react-router-dom once that's added.
+ * URL-backed view router. Session hydration restores a route without redirecting.
  * Each screen's callback props (onNavigate, onBack, …) just call setView here.
  *
  * Access is gated by having a `staff` row, not just a valid Supabase session:
@@ -139,7 +139,13 @@ function RouteFallback() {
  *    to the shell, because the chrome grows with it as well as the dashboard.
  */
 export default function App() {
+  const [initialRoute] = useState(() => readRoute(window.location));
   const [view, setView] = useState("checking-session");
+  const recoveryRef = useRef(window.location.hash.includes('type=recovery'));
+  const authEpoch = useRef(0);
+  const staffRevision = useRef(0);
+  const productRetryRef = useRef(null);
+  const orderRetryRef = useRef(null);
   const [staff, setStaff] = useState([]);
   const [isStaffLoaded, setIsStaffLoaded] = useState(false);
   // A failed staff read used to be indistinguishable from a slow one: the page
@@ -155,12 +161,12 @@ export default function App() {
 
   // Which record each detail screen is looking at. One per collection so
   // navigating between sections doesn't drag the previous selection along.
-  const [selectedAccountId, setSelectedAccountId] = useState(null);
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-  const [selectedProductId, setSelectedProductId] = useState(null);
-  const [selectedSupplierId, setSelectedSupplierId] = useState(null);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
-  const [selectedDeliveryId, setSelectedDeliveryId] = useState(null);
+  const [selectedAccountId, setSelectedAccountId] = useState(initialRoute.record === "Account" ? initialRoute.id : null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(initialRoute.record === "Customer" ? initialRoute.id : null);
+  const [selectedProductId, setSelectedProductId] = useState(initialRoute.record === "Product" ? initialRoute.id : null);
+  const [selectedSupplierId, setSelectedSupplierId] = useState(initialRoute.record === "Supplier" ? initialRoute.id : null);
+  const [selectedOrderId, setSelectedOrderId] = useState(initialRoute.record === "Order" ? initialRoute.id : null);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState(initialRoute.record === "Delivery" ? initialRoute.id : null);
 
   // Which dialog is open, and on what. `id: null` means adding.
   const [profileDialog, setProfileDialog] = useState(null); // { kind, id } | null
@@ -259,39 +265,23 @@ export default function App() {
 
   // ---- staff loading ------------------------------------------------------
 
-  function bootstrapAdminRow(email) {
-    return {
-      id: Date.now(),
-      name: nameFromEmail(email),
-      role: "Admin",
-      contactNumber: "",
-      status: "Active",
-      email,
-      dashboardView: DASHBOARD_VIEW.STANDARD,
-    };
-  }
-
-  // The in-flight staff read. Deliberately NOT started until there's a session:
-  // `staff` is gated by is_active_staff(), so an anonymous read succeeds and
-  // returns zero rows -- indistinguishable from a genuinely empty table.
   const staffPromiseRef = useRef(null);
 
   async function resolveStaff({ force = false } = {}) {
     if (isStaffLoaded && !force) return staff;
-    if (force) staffPromiseRef.current = null;
-    staffPromiseRef.current ??= staffCollection.load([]);
-    const result = await staffPromiseRef.current;
-
-    // A failed read hands back the empty fallback, which is indistinguishable
-    // from a genuinely empty table. Leaving isStaffLoaded false keeps callers
-    // from treating that emptiness as real state.
+    const revision = staffRevision.current;
+    const epoch = authEpoch.current;
+    const promise = force ? staffCollection.load([]) : (staffPromiseRef.current ?? staffCollection.load([]));
+    staffPromiseRef.current = promise;
+    const result = await promise;
+    if (staffPromiseRef.current !== promise || epoch !== authEpoch.current) return null;
+    staffPromiseRef.current = null;
+    if (revision !== staffRevision.current) return resolveStaff({ force: true });
     if (!result.ok) {
-      // Cleared so a retry re-reads rather than replaying the failed promise.
-      staffPromiseRef.current = null;
       setStaffError(result.error ?? new Error("Could not load staff"));
+      toast.error("Staff could not be refreshed. Check the connection and try again.");
       return null;
     }
-
     setStaffError(null);
     setStaff(result.data);
     setIsStaffLoaded(true);
@@ -300,90 +290,97 @@ export default function App() {
 
   useEffect(() => {
     let cancelled = false;
-
+    const epoch = authEpoch.current;
     (async () => {
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (cancelled) return;
-
-      const session = sessionData.session;
-      const email = session?.user?.email ?? null;
-      if (!email) {
-        clearIdleStamp();
-        setView("login");
-        return;
-      }
-
-      // FAST PATH. If the Auth hook is enabled, the role travelled with the
-      // session and we can route on this frame -- no table read, no blank gap,
-      // no chance of flashing "not part of your job" at an admin whose row
-      // simply hadn't arrived yet.
-      const claims = staffClaimsFromSession(session);
-      if (claims?.role) {
-        if (claims.status === "Blocked") {
-          clearIdleStamp();
-          supabase.auth.signOut();
-          setView("login");
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (cancelled || epoch !== authEpoch.current) return;
+        if (error) throw error;
+        if (!data.session?.user?.email) {
+          setView(['forgot-password', 'reset-password'].includes(initialRoute.view) ? initialRoute.view : 'login');
           return;
         }
-        setSessionClaims(claims);
+        const email = data.session.user.email;
+        const rows = await resolveStaff();
+        if (cancelled || epoch !== authEpoch.current) return;
+        if (!rows) { setView('login'); return; }
+        const match = rows.find((row) => sameEmail(row.email, email));
+        if (!match || match.status !== 'Active') {
+          if (match) toast.error('This account has been suspended/blocked. Please contact an administrator.');
+          await handleSignOut();
+          return;
+        }
         setSessionEmail(email);
-        setView("dashboard");
-        resolveStaff();
-        return;
-      }
-
-      // SLOW PATH: no hook enabled, or an account with no staff row.
-      const staffRows = await resolveStaff();
-      if (cancelled) return;
-      if (staffRows === null) {
-        setView("login");
-        return;
-      }
-
-      const match = staffRows.find((s) => sameEmail(s.email, email));
-      if (match?.status === "Blocked") {
-        clearIdleStamp();
-        supabase.auth.signOut();
-        setView("login");
-      } else if (match) {
-        setSessionEmail(email);
-        setView("dashboard");
-      } else if (isAdminEmail(email)) {
-        setSessionEmail(email);
-        setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
-        setView("dashboard");
-      } else {
-        clearIdleStamp();
-        supabase.auth.signOut();
-        setView("login");
+        setView(recoveryRef.current ? 'reset-password' :
+          CHROMELESS_VIEWS.has(initialRoute.view) ? 'dashboard' : initialRoute.view);
+      } catch {
+        if (!cancelled) {
+          toast.error('We could not restore your session. Please sign in again.');
+          setView('login');
+        }
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+    // Hydration runs once; navigation must never trigger a fresh login landing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The table is the authority; the claim was only a head start. Routing from a
-  // JWT claim means acting on information up to an hour stale, so once the real
-  // row lands it gets the final say.
   useEffect(() => {
     if (!sessionEmail || !isStaffLoaded) return;
-    const match = staff.find((s) => sameEmail(s.email, sessionEmail));
-    if (!match || match.status === "Blocked") {
+    const match = staff.find((row) => sameEmail(row.email, sessionEmail));
+    if (!match || match.status !== 'Active') {
+      toast.error(match ? 'This account has been suspended/blocked. Please contact an administrator.' : 'Your account access has been removed.');
       handleSignOut();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionEmail, isStaffLoaded, staff]);
 
-  // Clicking the link from the reset email brings someone back already signed
-  // into a temporary recovery session — Supabase fires this when that happens.
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") setView("reset-password");
+      if (event === 'PASSWORD_RECOVERY') {
+        recoveryRef.current = true;
+        setView('reset-password');
+      }
+      if (event === 'SIGNED_OUT') clearSession();
     });
     return () => data.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!sessionEmail) return;
+    const refresh = () => { if (document.visibilityState === 'visible') resolveStaff({ force: true }); };
+    window.addEventListener('focus', refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { window.removeEventListener('focus', refresh); window.clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionEmail]);
+
+  useEffect(() => {
+    const restore = () => {
+      const route = readRoute(window.location);
+      const setters = { Account: setSelectedAccountId, Customer: setSelectedCustomerId,
+        Product: setSelectedProductId, Supplier: setSelectedSupplierId,
+        Order: setSelectedOrderId, Delivery: setSelectedDeliveryId };
+      if (route.record) setters[route.record](route.id);
+      setPendingFilter(null);
+      setView(sessionEmail ? route.view : 'login');
+    };
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
+  }, [sessionEmail]);
+
+  useEffect(() => {
+    if (view === 'checking-session') return;
+    const ids = { Account: selectedAccountId, Customer: selectedCustomerId, Product: selectedProductId,
+      Supplier: selectedSupplierId, Order: selectedOrderId, Delivery: selectedDeliveryId };
+    const id = ids[RECORD_KEYS[view]] ?? null;
+    const current = readRoute(window.location);
+    if (current.view === view && current.id === id && window.location.pathname !== '/') return;
+    const path = routePath(view, id);
+    if (CHROMELESS_VIEWS.has(view) || CHROMELESS_VIEWS.has(current.view) || window.location.pathname === '/') {
+      window.history.replaceState(null, '', path);
+    } else window.history.pushState(null, '', path);
+  }, [view, selectedAccountId, selectedCustomerId, selectedProductId, selectedSupplierId, selectedOrderId, selectedDeliveryId]);
 
   useIdleTimeout({
     enabled: !!sessionEmail,
@@ -406,64 +403,67 @@ export default function App() {
 
   /** Writes one staff row, syncing local state only once the database agrees. */
   async function persistStaff(operation, optimisticApply) {
-    const result = await operation();
+    staffRevision.current += 1;
+    const epoch = authEpoch.current;
+    let result;
+    try { result = await operation(); }
+    catch { result = { ok: false, message: 'The request failed. Check your connection and retry.' }; }
+    staffRevision.current += 1;
     if (!result.ok) {
       toast.error(result.message || "That change was not saved.");
       return result;
     }
+    if (epoch !== authEpoch.current) return { ok: false, message: 'The session changed. Sign in again to check this record.' };
     optimisticApply?.(result);
     return result;
   }
 
   async function handleLoginAttempt(email) {
     clearIdleStamp();
-
-    // FAST PATH. The token minted a moment ago already carries the role, so the
-    // dashboard can open without waiting on a table read.
-    const { data: sessionData } = await supabase.auth.getSession();
-    const claims = staffClaimsFromSession(sessionData.session);
-    if (claims?.role) {
-      if (claims.status === "Blocked") return "blocked";
-      setSessionClaims(claims);
-      setSessionEmail(email);
-      setView("dashboard");
-      resolveStaff({ force: true });
-      logActivity({ kind: ACTIVITY_KIND.SIGN_IN, what: "signed in" });
-      return "ok";
-    }
-
-    // SLOW PATH. Forced: anything read before this sign-in was read as an
-    // anonymous caller, which RLS answers with zero rows.
-    const rows = (await resolveStaff({ force: true })) ?? staff;
-    const match = rows.find((s) => sameEmail(s.email, email));
-    if (match?.status === "Blocked") return "blocked";
-    if (match) {
-      setSessionEmail(email);
-      setView("dashboard");
-      record({ kind: ACTIVITY_KIND.SIGN_IN, who: match.name, what: "signed in" });
-      return "ok";
-    }
-    if (isAdminEmail(email)) {
-      setSessionEmail(email);
-      setStaff((prev) => [...prev, bootstrapAdminRow(email)]);
-      setView("dashboard");
-      return "ok";
-    }
-    return "no-access";
+    const rows = await resolveStaff({ force: true });
+    if (!rows) return 'offline';
+    const match = rows.find((row) => sameEmail(row.email, email));
+    if (match && match.status !== 'Active') return 'blocked';
+    if (!match) return 'no-access';
+    window.history.replaceState(null, '', '/dashboard');
+    setSessionEmail(email);
+    setView('dashboard');
+    record({ kind: ACTIVITY_KIND.SIGN_IN, who: match.name, what: 'signed in' });
+    return 'ok';
   }
 
-  async function handleSignOut() {
+  function clearSession() {
+    authEpoch.current += 1;
+    staffRevision.current += 1;
+    staffPromiseRef.current = null;
     clearIdleStamp();
-    await supabase.auth.signOut();
+    setStaff([]);
+    setIsStaffLoaded(false);
+    setStaffError(null);
     setSelectedAccountId(null);
     setSelectedCustomerId(null);
     setSelectedProductId(null);
     setSelectedSupplierId(null);
     setSelectedOrderId(null);
     setSelectedDeliveryId(null);
+    setProfileDialog(null);
+    setIsCreateStaffOpen(false);
+    setRecordMadeFor(null);
+    setAssignDriverFor(null);
+    setRecordDeliveredFor(null);
+    setRefundFor(null);
+    setAdjustPriceFor(null);
+    productRetryRef.current = null;
+    orderRetryRef.current = null;
     setSessionEmail(null);
     setSessionClaims(null);
-    setView("login");
+    setView('login');
+  }
+
+  async function handleSignOut() {
+    clearSession();
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) toast.error('Sign-out could not reach the server. Please try again.');
   }
 
   async function updateProfile(changes) {
@@ -513,22 +513,12 @@ export default function App() {
     return result.ok;
   }
 
-  async function handleAccountCreated({ name, role, contactNumber, email, username }) {
-    const result = await persistStaff(
-      () =>
-        staffCollection.create({
-          id: Date.now(),
-          name,
-          role,
-          contactNumber,
-          status: "Active",
-          email,
-          username: username?.trim() || null,
-        }),
-      (r) => {
-        if (r.data) setStaff((prev) => [...prev, staffCollection.fromRow(r.data)]);
-      }
-    );
+  async function handleAccountCreated(values) {
+    const { name, email } = values;
+    const result = await persistStaff(() => provisionAccount(values), (r) => {
+      const saved = staffCollection.fromRow(r.data);
+      setStaff((prev) => [...prev.filter((row) => row.id !== saved.id), saved]);
+    });
     if (result.ok) {
       toast.success(`${name} can sign in now.`, {
         description: "Tell them the password you set — they can change it once they are in.",
@@ -539,7 +529,7 @@ export default function App() {
         subject: `staff:${email}`,
       });
     }
-    return result.ok;
+    return result;
   }
 
   async function deleteAccount(account) {
@@ -599,7 +589,7 @@ export default function App() {
         const result = await state.update(targetId, { ...current, ...values, updatedAt: now });
         if (!result.ok) {
           toast.error(result.message || "Your changes were not saved.");
-          return null;
+          return result;
         }
         setProfileDialog(null);
         toast.success(`${values.name} was updated.`);
@@ -615,7 +605,7 @@ export default function App() {
       const result = await state.create({ ...values, id, createdAt: now, updatedAt: now });
       if (!result.ok) {
         toast.error(result.message || "That record was not saved.");
-        return null;
+        return result;
       }
       setSelectedId(id);
       setProfileDialog(null);
@@ -746,8 +736,10 @@ export default function App() {
    */
   async function saveProduct(values) {
     setBusy(true);
+    try {
     const now = nowIso();
-    const editing = Boolean(selectedProduct && selectedProductId !== null);
+    const retryProduct = productRetryRef.current;
+    const editing = Boolean(selectedProduct && selectedProductId !== null) || Boolean(retryProduct);
 
     const catalogue = {
       itemCode: values.itemCode,
@@ -766,7 +758,7 @@ export default function App() {
       packSize: values.packSize === "" ? 1 : Number(values.packSize),
     };
 
-    const productId = editing ? selectedProductId : Date.now();
+    const productId = retryProduct?.id ?? (editing ? selectedProductId : Date.now());
     const result = editing
       ? await productsState.update(productId, {
           ...selectedProduct,
@@ -778,7 +770,7 @@ export default function App() {
     if (!result.ok) {
       setBusy(false);
       toast.error(result.message || "That product was not saved.");
-      return;
+      return result;
     }
 
     // The stock half. Matched on sku == itemCode, which is the join.
@@ -818,16 +810,16 @@ export default function App() {
       // already exists.
       if (!stockResult.ok) {
         setBusy(false);
-        toast.error("The product was saved, but its shelf count was not.", {
-          description: "Open the product and set the count again.",
-        });
-        setSelectedProductId(productId);
-        setView("product-detail");
-        return;
+        productRetryRef.current = { id: productId };
+        const message = `The product was saved, but its shelf count was not. ${stockResult.message || 'Check the count and save again.'}`;
+        toast.error(message);
+        return { ok: false, message };
+
       }
     }
 
     setBusy(false);
+    productRetryRef.current = null;
     setSelectedProductId(productId);
     setView("product-detail");
     toast.success(`${catalogue.name} was saved.`, {
@@ -838,6 +830,8 @@ export default function App() {
       what: editing ? `updated ${catalogue.name}` : `added ${catalogue.name}`,
       subject: values.itemCode,
     });
+    return { ok: true };
+    } finally { setBusy(false); }
   }
 
   /** Adds to a product's shelf count, and says so in the feed. */
@@ -845,7 +839,7 @@ export default function App() {
     const row = inventory.find(
       (item) => String(item.sku || "").toLowerCase() === String(product.itemCode).toLowerCase()
     );
-    if (!row) return false;
+    if (!row) return { ok: false, message: 'This product is not tracked yet. Set its shelf count first.' };
 
     const result = await inventoryState.update(row.id, {
       ...row,
@@ -853,7 +847,7 @@ export default function App() {
     });
     if (!result.ok) {
       toast.error(result.message || "That was not recorded.");
-      return false;
+      return result;
     }
 
     toast.success(`${made} × ${product.name} added to the shelf.`);
@@ -871,9 +865,10 @@ export default function App() {
   /** Writes the order and, when there is an address, the delivery carrying it. */
   async function saveOrder({ customerName, items, totalAmount, delivery }) {
     setBusy(true);
-    const id = Date.now();
+    try {
+    const id = orderRetryRef.current?.id ?? Date.now();
 
-    const result = await ordersState.create({
+    const payload = {
       id,
       customerName,
       items,
@@ -881,12 +876,13 @@ export default function App() {
       status: ORDER_STATUS.PENDING,
       createdAt: nowIso(),
       stockCommittedAt: null,
-    });
+    };
+    const result = orderRetryRef.current ? await ordersState.update(id, payload) : await ordersState.create(payload);
 
     if (!result.ok) {
       setBusy(false);
       toast.error(result.message || "That order was not saved.");
-      return;
+      return result;
     }
 
     if (delivery) {
@@ -904,13 +900,15 @@ export default function App() {
         createdAt: nowIso(),
       });
       if (!deliveryResult.ok) {
-        toast.error("The order was written, but the delivery was not raised.", {
-          description: "Raise it from the deliveries board so it does not get missed.",
-        });
+        orderRetryRef.current = { id };
+        const message = `The order was saved, but the delivery was not. ${deliveryResult.message || 'Check the delivery details and save again.'}`;
+        toast.error(message);
+        return { ok: false, message };
       }
     }
 
     setBusy(false);
+    orderRetryRef.current = null;
     setSelectedOrderId(id);
     setOrderDraftFor(null);
     setView("order-detail");
@@ -923,6 +921,8 @@ export default function App() {
       subject: `order:${id}`,
       amount: totalAmount,
     });
+    return { ok: true };
+    } finally { setBusy(false); }
   }
 
   /**
@@ -1349,6 +1349,8 @@ export default function App() {
   // ---- navigation ----------------------------------------------------------
 
   const navigate = useCallback((next) => {
+    productRetryRef.current = null;
+    orderRetryRef.current = null;
     setContextLine("");
     setPendingFilter(null);
     setView(next);
@@ -1361,6 +1363,9 @@ export default function App() {
       setIsCreateStaffOpen(true);
       return;
     }
+    const url = new URL(routePath(target, null), window.location.origin);
+    if (filter) url.searchParams.set('tab', filter);
+    window.history.pushState(null, '', url);
     setContextLine("");
     setPendingFilter(filter ?? null);
     setView(target);
@@ -1384,6 +1389,11 @@ export default function App() {
   // ---- rendering -----------------------------------------------------------
 
   function renderView() {
+    const state = { Product: productsState, Order: ordersState, Customer: customersState,
+      Supplier: suppliersState, Delivery: deliveriesState }[RECORD_KEYS[view]];
+    if (state && !state.isLoaded) return state.error
+      ? <div role="alert">Could not load this record. <button onClick={state.reload}>Try again</button></div>
+      : <RouteFallback />;
     switch (view) {
       case "checking-session":
         return <RouteFallback />;
@@ -1496,6 +1506,14 @@ export default function App() {
             loadError={ordersState.error}
             onRetry={ordersState.reload}
             orders={orders}
+            onReorder={async (ids) => {
+              const { error } = await supabase.rpc('reorder_orders', { p_ids: ids });
+              if (error) return { ok: false, message: error.message };
+              const positions = new Map(ids.map((id, index) => [id, index + 1]));
+              ordersState.setRows((prev) => prev.map((row) => ({ ...row, priorityPosition: positions.get(row.id) ?? row.priorityPosition })));
+              ordersState.reload();
+              return { ok: true };
+            }}
             onOpen={(id) => {
               setSelectedOrderId(id);
               setView("order-detail");
@@ -1821,7 +1839,7 @@ export default function App() {
         );
 
       default:
-        return null;
+        return <NotFoundState noun="page" onBack={() => navigate('dashboard')} />;
     }
   }
 
@@ -1847,23 +1865,6 @@ export default function App() {
   // reaches the router at all, and never mounts inside the shell.
   const denied = !!sessionEmail && !canAccess(profile?.role, view);
   const chromeless = CHROMELESS_VIEWS.has(view);
-
-  if (denied) {
-    return (
-      <>
-        <div className="flex min-h-screen items-center justify-center bg-paper p-6">
-          <div className="w-full max-w-[640px]">
-            <NotAllowedState
-              role={profile?.role}
-              onGoToDashboard={() => setView("dashboard")}
-              onSignOut={handleSignOut}
-            />
-          </div>
-        </div>
-        <Toaster />
-      </>
-    );
-  }
 
   const meta = metaForView(view);
   const dialogs = (
@@ -1993,7 +1994,7 @@ export default function App() {
             if (primary.action === "add-staff") setIsCreateStaffOpen(true);
           }}
         >
-          {renderView()}
+          {denied ? <NotAllowedState role={profile?.role} onGoToDashboard={() => navigate("dashboard")} onSignOut={handleSignOut} /> : renderView()}
         </Shell>
       )}
 

@@ -1,3 +1,4 @@
+import { guardForm } from "../../utils/formErrors";
 import { useState } from "react";
 
 import { ArrowLeft, Save, UserCheck, UserCog, UserX } from "../icons";
@@ -61,6 +62,7 @@ export default function ManageAccountPage({
 
   async function handleSaveDetails(event) {
     event.preventDefault();
+    if (!guardForm(event.currentTarget)) return;
     if (!changed || saving) return;
     setSaving(true);
     await onSaveDetails?.({ name, contactNumber });
@@ -135,7 +137,7 @@ export default function ManageAccountPage({
 
       {/* ---- their details ---- */}
       <Card>
-        <form onSubmit={handleSaveDetails}>
+        <form noValidate onSubmit={handleSaveDetails}>
           <FormBand title="Their details">
             <Field label="Full name">
               {(props) => (

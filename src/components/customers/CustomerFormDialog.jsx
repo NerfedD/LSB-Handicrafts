@@ -1,3 +1,5 @@
+import FormError from "../shared/FormError";
+import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useState } from "react";
 
 import { Building2, UserRound } from "../icons";
@@ -73,6 +75,7 @@ export default function CustomerFormDialog({
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(customer, isEdit));
   const [errors, setErrors] = useState({});
+  const [saveError, setSaveError] = useState(null);
   const [saving, setSaving] = useState(false);
 
   function setField(field, value) {
@@ -94,18 +97,29 @@ export default function CustomerFormDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (saving) return;
+    const formElement = event.currentTarget;
+    setSaveError(null);
     const found = validate(values);
     if (Object.keys(found).length > 0) {
       setErrors(found);
+      reportFormError(event.currentTarget, Object.values(found)[0]);
       return;
     }
+    if (!guardForm(formElement)) return;
     setSaving(true);
-    const id = await onSave(values);
-    setSaving(false);
-    // onSave resolves to null when the database rejected the write, and a toast
-    // has already said why. Staying open keeps what they typed instead of
-    // closing over a record that was never stored.
-    if (id !== null && id !== undefined) handleOpenChange(false);
+    try {
+      const result = await onSave(values);
+      if (result == null || result === false || result?.ok === false) {
+        const message = result?.message || 'The record was not saved. Check your details and try again.';
+        setSaveError(message); reportFormError(formElement, message);
+        return;
+      }
+      setValues(seed(customer, isEdit)); setErrors({}); onOpenChange?.(false);
+    } catch {
+      const message = 'The request failed. Your entries are still here; check your connection and retry.';
+      setSaveError(message); reportFormError(formElement, message);
+    } finally { setSaving(false); }
   }
 
   return (
@@ -121,6 +135,7 @@ export default function CustomerFormDialog({
           </DialogHeader>
 
           <DialogBody className="flex flex-col gap-5.5">
+            <FormError message={saveError} />
             <Field label="Their name" required error={errors.name}>
               {(props) => (
                 <Input

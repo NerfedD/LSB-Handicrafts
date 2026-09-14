@@ -75,6 +75,13 @@ const sessionStore = {
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: (input, init = {}) => {
+      const timeout = AbortSignal.timeout(20_000);
+      const signal = init.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+      return fetch(input, { ...init, signal });
+    },
+  },
   auth: {
     persistSession: true,
     autoRefreshToken: true,

@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,12 @@ const Input = forwardRef(function Input(
   { className, type = "text", hasLeadingIcon = false, ...props },
   ref
 ) {
+  const errorId = useId();
+  const [validationError, setValidationError] = useState('');
+  const phone = type === 'tel' || props.inputMode === 'tel';
+  const { onChange, ...rest } = props;
   return (
+    <>
     <input
       ref={ref}
       type={type}
@@ -42,8 +47,21 @@ const Input = forwardRef(function Input(
         hasLeadingIcon && "pl-12.5",
         className
       )}
-      {...props}
+      {...rest}
+      {...(phone ? { type: 'tel', inputMode: 'numeric', pattern: '[0-9]{7,15}', minLength: 7, maxLength: 15,
+        title: 'Use 7 to 15 digits, including the country code for international numbers.' } : {})}
+      aria-describedby={[props['aria-describedby'], validationError ? errorId : null].filter(Boolean).join(' ') || undefined}
+      aria-invalid={validationError ? true : props['aria-invalid']}
+      onInvalid={(event) => setValidationError(event.currentTarget.validationMessage)}
+      onChange={(event) => {
+        if (phone && !/^[0-9]{0,15}$/.test(event.target.value)) { setValidationError('Use digits only, up to 15 digits.'); return; }
+        setValidationError('');
+        event.target.removeAttribute('aria-invalid');
+        onChange?.(event);
+      }}
     />
+    {validationError && <p id={errorId} role="alert" className="pt-2 text-[16px] font-bold text-red-text">{validationError}</p>}
+    </>
   );
 });
 

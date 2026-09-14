@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { ArrowRight, Building2, MapPin, Phone, UserPlus, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -52,14 +53,14 @@ export default function CustomerListPage({
   onContext,
   initialFilter,
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useUrlState("query", "", "customers");
   // Seeded from the dashboard. An attention row's button names a verb and
   // lands here with the matching chip already on, so the sentence somebody
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
-  const [chip, setChip] = useState(initialFilter ?? "all");
-  const [area, setArea] = useState("any");
-  const [sort, setSort] = useState("name");
+  const [chip, setChip] = useUrlState("tab", initialFilter ?? "all", "customers");
+  const [area, setArea] = useUrlState("area", "any", "customers");
+  const [sort, setSort] = useUrlState("sort", "name", "customers");
 
   const rows = useMemo(() => {
     const index = ordersByCustomer(orders);

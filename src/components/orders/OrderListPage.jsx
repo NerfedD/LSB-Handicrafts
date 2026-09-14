@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import OrderPriorityBoard from "./OrderPriorityBoard";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { ArrowRight, ClipboardList } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -77,14 +79,16 @@ export default function OrderListPage({
   onGoToDashboard,
   onContext,
   initialFilter,
+  onReorder,
 }) {
-  const [query, setQuery] = useState("");
+  const [layout, setLayout] = useUrlState("layout", "list", "orders");
+  const [query, setQuery] = useUrlState("query", "", "orders");
   // Seeded from the dashboard. An attention row's button names a verb and
   // lands here with the matching chip already on, so the sentence somebody
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
-  const [group, setGroup] = useState(initialFilter ?? "all");
-  const [sort, setSort] = useState("newest");
+  const [group, setGroup] = useUrlState("tab", initialFilter ?? "all", "orders");
+  const [sort, setSort] = useUrlState("sort", "newest", "orders");
   // Which layout to mount. Only one of the table/card renders below ever
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);
@@ -143,6 +147,11 @@ export default function OrderListPage({
 
   return (
     <div className="flex flex-col gap-3.5">
+      <div className="flex gap-2" role="group" aria-label="Order view">
+        <Button variant="outline" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>Order list</Button>
+        <Button variant="outline" aria-pressed={layout === 'priority'} onClick={() => setLayout('priority')}>Arrange priority</Button>
+      </div>
+      {layout === 'priority' && isLoaded ? <OrderPriorityBoard orders={orders} onReorder={onReorder} onOpen={onOpen} /> : <>
       <FilterBar>
         <SearchField
           value={query}
@@ -302,6 +311,7 @@ export default function OrderListPage({
           </StickyCta>
         </>
       )}
+      </>}
     </div>
   );
 }

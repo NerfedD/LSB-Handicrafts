@@ -173,6 +173,7 @@ const orderFromRow = (r) => ({
   status: r.status,
   createdAt: r.created_at,
   stockCommittedAt: r.stock_committed_at,
+  priorityPosition: r.priority_position ?? 0,
   backorderStatus: r.backorder_status || 'none',
   refundHistory: r.refund_history || [],
   priceAdjustments: r.price_adjustments || [],
@@ -406,6 +407,8 @@ const humanizeError = (error, fallback) => {
   // Raised by the staff guard trigger; already written for a human.
   if (/super administrator|Only an administrator/i.test(raw)) return raw;
 
+  if (/timeout|abort/i.test(raw)) return 'The request timed out. Check the connection and retry.';
+  if (/fetch|network/i.test(raw)) return 'We could not reach the database. Check your connection and retry.';
   return fallback;
 };
 

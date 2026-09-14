@@ -104,7 +104,7 @@ test.describe("signing in", () => {
 
     await expect(page.getByText("That username or password did not match.")).toBeVisible();
     // The lockout is warned about BEFORE it is hit, not after.
-    await expect(page.getByText(/After 5 tries the account locks/)).toBeVisible();
+    await expect(page.getByText(/Check for capital letters and extra spaces/)).toBeVisible();
 
     expectClean(/Failed to load resource.*400/);
   });

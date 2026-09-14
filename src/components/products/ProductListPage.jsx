@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import useUrlState from "../../hooks/useUrlState";
+import { useEffect, useMemo } from "react";
 
 import { Eye, PackagePlus, Pencil } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -89,14 +90,14 @@ export default function ProductListPage({
   onContext,
   initialFilter,
 }) {
-  const [query, setQuery] = useState("");
-  const [kind, setKind] = useState("all");
-  const [sort, setSort] = useState("name");
+  const [query, setQuery] = useUrlState("query", "", "products");
+  const [kind, setKind] = useUrlState("kind", "all", "products");
+  const [sort, setSort] = useUrlState("sort", "name", "products");
   // Seeded from the dashboard. An attention row's button names a verb and
   // lands here with the matching chip already on, so the sentence somebody
   // read and the list they arrive at agree. It stays an ordinary chip
   // afterwards -- clearable, and not a mode.
-  const [group, setGroup] = useState(initialFilter ?? "all");
+  const [group, setGroup] = useUrlState("tab", initialFilter ?? "all", "products");
   // Which layout to mount. Only one of the table/card renders below ever
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);

@@ -1,3 +1,4 @@
+import { guardForm } from "../../utils/formErrors";
 import { useState } from "react";
 
 import { ArrowLeft, Save } from "../icons";
@@ -30,6 +31,7 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!guardForm(event.currentTarget)) return;
     if (!changed || saving) return;
     setSaving(true);
     await onSave?.({ name: name.trim(), contactNumber: contactNumber.trim() });
@@ -44,7 +46,7 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
       </Button>
 
       <Card>
-        <form onSubmit={handleSubmit}>
+        <form noValidate onSubmit={handleSubmit}>
           <FormBand title="Your details">
             <Field label="Your name" hint="How you appear to colleagues throughout the system.">
               {(props) => (
