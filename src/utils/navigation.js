@@ -95,6 +95,18 @@ export const NAV_TREE = [
     views: ["customers", "customer-detail"],
   },
   {
+    key: "raw-materials", label: "Raw materials", icon: "Layers", group: "main",
+    views: ["raw-materials", "raw-material-orders", "raw-material-detail"],
+  },
+  {
+    key: "production", label: "Make list", icon: "Hammer", group: "main",
+    hideFrom: ["Sales Staff", "Delivery Staff"], views: ["production"],
+  },
+  {
+    key: "production-report", label: "Damage & yield", icon: "ClipboardList", group: "main",
+    hideFrom: ["Sales Staff", "Delivery Staff", "Production Staff"], views: ["production-report"],
+  },
+  {
     key: "suppliers",
     label: "Suppliers",
     icon: "Handshake",
@@ -175,6 +187,11 @@ export const CHROMELESS_VIEWS = new Set([
  * left to the screen, which passes it up via `contextLine`.
  */
 const VIEW_META = {
+  "raw-materials": { title: "Raw materials" },
+  "raw-material-detail": { title: "One raw material" },
+  "raw-material-orders": { title: "Supplier deliveries" },
+  production: { title: "Make list" },
+  "production-report": { title: "Damage & yield" },
   dashboard: { title: "Dashboard" },
 
   products: { title: "Products & stock" },

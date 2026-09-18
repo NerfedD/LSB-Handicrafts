@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/table";
 import { Mono } from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import Landed from "../shared/Landed";
+import { landedRow } from "../shared/landing";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
@@ -80,6 +82,8 @@ export default function OrderListPage({
   onContext,
   initialFilter,
   onReorder,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [layout, setLayout] = useUrlState("layout", "list", "orders");
   const [query, setQuery] = useUrlState("query", "", "orders");
@@ -195,8 +199,9 @@ export default function OrderListPage({
               <TableBody>
                 {paged.visible.map((order) => {
                   const items = itemSummary(order);
+                  const landed = landedRow(change, "order", order.id);
                   return (
-                    <TableRow key={order.id}>
+                    <TableRow key={landed.key} className={landed.className}>
                       <TableCell>
                         <Mono className="text-[15px] font-bold text-ink">
                           #{order.id}
@@ -264,6 +269,7 @@ export default function OrderListPage({
               const items = itemSummary(order);
               return (
                 <RecordCard key={order.id}>
+                <Landed change={change} kind="order" id={order.id} />
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <Mono className="text-[14px]">#{order.id}</Mono>

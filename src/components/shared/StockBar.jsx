@@ -28,6 +28,12 @@ export default function StockBar({ value, max, tone = "neutral", className }) {
       )}
     >
       <div
+        // WIDTH, NOT scaleX, AND DELIBERATELY. Transform is the cheaper property
+        // and the usual advice, but scaling a pill horizontally squashes the
+        // radius on its leading end into an ellipse, and this bar is a pill at
+        // both ends at every length. The cost that normally makes width the
+        // wrong answer — reflowing everything around it — is not paid here
+        // either: the track is a fixed box and nothing outside it moves.
         className={cn("h-full rounded-full transition-[width] duration-200", toneOf(tone).fill)}
         // A percentage width is the one value here that cannot be a class:
         // it is data, and Tailwind cannot generate a class per stock level.
@@ -61,11 +67,26 @@ export function SegmentedBar({ segments, className }) {
       {total > 0 &&
         segments.map((segment) => {
           const pct = (Math.max(0, Number(segment.value) || 0) / total) * 100;
-          if (pct === 0) return null;
+          // An empty segment stays MOUNTED at zero width rather than being
+          // dropped. Unmounting it is the same picture at rest and a different
+          // one in motion: a segment that arrives from nothing pops into the
+          // bar at its full share, where one that grows from zero shows the
+          // boundary sliding across — which is the only version that tells you
+          // what moved. A zero-width div inside a clipped track draws nothing.
           return (
             <div
               key={segment.label}
-              className={cn("h-full", segment.tone ? toneOf(segment.tone).fill : "bg-transparent")}
+              // Matched to StockBar above, and for the same reason it matters
+              // more here: the three segments are ONE shelf being re-divided.
+              // Receiving a delivery does not lengthen this bar, it moves the
+              // boundaries inside it — free to sell gives ground to reserved,
+              // or room to fill gives ground to both — and a boundary that
+              // travels is the whole story. Switching the widths instantly
+              // shows the answer and hides the trade.
+              className={cn(
+                "h-full transition-[width] duration-200",
+                segment.tone ? toneOf(segment.tone).fill : "bg-transparent"
+              )}
               style={{ width: `${pct}%` }}
             />
           );

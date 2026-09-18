@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { Avatar } from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import Landed from "../shared/Landed";
+import { landedRow } from "../shared/landing";
 import { FilterChips, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import StatusPill, { InlineBadge } from "../shared/StatusPill";
@@ -58,6 +60,8 @@ export default function StaffAccountsPage({
   onOpenActivity,
   onContext,
   initialFilter,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "staff");
   // Seeded from the dashboard. An attention row's button names a verb and
@@ -167,8 +171,10 @@ export default function StaffAccountsPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.visible.map(({ user, signIn }) => (
-                  <TableRow key={user.id}>
+                {paged.visible.map(({ user, signIn }) => {
+                  const landed = landedRow(change, "account", user.id);
+                  return (
+                  <TableRow key={landed.key} className={landed.className}>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3.5">
                         <Avatar name={user.name} size="md" />
@@ -211,7 +217,8 @@ export default function StaffAccountsPage({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+                })}
               </TableBody>
             </Table>
 
@@ -225,6 +232,7 @@ export default function StaffAccountsPage({
           <div className="flex flex-col gap-3">
             {paged.visible.map(({ user, signIn }) => (
               <RecordCard key={user.id}>
+                <Landed change={change} kind="account" id={user.id} />
                 <div className="flex min-w-0 items-center gap-3">
                   <Avatar name={user.name} size="md" />
                   <div className="min-w-0">

@@ -10,6 +10,8 @@ import {
   ClipboardList,
   Handshake,
   LayoutDashboard,
+  Layers,
+  Hammer,
   LoaderCircle,
   LogOut,
   Moon,
@@ -78,6 +80,8 @@ import { roleLabel } from "../../utils/copy";
 // derive from it without pulling React or lucide into the permissions layer.
 // Icons resolve to components here instead.
 const ICONS = {
+  Layers,
+  Hammer,
   LayoutDashboard,
   Package,
   ShoppingCart,
@@ -184,7 +188,19 @@ export default function Shell({
           className="flex-1 overflow-y-auto px-4 pb-24 pt-6 tab:px-6 tab:pb-10 desk:px-7.5 desk:pt-7.5"
         >
           <Suspense fallback={<ContentFallback />}>
-            <div className="mx-auto w-full max-w-[1200px]">{children}</div>
+            {/* THE ONE PLACE A SCREEN ARRIVES.
+                The chrome is what stays put — sidebar, header, tab bar — so
+                what should read as new is everything under it, and this is the
+                single element that is exactly "everything under it". Keying it
+                by `view` states the intent rather than relying on whether the
+                router happened to swap components: a new screen is a new panel,
+                and a filter chip or a search keystroke is not.
+                200ms and no stagger. Nobody standing at a bench should be
+                waiting for a list to deal itself out before they can read a
+                stock count. */}
+            <div key={view} className="lsb-rise mx-auto w-full max-w-[1200px]">
+              {children}
+            </div>
           </Suspense>
         </main>
       </div>
@@ -617,6 +633,12 @@ function BottomTabs({ items, section, onNavigate }) {
             aria-label={item.label}
             className={cn(
               "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition duration-150",
+              // The tab bar is the phone's whole navigation and is not built from
+              // Buttons, so it does not inherit the press state added there. It is
+              // also the one control in this app that is only ever touched — it
+              // does not exist above 834px, so it has never had a hover state to
+              // fall back on.
+              "active:brightness-95",
               active ? "bg-tint-cobalt text-cobalt-deep" : "text-muted"
             )}
           >
@@ -637,6 +659,7 @@ function BottomTabs({ items, section, onNavigate }) {
               aria-label="More sections"
               className={cn(
                 "flex h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 transition duration-150",
+                "active:brightness-95",
                 moreActive ? "bg-tint-cobalt text-cobalt-deep" : "text-muted"
               )}
             >

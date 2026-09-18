@@ -3,13 +3,14 @@ import { ACCOUNT_VIEWS, NAV_TREE } from './navigation';
 const views = new Set([...ACCOUNT_VIEWS, ...NAV_TREE.flatMap((item) => item.views),
   'login', 'forgot-password', 'reset-password']);
 export const RECORD_KEYS = {
+  'raw-material-detail': 'RawMaterial',
   'manage-account': 'Account', 'assign-role': 'Account',
   'customer-detail': 'Customer', 'supplier-detail': 'Supplier',
   'product-detail': 'Product', 'product-form': 'Product',
   'order-detail': 'Order', 'delivery-detail': 'Delivery',
 };
 const sections = { products: 'product', orders: 'order', customers: 'customer',
-  suppliers: 'supplier', deliveries: 'delivery', staff: 'account' };
+  suppliers: 'supplier', deliveries: 'delivery', staff: 'account', 'raw-materials': 'raw-material' };
 
 export function readRoute(location) {
   const parts = location.pathname.split('/').filter(Boolean);

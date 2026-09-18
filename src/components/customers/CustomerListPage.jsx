@@ -8,6 +8,7 @@ import { Avatar } from "../shared/Chip";
 import { FilterBar, StickyCta } from "../shared/ListScreen";
 import { ActiveFilterSummary, FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
+import Landed from "../shared/Landed";
 import usePaged from "../../hooks/usePaged";
 import { hasActiveFilters, matches } from "../../utils/search";
 import {
@@ -52,6 +53,8 @@ export default function CustomerListPage({
   onGoToDashboard,
   onContext,
   initialFilter,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "customers");
   // Seeded from the dashboard. An attention row's button names a verb and
@@ -208,7 +211,8 @@ export default function CustomerListPage({
           <ul className="grid gap-3.5 sm:grid-cols-2 desk:grid-cols-3">
             {paged.visible.map(({ customer, summary }) => (
               <li key={customer.id}>
-                <Card className="flex h-full flex-col p-4.5">
+                <Card className="relative flex h-full flex-col p-4.5">
+                  <Landed change={change} kind="customer" id={customer.id} />
                   <div className="flex min-w-0 items-center gap-3.5">
                     <Avatar name={customer.name} size="lg" />
                     <div className="min-w-0">

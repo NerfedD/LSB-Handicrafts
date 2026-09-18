@@ -1,7 +1,16 @@
 import { toast } from 'sonner';
 
-export const PHONE_PATTERN = /^[0-9]{7,15}$/;
-export const PHONE_MESSAGE = 'Use 7 to 15 digits, including the country code for international numbers.';
+/*
+ * There is deliberately no PHONE_PATTERN here any more.
+ *
+ * This file exported one — /^[0-9]{7,15}$/ — alongside a PHONE_MESSAGE saying
+ * "Use 7 to 15 digits". Nothing imported either of them; the live copy of that
+ * same wrong rule was hardcoded in ui/input.jsx, which is what made a stored
+ * number with spaces in it unsaveable. Two dead exports spelling out the rule a
+ * fifth time are how a fix gets undone six months later, so they are gone. The
+ * rule is in utils/phone.js and in the contact_number_ok constraint, and those
+ * two agree with each other.
+ */
 
 export function reportFormError(form, message) {
   toast.error(message);

@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import IconChip from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import Landed from "../shared/Landed";
+import { landedRow } from "../shared/landing";
 import { ActiveFilterSummary, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
@@ -76,6 +78,8 @@ export default function SupplierListPage({
   onAdd,
   onGoToDashboard,
   onContext,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "suppliers");
   const [area, setArea] = useUrlState("area", "any", "suppliers");
@@ -216,8 +220,10 @@ export default function SupplierListPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.visible.map((supplier) => (
-                  <TableRow key={supplier.id}>
+                {paged.visible.map((supplier) => {
+                  const landed = landedRow(change, "supplier", supplier.id);
+                  return (
+                  <TableRow key={landed.key} className={landed.className}>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3.5">
                         <IconChip icon={<Handshake />} tone="clay" size="md" />
@@ -265,7 +271,8 @@ export default function SupplierListPage({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+                })}
               </TableBody>
             </Table>
 
@@ -280,6 +287,7 @@ export default function SupplierListPage({
           <div className="flex flex-col gap-3">
             {paged.visible.map((supplier) => (
               <RecordCard key={supplier.id}>
+                <Landed change={change} kind="supplier" id={supplier.id} />
                 <div className="flex min-w-0 items-center gap-3">
                   <IconChip icon={<Handshake />} tone="clay" size="md" />
                   <div className="min-w-0">

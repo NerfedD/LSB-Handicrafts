@@ -38,6 +38,46 @@
 export const phoneDigits = (value) => String(value ?? "").replace(/\D/g, "");
 
 /**
+ * The same rule, in the two forms an `<input>` needs it.
+ *
+ * These exist so the phone field cannot quietly enforce a DIFFERENT rule from
+ * the one below, which is exactly what it was doing: it carried
+ * `pattern="[0-9]{7,15}"`, which is digits-only and counts CHARACTERS rather
+ * than digits. Every layer around it — this module, and the
+ * `contact_number_ok` constraint in schema.sql — allows punctuation and counts
+ * digits, so the field was the strictest thing in the stack and the only one
+ * that was wrong. The visible cost was that `0917 555 0204`, a number already
+ * in the customers table and accepted by everything else, could not be saved
+ * back: `guardForm` found the element invalid and refused the submit with the
+ * browser's own "Please match the requested format".
+ *
+ * WHAT THE ATTRIBUTE IS FOR, now. Shape only — the characters a phone number
+ * may be written with. It deliberately does NOT encode the digit count, even
+ * though it easily could, because a count is a verdict and this file has three
+ * of those, not two. `phoneProblem` refuses what cannot be dialled and says why
+ * in words somebody can act on ("that has 4"); `phoneDoubt` asks about what is
+ * merely surprising. A native `pattern` can only produce "Please match the
+ * requested format", which names neither the problem nor the fix, and is the
+ * sort of sentence rule 1 exists to keep out of this app.
+ */
+// Spelled character-for-character the same as the class in
+// `contact_number_ok` (schema.sql), so the two can be compared by eye.
+export const PHONE_SHAPE_PATTERN = "[0-9 ()+.-]*";
+
+/**
+ * The character cap, matching `char_length(value) <= 32` in the same database
+ * constraint. It is characters, not digits, which is why it is not 15: a
+ * fifteen-digit number written as `+63 917 123 4503` is sixteen characters, and
+ * a maxLength of 15 silently truncated the last digit off a number this
+ * module's own docblock offers as an example of a valid one.
+ */
+export const PHONE_MAX_CHARS = 32;
+
+/** What the field says about itself, in this app's words rather than Chrome's. */
+export const PHONE_TITLE =
+  "Digits, and the spaces, brackets, dots, dashes or leading + people write around them.";
+
+/**
  * What a phone field accepts as it is typed.
  *
  * A LETTER NEVER LANDS IN THE BOX AT ALL, rather than landing and being

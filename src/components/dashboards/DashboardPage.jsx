@@ -21,6 +21,7 @@ import {
   StatStrip,
 } from "../shared/dashboard";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
 import {
   Table,
   TableBody,
@@ -215,6 +216,7 @@ export default function DashboardPage({
                   <TableHead className="w-36 text-right">On shelf</TableHead>
                   <TableHead className="w-36 text-right">Needed</TableHead>
                   <TableHead className="w-44">How urgent</TableHead>
+                  <TableHead>Next step</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -251,6 +253,7 @@ export default function DashboardPage({
                     <TableCell>
                       <StatusPill label={urgency} tone={tone} size="sm" />
                     </TableCell>
+                    <TableCell><Button variant="clay" onClick={() => onRecordMade(product.id, needed * (product.packSize || 1))}>Start batch</Button></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -290,9 +293,9 @@ export default function DashboardPage({
           <QuickActions
             actions={[
               {
-                label: "Record what we made",
+                label: "Open production batches",
                 icon: <Hammer className="h-5 w-5" />,
-                onClick: onRecordMade,
+                onClick: () => onNavigate('production'),
               },
               {
                 label: "Add a new product",

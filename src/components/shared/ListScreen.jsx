@@ -48,7 +48,11 @@ export function RecordCard({ children, className }) {
   return (
     <div
       className={cn(
-        "rounded-card border border-card bg-surface p-4 shadow-card",
+        // `relative` so the entry-landing overlay has somewhere to sit. It is
+        // here rather than at the four call sites because a card that forgets
+        // it does not fail loudly — the wash paints over whatever ancestor IS
+        // positioned, which on a phone is most of the screen.
+        "relative rounded-card border border-card bg-surface p-4 shadow-card",
         className
       )}
     >

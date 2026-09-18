@@ -12,6 +12,7 @@ import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
 import { NotFoundState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
 import { roleLabel, signInState } from "../../utils/copy";
+import { cleanPhoneInput, phoneProblem } from "../../utils/phone";
 
 /**
  * Manage one account — screen 2p.
@@ -46,6 +47,7 @@ export default function ManageAccountPage({
   const [name, setName] = useState(account?.name ?? "");
   const [contactNumber, setContactNumber] = useState(account?.contactNumber ?? "");
   const [saving, setSaving] = useState(false);
+  const [phoneError, setPhoneError] = useState(null);
   const [confirm, setConfirm] = useState(null); // "block" | "unblock" | "delete" | null
   const [working, setWorking] = useState(false);
 
@@ -63,6 +65,16 @@ export default function ManageAccountPage({
   async function handleSaveDetails(event) {
     event.preventDefault();
     if (!guardForm(event.currentTarget)) return;
+
+    // This screen used to get its only phone check for free, from the
+    // `pattern` attribute guardForm reads. That attribute was wrong — it
+    // refused every number written with a space — and narrowing it to the shape
+    // rule means the digit count has to be asked for explicitly here, the way
+    // the other four phone fields already ask for it.
+    const problem = phoneProblem(contactNumber);
+    setPhoneError(problem);
+    if (problem) return;
+
     if (!changed || saving) return;
     setSaving(true);
     await onSaveDetails?.({ name, contactNumber });
@@ -155,13 +167,20 @@ export default function ManageAccountPage({
               hint="Email cannot be changed here — it is how they sign in."
             />
 
-            <Field label="Phone number" hint="So colleagues can reach them without asking around.">
+            <Field
+              label="Phone number"
+              hint="So colleagues can reach them without asking around."
+              error={phoneError}
+            >
               {(props) => (
                 <Input
                   {...props}
                   inputMode="tel"
                   value={contactNumber}
-                  onChange={(event) => setContactNumber(event.target.value)}
+                  onChange={(event) => {
+                    setContactNumber(cleanPhoneInput(event.target.value));
+                    setPhoneError(null);
+                  }}
                   placeholder="09XX XXX XXXX"
                 />
               )}

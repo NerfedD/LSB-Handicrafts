@@ -42,6 +42,7 @@ export { default as BookUser }        from "lucide-react/dist/esm/icons/book-use
 export { default as ClipboardList }   from "lucide-react/dist/esm/icons/clipboard-list.mjs";
 export { default as ClipboardCheck }  from "lucide-react/dist/esm/icons/clipboard-check.mjs";
 export { default as Hammer }          from "lucide-react/dist/esm/icons/hammer.mjs";
+export { default as Layers }          from "lucide-react/dist/esm/icons/layers.mjs";
 export { default as Boxes }           from "lucide-react/dist/esm/icons/boxes.mjs";
 export { default as Box }             from "lucide-react/dist/esm/icons/box.mjs";
 export { default as Square }          from "lucide-react/dist/esm/icons/square.mjs";

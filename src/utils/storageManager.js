@@ -391,6 +391,9 @@ const humanizeError = (error, fallback) => {
     if (/item_code/i.test(raw)) return 'That item code is already in use.';
     return 'That record already exists.';
   }
+  if (error.code === '23503' && /production_|raw_material_/i.test(raw)) {
+    return 'This record is used in purchasing or production history and cannot be removed.';
+  }
   if (error.code === '23514' || /check constraint/i.test(raw)) {
     if (/role/i.test(raw)) return 'That is not a valid role.';
     if (/status/i.test(raw)) return 'That is not a valid status.';

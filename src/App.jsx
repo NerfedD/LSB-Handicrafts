@@ -42,6 +42,8 @@ import {
   orderRefunded,
 } from "./utils/orders";
 import { stockCounts, stockForProduct } from "./utils/productStock";
+import { rawMaterialsCollection, rawMaterialOrdersCollection, productionBatchesCollection, productionRecipesCollection,
+  productionDefectsCollection, materialLotsCollection, materialUsageCollection, workshopCommand } from './utils/workshopStorage';
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
 import { Toaster, toast } from "@/components/ui/sonner";
@@ -59,7 +61,39 @@ const DashboardPage = lazy(() => import("./components/dashboards/DashboardPage")
 const ProductListPage = lazy(() => import("./components/products/ProductListPage"));
 const ProductDetailPage = lazy(() => import("./components/products/ProductDetailPage"));
 const ProductFormPage = lazy(() => import("./components/products/ProductFormPage"));
-const RecordMadeDialog = lazy(() => import("./components/products/RecordMadeDialog"));
+const StartBatchDialog = lazy(() => import("./components/products/StartBatchDialog"));
+const WorkshopPage = lazy(() => import("./components/production/WorkshopPage"));
+
+/**
+ * Which kind of record each workshop command hands back, so the screen knows
+ * which card to mark once it is saved. Mirrors the collection map inside
+ * `handleWorkshopCommand`; kept beside it deliberately, because the two are
+ * wrong together or right together.
+ */
+/**
+ * How long a saved record stays marked — see `markLanded`.
+ *
+ * The same 6s the confirmation toast runs for (ui/sonner.jsx), because they are
+ * answering the same question and should stop answering it together. Long
+ * enough to survive reading the toast and pressing Back to the list; short
+ * enough that returning to a screen later is a fresh arrival rather than a
+ * replay of something already acknowledged.
+ */
+const LANDING_WINDOW_MS = 6000;
+
+const WORKSHOP_RECORD_KIND = {
+  save_material: "material", transfer_stock: "material",
+  // "material-order", not "order". A purchase from a supplier and a customer's
+  // order are different records with independent id sequences, and the landing
+  // signal (App state, one at a time) is matched on kind AND id — so two kinds
+  // spelled the same way would let a saved supplier purchase mark whichever
+  // customer order happened to share its number. The screens never sit side by
+  // side today, which is exactly why the collision would have gone unnoticed.
+  save_order: "material-order", order_status: "material-order",
+  receive_delivery: "material-order", review_claim: "material-order",
+  start_batch: "batch", batch_status: "batch",
+  complete_batch: "batch", save_recipe: "recipe",
+};
 
 const OrderListPage = lazy(() => import("./components/orders/OrderListPage"));
 const OrderDetailPage = lazy(() => import("./components/orders/OrderDetailPage"));
@@ -175,11 +209,60 @@ export default function App() {
   const [selectedSupplierId, setSelectedSupplierId] = useState(initialRoute.record === "Supplier" ? initialRoute.id : null);
   const [selectedOrderId, setSelectedOrderId] = useState(initialRoute.record === "Order" ? initialRoute.id : null);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState(initialRoute.record === "Delivery" ? initialRoute.id : null);
+  const [selectedRawMaterialId, setSelectedRawMaterialId] = useState(initialRoute.record === 'RawMaterial' ? initialRoute.id : null);
 
   // Which dialog is open, and on what. `id: null` means adding.
   const [profileDialog, setProfileDialog] = useState(null); // { kind, id } | null
   const [isCreateStaffOpen, setIsCreateStaffOpen] = useState(false);
-  const [recordMadeFor, setRecordMadeFor] = useState(null); // productId | true | null
+  const [recordMadeFor, setRecordMadeFor] = useState(null); // { productId?, needed? } | null
+  // The last record any successful write changed: { kind, id, at } | null.
+  //
+  // Read by every list and detail screen, to mark the row or card that just
+  // moved — see shared/Landed.jsx for why a toast alone does not cover this.
+  // Nothing branches on it, so a stale value cannot affect what any screen
+  // DOES; the worst it can cost is a wash nobody was looking at.
+  //
+  // It started out as a workshop-only signal. It is one signal now because the
+  // question it answers ("which of these did I just change?") is not a workshop
+  // question — it is the question every list screen in this app raises by
+  // showing more than one record at a time.
+  const [recordChange, setRecordChange] = useState(null);
+
+  const landedTimer = useRef(null);
+
+  /**
+   * Point the landing mark at a record.
+   *
+   * `at` rather than a boolean: saving the same batch twice has to read as two
+   * confirmations, and a timestamp is what makes the second one a new event.
+   * Called beside the toast at every successful write, never before one — the
+   * mark means "this was saved", so it must not run on an optimistic update
+   * that the server has not agreed to yet.
+   *
+   * IT HAS TO OUTLIVE THE NAVIGATION, which is the whole reason it expires on a
+   * clock instead of being cleared when the view changes. Clearing on navigate
+   * was right while this was a workshop-only signal, because a workshop command
+   * changes a card that is already on screen. Almost nothing else in this app
+   * works that way: an order is marked done on the order's own screen, a
+   * delivery is advanced on the delivery's own screen, and the screen where
+   * "which one?" is a real question is the list they came from and go back to.
+   * A mark that died on the way there fired only where it was least needed.
+   *
+   * The window is the toast's own duration, deliberately. The toast is this
+   * app's existing answer to "how long is this news still news", and borrowing
+   * it means the sentence in the corner and the wash on the row stop being true
+   * at the same moment rather than at two numbers that drifted apart.
+   */
+  function markLanded(kind, id) {
+    if (id == null) return;
+    setRecordChange({ kind, id, at: Date.now() });
+    clearTimeout(landedTimer.current);
+    landedTimer.current = setTimeout(() => setRecordChange(null), LANDING_WINDOW_MS);
+  }
+
+  /* A signed-out or unmounted app must not still be holding a pending clear. */
+  useEffect(() => () => clearTimeout(landedTimer.current), []);
+
   const [assignDriverFor, setAssignDriverFor] = useState(null); // deliveryId | null
   // { deliveryId, toStage } — the manifest asked for when goods actually leave.
   const [recordDeliveredFor, setRecordDeliveredFor] = useState(null);
@@ -202,6 +285,13 @@ export default function App() {
   const ordersState = useSupabaseCollection(ordersCollection, { enabled: isSignedIn });
   const deliveriesState = useSupabaseCollection(deliveriesCollection, { enabled: isSignedIn });
   const activityState = useSupabaseCollection(activityLogCollection, { enabled: isSignedIn });
+  const rawMaterialsState = useSupabaseCollection(rawMaterialsCollection, { enabled: isSignedIn });
+  const rawMaterialOrdersState = useSupabaseCollection(rawMaterialOrdersCollection, { enabled: isSignedIn });
+  const productionBatchesState = useSupabaseCollection(productionBatchesCollection, { enabled: isSignedIn });
+  const productionRecipesState = useSupabaseCollection(productionRecipesCollection, { enabled: isSignedIn });
+  const productionDefectsState = useSupabaseCollection(productionDefectsCollection, { enabled: isSignedIn });
+  const materialLotsState = useSupabaseCollection(materialLotsCollection, { enabled: isSignedIn });
+  const materialUsageState = useSupabaseCollection(materialUsageCollection, { enabled: isSignedIn });
 
   const { rows: customers } = customersState;
   const { rows: products } = productsState;
@@ -368,7 +458,7 @@ export default function App() {
       const route = readRoute(window.location);
       const setters = { Account: setSelectedAccountId, Customer: setSelectedCustomerId,
         Product: setSelectedProductId, Supplier: setSelectedSupplierId,
-        Order: setSelectedOrderId, Delivery: setSelectedDeliveryId };
+        Order: setSelectedOrderId, Delivery: setSelectedDeliveryId, RawMaterial: setSelectedRawMaterialId };
       if (route.record) setters[route.record](route.id);
       setPendingFilter(null);
       setView(sessionEmail ? route.view : 'login');
@@ -380,7 +470,7 @@ export default function App() {
   useEffect(() => {
     if (view === 'checking-session') return;
     const ids = { Account: selectedAccountId, Customer: selectedCustomerId, Product: selectedProductId,
-      Supplier: selectedSupplierId, Order: selectedOrderId, Delivery: selectedDeliveryId };
+      Supplier: selectedSupplierId, Order: selectedOrderId, Delivery: selectedDeliveryId, RawMaterial: selectedRawMaterialId };
     const id = ids[RECORD_KEYS[view]] ?? null;
     const current = readRoute(window.location);
     if (current.view === view && current.id === id && window.location.pathname !== '/') return;
@@ -388,7 +478,7 @@ export default function App() {
     if (CHROMELESS_VIEWS.has(view) || CHROMELESS_VIEWS.has(current.view) || window.location.pathname === '/') {
       window.history.replaceState(null, '', path);
     } else window.history.pushState(null, '', path);
-  }, [view, selectedAccountId, selectedCustomerId, selectedProductId, selectedSupplierId, selectedOrderId, selectedDeliveryId]);
+  }, [view, selectedAccountId, selectedCustomerId, selectedProductId, selectedSupplierId, selectedOrderId, selectedDeliveryId, selectedRawMaterialId]);
 
   useIdleTimeout({
     enabled: !!sessionEmail,
@@ -454,9 +544,11 @@ export default function App() {
     setSelectedSupplierId(null);
     setSelectedOrderId(null);
     setSelectedDeliveryId(null);
+    setSelectedRawMaterialId(null);
     setProfileDialog(null);
     setIsCreateStaffOpen(false);
     setRecordMadeFor(null);
+    setRecordChange(null);
     setAssignDriverFor(null);
     setRecordDeliveredFor(null);
     setRefundFor(null);
@@ -518,19 +610,29 @@ export default function App() {
         );
       }
     );
+    // Marked here rather than at the three call sites — blocking, renaming and
+    // changing a role all come through this one write, and all three land the
+    // person back on the staff table looking for the row they just touched.
+    if (result.ok) markLanded("account", selectedAccountId);
     return result.ok;
   }
 
   async function handleAccountCreated(values) {
     const { name, email } = values;
+    let savedId = null;
     const result = await persistStaff(() => provisionAccount(values), (r) => {
       const saved = staffCollection.fromRow(r.data);
+      savedId = saved.id;
       setStaff((prev) => [...prev.filter((row) => row.id !== saved.id), saved]);
     });
     if (result.ok) {
       toast.success(`${name} can sign in now.`, {
         description: "Tell them the password you set — they can change it once they are in.",
       });
+      // The staff table sorts by name, so a new account does not arrive at the
+      // bottom where somebody would look for it. The mark is what says which
+      // row is theirs.
+      markLanded("account", savedId);
       logActivity({
         kind: ACTIVITY_KIND.ACCOUNT,
         what: `set up an account for ${name}`,
@@ -619,6 +721,7 @@ export default function App() {
         }
         setProfileDialog(null);
         toast.success(`${values.name} was updated.`);
+        markLanded(kind, targetId);
         logActivity({
           kind: activityKind,
           what: `updated ${label.toLowerCase()} ${values.name}`,
@@ -638,6 +741,7 @@ export default function App() {
       toast.success(`${values.name} was added.`, {
         action: { label: "View", onClick: () => setView(detailView) },
       });
+      markLanded(kind, id);
       logActivity({
         kind: activityKind,
         what: `added ${label.toLowerCase()} ${values.name}`,
@@ -656,12 +760,17 @@ export default function App() {
    * a courtesy, the second stops a stale render firing a doomed request, and
    * only the third is the actual permission.
    *
-   * Nothing in the schema references suppliers, so this orphans nothing —
-   * which is why it is a real delete rather than an archived flag.
+   * Purchasing records retain their supplier link. Their foreign key blocks
+   * deletion once a supplier has order history.
    */
   async function deleteSupplier(supplier) {
     if (!isAdminRole(profile?.role)) {
       toast.error("Only an administrator can remove a supplier.");
+      return;
+    }
+
+    if (rawMaterialOrdersState.rows.some((order) => order.supplier_id === supplier.id)) {
+      toast.error('Keep this supplier: their purchasing history is still on file.');
       return;
     }
 
@@ -851,6 +960,7 @@ export default function App() {
     toast.success(`${catalogue.name} was saved.`, {
       action: { label: "View", onClick: () => setView("product-detail") },
     });
+    markLanded("product", productId);
     logActivity({
       kind: ACTIVITY_KIND.PRODUCT,
       what: editing ? `updated ${catalogue.name}` : `added ${catalogue.name}`,
@@ -931,31 +1041,33 @@ export default function App() {
     navigate("products");
   }
 
-  /** Adds to a product's shelf count, and says so in the feed. */
-  async function recordMade({ product, made }) {
-    const row = inventory.find(
-      (item) => String(item.sku || "").toLowerCase() === String(product.itemCode).toLowerCase()
-    );
-    if (!row) return { ok: false, message: 'This product is not tracked yet. Set its shelf count first.' };
-
-    const result = await inventoryState.update(row.id, {
-      ...row,
-      stock: (Number(row.stock) || 0) + made,
-    });
-    if (!result.ok) {
-      toast.error(result.message || "That was not recorded.");
-      return result;
-    }
-
-    toast.success(`${made} × ${product.name} added to the shelf.`);
-    logActivity({
-      kind: ACTIVITY_KIND.STOCK,
-      what: `recorded ${made} × ${product.name} made`,
-      subject: product.itemCode,
-      amount: made,
-    });
-    return true;
+  // The database locks the records, checks permissions and saves stock + logs
+  // in one transaction. Never recreate these stock movements with client writes.
+  async function handleWorkshopCommand(action, payload, requestId) {
+    const result = await workshopCommand(action, payload, requestId);
+    if (!result.ok) return result;
+    const target = {
+      save_material: rawMaterialsState, transfer_stock: rawMaterialsState,
+      save_order: rawMaterialOrdersState, order_status: rawMaterialOrdersState,
+      receive_delivery: rawMaterialOrdersState, review_claim: rawMaterialOrdersState,
+      start_batch: productionBatchesState, batch_status: productionBatchesState,
+      complete_batch: productionBatchesState, save_recipe: productionRecipesState,
+    }[action];
+    target?.setRows((rows) => [...rows.filter((r) => r.id !== result.data.id), result.data]);
+    reloadWorkshop();
+    inventoryState.reload(); activityState.reload();
+    toast.success('Workshop records saved.');
+    // Which record to point at, so the screen can show the entry landing on it.
+    markLanded(WORKSHOP_RECORD_KIND[action], result.data.id);
+    return result;
   }
+
+  const workshopStates = [rawMaterialsState, rawMaterialOrdersState, productionBatchesState,
+    productionRecipesState, productionDefectsState, materialLotsState, materialUsageState];
+  function reloadWorkshop() { workshopStates.forEach((state) => state.reload()); }
+  const workshopData = { materials: rawMaterialsState.rows, materialOrders: rawMaterialOrdersState.rows,
+    batches: productionBatchesState.rows, recipes: productionRecipesState.rows, defects: productionDefectsState.rows,
+    lots: materialLotsState.rows, usage: materialUsageState.rows, products, inventory, orders, suppliers, staff };
 
   // ---- orders --------------------------------------------------------------
 
@@ -1012,6 +1124,7 @@ export default function App() {
     toast.success(`Order #${id} written for ${customerName}.`, {
       description: formatPeso(totalAmount),
     });
+    markLanded("order", id);
     logActivity({
       kind: ACTIVITY_KIND.ORDER,
       what: `wrote order #${id} for ${customerName}`,
@@ -1206,6 +1319,7 @@ export default function App() {
       runNote = "Its delivery stays on the board, because it already went out.";
     }
 
+    markLanded("order", order.id);
     toast.success(`Order #${order.id} was called off.`, {
       description: [
         changed.length > 0
@@ -1282,6 +1396,7 @@ export default function App() {
       return;
     }
 
+    markLanded("order", order.id);
     toast.success(`Order #${order.id} is waiting again.`, {
       description:
         changed.length > 0 ? "What it took off the shelf has been put back." : undefined,
@@ -1340,6 +1455,7 @@ export default function App() {
       return;
     }
 
+    markLanded("order", order.id);
     toast.success(`Order #${order.id} is done.`, {
       description: changed.length > 0 ? "Stock has been taken off the shelf." : undefined,
     });
@@ -1441,6 +1557,7 @@ export default function App() {
       return false;
     }
 
+    markLanded("order", order.id);
     toast.success(`${formatPeso(amount)} given back on order #${order.id}.`, {
       description: full
         ? "The order is cancelled. Anything set aside for it has been released."
@@ -1502,6 +1619,7 @@ export default function App() {
     }
 
     const overcharged = difference < 0;
+    markLanded("order", order.id);
     toast.success(`Order #${order.id} is now ${formatPeso(newTotal)}.`, {
       description: overcharged
         ? `They were charged ${formatPeso(Math.abs(difference))} too much.`
@@ -1549,6 +1667,10 @@ export default function App() {
     }
 
     const to = deliveryStage(nextStatus);
+    // The board is four columns of cards and the card has just moved between
+    // two of them. Naming the delivery in a toast does not say WHERE it went;
+    // the mark on the card in its new column does.
+    markLanded("delivery", delivery.id);
     toast.success(`Delivery #${delivery.id} is now ${to.label.toLowerCase()}.`);
     // Every advance writes a history entry automatically — the delivery's own
     // screen reads these back, and a log people have to maintain is a log that
@@ -1660,6 +1782,7 @@ export default function App() {
     setBusy(false);
 
     const to = deliveryStage(toStage);
+    markLanded("delivery", delivery.id);
     if (short.length === 0) {
       toast.success(`Delivery #${delivery.id} is now ${to.label.toLowerCase()}.`);
     } else if (raised) {
@@ -1700,6 +1823,7 @@ export default function App() {
       toast.error(result.message || "That was not saved.");
       return false;
     }
+    markLanded("delivery", delivery.id);
     toast.success(
       driver
         ? `${driver} is taking delivery #${delivery.id}.`
@@ -1759,7 +1883,7 @@ export default function App() {
 
   function renderView() {
     const state = { Product: productsState, Order: ordersState, Customer: customersState,
-      Supplier: suppliersState, Delivery: deliveriesState }[RECORD_KEYS[view]];
+      Supplier: suppliersState, Delivery: deliveriesState, RawMaterial: rawMaterialsState }[RECORD_KEYS[view]];
     if (state && !state.isLoaded) return state.error
       ? <div role="alert">Could not load this record. <button onClick={state.reload}>Try again</button></div>
       : <RouteFallback />;
@@ -1801,15 +1925,29 @@ export default function App() {
             onAddProduct={() => navigate("product-form")}
             onAddCustomer={() => openProfileForm("customer")}
             onWriteOrder={() => navigate("order-form")}
-            onRecordMade={() => setRecordMadeFor(true)}
+            onRecordMade={(productId, needed) => setRecordMadeFor({ productId: typeof productId === 'number' ? productId : undefined, needed })}
             onContext={handleContext}
           />
         );
+
+      case 'raw-materials':
+      case 'raw-material-detail':
+      case 'raw-material-orders':
+      case 'production':
+      case 'production-report':
+        return <WorkshopPage key={view} section={view} profile={profile} data={workshopData}
+          materialId={selectedRawMaterialId} onViewMaterial={(id) => { setSelectedRawMaterialId(id); navigate('raw-material-detail'); }}
+          isLoaded={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].every((s) => s.isLoaded) && isStaffLoaded}
+          error={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].find((s) => s.error)?.error || staffError}
+          onRetry={() => { reloadWorkshop(); productsState.reload(); inventoryState.reload(); ordersState.reload(); suppliersState.reload(); resolveStaff({ force: true }); }}
+          onCommand={handleWorkshopCommand} onContext={handleContext} onNavigate={navigate}
+          change={recordChange} />;
 
       // ---- products ----
       case "products":
         return (
           <ProductListPage
+            change={recordChange}
             isLoaded={productsState.isLoaded && inventoryState.isLoaded}
             loadError={productsState.error || inventoryState.error}
             onRetry={() => {
@@ -1873,6 +2011,7 @@ export default function App() {
       case "orders":
         return (
           <OrderListPage
+            change={recordChange}
             isLoaded={ordersState.isLoaded}
             loadError={ordersState.error}
             onRetry={ordersState.reload}
@@ -1977,6 +2116,7 @@ export default function App() {
       case "deliveries":
         return (
           <DeliveryBoardPage
+            change={recordChange}
             isLoaded={deliveriesState.isLoaded}
             loadError={deliveriesState.error}
             onRetry={deliveriesState.reload}
@@ -2022,6 +2162,7 @@ export default function App() {
       case "customers":
         return (
           <CustomerListPage
+            change={recordChange}
             isLoaded={customersState.isLoaded}
             loadError={customersState.error}
             onRetry={customersState.reload}
@@ -2063,6 +2204,7 @@ export default function App() {
       case "suppliers":
         return (
           <SupplierListPage
+            change={recordChange}
             isLoaded={suppliersState.isLoaded}
             loadError={suppliersState.error}
             onRetry={suppliersState.reload}
@@ -2081,6 +2223,8 @@ export default function App() {
         return (
           <SupplierDetailPage
             supplier={selectedSupplier}
+            purchaseOrders={rawMaterialOrdersState.rows.filter((order) => order.supplier_id === selectedSupplierId)}
+            onOpenPurchases={() => navigate('raw-material-orders')}
             canDelete={isAdminRole(profile?.role)}
             onBack={() => navigate("suppliers")}
             onEdit={(id) => openProfileForm("supplier", id)}
@@ -2092,6 +2236,7 @@ export default function App() {
       case "staff":
         return (
           <StaffAccountsPage
+            change={recordChange}
             users={staff}
             isLoaded={isStaffLoaded}
             loadError={staffError}
@@ -2297,16 +2442,14 @@ export default function App() {
         // indexes in schema.sql are still the boundary; this is only faster.
         staff={staff}
       />
-      <RecordMadeDialog
-        key={`made-${recordMadeFor ?? "any"}`}
-        open={recordMadeFor !== null}
-        onOpenChange={(next) => !next && setRecordMadeFor(null)}
-        products={products}
-        inventory={inventory}
-        orders={orders}
-        productId={typeof recordMadeFor === "number" ? recordMadeFor : undefined}
-        onSave={recordMade}
-      />
+      {recordMadeFor !== null && <StartBatchDialog {...workshopData}
+        productId={recordMadeFor.productId} needed={recordMadeFor.needed} profile={profile}
+        onClose={() => setRecordMadeFor(null)}
+        onSave={async (values, key) => {
+          const result = await handleWorkshopCommand('start_batch', values, key);
+          if (result.ok) navigate('production');
+          return result;
+        }} />}
       <AssignDriverDialog
         key={`driver-${assignDriverFor ?? "none"}`}
         open={assignDriverFor !== null}

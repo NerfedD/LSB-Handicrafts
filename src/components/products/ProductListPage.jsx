@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import IconChip, { Mono } from "../shared/Chip";
 import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import Landed from "../shared/Landed";
+import { landedRow } from "../shared/landing";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
@@ -89,6 +91,8 @@ export default function ProductListPage({
   onGoToDashboard,
   onContext,
   initialFilter,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "products");
   const [kind, setKind] = useUrlState("kind", "all", "products");
@@ -218,8 +222,10 @@ export default function ProductListPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.visible.map(({ product, stock }) => (
-                  <TableRow key={product.id}>
+                {paged.visible.map(({ product, stock }) => {
+                  const landed = landedRow(change, "product", product.id);
+                  return (
+                  <TableRow key={landed.key} className={landed.className}>
                     <TableCell>
                       <div className="flex min-w-0 items-center gap-3.5">
                         <IconChip
@@ -277,7 +283,8 @@ export default function ProductListPage({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                );
+                })}
               </TableBody>
             </Table>
 
@@ -292,6 +299,7 @@ export default function ProductListPage({
           <div className="flex flex-col gap-3">
             {paged.visible.map(({ product, stock }) => (
               <RecordCard key={product.id}>
+                <Landed change={change} kind="product" id={product.id} />
                 <div className="flex min-w-0 items-center gap-3">
                   <IconChip icon={productIcon(product.productType)} tone="neutral" size="md" />
                   <div className="min-w-0">

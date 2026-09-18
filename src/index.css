@@ -59,6 +59,12 @@
   --c-tint-purple:  239 234 248;
   --c-tint-neutral: 240 238 232;
 
+  /* The confirm colour the "saved" wash is mixed from. It is a role rather than
+     a tint because it is painted at low alpha OVER a card instead of behind
+     content, so it needs the saturated hue, not the near-white wash of
+     `tint-green`. Light theme: Confirm Green. */
+  --c-landed: 15 107 70;
+
   /* Borders carry their alpha pre-mixed — the alpha IS the token, and nothing
      writes `border-hair/50`. On paper they are ink; on a dark surface an
      ink-alpha hairline is invisible, which is what left every card edgeless. */
@@ -132,6 +138,10 @@ html.dark {
   --c-tint-neutral:  37  44  53;
   --c-tint-amber:    42  33  19;
   --c-tint-red:      43  23  23;
+
+  /* Dark theme: the dk ramp's green, which holds against a near-black card
+     where the light theme's deeper green reads as a smudge. */
+  --c-landed: 77 187 140;
 
   --c-hair:   rgba(255, 255, 255, 0.07);
   --c-hair2:  rgba(255, 255, 255, 0.07);
@@ -223,19 +233,169 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
    list CTA. */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-/* Panel and dialog entry, at the handoff's 200ms. Hover and press transitions
-   are 120–160ms and live on the components themselves. No decorative motion. */
+/* ---- motion ---------------------------------------------------------------
+ *
+ * There are exactly three authored movements in this app, and each one is
+ * answering a question somebody actually asked.
+ *
+ *   lsb-rise    "this panel is new" — a screen or a computed answer arriving.
+ *   lsb-land    "your entry landed" — see below.
+ *   lsb-fade    the reduced-motion stand-in for either.
+ *
+ * Everything else is a 120–200ms colour transition living on the component
+ * that owns it. Nothing loops, nothing runs on scroll, nothing waits for the
+ * viewport. The scene is a phone in somebody's hand on a workshop floor, so
+ * movement is transform and opacity only — no blur, no filter, no shadow
+ * animation, nothing that asks a cheap GPU for a favour.
+ *
+ * WHAT THE DESK BREAKPOINT IS ALLOWED TO BUY. Above 1280px the machine is an
+ * office desktop rather than a floor tablet, and two effects are permitted
+ * there that are not permitted below it. Both are paid for once, at paint:
+ * they are a static shadow and a static backdrop filter sitting underneath an
+ * animation that is still nothing but opacity. Neither adds a per-frame cost,
+ * which is the actual line — not "desktops are fast", but "this costs the same
+ * whether it is moving or not". An effect that has to be recomputed every
+ * frame does not get in at any width.
+ */
+
 @keyframes lsb-rise {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes lsb-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 .lsb-rise { animation: lsb-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+/* THE ENTRY LANDING.
+ *
+ * This system exists because a paper ledger never told anybody their entry
+ * went in. A worker counted 48 sheets off a truck, wrote it in a book, and
+ * found out three days later whether the number was believed. So when a write
+ * comes back saved, the record it changed says so itself: a confirm-green wash
+ * blooms over that one card and clears, while the stock bar underneath slides
+ * to its new length. One card, once, 900ms, and then the screen is quiet
+ * again.
+ *
+ * THE TOAST IS NOT THIS. A toast is the system speaking, in the corner, about
+ * a record — it names what happened but it cannot point. On a products list of
+ * 148 rows, or a deliveries board of four columns, "Delivery #2041 is now on
+ * the road" still leaves somebody hunting for which card moved. The landing
+ * mark is the record speaking about itself, in place. The two are doing
+ * different jobs rather than saying the same thing twice.
+ *
+ * It is a separate overlay element rather than a class on the card because the
+ * card must NOT remount — remounting it would restart the stock bar's width
+ * transition from zero, and that bar moving from its old length to its new one
+ * is half the point. React gives the overlay a fresh key per change, so the
+ * animation runs exactly once per saved write and cannot get stuck on.
+ */
+/* Blooms, HOLDS, then clears. The first version ran a decelerating curve from
+   opacity 1 to 0, which front-loads the change: it was almost gone within
+   200ms and spent the other 700 invisible, so the confirmation was over before
+   anybody standing at a bench had looked up. The hold is the part that does
+   the work. */
+@keyframes lsb-land {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  45%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.lsb-landed {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  /* A WASH, NOT A LID. This sits on top of the card's own content, so
+     `tint-green` is the wrong paint for it: that token is an opaque near-white
+     green, and at full strength it simply hid the record it was meant to be
+     confirming. What reads as "saved" without costing a word of legibility is
+     the confirm hue at low alpha plus the ring — and the ring is the part that
+     actually carries. Both come from `--c-landed`, which flips with the theme
+     like every other role here, so there is no `html.dark` rule to forget. */
+  background: rgb(var(--c-landed) / 0.11);
+  box-shadow: inset 0 0 0 2px rgb(var(--c-landed) / 0.5);
+  animation: lsb-land 900ms ease-out forwards;
+}
+
+/* THE SAME NEWS, IN A TABLE ROW.
+ *
+ * A <tr> cannot hold the overlay above — a stray <span> between rows is not
+ * valid table markup, and a row has no positioning context to hang one off
+ * anyway. So a row says it in the one channel it does own: its background.
+ *
+ * It loses the ring, and does not need it. A card floats on the canvas and has
+ * to draw its own edge to be picked out; a row is already fenced top and bottom
+ * by the table's hairlines, so the wash alone reads as "this line, not the one
+ * above it". The wash is a step stronger than the card's — 0.16 against 0.11 —
+ * because it is the only channel carrying the message here, and because it has
+ * to beat the row hover it is sitting under.
+ *
+ * Replaying it needs a remount, since an animation does not restart on an
+ * element that already carries its class. The row's key carries the change
+ * stamp for exactly that reason; shared/Landed.jsx builds both halves together
+ * so a caller cannot take the class without the key and quietly get a mark
+ * that fires once and never again.
+ */
+@keyframes lsb-land-row {
+  0%   { background-color: rgb(var(--c-landed) / 0); }
+  10%  { background-color: rgb(var(--c-landed) / 0.16); }
+  45%  { background-color: rgb(var(--c-landed) / 0.16); }
+  100% { background-color: rgb(var(--c-landed) / 0); }
+}
+
+.lsb-landed-row { animation: lsb-land-row 900ms ease-out forwards; }
+
+/* The desktop half of the landing, and most of what the wider breakpoint buys.
+ * An office screen is bigger, further away, and holding more rows around the
+ * one that changed — an 11% flat tint at that distance is the easiest thing on
+ * the page to miss. The inner glow makes the card read as LIT from its own
+ * edges rather than tinted, which is what survives the extra distance.
+ *
+ * It is a static shadow on an element whose animation is still pure opacity,
+ * so it is rasterised once and then composited: the same per-frame cost as the
+ * tablet version, which is the only reason it is allowed at all. */
+@media (min-width: 1280px) {
+  .lsb-landed {
+    box-shadow:
+      inset 0 0 0 2px rgb(var(--c-landed) / 0.5),
+      inset 0 0 28px -6px rgb(var(--c-landed) / 0.4);
+  }
+}
+
+/* REDUCED MOTION IS LESS MOVEMENT, NOT A DEAD INTERFACE.
+ *
+ * This block used to flatten every transition and animation in the app to 1ms,
+ * which took the hover wash, the focus ring and the landing confirmation down
+ * with the movement. Somebody who has asked their phone for less motion still
+ * needs to see that their tap registered — arguably needs it more.
+ *
+ * So what goes is TRAVEL. `transition-property` is narrowed to the properties
+ * that do not move anything, which turns any transform or filter transition in
+ * the app into an instant change without having to find them all; the rise
+ * becomes a plain fade; the landing wash stays, because it is colour. The
+ * loading spinner is deliberately left alone: a spinner that stops reads as a
+ * frozen app, and a 24px rotation is not what this preference is protecting
+ * anyone from.
+ *
+ * Both landing marks come through this untouched, and that is a decision
+ * rather than an oversight: neither one moves. `lsb-land` animates opacity and
+ * `lsb-land-row` animates a background colour, which is the same category as
+ * the hover wash and the focus ring. Somebody who asked for less motion still
+ * gets told their entry went in.
+ */
 @media (prefers-reduced-motion: reduce) {
-  .lsb-rise { animation: none; }
+  .lsb-rise { animation-name: lsb-fade; }
+  /* The one genuine loop in the app: the loading skeleton's pulse. It rests. */
+  .animate-pulse { animation: none !important; }
+
   *, *::before, *::after {
-    transition-duration: 1ms !important;
-    animation-duration: 1ms !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    scroll-behavior: auto !important;
   }
 }

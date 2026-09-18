@@ -192,6 +192,7 @@ export default function LargeTextDashboard({
                     </p>
                   </div>
                   <StatusPill label={urgency} tone={tone} mark="dot" />
+                  <Button variant="clay" onClick={() => onRecordMade(product.id, needed * (product.packSize || 1))}>Start batch</Button>
                 </li>
               ))}
             </ul>
@@ -201,7 +202,7 @@ export default function LargeTextDashboard({
             <div className="border-t border-hair p-4">
               <Button variant="clay" size="xl" block onClick={onRecordMade}>
                 <Hammer className="h-5 w-5" />
-                Record what we made
+                Start batch
               </Button>
             </div>
           )}

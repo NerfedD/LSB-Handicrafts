@@ -8,6 +8,7 @@ describe('URL routes', () => {
     ['/staff/3/role', 'assign-role', 3],
     ['/customers/7', 'customer-detail', 7],
     ['/suppliers/9', 'supplier-detail', 9],
+    ['/raw-materials/701', 'raw-material-detail', 701],
     ['/deliveries/4', 'delivery-detail', 4],
     ['/products/new', 'product-form', null],
     ['/orders/new', 'order-form', null],

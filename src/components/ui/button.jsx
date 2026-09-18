@@ -32,6 +32,20 @@ const buttonVariants = cva(
   [
     "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap",
     "rounded-btn font-bold transition duration-150",
+    // THE PRESS. Every variant below has a hover state and, until now, nothing
+    // else — which means that on the tablets and phones this system is actually
+    // used on, where there is no cursor to hover with, pressing a button did
+    // nothing at all until the write came back. On a slow connection in a
+    // workshop that is a second or more of a button that looks ignored, and the
+    // documented consequence of a button that looks ignored is that it gets
+    // pressed again.
+    //
+    // Two channels on purpose. The dip is the one that reads as physical, and
+    // reduced motion takes it away — correctly, it is travel. `brightness` is
+    // what is left for somebody who asked for less movement, and it works the
+    // same on a cobalt fill, a white outline and a red confirm without eight
+    // variant-specific overrides to keep in step with eight hover colours.
+    "active:scale-[0.97] active:brightness-95",
     "disabled:pointer-events-none disabled:opacity-50",
     // The global :focus-visible ring in index.css covers this; the offset is
     // set here so a ring on a filled button sits clear of its own fill.

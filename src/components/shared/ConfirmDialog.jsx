@@ -1,4 +1,4 @@
-import { TriangleAlert } from "../icons";
+import { LoaderCircle, TriangleAlert } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -81,7 +81,22 @@ export default function ConfirmDialog({
             disabled={busy}
             onClick={onConfirm}
           >
-            {busy ? "Working…" : confirmLabel}
+            {/* The word alone was a still picture of a working app. This is
+                the dialog that deletes a customer or gives money back, so it is
+                also the one whose write is slowest and whose confirm button is
+                disabled the longest — and a disabled button holding the word
+                "Working…" without moving is indistinguishable from one that has
+                hung. The spinner is the only thing on screen saying the wait is
+                still going somewhere, which is why reduced motion deliberately
+                leaves it turning. */}
+            {busy ? (
+              <>
+                <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+                Working…
+              </>
+            ) : (
+              confirmLabel
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

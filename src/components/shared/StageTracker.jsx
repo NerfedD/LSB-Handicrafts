@@ -34,6 +34,13 @@ export default function StageTracker({ stages, current, compact = false, classNa
 
         const circle = cn(
           "flex shrink-0 items-center justify-center rounded-full border-2 font-extrabold tabular-nums",
+          // A stage advance is the most consequential thing that happens on an
+          // order screen, and it used to happen instantly — two circles simply
+          // WERE different colours the next time anyone looked. 300ms of colour
+          // is enough to catch the eye of somebody who was reading the line
+          // items when they pressed the button, and it survives reduced motion
+          // intact, because a colour change is not travel.
+          "transition duration-300 ease-out",
           compact ? "size-10 text-[16px]" : "size-11.5 text-[17px]",
           done && "border-green bg-green text-white",
           isCurrent && "border-cobalt bg-cobalt text-white dark:border-dk-cobalt dark:bg-dk-cobalt dark:text-dk-on-cobalt",
@@ -90,15 +97,32 @@ export default function StageTracker({ stages, current, compact = false, classNa
             </div>
 
             {!last && (
+              // THE LINE IS DRAWN, NOT SWITCHED ON.
+              //
+              // A track holding a fill, rather than one coloured bar, so the
+              // link to the next stage can travel outwards from the circle that
+              // just completed — which is the direction the work itself went.
+              // Switching the colour instead makes a whole segment of the
+              // journey appear at once, in the middle of the screen, with no
+              // indication of which end it came from.
+              //
+              // The track itself stays transparent: a future connector is not
+              // grey, because a grey line between two unreached circles reads
+              // as a completed link. Here it is transparent AND unscaled, which
+              // is the same statement made twice on purpose — the fill is what
+              // holds the rule if a colour is ever edited in.
               <span
                 aria-hidden="true"
-                className={cn(
-                  "mt-[21px] h-1 min-w-6 flex-1 rounded-full",
-                  // A future connector is transparent, not grey: a grey line
-                  // between two future circles reads as a completed link.
-                  done ? "bg-green" : isCurrent ? "bg-cobalt/25" : "bg-transparent"
-                )}
-              />
+                className="mt-[21px] h-1 min-w-6 flex-1 overflow-hidden rounded-full"
+              >
+                <span
+                  className={cn(
+                    "block h-full w-full origin-left rounded-full transition duration-300 ease-out",
+                    done ? "bg-green" : isCurrent ? "bg-cobalt/25" : "bg-transparent",
+                    done || isCurrent ? "scale-x-100" : "scale-x-0"
+                  )}
+                />
+              </span>
             )}
 
             {/* The stage list is the record's real status, so it is stated

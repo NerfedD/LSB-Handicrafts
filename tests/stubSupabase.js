@@ -43,6 +43,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
   const tables = Object.fromEntries(
     Object.entries(TABLES).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))])
   );
+  for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] = [];
 
   const json = (route, body, status = 200) =>
     route.fulfill({

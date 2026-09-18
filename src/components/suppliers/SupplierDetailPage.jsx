@@ -36,6 +36,8 @@ import { formatLongDate } from "../../utils/profileFormat";
  */
 export default function SupplierDetailPage({
   supplier,
+  purchaseOrders = [],
+  onOpenPurchases,
   canDelete = false,
   onBack,
   onEdit,
@@ -43,6 +45,12 @@ export default function SupplierDetailPage({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
+
+  const claimsNeedingReview = purchaseOrders.filter((o) => o.claim_status === 'Needs review').length;
+  // Purchasing history is what keeps a supplier on file: the foreign key on
+  // raw_material_orders.supplier_id refuses the delete, and this is the client
+  // telling somebody that before they reach for the button.
+  const blocked = purchaseOrders.length > 0;
 
   if (!supplier) return <NotFoundState noun="supplier" onBack={onBack} />;
 
@@ -133,23 +141,71 @@ export default function SupplierDetailPage({
       </div>
 
       {/* ---- the only place a supplier can be removed ---- */}
+      <Card className="p-6 text-[16px]">
+        <h2 className="text-[18px] font-extrabold">Raw material purchases</h2>
+        <p className="py-3">
+          {purchaseOrders.length} supplier {purchaseOrders.length === 1 ? 'order' : 'orders'}
+          {' · '}
+          {claimsNeedingReview} {claimsNeedingReview === 1 ? 'claim needs' : 'claims need'} review.
+        </p>
+        <Button variant="outline" size="lg" onClick={onOpenPurchases}>Open supplier deliveries</Button>
+      </Card>
+      {/* THE HEADING HAS TO AGREE WITH THE BUTTON UNDER IT.
+          This block used to be headed "Remove this supplier for good" in both
+          cases — including the one where the body says the supplier cannot be
+          removed and the button below is disabled. A heading that promises an
+          action the rest of the block spends two sentences refusing is the
+          screen arguing with itself, and the person reading it is the one who
+          has to work out which half is true.
+
+          So the whole block states one case at a time. It keeps its position
+          and its shape either way, because somebody looking for "where do I
+          remove a supplier" should find the same block in the same place and
+          be told why they cannot, rather than find nothing at all. */}
       {canDelete && (
         <DangerBlock
-          title="Remove this supplier for good"
+          title={blocked ? 'This supplier stays on file' : 'Remove this supplier for good'}
           action={
-            <Button variant="danger" size="lg" onClick={() => setConfirming(true)}>
+            <Button variant="danger" size="lg" disabled={blocked} onClick={() => setConfirming(true)}>
               Remove {supplier.name}
             </Button>
           }
         >
-          {supplier.name} disappears from the suppliers list, along with their contact
-          person, phone number and address. Orders and stock records are not touched —
-          nothing in the system points at a supplier — so nothing else changes. This
-          cannot be undone.
-          <br />
-          <br />
-          If you have simply stopped buying from them, leaving the record alone costs
-          nothing and keeps their number to hand if you go back.
+          {blocked ? (
+            <>
+              {supplier.name} has purchasing history, so they cannot be removed. Keep the
+              contact record: it is what makes their past deliveries and claims traceable
+              back to somebody you can ring.
+            </>
+          ) : (
+            <>
+              {/* RULE 6 WANTS BOTH HALVES: what goes, and what survives. The
+                  "what survives" half went missing when purchasing history was
+                  added here, which is what tests/smoke.spec.js caught — and the
+                  ConfirmDialog below had gone on saying it, so the two screens
+                  of the same decision disagreed.
+
+                  It is still true, and now guaranteed twice: this branch only
+                  renders when the supplier has no purchase orders, and
+                  raw_material_orders.supplier_id is the only reference to
+                  suppliers in the schema — a plain `not null references` with
+                  no cascade, so the database refuses the delete rather than
+                  taking anything with it. The claim is scoped to THIS supplier
+                  for that reason; "nothing references suppliers" is no longer
+                  true in general. */}
+              {supplier.name} disappears from the suppliers list, along with their contact
+              person, phone number and address. Orders and stock records are not touched:
+              this supplier has no purchasing history, so nothing else in the system points
+              at them. This cannot be undone.
+              <br />
+              <br />
+              {/* Only offered where it is actually a choice. Advising somebody to
+                  leave the record alone, under a heading that already says it is
+                  staying, is advice about a decision they do not have. */}
+              If you have simply stopped buying from them, leaving the record alone costs
+              nothing and keeps their number to hand if you go back.
+            </>
+          )}
         </DangerBlock>
       )}
 

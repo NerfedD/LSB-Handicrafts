@@ -26,6 +26,49 @@ import {
   STOCK_STATUS,
 } from "./constants";
 
+/**
+ * WORKSHOP VOCABULARY.
+ *
+ * Every map below turns a stored literal into the words used on the floor, and
+ * the tone/mark pairs exist for the same reason the rest of the app has them:
+ * the house rule is that no state is told by colour alone, so a status that
+ * has a label also has a tone and a glyph, decided once here rather than
+ * guessed per screen. `material_type` is included because the raw column value
+ * was being printed straight into a card subtitle as "adhesive".
+ */
+export const MATERIAL_KIND = {
+  sheet: 'Sheet', block: 'Block', adhesive: 'Glue / adhesive', wire: 'Wire',
+};
+export const materialKindLabel = (value) =>
+  MATERIAL_KIND[value] || (value ? `${String(value)[0].toUpperCase()}${String(value).slice(1)}` : '');
+
+export const MATERIAL_ORDER_LABEL = {
+  Ordered: 'Ordered', 'Delivery Scheduled': 'Delivery scheduled', 'In Transit': 'On the way',
+  Arrived: 'Arrived & verified', Cancelled: 'Cancelled',
+};
+export const BATCH_LABEL = {
+  Queued: 'Ready to start', 'In Progress': 'Being made', 'Quality Check': 'Check the finished pieces',
+  Completed: 'Finished', Cancelled: 'Cancelled',
+};
+export const MATERIAL_ORDER_TONE = {
+  Ordered: { tone: 'neutral', mark: 'clock' }, 'Delivery Scheduled': { tone: 'cobalt', mark: 'clock' },
+  'In Transit': { tone: 'cobalt', mark: 'clock' }, Arrived: { tone: 'green', mark: 'check' },
+  Cancelled: { tone: 'neutral', mark: 'x' },
+};
+export const BATCH_TONE = {
+  Queued: { tone: 'neutral', mark: 'clock' }, 'In Progress': { tone: 'clay', mark: 'dot' },
+  'Quality Check': { tone: 'amber', mark: 'clock' }, Completed: { tone: 'green', mark: 'check' },
+  Cancelled: { tone: 'neutral', mark: 'x' },
+};
+
+export const TRANSIT_REASONS = ['Broken edges/corners', 'Crushed by strap/cargo', 'Water/dirt damage', 'Wrong density/thickness'];
+export const DEFECT_REASONS = [
+  { value: 'Broke during hotwire/cutting', label: 'Nabasag habang pinuputol — broke during cutting' },
+  { value: 'Material void / density defect', label: 'May butas / mahina ang styro — material defect' },
+  { value: 'Carving / dimension error', label: 'Maling tabas / sukat — wrong cut or size' },
+  { value: 'Floor / handling damage', label: 'Nadiin / naapakan sa sahig — handling damage' },
+];
+
 // ---- stock -----------------------------------------------------------------
 
 /**

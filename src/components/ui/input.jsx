@@ -1,6 +1,12 @@
 import { forwardRef, useId, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import {
+  cleanPhoneInput,
+  PHONE_MAX_CHARS,
+  PHONE_SHAPE_PATTERN,
+  PHONE_TITLE,
+} from "@/utils/phone";
 
 /**
  * Text input.
@@ -33,6 +39,32 @@ const Input = forwardRef(function Input(
   const [validationError, setValidationError] = useState('');
   const phone = type === 'tel' || props.inputMode === 'tel';
   const { onChange, ...rest } = props;
+
+  /**
+   * THE PHONE FIELD DEFERS TO utils/phone. It does not carry its own rule.
+   *
+   * It used to: `pattern="[0-9]{7,15}"`, a `minLength`/`maxLength` counting
+   * CHARACTERS rather than digits, and a numeric keypad with no + on it. Every
+   * other layer — utils/phone, and the `contact_number_ok` constraint in
+   * schema.sql — allows punctuation and counts digits, so this field was at
+   * once the strictest rule in the stack and the only wrong one. A number
+   * already sitting in the customers table, `0917 555 0204`, could not be saved
+   * back from the screen that displayed it: guardForm found the element
+   * invalid and refused the submit with the browser's own "Please match the
+   * requested format".
+   *
+   * What is left here is shape, and the database's own character cap. The digit
+   * count belongs to phoneProblem, which can say "that has 4 digits" instead.
+   */
+  const phoneProps = phone
+    ? {
+        type: 'tel',
+        inputMode: 'tel',
+        pattern: PHONE_SHAPE_PATTERN,
+        maxLength: PHONE_MAX_CHARS,
+        title: PHONE_TITLE,
+      }
+    : undefined;
   return (
     <>
     <input
@@ -48,13 +80,24 @@ const Input = forwardRef(function Input(
         className
       )}
       {...rest}
-      {...(phone ? { type: 'tel', inputMode: 'numeric', pattern: '[0-9]{7,15}', minLength: 7, maxLength: 15,
-        title: 'Use 7 to 15 digits, including the country code for international numbers.' } : {})}
+      {...phoneProps}
       aria-describedby={[props['aria-describedby'], validationError ? errorId : null].filter(Boolean).join(' ') || undefined}
       aria-invalid={validationError ? true : props['aria-invalid']}
       onInvalid={(event) => setValidationError(event.currentTarget.validationMessage)}
       onChange={(event) => {
-        if (phone && !/^[0-9]{0,15}$/.test(event.target.value)) { setValidationError('Use digits only, up to 15 digits.'); return; }
+        // A letter never lands in the box at all, rather than landing and being
+        // complained about later — see cleanPhoneInput for the argument. Doing
+        // it HERE rather than in each caller is why the one screen that forgot
+        // (staff -> manage an account) is covered without knowing about it.
+        //
+        // The previous guard dropped the whole keystroke instead of stripping
+        // it, and judged it with the same digits-only rule as the pattern — so
+        // a space could not be typed into a field whose own placeholder reads
+        // "09XX XXX XXXX", and the message explaining why was itself wrong.
+        if (phone) {
+          const cleaned = cleanPhoneInput(event.target.value);
+          if (cleaned !== event.target.value) event.target.value = cleaned;
+        }
         setValidationError('');
         event.target.removeAttribute('aria-invalid');
         onChange?.(event);

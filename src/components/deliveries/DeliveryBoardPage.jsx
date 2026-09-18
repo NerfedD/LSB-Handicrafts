@@ -20,6 +20,7 @@ import {
   SearchField,
 } from "../shared/filters";
 import { EmptySlot, ErrorState, LoadingState } from "../shared/PageStates";
+import Landed from "../shared/Landed";
 import { InlineBadge } from "../shared/StatusPill";
 import { tone as toneOf } from "../shared/tones";
 import { isBackorderDelivery } from "../../utils/orders";
@@ -84,6 +85,8 @@ export default function DeliveryBoardPage({
   onGoToDashboard,
   onContext,
   initialFilter,
+  /** The last record a write changed — see shared/Landed.jsx. */
+  change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "deliveries");
   // Seeded from the dashboard. An attention row's button names a verb and
@@ -246,10 +249,18 @@ export default function DeliveryBoardPage({
                       type="button"
                       onClick={() => onOpen(delivery.id)}
                       className={cn(
-                        "rounded-tile border border-card bg-surface p-3 text-left transition duration-150",
+                        "relative rounded-tile border border-card bg-surface p-3 text-left transition duration-150",
                         "hover:border-cobalt/40 hover:shadow-card",
                       )}
                     >
+                      {/* The board's strongest case for this mark. Advancing a
+                          delivery does not change a card, it MOVES one: the tile
+                          leaves the column somebody was looking at and reappears
+                          in a different one, possibly below the fold. The toast
+                          names the delivery and the stage; only this says which
+                          of the tiles now in that column is the one that just
+                          arrived. */}
+                      <Landed change={change} kind="delivery" id={delivery.id} />
                       <Mono className="text-[13px]">#{delivery.id}</Mono>
                       <p className="truncate pt-0.5 text-[16px] font-bold text-ink">
                         {customerFrom(delivery) || "No customer named"}
