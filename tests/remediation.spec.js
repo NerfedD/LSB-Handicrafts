@@ -266,3 +266,32 @@ test('editing an order leaves its cut-to-size line alone', async ({ page, baseUR
   expect(after.notes).toBe(before.notes);
   expect(after.quantity).toBe(before.quantity);
 });
+
+/**
+ * An arrived delivery finishes the order it was carrying.
+ *
+ * Dispatching moved the stock and flipped the delivery, and arriving flipped the
+ * delivery again -- but nothing ever touched the order. It sat at Pending for
+ * ever while its own progress tracker read the delivery and said "Delivered",
+ * it kept counting in the waiting total and in the customer's open-order badge,
+ * and somebody had to remember to press "Mark as done" on an order that had
+ * demonstrably already gone out.
+ */
+test('a delivery that arrives with nothing left owed finishes its order', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page); await signIn(page, baseURL);
+  expect(tables.orders.find((row) => row.id === 1042).status).toBe('Pending');
+
+  await page.getByRole('button', { name: /^Deliveries/ }).click();
+  await page.getByRole('button', { name: /Liza Villanueva/ }).click();
+
+  // Send the whole order out, so nothing is left owed on it.
+  await page.getByRole('button', { name: /It is on the way/ }).click();
+  await expect(page.getByRole('heading', { name: 'What actually went out?' })).toBeVisible();
+  await page.getByRole('button', { name: /Yes, it is on the way/ }).click();
+  await expect(page.getByText(/is now on the way/)).toBeVisible();
+
+  await page.getByRole('button', { name: /It arrived/ }).click();
+  await expect(page.getByText(/order #1042 is done/)).toBeVisible();
+
+  expect(tables.orders.find((row) => row.id === 1042).status).toBe('Completed');
+});

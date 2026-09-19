@@ -149,6 +149,22 @@ function drawOf(order) {
   return draw;
 }
 
+/**
+ * The same movement moveStock applies, in the form the database can apply it.
+ *
+ * WHY BOTH. moveStock produces the shelf as it WILL look, which is what the
+ * screens render off immediately. The write needs the opposite: not a finished
+ * total but the change itself, because a total computed here is a total from
+ * one browser's snapshot, and two of those racing overwrite each other. Sending
+ * the delta lets the database do `stock = stock + delta` under a row lock and
+ * settle the order between them.
+ *
+ * So this is not a second copy of the arithmetic -- it is the SAME map that
+ * moveStock is about to consume, handed out instead of thrown away.
+ */
+const deltasOf = (draw, sign) =>
+  [...draw].map(([productId, units]) => ({ productId, delta: sign * units }));
+
 function moveStock(inventory, draw, sign) {
   if (draw.size === 0) return inventory;
   return inventory.map((item) => {
@@ -183,7 +199,7 @@ export function commitOrder(inventory, order, now = new Date()) {
   const lines = normalizeItems(order?.items);
 
   if (order?.stockCommittedAt) {
-    return { inventory, items: lines, stockCommittedAt: order.stockCommittedAt };
+    return { inventory, items: lines, stockCommittedAt: order.stockCommittedAt, deltas: [] };
   }
 
   const items = lines.map((line) => {
@@ -191,10 +207,12 @@ export function commitOrder(inventory, order, now = new Date()) {
     return owed > 0 ? { ...line, committedUnits: committedOf(line) + owed } : line;
   });
 
+  const draw = drawOf(order);
   return {
-    inventory: moveStock(inventory, drawOf(order), -1),
+    inventory: moveStock(inventory, draw, -1),
     items,
     stockCommittedAt: stampFor(now),
+    deltas: deltasOf(draw, -1),
   };
 }
 
@@ -210,7 +228,7 @@ export function uncommitOrder(inventory, order) {
   const lines = normalizeItems(order?.items);
 
   if (!order?.stockCommittedAt) {
-    return { inventory, items: lines, stockCommittedAt: null };
+    return { inventory, items: lines, stockCommittedAt: null, deltas: [] };
   }
 
   // An order stamped before the counters existed has no per-line record of what
@@ -227,7 +245,12 @@ export function uncommitOrder(inventory, order) {
     return { ...line, committedUnits: 0 };
   });
 
-  return { inventory: moveStock(inventory, back, +1), items, stockCommittedAt: null };
+  return {
+    inventory: moveStock(inventory, back, +1),
+    items,
+    stockCommittedAt: null,
+    deltas: deltasOf(back, +1),
+  };
 }
 
 /**
@@ -283,6 +306,12 @@ export function commitPartialDelivery(inventory, order, delivered = [], now = ne
     inventory: moveStock(inventory, draw, -1),
     items,
     stockCommittedAt: settled ? order?.stockCommittedAt || stampFor(now) : null,
+    deltas: deltasOf(draw, -1),
+    // Whether anything is still owed is decided HERE, with the counters in
+    // hand, and travels with the write. The database is deliberately not asked
+    // to work it out again -- outstandingOf is one rule, and a second copy of
+    // it in SQL is how two copies drift apart.
+    settled,
   };
 }
 
@@ -366,7 +395,12 @@ export function handleRefundStock(inventory, order, refundLines = []) {
     };
   });
 
-  return { inventory: moveStock(inventory, back, +1), items, scrapped };
+  return {
+    inventory: moveStock(inventory, back, +1),
+    items,
+    scrapped,
+    deltas: deltasOf(back, +1),
+  };
 }
 
 /**

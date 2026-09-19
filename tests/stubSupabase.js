@@ -30,6 +30,79 @@ import { SIGNED_IN_EMAIL, TABLES } from "./fixtures.js";
 let recordId = 2_000_000_000_000;
 const nextRecordId = () => (recordId += 1);
 
+
+/**
+ * Stands in for public.order_command.
+ *
+ * WHY THE STUB HAS TO KNOW ABOUT THIS ONE. Every other RPC answers null here,
+ * which is harmless because nothing reads the result. This one IS the write
+ * path for marking an order done, calling it off, reopening it, refunding it
+ * and dispatching it -- the browser sends stock DELTAS plus the order patch and
+ * the whole thing lands in one transaction. Answering null would fail every one
+ * of those with "No saved record was returned".
+ *
+ * It applies the same rules the SQL does, in the same order, because a stub
+ * that accepts what the database would refuse is a stub that makes the tests
+ * lie: the status checks, the delta applied relative to the row that is there
+ * now, and the refusal when a delta names a row the shelf list does not have.
+ */
+function runOrderCommand(tables, body, onWrite) {
+  const { p_action: action, p_data: data } = body;
+  const orders = tables.orders ?? [];
+  const deliveries = tables.deliveries ?? [];
+  const inventory = tables.inventory ?? [];
+
+  const order = orders.find((row) => Number(row.id) === Number(data.orderId));
+  if (!order) throw new Error("stub: order_command got an order id it does not have");
+
+  const delivery =
+    data.deliveryId == null
+      ? null
+      : deliveries.find((row) => Number(row.id) === Number(data.deliveryId)) ?? null;
+
+  if (action === "complete" && order.status !== "Pending") {
+    return { error: "Only an order that is still waiting can be marked done." };
+  }
+  if (action === "dispatch" && order.status === "Cancelled") {
+    return { error: "This order has been called off, so nothing can go out on it." };
+  }
+
+  const touched = [];
+  for (const { productId, delta } of data.deltas ?? []) {
+    if (!delta) continue;
+    const row = inventory.find((item) => Number(item.id) === Number(productId));
+    // The real function aborts the whole transaction here, which is what stops
+    // an unloaded shelf list from silently "succeeding".
+    if (!row) throw new Error("stub: a delta named a product not on the shelf list");
+    row.stock = Number(row.stock) + Number(delta);
+    touched.push(row);
+  }
+
+  const COLUMN = {
+    items: "items",
+    status: "status",
+    stockCommittedAt: "stock_committed_at",
+    backorderStatus: "backorder_status",
+    refundedAmount: "refunded_amount",
+    refundHistory: "refund_history",
+    totalAmount: "total_amount",
+  };
+  for (const [key, value] of Object.entries(data.order ?? {})) {
+    if (COLUMN[key]) order[COLUMN[key]] = value;
+  }
+  onWrite?.({ table: "orders", method: "RPC", row: order });
+
+  if (delivery && data.delivery) {
+    const DCOLUMN = { status: "status", itemsManifest: "items_manifest", driver: "driver" };
+    for (const [key, value] of Object.entries(data.delivery)) {
+      if (DCOLUMN[key]) delivery[DCOLUMN[key]] = value;
+    }
+    onWrite?.({ table: "deliveries", method: "RPC", row: delivery });
+  }
+
+  return { order, delivery, inventory: touched };
+}
+
 /** An unsigned JWT. Nothing client-side verifies it; supabase-js only decodes. */
 function fakeJwt(payload) {
   const b64 = (obj) =>
@@ -106,6 +179,9 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
   await page.route("**/rest/v1/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    if (url.pathname.endsWith("/rpc/order_command")) {
+      return json(route, runOrderCommand(tables, JSON.parse(request.postData() || "{}"), onWrite));
+    }
     if (url.pathname.includes("/rpc/")) return json(route, null);
 
     // /rest/v1/<table>  ->  ["", "rest", "v1", "<table>"]

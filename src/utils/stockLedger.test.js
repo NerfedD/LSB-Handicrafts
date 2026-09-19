@@ -271,6 +271,75 @@ describe("goods coming back", () => {
   });
 });
 
+describe("the deltas that go to the database", () => {
+  /**
+   * The shelf these functions return is what the screen draws immediately. The
+   * deltas are what is WRITTEN, and they have to be the change rather than the
+   * total: a total is one browser's snapshot plus its own arithmetic, and two of
+   * those racing overwrite each other. These cases pin the sign and the size,
+   * because a sign error here puts stock ON the shelf when an order goes out.
+   */
+  const sorted = (deltas) => [...deltas].sort((a, b) => a.productId - b.productId);
+
+  it("takes stock off when an order is marked done", () => {
+    const { deltas } = commitOrder(shelf(20), order());
+    expect(sorted(deltas)).toEqual([
+      { productId: 101, delta: -5 },
+      { productId: 102, delta: -3 },
+    ]);
+  });
+
+  it("puts it back when the order is reopened", () => {
+    const committed = commitOrder(shelf(20), order());
+    const { deltas } = uncommitOrder(shelf(15), {
+      ...order(),
+      items: committed.items,
+      stockCommittedAt: committed.stockCommittedAt,
+    });
+    expect(sorted(deltas)).toEqual([
+      { productId: 101, delta: 5 },
+      { productId: 102, delta: 3 },
+    ]);
+  });
+
+  it("moves nothing when the order was already committed", () => {
+    const committed = commitOrder(shelf(20), order());
+    const again = commitOrder(shelf(15), {
+      ...order(),
+      items: committed.items,
+      stockCommittedAt: committed.stockCommittedAt,
+    });
+    expect(again.deltas).toEqual([]);
+  });
+
+  // The delta is this run's movement, not the running total the manifest is
+  // expressed in -- sending the total would deduct what already went a second
+  // time, which is the whole failure this replaces.
+  it("sends only what a part delivery actually moves", () => {
+    const { deltas } = commitPartialDelivery(shelf(20), order(), [{ lineIndex: 0, units: 2 }]);
+    expect(deltas).toEqual([{ productId: 101, delta: -2 }]);
+  });
+
+  it("restocks only what came back, and nothing that was scrapped", () => {
+    const committed = commitOrder(shelf(20), order());
+    const live = { ...order(), items: committed.items, stockCommittedAt: committed.stockCommittedAt };
+    const { deltas } = handleRefundStock(shelf(15), live, [
+      { lineIndex: 0, units: 2, disposition: REFUND_DISPOSITION.RESTOCK },
+      { lineIndex: 1, units: 3, disposition: REFUND_DISPOSITION.SCRAP },
+    ]);
+    expect(deltas).toEqual([{ productId: 101, delta: 2 }]);
+  });
+
+  // The shelf the screen draws and the change the database applies must agree,
+  // or the page shows one number and the table holds another.
+  it("agrees with the shelf it hands back", () => {
+    const { inventory, deltas } = commitOrder(shelf(20), order());
+    for (const { productId, delta } of deltas) {
+      expect(stockOf(inventory, productId)).toBe(20 + delta);
+    }
+  });
+});
+
 describe("an order stamped before the per-line counters existed", () => {
   /**
    * The shape: committed, but with no committedUnits on any line. uncommitOrder

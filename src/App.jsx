@@ -21,6 +21,7 @@ import useSupabaseCollection from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
 import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
 import { provisionAccount } from "./utils/accounts";
+import { newRequestId, orderCommand } from "./utils/orderCommand";
 import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigation";
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
 import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
@@ -29,6 +30,7 @@ import {
   commitOrder,
   commitPartialDelivery,
   handleRefundStock,
+  outstandingOf,
   uncommitOrder,
 } from "./utils/stockLedger";
 import { normalizeItems } from "./utils/orderItems";
@@ -1334,19 +1336,11 @@ export default function App() {
     }
 
     setBusy(true);
-    const { inventory: nextInventory, items } = uncommitOrder(inventory, order);
-    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
-    if (!stockOk) {
-      setBusy(false);
-      toast.error("The stock could not be put back, so the order was left as it was.");
-      return;
-    }
-
-    const result = await ordersState.update(order.id, {
-      ...order,
-      items,
-      status: ORDER_STATUS.CANCELLED,
-      stockCommittedAt: null,
+    const { items, deltas } = uncommitOrder(inventory, order);
+    const result = await applyOrderChange("cancel", {
+      orderId: order.id,
+      deltas,
+      order: { items, status: ORDER_STATUS.CANCELLED, stockCommittedAt: null },
     });
     setBusy(false);
 
@@ -1354,6 +1348,7 @@ export default function App() {
       toast.error(result.message || "That order was not called off.");
       return;
     }
+    const { changed } = result;
 
     // THE RUN THAT WAS GOING TO CARRY IT. A cancelled order leaving a live
     // delivery on the board is a van still scheduled for goods nobody is
@@ -1435,19 +1430,17 @@ export default function App() {
     }
 
     setBusy(true);
-    const { inventory: nextInventory, items, stockCommittedAt } = uncommitOrder(inventory, order);
-
-    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
-    if (!stockOk) {
-      setBusy(false);
-      toast.error("The stock could not be put back, so the order was left as it was.");
-      return;
-    }
-
+    const { items, stockCommittedAt, deltas } = uncommitOrder(inventory, order);
     const reopened = { ...order, items, status: ORDER_STATUS.PENDING, stockCommittedAt };
-    const result = await ordersState.update(order.id, {
-      ...reopened,
-      backorderStatus: backorderStatusOf(reopened),
+    const result = await applyOrderChange("reopen", {
+      orderId: order.id,
+      deltas,
+      order: {
+        items,
+        status: ORDER_STATUS.PENDING,
+        stockCommittedAt,
+        backorderStatus: backorderStatusOf(reopened),
+      },
     });
     setBusy(false);
 
@@ -1455,6 +1448,7 @@ export default function App() {
       toast.error(result.message || "That order was not put back.");
       return;
     }
+    const { changed } = result;
 
     markLanded("order", order.id);
     toast.success(`Order #${order.id} is waiting again.`, {
@@ -1479,20 +1473,7 @@ export default function App() {
 
   async function markOrderDone(order) {
     setBusy(true);
-    const {
-      inventory: nextInventory,
-      items,
-      stockCommittedAt,
-    } = commitOrder(inventory, order);
-
-    // Stock first. An order marked done whose stock never moved is a shelf that
-    // lies; stock moved for an order that never got marked is recoverable.
-    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
-    if (!stockOk) {
-      setBusy(false);
-      toast.error("The stock could not be updated, so the order was left as it was.");
-      return;
-    }
+    const { items, stockCommittedAt, deltas } = commitOrder(inventory, order);
 
     // `items` carries the per-line commit counters back with the stamp. Writing
     // one without the other would leave the order claiming stock had left while
@@ -1504,9 +1485,15 @@ export default function App() {
       status: ORDER_STATUS.COMPLETED,
       stockCommittedAt,
     };
-    const result = await ordersState.update(order.id, {
-      ...done,
-      backorderStatus: backorderStatusOf(done),
+    const result = await applyOrderChange("complete", {
+      orderId: order.id,
+      deltas,
+      order: {
+        items,
+        status: ORDER_STATUS.COMPLETED,
+        stockCommittedAt,
+        backorderStatus: backorderStatusOf(done),
+      },
     });
     setBusy(false);
 
@@ -1514,6 +1501,7 @@ export default function App() {
       toast.error(result.message || "That order was not marked done.");
       return;
     }
+    const { changed } = result;
 
     markLanded("order", order.id);
     toast.success(`Order #${order.id} is done.`, {
@@ -1536,21 +1524,57 @@ export default function App() {
   }
 
   /**
-   * Writes the inventory rows a ledger function changed, and nothing else.
+   * One order action, applied whole or not at all.
    *
-   * STOCK GOES FIRST, EVERY TIME. An order recorded as sent whose stock never
-   * moved is a shelf that lies to everybody who reads it; stock that moved for
-   * a record that failed to save is recoverable by looking at the goods. So
-   * every caller below writes the shelf, checks it, and only then touches the
-   * order — and abandons the whole thing if the shelf refused.
+   * WHAT THIS REPLACES, AND WHY IT IS NOT "STOCK FIRST" ANY MORE.
+   * persistStockChanges() used to stand here, writing one inventory row at a
+   * time and then leaving the caller to write the order separately. Its comment
+   * argued that the shelf should move first because a shelf that lies is worse
+   * than a record that failed — sound reasoning about which half to lose, and
+   * the wrong question. Losing half was never necessary.
+   *
+   * A row refused half way through left the earlier rows committed and the
+   * order unwritten, so pressing the button again deducted them a SECOND time.
+   * Two people acting at once each computed an absolute total from their own
+   * snapshot and the later write erased the earlier. And with `inventory` still
+   * empty because it had not loaded, the loop found nothing to write, reported
+   * success, and let the order be stamped done while nothing moved.
+   *
+   * order_command settles all of it in one transaction against locked rows, and
+   * what travels is the DELTA rather than a total, so the database adds the
+   * change to whatever the count truly is instead of overwriting it with a
+   * stale one. There is no longer a first half to lose.
+   *
+   * Returns `changed` in the shape the callers already expected: the inventory
+   * rows that actually moved, as saved, so the activity entries below them can
+   * still say what went off which shelf.
    */
-  async function persistStockChanges(nextInventory) {
-    const changed = nextInventory.filter((row, index) => row !== inventory[index]);
-    for (const row of changed) {
-      const result = await inventoryState.update(row.id, row);
-      if (!result.ok) return { ok: false, changed };
+  async function applyOrderChange(action, payload) {
+    const result = await orderCommand(action, payload, newRequestId());
+    if (!result.ok) return { ok: false, message: result.message, changed: [] };
+
+    const savedOrder = result.data.order ? ordersCollection.fromRow(result.data.order) : null;
+    const savedDelivery = result.data.delivery
+      ? deliveriesCollection.fromRow(result.data.delivery)
+      : null;
+    const changed = (result.data.inventory ?? []).map(inventoryCollection.fromRow);
+
+    // Synced from what the database actually stored rather than from what was
+    // sent, so a value it adjusted — or a concurrent change it merged past — is
+    // on screen immediately instead of at the next reload.
+    if (savedOrder) {
+      ordersState.setRows(orders.map((row) => (row.id === savedOrder.id ? savedOrder : row)));
     }
-    return { ok: true, changed };
+    if (savedDelivery) {
+      deliveriesState.setRows(
+        deliveries.map((row) => (row.id === savedDelivery.id ? savedDelivery : row))
+      );
+    }
+    if (changed.length > 0) {
+      const saved = new Map(changed.map((row) => [row.id, row]));
+      inventoryState.setRows(inventory.map((row) => saved.get(row.id) ?? row));
+    }
+    return { ok: true, changed, order: savedOrder, delivery: savedDelivery };
   }
 
   /**
@@ -1573,18 +1597,7 @@ export default function App() {
     }
 
     setBusy(true);
-    const {
-      inventory: nextInventory,
-      items,
-      scrapped,
-    } = handleRefundStock(inventory, order, lines);
-
-    const stock = await persistStockChanges(nextInventory);
-    if (!stock.ok) {
-      setBusy(false);
-      toast.error("The stock could not be updated, so no money was given back.");
-      return false;
-    }
+    const { items, scrapped, deltas } = handleRefundStock(inventory, order, lines);
 
     const source = normalizeItems(order.items);
     const entry = {
@@ -1604,11 +1617,20 @@ export default function App() {
     };
 
     const refunded = { ...order, items, refundedAmount: orderRefunded(order) + amount };
-    const result = await ordersState.update(order.id, {
-      ...refunded,
-      status: full ? ORDER_STATUS.CANCELLED : order.status,
-      refundHistory: [...(order.refundHistory || []), entry],
-      backorderStatus: backorderStatusOf(refunded),
+    // The money, the goods and the order's state settle together or not at all.
+    // They used to be a stock loop followed by a separate order write, so a
+    // refused order write left the goods already back on the shelf with no
+    // record that any money had been given back for them.
+    const result = await applyOrderChange("refund", {
+      orderId: order.id,
+      deltas,
+      order: {
+        items,
+        status: full ? ORDER_STATUS.CANCELLED : order.status,
+        refundedAmount: orderRefunded(order) + amount,
+        refundHistory: [...(order.refundHistory || []), entry],
+        backorderStatus: backorderStatusOf(refunded),
+      },
     });
     setBusy(false);
 
@@ -1715,6 +1737,52 @@ export default function App() {
 
   async function moveDelivery(delivery, nextStatus) {
     setBusy(true);
+
+    // ARRIVING IS THE ORDER'S BUSINESS TOO, when nothing on it is still owed.
+    // Every other stage change is the delivery's alone, but this one used to
+    // leave a fully delivered order sitting at Pending for ever: the tracker
+    // read the delivery and said "Delivered" while the order still counted in
+    // the waiting total and in the customer's open-order badge, and somebody
+    // had to remember to press "Mark as done" afterwards on an order that had
+    // demonstrably already gone out.
+    //
+    // Whether anything is still owed is decided HERE, where the counters are,
+    // and travels with the write; order_command is not asked to work it out
+    // again in SQL. The two rows then move together or not at all.
+    const carried = nextStatus === DELIVERY_STAGE.ARRIVED ? orderForDelivery(delivery) : undefined;
+    const settles =
+      carried?.status === ORDER_STATUS.PENDING &&
+      normalizeItems(carried.items).every((line) => outstandingOf(line) === 0);
+
+    if (carried && settles) {
+      const arrival = await applyOrderChange("arrive", {
+        orderId: carried.id,
+        deliveryId: delivery.id,
+        order: { status: ORDER_STATUS.COMPLETED },
+        delivery: { status: nextStatus },
+      });
+      setBusy(false);
+      if (!arrival.ok) {
+        toast.error(arrival.message || "That delivery was not moved.");
+        return;
+      }
+      markLanded("delivery", delivery.id);
+      toast.success(`Delivery #${delivery.id} arrived, and order #${carried.id} is done.`, {
+        description: "Everything on the order has now gone out.",
+      });
+      logActivity({
+        kind: ACTIVITY_KIND.DELIVERY,
+        what: `marked delivery #${delivery.id} as ${deliveryStage(nextStatus).label.toLowerCase()}`,
+        subject: `delivery:${delivery.id}`,
+      });
+      logActivity({
+        kind: ACTIVITY_KIND.ORDER,
+        what: `marked order #${carried.id} as done when its delivery arrived`,
+        subject: `order:${carried.id}`,
+      });
+      return;
+    }
+
     const result = await deliveriesState.update(delivery.id, {
       ...delivery,
       status: nextStatus,
@@ -1781,42 +1849,30 @@ export default function App() {
    */
   async function recordDelivered(delivery, order, { toStage, delivered, manifest, followUp }) {
     setBusy(true);
-    const {
-      inventory: nextInventory,
-      items,
-      stockCommittedAt,
-    } = commitPartialDelivery(inventory, order, delivered);
+    const { items, stockCommittedAt, deltas } = commitPartialDelivery(
+      inventory,
+      order,
+      delivered
+    );
 
-    const { ok: stockOk, changed } = await persistStockChanges(nextInventory);
-    if (!stockOk) {
-      setBusy(false);
-      toast.error("The stock could not be updated, so the delivery was left as it was.");
-      return false;
-    }
-
+    // The shelf, the order and the delivery move together. They used to be
+    // three writes in a row, and the middle one failing left a message telling
+    // the person to go and count the shelf themselves because the goods had
+    // already been deducted against a delivery that was never recorded.
     const sent = { ...order, items, stockCommittedAt };
-    const orderResult = await ordersState.update(order.id, {
-      ...sent,
-      backorderStatus: backorderStatusOf(sent),
+    const result = await applyOrderChange("dispatch", {
+      orderId: order.id,
+      deliveryId: delivery.id,
+      deltas,
+      order: { items, stockCommittedAt, backorderStatus: backorderStatusOf(sent) },
+      delivery: { status: toStage, itemsManifest: manifest },
     });
-    if (!orderResult.ok) {
+    if (!result.ok) {
       setBusy(false);
-      toast.error(orderResult.message || "The order was not updated.", {
-        description: "The stock has already moved, so check the shelf before trying again.",
-      });
+      toast.error(result.message || "That delivery was not recorded.");
       return false;
     }
-
-    const deliveryResult = await deliveriesState.update(delivery.id, {
-      ...delivery,
-      status: toStage,
-      itemsManifest: manifest,
-    });
-    if (!deliveryResult.ok) {
-      setBusy(false);
-      toast.error(deliveryResult.message || "That delivery was not moved.");
-      return false;
-    }
+    const { changed } = result;
 
     const short = manifest.filter((line) => line.backorderQty > 0);
     let raised = true;
