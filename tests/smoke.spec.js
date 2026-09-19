@@ -20,6 +20,14 @@ import { signIn, stubSupabase } from "./stubSupabase.js";
  *
  * It runs against a stubbed Supabase (see stubSupabase.js), so it is safe to
  * run repeatedly and the interesting states are always present.
+ *
+ * SCOPE ORDER ASSERTIONS TO `main`. OrderSlip renders the printable copy of an
+ * order through a portal onto document.body -- outside #root, always mounted,
+ * and display:none until a print (src/index.css). It is invisible, but it is
+ * still in the DOM and still matches getByText, and toBeVisible() enforces
+ * strict mode, so any text appearing on both the screen and the slip resolves
+ * to two elements and throws. Wrapping the locator in getByRole("main") excludes
+ * the portal exactly, which is what tests/slip.spec.js already does.
  */
 
 /** Collects anything the page complains about, for assertion at the end. */
@@ -307,7 +315,7 @@ test.describe("orders and deliveries", () => {
     for (const stage of ["Written", "Being made", "Ready to go", "Delivered"]) {
       await expect(page.getByText(stage, { exact: true }).first()).toBeVisible();
     }
-    await expect(page.getByText("Total to pay")).toBeVisible();
+    await expect(page.getByRole("main").getByText("Total to pay")).toBeVisible();
     await expect(page.getByRole("button", { name: "Mark as done" })).toBeVisible();
 
     expectClean();
@@ -445,7 +453,7 @@ test.describe("orders and deliveries", () => {
     // And the price correction on the same order names the day, the person and
     // the reason rather than silently showing a different total.
     await expect(page.getByText(/Price changed on .* by Maria Santos/)).toBeVisible();
-    await expect(page.getByText(/a cut was measured wrong/)).toBeVisible();
+    await expect(page.getByRole("main").getByText(/a cut was measured wrong/)).toBeVisible();
 
     expectClean();
   });
@@ -479,7 +487,7 @@ test.describe("money going back, and prices put right", () => {
     await page.getByRole("button", { name: "Open" }).first().click();
 
     await expect(page.getByRole("heading", { name: "Money given back" })).toBeVisible();
-    await expect(page.getByText("They changed their mind")).toBeVisible();
+    await expect(page.getByRole("main").getByText("They changed their mind")).toBeVisible();
     // The disposition is the part that matters, so it is on the screen and not
     // only in the database.
     await expect(page.getByText(/2 × Styro Block 2 inch — back on the shelf/)).toBeVisible();
