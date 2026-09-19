@@ -2,7 +2,26 @@
 
 Reviewed: 2026-09-19. Base commit: `2d43e52`, with the existing uncommitted changes included in the review.
 
-**16 findings: 8 high priority and 8 medium priority. All remain open. No application, database, or existing test fixes were made.**
+**16 findings: 8 high priority and 8 medium priority. ALL 16 ARE NOW FIXED** —
+see the Status column below and the commits on `fix/bug-report-remediation`. The
+findings themselves are left as written, because what was wrong is worth keeping
+on the record; only the status has been added.
+
+Two things the review did not have, added while fixing:
+
+- **BUG-08 had a second site.** `commitPartialDelivery` carried the identical
+  missing-legacy-counter gap as `handleRefundStock`, pointing the other way:
+  reading an absent counter as zero treats stock that is long gone as still on
+  the shelf and deducts a whole order twice. Fixed with it.
+- **BUG-15 had five sites, not three.** Beyond the three listed, the check that
+  refuses to delete a customer with an order still waiting matched on name too,
+  and so did `CustomerDetailPage` — which reached into the index with a bare name
+  key of its own and therefore disagreed with the summary printed beside it. The
+  browser suite caught that one rather than a reading of the code.
+
+The database findings were re-verified against the **deployed** project
+(`tvdtzsputfnapswpurlr`) before and after, since this report flagged hosted state
+as unverified. BUG-06 was confirmed live and every probe was rolled back.
 
 This review covered order and delivery workflows, stock accounting, refunds, product and customer forms, routing, account creation, the data layer, and relevant Supabase policies. Findings were checked against the older `BUGS_AND_FIX_PLAN.txt`; some previously documented problems remain and are identified below. This is not a claim that every possible defect has been found.
 
@@ -22,24 +41,24 @@ Source locations below refer to the files as reviewed. P1 means high priority be
 
 ## Findings at a glance
 
-| ID | Priority | Finding |
-| --- | --- | --- |
-| BUG-01 | P1 | Failed order saves leave stock changed; retries deduct again. |
-| BUG-02 | P1 | Concurrent saves overwrite stock deductions. |
-| BUG-03 | P1 | Orders can complete before inventory has loaded. |
-| BUG-04 | P1 | Editing cut-item orders changes their stock consumption. |
-| BUG-05 | P1 | Fully refunded, cancelled orders can still be dispatched. |
-| BUG-06 | P1 | Database guards do not enforce all manager-only order changes. |
-| BUG-07 | P1 | Main collections silently stop at the API row limit. |
-| BUG-08 | P1 | Refunds of legacy completed orders do not restore returned stock. |
-| BUG-09 | P2 | A price corrected to zero is displayed and printed as a positive total. |
-| BUG-10 | P2 | An arrived delivery leaves its fully fulfilled order waiting. |
-| BUG-11 | P2 | Follow-up delivery manifests record cumulative quantities as that run's load. |
-| BUG-12 | P2 | Dashboard's Add a product action can edit an existing product. |
-| BUG-13 | P2 | Refreshing an order-edit page loses the order being edited. |
-| BUG-14 | P2 | Account creation rejects phone formatting accepted by the form. |
-| BUG-15 | P2 | Renaming customers disconnects their order history. |
-| BUG-16 | P2 | Print content causes three existing browser tests to fail. |
+| ID | Priority | Finding | Status |
+| --- | --- | --- | --- |
+| BUG-01 | P1 | Failed order saves leave stock changed; retries deduct again. | Fixed — one transaction, `public.order_command` |
+| BUG-02 | P1 | Concurrent saves overwrite stock deductions. | Fixed — relative deltas under `for update` locks |
+| BUG-03 | P1 | Orders can complete before inventory has loaded. | Fixed — an unknown shelf row aborts the whole action |
+| BUG-04 | P1 | Editing cut-item orders changes their stock consumption. | Fixed — cut lines carried through the form |
+| BUG-05 | P1 | Fully refunded, cancelled orders can still be dispatched. | Fixed — a called-off order refuses dispatch |
+| BUG-06 | P1 | Database guards do not enforce all manager-only order changes. | Fixed — guard extended; confirmed live |
+| BUG-07 | P1 | Main collections silently stop at the API row limit. | Fixed — one shared paged loader |
+| BUG-08 | P1 | Refunds of legacy completed orders do not restore returned stock. | Fixed — both sites, incl. one not in this report |
+| BUG-09 | P2 | A price corrected to zero is displayed and printed as a positive total. | Fixed — zero is a real agreed price |
+| BUG-10 | P2 | An arrived delivery leaves its fully fulfilled order waiting. | Fixed — arrival finishes a settled order |
+| BUG-11 | P2 | Follow-up delivery manifests record cumulative quantities as that run's load. | Fixed — manifest records this run's load |
+| BUG-12 | P2 | Dashboard's Add a product action can edit an existing product. | Fixed — dashboard clears the selection |
+| BUG-13 | P2 | Refreshing an order-edit page loses the order being edited. | Fixed — `/orders/{id}/edit` |
+| BUG-14 | P2 | Account creation rejects phone formatting accepted by the form. | Fixed — normalised on both sides |
+| BUG-15 | P2 | Renaming customers disconnects their order history. | Fixed — `orders.customer_id`, five sites |
+| BUG-16 | P2 | Print content causes three existing browser tests to fail. | Fixed — assertions scoped to `main` |
 
 ### BUG-01 — Failed order saves leave stock changed; retries deduct again
 
