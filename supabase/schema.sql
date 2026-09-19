@@ -276,6 +276,53 @@ create table if not exists public.suppliers (
 );
 
 -- ============================================================
+-- Record ids: assigned by the database, not by the browser
+-- ============================================================
+-- Every id above used to arrive from the client as Date.now(). That is a clock
+-- reading, not an identifier, and it only ever worked because one person used
+-- the system at a time.
+--
+-- Put two people on it -- a class of testers, or one shared demo account open
+-- in thirty tabs -- and two "Save order" clicks landing in the same millisecond
+-- produce the same primary key. The loser gets a duplicate-key error on a form
+-- they filled in correctly. src/App.jsx carried an `id: Date.now() + 1` on the
+-- stock row written beside a new product for exactly this reason: two inserts
+-- in one function were reliably fast enough to collide, so the collision was
+-- hand-patched instead of removed. Across separate browsers there is nothing to
+-- hand-patch with.
+--
+-- A sequence cannot collide with itself, which is the whole point. The
+-- purchasing/production tables added later already knew this and default to
+-- private.workshop_id_seq; this brings the eight original tables in line.
+--
+-- WHY IT STARTS AT 2e12 rather than following workshop_id_seq's 4e15. These ids
+-- are read aloud and typed by people -- "Order #..." appears on screen, in
+-- toasts and on the printed slip -- so the digit count is a UI decision. 2e12
+-- keeps new ids the same 13 digits as the timestamps already in the table,
+-- where 4e15 would jump them to 16. It clears every existing row (all below
+-- 1.79e12) and stays clear of Date.now() until 2033, so a browser tab left open
+-- on the old build cannot collide with the sequence either.
+create sequence if not exists private.record_id_seq start 2000000000000;
+
+-- authenticated already holds USAGE on `private` (anon deliberately does not);
+-- nextval additionally needs it on the sequence itself, or every insert from
+-- the app fails with "permission denied for sequence".
+grant usage, select on sequence private.record_id_seq to authenticated;
+
+do $$
+declare t text;
+begin
+  foreach t in array array[
+    'inventory', 'deliveries', 'orders', 'activity_log',
+    'staff', 'customers', 'products', 'suppliers'
+  ] loop
+    execute format(
+      'alter table public.%I alter column id set default nextval(''private.record_id_seq'')', t
+    );
+  end loop;
+end $$;
+
+-- ============================================================
 -- text -> timestamptz migration
 -- ============================================================
 -- The `create table if not exists` blocks above declare these columns as
@@ -474,39 +521,29 @@ grant execute on function private.is_active_staff()       to authenticated;
 grant execute on function private.is_admin()              to authenticated;
 grant execute on function private.caller_is_super_admin() to authenticated;
 
--- Supabase Auth only ever authenticates on email, so a username has to be
--- turned into one BEFORE the password is checked - at which point the caller is
--- still anonymous and the staff policies below deny every read. This function
--- is the narrow hole that makes it possible: SECURITY DEFINER, so it runs as
--- its owner and sees the table, but it returns a single email and nothing else.
+-- public.email_for_username() USED TO LIVE HERE, AND IS DELIBERATELY GONE.
 --
--- Worth being clear about the trade: the anon key is public, so anyone can call
--- this and learn the email behind a username they guess correctly. That is the
--- cost of username login on Supabase. It reveals no password and grants no
--- access - signing in still requires the password - but if staff emails are
--- meant to stay private, this should move to an Edge Function that does the
--- whole sign-in server-side instead. This is why it stays in `public`, and why
--- it is the one remaining entry in the security advisor's report.
+-- Supabase Auth only ever authenticates on email, so a username has to become
+-- one before the password is checked - at which point the caller is still
+-- anonymous and the staff policies below deny every read. That was bridged by a
+-- SECURITY DEFINER function granted to `anon`: hand it a username, get the
+-- email back.
 --
--- Deliberately does NOT filter on status: a Blocked user must still resolve, so
--- they reach the app's "this account has been blocked" screen rather than being
--- told their username is wrong.
-create or replace function public.email_for_username(p_username text)
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $fn$
-  select email
-  from public.staff
-  where username is not null
-    and lower(username) = lower(trim(p_username))
-  limit 1;
-$fn$;
-
-revoke all on function public.email_for_username(text) from public;
-grant execute on function public.email_for_username(text) to anon, authenticated;
+-- The comment that stood here was honest that this was a trade, and named the
+-- fix. Taking the trade seriously is what ended it. The anon key ships inside
+-- the JS bundle, so the lookup was open to anyone who loaded the site, and
+-- staff usernames are short words somebody would guess first try - one of them
+-- is "admin". A stranger could POST a handful of guesses and leave with the
+-- owner's personal email address: no password, no access, just a precise list
+-- of who to phish for the account that reaches every screen in the system.
+--
+-- supabase/functions/sign-in now does the whole sign-in on the server, where
+-- the service key stays, and answers a username nobody holds exactly as it
+-- answers a wrong password. Nothing anonymous can ask who exists any more, so
+-- the function is dropped rather than merely un-granted - an ungranted one is a
+-- single `grant` away from being an open lookup again, and there is no caller
+-- left to justify keeping it.
+drop function if exists public.email_for_username(text);
 
 alter table public.inventory    enable row level security;
 alter table public.deliveries   enable row level security;
@@ -801,8 +838,10 @@ begin
   -- Everyone else may edit only their own name and contact number.
   --
   -- USERNAME IS IN THIS LIST, and was not. A username is an identity, not a
-  -- display preference: email_for_username() resolves one to an email before
-  -- the password is checked, so it is half of how somebody signs in. Without
+  -- display preference: the sign-in Edge Function resolves one to an email
+  -- before the password is checked, so it is half of how somebody signs in.
+  -- (That resolution used to be email_for_username() here; see the note above
+  -- the drop for why it moved off the browser entirely.) Without
   -- this line any non-admin could rename themselves to any name not yet taken
   -- -- including the one an administrator had just told a new hire to expect.
   -- The unique index stops two accounts HOLDING the same username; it has

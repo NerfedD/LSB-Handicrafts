@@ -698,8 +698,11 @@ export default function App() {
    * fresh id and both dates; editing merges into the selected record and
    * touches `updatedAt` only. Returns the saved record's id.
    *
-   * Ids are Date.now() because these tables use a plain bigint primary key with
-   * no sequence — the client picks them.
+   * Ids come back FROM the insert, not from a clock here. Every table defaults
+   * its id to private.record_id_seq now, so `create` omits the column and reads
+   * the assigned one off the returned row — see the note beside that sequence
+   * in supabase/schema.sql for what two testers clicking Save in the same
+   * millisecond used to do to each other.
    */
   function makeRecordSaveHandler(kind) {
     const byKind = {
@@ -730,12 +733,27 @@ export default function App() {
         return targetId;
       }
 
-      const id = Date.now();
-      const result = await state.create({ ...values, id, createdAt: now, updatedAt: now });
+      const result = await state.create({ ...values, createdAt: now, updatedAt: now });
       if (!result.ok) {
         toast.error(result.message || "That record was not saved.");
         return result;
       }
+      const id = result.data?.id ?? null;
+
+      // The row saved and its id did not come back, which an insert can do when
+      // the new row falls outside the caller's SELECT policy. The save is still
+      // a success and must be reported as one -- the dialog reads null as a
+      // failure and would tell somebody to retype a record that already
+      // exists. What is dropped is only what needs the number: "View" would
+      // open a detail screen with nothing selected, and the activity entry
+      // would be filed under a subject nothing can match.
+      if (id === null) {
+        setProfileDialog(null);
+        toast.success(`${values.name} was added.`);
+        logActivity({ kind: activityKind, what: `added ${label.toLowerCase()} ${values.name}` });
+        return { ok: true };
+      }
+
       setSelectedId(id);
       setProfileDialog(null);
       toast.success(`${values.name} was added.`, {
@@ -893,20 +911,24 @@ export default function App() {
       packSize: values.packSize === "" ? 1 : Number(values.packSize),
     };
 
-    const productId = retryProduct?.id ?? (editing ? selectedProductId : Date.now());
+    // Null on a first save: the id is the database's to assign, and comes back
+    // on the returned row below.
+    const knownId = retryProduct?.id ?? (editing ? selectedProductId : null);
     const result = editing
-      ? await productsState.update(productId, {
+      ? await productsState.update(knownId, {
           ...selectedProduct,
           ...catalogue,
           updatedAt: now,
         })
-      : await productsState.create({ ...catalogue, id: productId, createdAt: now, updatedAt: now });
+      : await productsState.create({ ...catalogue, createdAt: now, updatedAt: now });
 
     if (!result.ok) {
       setBusy(false);
       toast.error(result.message || "That product was not saved.");
       return result;
     }
+
+    const productId = knownId ?? result.data?.id ?? null;
 
     // The stock half. Matched on sku == itemCode, which is the join.
     const existingStock = inventory.find(
@@ -937,7 +959,11 @@ export default function App() {
 
       const stockResult = existingStock
         ? await inventoryState.update(existingStock.id, { ...existingStock, ...ledger })
-        : await inventoryState.create({ ...ledger, id: Date.now() + 1 });
+        // No id: the sequence supplies one. The `Date.now() + 1` that stood
+        // here was a hand-patch for this insert landing in the same
+        // millisecond as the catalogue row above it -- which it reliably did,
+        // being the very next statement.
+        : await inventoryState.create(ledger);
 
       // The catalogue entry saved and the stock row did not. Say exactly that
       // rather than reporting a clean success or a total failure -- both would
@@ -945,7 +971,9 @@ export default function App() {
       // already exists.
       if (!stockResult.ok) {
         setBusy(false);
-        productRetryRef.current = { id: productId };
+        // Only worth remembering if there is an id to retry against; without
+        // one the retry would try to update a row keyed on null.
+        productRetryRef.current = productId === null ? null : { id: productId };
         const message = `The product was saved, but its shelf count was not. ${stockResult.message || 'Check the count and save again.'}`;
         toast.error(message);
         return { ok: false, message };
@@ -955,6 +983,23 @@ export default function App() {
 
     setBusy(false);
     productRetryRef.current = null;
+
+    // Both halves are written; only the catalogue row's id is missing, which an
+    // insert can do when the new row falls outside the caller's SELECT policy.
+    // The save is reported as the success it is, but WITHOUT the jump to the
+    // detail screen -- that screen is keyed on the id, so opening it with none
+    // would show an empty page for a product that saved perfectly well. The
+    // activity entry is unaffected: it is filed under the item code, not the id.
+    if (productId === null) {
+      toast.success(`${catalogue.name} was saved.`);
+      logActivity({
+        kind: ACTIVITY_KIND.PRODUCT,
+        what: editing ? `updated ${catalogue.name}` : `added ${catalogue.name}`,
+        subject: values.itemCode,
+      });
+      return { ok: true };
+    }
+
     setSelectedProductId(productId);
     setView("product-detail");
     toast.success(`${catalogue.name} was saved.`, {
@@ -1075,10 +1120,11 @@ export default function App() {
   async function saveOrder({ customerName, items, totalAmount, delivery }) {
     setBusy(true);
     try {
-    const id = orderRetryRef.current?.id ?? Date.now();
+    // Set only on a retry, where the order row already exists and is being
+    // finished rather than written again. Otherwise the id is the database's.
+    const retryId = orderRetryRef.current?.id ?? null;
 
     const payload = {
-      id,
       customerName,
       items,
       totalAmount,
@@ -1086,7 +1132,9 @@ export default function App() {
       createdAt: nowIso(),
       stockCommittedAt: null,
     };
-    const result = orderRetryRef.current ? await ordersState.update(id, payload) : await ordersState.create(payload);
+    const result = retryId !== null
+      ? await ordersState.update(retryId, payload)
+      : await ordersState.create(payload);
 
     if (!result.ok) {
       setBusy(false);
@@ -1094,11 +1142,24 @@ export default function App() {
       return result;
     }
 
+    const id = retryId ?? result.data?.id ?? null;
+
+    // The order is in the table and its number is not on this screen, which
+    // only an insert filtered by a SELECT policy can produce. Every line below
+    // is keyed on that number -- the delivery's join string most of all -- so
+    // guessing one would attach the delivery to the wrong order or to none.
+    if (id === null) {
+      setBusy(false);
+      orderRetryRef.current = null;
+      const message = "The order was saved, but its number did not come back, so the delivery was not raised. Open the order from the list to finish it.";
+      toast.error(message);
+      return { ok: false, message };
+    }
+
     if (delivery) {
       // The link between the two tables is this string. See utils/orders --
       // there is no foreign key, and the trailing "-" is load-bearing.
       const deliveryResult = await deliveriesState.create({
-        id: id + 1,
         product: `Order #${id} - ${customerName}`,
         size: items.map((item) => `${item.quantity} × ${item.name}`).join(", "),
         location: delivery.location,
@@ -1214,7 +1275,6 @@ export default function App() {
       if (!moved.ok) deliveryNote = "The order was saved, but its delivery was not updated.";
     } else if (delivery && !existing) {
       const raised = await deliveriesState.create({
-        id: Date.now(),
         product: `Order #${order.id} - ${customerName}`,
         size: summary,
         location: delivery.location,
@@ -1763,7 +1823,6 @@ export default function App() {
 
     if (short.length > 0) {
       const followUpResult = await deliveriesState.create({
-        id: Date.now(),
         product: `Order #${order.id} - ${order.customerName}${BACKORDER_SUFFIX}`,
         size: short.map((line) => `${line.backorderQty} × ${line.name}`).join(", "),
         location: delivery.location,

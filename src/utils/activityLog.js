@@ -73,23 +73,19 @@ export const ACTIVITY_CHIPS = [
   },
 ];
 
-let lastId = 0;
-
-/**
- * A monotonic id.
- *
- * Every table in this app uses a plain bigint primary key with no sequence, so
- * the client picks them, and everywhere else Date.now() is enough. Not here:
- * marking an order done writes one entry for the order and one per product
- * whose stock moved, back to back, and two calls inside the same millisecond
- * would collide on the primary key. The second insert would be rejected — and
- * record() swallows failures by design, so the entry would simply vanish.
- */
-function nextId() {
-  const now = Date.now();
-  lastId = now > lastId ? now : lastId + 1;
-  return lastId;
-}
+// nextId() USED TO LIVE HERE, and what it worked around is now gone.
+//
+// Every table took a client-picked bigint primary key, so entries were keyed on
+// Date.now() — and marking an order done writes one entry for the order plus
+// one per product whose stock moved, back to back, fast enough to land in the
+// same millisecond. The second insert was rejected, and because record()
+// swallows failures by design, that entry simply vanished. A monotonic counter
+// papered over it INSIDE ONE TAB, which was the whole limit of the fix: two
+// people on the feed at once, or one demo account open in several browsers,
+// collided again with nothing to count against.
+//
+// activity_log now defaults its id to private.record_id_seq, so the database
+// hands out the ids and no two callers can be handed the same one.
 
 /**
  * Writes one entry.
@@ -106,7 +102,6 @@ function nextId() {
 export async function record({ kind, who, what, subject = null, amount = null }) {
   try {
     await activityLogCollection.create({
-      id: nextId(),
       type: kind,
       staffName: who || "Somebody",
       description: what,

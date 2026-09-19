@@ -14,8 +14,9 @@
 --   Authentication → Users → Add User, with ✅ Auto Confirm User checked,
 --   using the five emails below and whatever demo password you've agreed on.
 --
--- `username` is what these accounts actually sign in with — LoginPage trades it
--- for the email through the email_for_username RPC (see schema.sql). Note the
+-- `username` is what these accounts actually sign in with — LoginPage hands it
+-- to the `sign-in` Edge Function, which resolves it server-side and never tells
+-- the browser the address (see supabase/functions/sign-in). Note the
 -- production account signs in as "production" but its email is prod@email.com;
 -- they don't have to match.
 

@@ -40,25 +40,45 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
-   * Supabase Auth only authenticates on email, so a username has to be traded
-   * for one first. `email_for_username` is a SECURITY DEFINER function — see
-   * supabase/schema.sql — because at this point nobody is signed in yet and the
-   * staff policies deny every ordinary read.
+   * Sign in with either an email or a username.
    *
-   * Anything containing "@" is taken as an email and passed straight through,
-   * so this costs a round trip only for people who actually type a username.
+   * TWO PATHS, AND THE SPLIT IS THE SECURITY FIX. An email goes straight to
+   * GoTrue from here, exactly as it always has — the browser already knows the
+   * address, so there is nothing to hide and nothing to gain by moving it.
+   *
+   * A username goes to the `sign-in` Edge Function instead. It used to be
+   * traded for an email first, through a SECURITY DEFINER RPC granted to
+   * `anon`: hand it a username, get the address back. The anon key ships in
+   * this bundle, so that was an open lookup — and staff usernames are short
+   * words, one of them "admin". Guessing a few returned real personal email
+   * addresses to anybody who asked. The function does the whole sign-in on the
+   * server now and this screen never learns an address it was not already
+   * given, so there is no question left to ask anonymously.
+   *
+   * The error comes back shaped like a GoTrue one, so the mapping below does
+   * not care which path produced it.
    */
-  async function resolveEmail(value) {
-    if (value.includes("@")) return value;
+  async function signIn(identifier, password) {
+    if (identifier.includes("@")) {
+      return supabase.auth.signInWithPassword({ email: identifier, password });
+    }
 
-    const { data, error } = await supabase.rpc("email_for_username", {
-      p_username: value,
+    const { data, error } = await supabase.functions.invoke("sign-in", {
+      body: { identifier, password },
     });
-    // A username nobody holds is a failed sign-in, not a distinct error — it
-    // would otherwise tell a stranger which usernames exist.
+    // A transport failure, not a verdict on the credentials. Thrown so the
+    // catch below calls it what it is: the network.
     if (error) throw error;
-    if (!data) return null;
-    return data;
+    // A username nobody holds and a wrong password come back identically, so
+    // this cannot tell a stranger which usernames exist.
+    if (data?.error) return { data: null, error: data.error };
+    if (!data?.session) throw new Error("No session returned.");
+
+    // Writes through the storage adapter in lib/supabaseClient, so "Keep me
+    // signed in" still decides local vs session storage.
+    const { error: sessionError } = await supabase.auth.setSession(data.session);
+    if (sessionError) return { data: null, error: sessionError };
+    return { data: { user: data.user }, error: null };
   }
 
   async function handleSubmit(event) {
@@ -66,18 +86,13 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
     if (isSubmitting || !identifier.trim() || !password) { setStatus("wrong"); return; }
     setIsSubmitting(true);
 
-    // Before signInWithPassword, not after: this decides WHERE the client
-    // writes the session, and the write happens inside that call.
+    // Before the sign-in, not after: this decides WHERE the client writes the
+    // session, and the write happens inside that call — whichever of the two
+    // paths in signIn() ends up performing it.
     setKeepSignedIn(keepSignedIn);
 
     try {
-      const email = await resolveEmail(identifier.trim());
-      if (!email) {
-        setStatus("wrong");
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await signIn(identifier.trim(), password);
       if (error) {
         setStatus(error.code === 'user_banned' || /banned|blocked|suspended/i.test(error.message)
           ? 'blocked' : error.status === 429 ? 'rate-limited'

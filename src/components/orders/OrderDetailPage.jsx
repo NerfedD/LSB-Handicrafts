@@ -33,6 +33,7 @@ import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StageTracker from "../shared/StageTracker";
+import OrderSlip from "./OrderSlip";
 import StatusPill from "../shared/StatusPill";
 import { DELIVERY_STAGE, ORDER_STATUS } from "../../utils/constants";
 import {
@@ -131,6 +132,18 @@ export default function OrderDetailPage({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Invisible on screen, and the only thing on the page once somebody
+          presses Print. It lives here rather than in App.jsx because it needs
+          the same order, customer and delivery this screen already resolved --
+          and a second resolution of the same three is a second chance for the
+          paper and the screen to disagree. */}
+      <OrderSlip
+        order={order}
+        customer={customer}
+        delivery={delivery}
+        deliveries={deliveries}
+      />
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" size="sm" className="px-2" onClick={onBack}>
           <ArrowLeft className="h-5 w-5" />

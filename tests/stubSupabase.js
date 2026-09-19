@@ -21,6 +21,15 @@ import { SIGNED_IN_EMAIL, TABLES } from "./fixtures.js";
  * rather than quietly returning nothing.
  */
 
+/**
+ * Stands in for private.record_id_seq.
+ *
+ * Starts where the real sequence does, so an id minted here is the same shape
+ * as one from the database and cannot be mistaken for a fixture's.
+ */
+let recordId = 2_000_000_000_000;
+const nextRecordId = () => (recordId += 1);
+
 /** An unsigned JWT. Nothing client-side verifies it; supabase-js only decodes. */
 function fakeJwt(payload) {
   const b64 = (obj) =>
@@ -116,7 +125,17 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
     const body = request.postData() ? JSON.parse(request.postData()) : null;
 
     if (method === "POST") {
-      const created = Array.isArray(body) ? body[0] : body;
+      const sent = Array.isArray(body) ? body[0] : body;
+      // The id is assigned HERE because the real database assigns it: every
+      // table defaults `id` to private.record_id_seq and the app deliberately
+      // omits the column (see storageManager.createRow). A stub that echoed the
+      // posted body straight back would hand the app a row with no id, which is
+      // the one shape PostgREST never returns -- and the screens would take
+      // their "the row saved but its number did not come back" branch on every
+      // single insert.
+      const created = sent?.id === undefined || sent?.id === null
+        ? { ...sent, id: nextRecordId() }
+        : sent;
       rows.push(created);
       onWrite?.({ table: key, method, row: created });
       return json(route, [created], 201);

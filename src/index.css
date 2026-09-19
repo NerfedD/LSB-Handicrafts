@@ -399,3 +399,300 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
     scroll-behavior: auto !important;
   }
 }
+
+/* ---- the printed order slip ------------------------------------------------
+ *
+ * See components/orders/OrderSlip.jsx for what this document is and why it is
+ * not the order screen with its furniture hidden. This half is the medium: a
+ * sheet of A4 in an office inkjet, read at arm's length and then filed or
+ * handed over.
+ *
+ * PAPER IS NOT A SMALL SCREEN, and three of this system's rules change shape
+ * when they cross over:
+ *
+ *   TYPE. The 16px floor exists so a screen can be read from a standing
+ *   position at a counter. A held sheet is 35cm from the eye rather than 60cm+,
+ *   where 11pt subtends a larger angle than 16px does — so 11pt body here IS
+ *   the floor, honoured in what it was for rather than in its number. Nothing
+ *   drops below 9pt, and what does is a tracked uppercase signpost or a footer
+ *   line, which is the same exception the screen already names.
+ *
+ *   COLOUR. Ink costs money and most offices print mono. So the palette is
+ *   spent once — navy on the business's own name and the rule under it — and
+ *   every other distinction is carried by weight, rule and space, which survive
+ *   a greyscale cartridge intact. There are no filled bands: a header band is a
+ *   rule here, not a block of toner.
+ *
+ *   DEPTH. There is none. Shadow does not exist on paper, and a page that tries
+ *   to imply it reads as a screenshot of something else, which is the exact
+ *   thing this replaced.
+ * --------------------------------------------------------------------------- */
+
+/* Off-screen entirely. It exists in the DOM only so the printer can find it. */
+.slip { display: none; }
+
+@media print {
+  /* A4, with margins wide enough to survive a printer's unprintable edge and
+     to leave a thumb's worth of room beside the item table. */
+  @page {
+    size: A4;
+    margin: 16mm 15mm;
+  }
+
+  /* The application, gone in one line — which is the whole reason the slip is
+     portalled to <body> rather than nested inside the page that opened it. */
+  #root { display: none !important; }
+
+  html, body {
+    background: #fff;
+    margin: 0;
+    padding: 0;
+  }
+
+  .slip {
+    display: block;
+    color: #111d2b;
+    font-family: Manrope, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slip p { margin: 0; }
+
+  /* ---- letterhead ---- */
+  .slip-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12mm;
+  }
+
+  .slip-brand {
+    font-size: 20pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: #0e2f5c;
+  }
+
+  .slip-trade {
+    padding-top: 1.5mm;
+    font-size: 9.5pt;
+    color: #4b5768;
+  }
+
+  .slip-head-right { text-align: right; }
+
+  /* The tracked uppercase signpost, read once — the one place type is allowed
+     below the body size, exactly as on screen. */
+  .slip-doc {
+    font-size: 9pt;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #4b5768;
+  }
+
+  .slip-number {
+    font-size: 19pt;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  .slip-written {
+    padding-top: 1mm;
+    font-size: 9.5pt;
+    color: #4b5768;
+  }
+
+  /* Where the order stands. Ordinary standings are a quiet tracked caption; a
+     called-off order is boxed in the alert red, because it is the one thing on
+     this page somebody must not miss and a greyscale printer flattens colour
+     alone into nothing. The border is what survives the mono cartridge. */
+  .slip-standing {
+    display: inline-block;
+    margin-top: 2mm;
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #4b5768;
+  }
+
+  .slip-standing-off {
+    padding: 1mm 2.5mm;
+    border: 0.4mm solid #a8332f;
+    color: #a8332f;
+  }
+
+  /* The one confident mark on the page. Everything below it is quiet. */
+  .slip-rule {
+    height: 1.2mm;
+    margin: 4mm 0 6mm;
+    background: #0e2f5c;
+  }
+
+  /* ---- who, where, when ---- */
+  .slip-parties {
+    display: flex;
+    gap: 8mm;
+    padding-bottom: 7mm;
+  }
+
+  /* Two columns, not three, and the customer gets the wider one: an address is
+     the longest thing on this page and was breaking over three lines inside a
+     third of the sheet. */
+  .slip-party { flex: 1 1 0; min-width: 0; }
+  .slip-party:first-child { flex: 1.2 1 0; }
+
+  .slip-party-title {
+    padding-bottom: 1.5mm;
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: #4b5768;
+  }
+
+  .slip-line {
+    font-size: 10.5pt;
+    line-height: 1.4;
+  }
+
+  .slip-line strong { font-weight: 800; }
+
+  /* ---- what was ordered ---- */
+  .slip-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  /* The one thing a printed table must do and a screen one never has to: carry
+     its own column headings onto the second sheet. */
+  .slip-table thead { display: table-header-group; }
+  .slip-table tr { break-inside: avoid; }
+
+  .slip-table th {
+    padding: 0 0 2mm;
+    border-bottom: 0.6mm solid #111d2b;
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: left;
+    color: #111d2b;
+  }
+
+  .slip-table td {
+    padding: 2.6mm 0;
+    border-bottom: 0.2mm solid rgba(17, 29, 43, 0.18);
+    font-size: 10.5pt;
+    vertical-align: top;
+  }
+
+  /* Padding, not just width. Butted up against each other these read as one
+     phrase -- "HOW MANY EACH" -- rather than as two column headings, and the
+     figures under them ran together the same way. */
+  .slip-th-qty, .slip-td-qty { width: 28mm; padding-left: 8mm; text-align: right; }
+  .slip-th-money, .slip-td-money { width: 34mm; padding-left: 8mm; text-align: right; }
+  .slip-td-money, .slip-td-qty { font-variant-numeric: tabular-nums; }
+
+  /* ---- what it comes to ---- */
+  .slip-totals {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 5mm;
+    break-inside: avoid;
+  }
+
+  .slip-totals dl {
+    width: 78mm;
+    margin: 0;
+  }
+
+  .slip-totals div {
+    display: flex;
+    justify-content: space-between;
+    gap: 6mm;
+    padding: 1.4mm 0;
+  }
+
+  .slip-totals dt { font-size: 10.5pt; color: #324054; }
+  .slip-totals dd { margin: 0; font-size: 10.5pt; font-weight: 700; }
+
+  /* The figure read aloud to a customer. It gets the page's second rule and the
+     only other size jump, because it is the one number anybody looks for. */
+  .slip-total-row {
+    margin-top: 1.5mm;
+    border-top: 0.5mm solid #111d2b;
+    padding-top: 2.5mm !important;
+  }
+
+  .slip-total-row dt {
+    font-size: 12pt !important;
+    font-weight: 800;
+    color: #111d2b !important;
+  }
+
+  .slip-total-row dd { font-size: 14pt !important; font-weight: 800; }
+
+  /* ---- anything that changed after the fact ---- */
+  .slip-notes {
+    margin-top: 6mm;
+    padding-top: 3mm;
+    border-top: 0.2mm solid rgba(17, 29, 43, 0.18);
+    break-inside: avoid;
+  }
+
+  .slip-notes p {
+    padding-bottom: 1.2mm;
+    font-size: 9.5pt;
+    color: #324054;
+  }
+
+  /* ---- signatures ---- */
+  .slip-sign {
+    display: flex;
+    gap: 14mm;
+    padding-top: 16mm;
+    break-inside: avoid;
+  }
+
+  .slip-sign > div { flex: 1 1 0; }
+
+  .slip-sign-line {
+    height: 0;
+    border-top: 0.3mm solid #111d2b;
+  }
+
+  .slip-sign p {
+    padding-top: 1.5mm;
+    font-size: 8.5pt;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4b5768;
+  }
+
+  /* ---- the honest footer ---- */
+  .slip-foot {
+    margin-top: 10mm;
+    padding-top: 3mm;
+    border-top: 0.2mm solid rgba(17, 29, 43, 0.18);
+    break-inside: avoid;
+  }
+
+  .slip-foot p {
+    font-size: 9pt;
+    line-height: 1.45;
+    color: #4b5768;
+  }
+
+  .slip-foot strong { font-weight: 800; color: #111d2b; }
+
+  .slip-foot p + p { padding-top: 1.5mm; }
+}

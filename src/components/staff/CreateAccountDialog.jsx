@@ -67,7 +67,7 @@ const ROLE_ICONS = {
  *
  * Case-insensitively, because that is how both the database and the sign-in
  * screen compare them: staff_email_lower_idx and staff_username_lower_idx are
- * built over lower(), and email_for_username() looks up on lower(trim()). A
+ * built over lower(), and the sign-in Edge Function matches on lower(trim()). A
  * check that disagreed with those would pass here and fail there, which is
  * worse than not checking at all.
  */

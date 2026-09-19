@@ -423,9 +423,22 @@ const humanizeError = (error, fallback) => {
  * the user a green "saved successfully" panel.
  */
 const createRow = async (table, row, toRow = identity) => {
+  const payload = toRow(row);
+
+  // The id is the DATABASE'S to pick, and leaving it out is how it gets to.
+  // Every table here defaults its id to nextval('private.record_id_seq') --
+  // see the note beside that sequence in schema.sql for why the browser is no
+  // longer trusted with a clock reading as a primary key.
+  //
+  // It has to be DELETED rather than left undefined. The toRow mappers all
+  // write `id: x` unconditionally, and while JSON.stringify drops an undefined
+  // value, a null one survives -- and an explicit null does not fall back to a
+  // column default, it violates the primary key's NOT NULL. So both go.
+  if (payload.id === undefined || payload.id === null) delete payload.id;
+
   const { data, error } = await supabase
     .from(table)
-    .insert(toRow(row))
+    .insert(payload)
     .select()
     .maybeSingle();
 
