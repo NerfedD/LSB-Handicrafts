@@ -1184,6 +1184,60 @@ $fn$;
 revoke all on function private.is_manager_or_admin() from public;
 grant execute on function private.is_manager_or_admin() to authenticated;
 
+-- WHAT THE SCREENS RESERVE, THE DATABASE MUST RESERVE TOO. The UPDATE policy
+-- above is is_active_staff() for both USING and WITH CHECK, deliberately --
+-- marking an order done is the ordinary work of the shop. WHICH COLUMNS may
+-- change is answered here, and it used to ask only about money, which left
+-- three things open to any active account going straight to the API: rewriting
+-- what is on an order, renaming who it is for, and calling it off. All three
+-- are canHandleMoney() on screen (see OrderDetailPage), i.e. manager or admin.
+--
+-- `items` IS NOT COMPARED WHOLE, and that is the trap in fixing this. Marking
+-- an order done legitimately rewrites items -- commitOrder stamps each line's
+-- committedUnits, and a dispatch does the same -- so comparing the column would
+-- block the one action this policy is deliberately open for. The app also
+-- normalises lines on the way through (normalizeItem in src/utils/orderItems.js)
+-- and ADDS keys while doing it: `kind` and a `price` mirror of unitPrice appear
+-- on rows stored without them, and numbers held as strings come back as
+-- numbers. Comparing the column would call all of that an edit and refuse
+-- ordinary staff on exactly the rows with the oldest data.
+--
+-- So only the COMMERCIAL shape is compared -- which products, how many, at what
+-- price -- read through ->> and cast to numeric, so 5 and "5" are one number
+-- and an added key is invisible. The fulfilment counters staff are allowed to
+-- move are not in the projection at all.
+create or replace function private.order_num(value text)
+returns numeric language sql immutable set search_path = '' as $fn$
+  -- Never raises. Something that is not a number reads as 0 on both sides of
+  -- the comparison, so it cannot by itself look like an edit.
+  select case when value ~ '^\s*-?[0-9]+(\.[0-9]+)?\s*$' then value::numeric else 0 end;
+$fn$;
+
+create or replace function private.order_line_shape(items jsonb)
+returns jsonb language sql immutable set search_path = '' as $fn$
+  select coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'p', nullif(line ->> 'productId', ''),
+        'q', private.order_num(line ->> 'quantity'),
+        -- unitPrice falling back to price is what normalizeItem does; matching
+        -- it keeps a normalised line equal to the one it came from.
+        'u', private.order_num(coalesce(nullif(line ->> 'unitPrice', ''), line ->> 'price'))
+      )
+      order by ord
+    ),
+    '[]'::jsonb
+  )
+  from jsonb_array_elements(
+         case when jsonb_typeof(items) = 'array' then items else '[]'::jsonb end
+       ) with ordinality as t(line, ord);
+$fn$;
+
+revoke all on function private.order_num(text)          from public, anon;
+revoke all on function private.order_line_shape(jsonb)  from public, anon;
+grant execute on function private.order_num(text)         to authenticated;
+grant execute on function private.order_line_shape(jsonb) to authenticated;
+
 create or replace function public.orders_guard_money_update()
 returns trigger language plpgsql security definer set search_path = public as $fn$
 begin
@@ -1211,11 +1265,22 @@ begin
   -- the shop, and old.status is 'Pending' on that path, so this never fires for
   -- it. What this catches is the way BACK: Completed to anything else puts
   -- goods back on the shelf and contradicts what a customer was already told.
-  -- App.reopenOrder refuses first and the screen shows the block only to an
-  -- admin or a manager, but the anon key ships in the JS bundle and only this
-  -- runs on the server.
   if old.status = 'Completed' and new.status is distinct from old.status then
     raise exception 'Only an administrator or a manager can put a finished order back to waiting';
+  end if;
+
+  -- Calling an order off is the same decision as refunding it, and the screen
+  -- already treats it that way.
+  if old.status is distinct from 'Cancelled' and new.status = 'Cancelled' then
+    raise exception 'Only an administrator or a manager can call off an order';
+  end if;
+
+  if private.order_line_shape(new.items) is distinct from private.order_line_shape(old.items) then
+    raise exception 'Only an administrator or a manager can change what is on an order';
+  end if;
+
+  if new.customer_name is distinct from old.customer_name then
+    raise exception 'Only an administrator or a manager can change who an order is for';
   end if;
 
   return new;
