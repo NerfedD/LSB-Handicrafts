@@ -255,11 +255,18 @@ export function commitPartialDelivery(inventory, order, delivered = [], now = ne
     wanted.set(index, positive(entry.units));
   }
 
+  const lines = normalizeItems(order?.items);
+  // Same reading uncommitOrder takes: an order stamped before the counters
+  // existed has no per-line record of what left, and its whole draw did.
+  // Reading `already` as 0 here would treat stock that is long gone as still on
+  // the shelf and deduct it a second time.
+  const legacy = isLegacyCommitted(order, lines);
+
   const draw = new Map();
-  const items = normalizeItems(order?.items).map((line, index) => {
+  const items = lines.map((line, index) => {
     if (!wanted.has(index)) return line;
 
-    const already = committedOf(line);
+    const already = legacy ? orderedOf(line) : committedOf(line);
     const ceiling = Math.max(0, orderedOf(line) - voidedOf(line));
     const target = Math.min(wanted.get(index), ceiling);
     const delta = target - already;
@@ -319,11 +326,23 @@ export function handleRefundStock(inventory, order, refundLines = []) {
   const back = new Map();
   const scrapped = [];
 
-  const items = normalizeItems(order?.items).map((line, index) => {
+  const lines = normalizeItems(order?.items);
+  // THE COUNTER CAN BE MISSING RATHER THAN ZERO, and the two mean opposite
+  // things. uncommitOrder has always known this; this function did not, and read
+  // a legacy line's absent committedUnits as "nothing ever left the building".
+  // `returnable` was then min(units, 0) = 0, so a refund on an older completed
+  // order put NOTHING back on the shelf while still raising voidedUnits by the
+  // full amount -- the goods came back through the door and the system carried
+  // on selling from a count that did not include them.
+  const legacy = isLegacyCommitted(order, lines);
+
+  const items = lines.map((line, index) => {
     const entry = byIndex.get(index);
     if (!entry) return line;
 
-    const committed = committedOf(line);
+    // Writing the counter back below also migrates the line out of the legacy
+    // shape, so this reading is needed once per line and never again.
+    const committed = legacy ? orderedOf(line) : committedOf(line);
     const returnable = Math.min(entry.units, committed);
 
     if (returnable > 0) {

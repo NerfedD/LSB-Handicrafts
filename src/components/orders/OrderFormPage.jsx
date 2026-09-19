@@ -64,6 +64,17 @@ const emptyLine = () => ({
   unitPrice: 0,
   listPrice: 0,
   custom: false,
+  // Carried so a line this form cannot BUILD can still survive being edited.
+  // A cut-to-size line is the case: its kind and its parent-sheet draw are
+  // decided where the cutting is worked out, not here, and a new row has
+  // neither until it is seeded from a saved one.
+  kind: null,
+  stockUnits: null,
+  // The quantity this row was SEEDED with, kept still while `quantity` is
+  // typed in. A cut line's draw scales against the pairing it arrived as, so
+  // comparing against the live field would make every keystroke its own new
+  // baseline and the draw would never move.
+  seededQuantity: null,
 });
 
 /**
@@ -105,6 +116,14 @@ function seedLines(order, products, inventory) {
       quantity: String(item.quantity ?? ""),
       unitPrice: String(item.unitPrice ?? 0),
       listPrice: Number(item.listPrice ?? item.unitPrice ?? 0),
+      // A cut line draws WHOLE PARENT SHEETS -- three sheets can yield twelve
+      // finished pieces -- so its kind and its draw have to come back out of
+      // the saved line. Rebuilding them from the row, the way an ordinary line
+      // is rebuilt, sets the draw to the number of PIECES and quadruples what
+      // comes off the shelf.
+      kind: item.kind ?? null,
+      stockUnits: Number(item.stockUnits ?? 0),
+      seededQuantity: Number(item.quantity ?? 0),
     };
   });
 }
@@ -266,8 +285,35 @@ export default function OrderFormPage({
     try {
     const result = await onSave({
       customerName: customerName.trim(),
-      items: filled.map((line) => ({
-        kind: line.custom
+      items: filled.map((line) => {
+        // A CUT LINE IS NOT REBUILT, IT IS CARRIED. This form knows how to make
+        // a catalogue, negotiated or by-hand line and nothing else, so a saved
+        // cut line used to come out the other side as one of those three: its
+        // kind flipped, its cutting notes were dropped, and stockUnits was
+        // rewritten from the parent-sheet count to the piece count -- twelve
+        // pieces off a three-sheet draw became a twelve-sheet draw, quadrupling
+        // what the order reserved and later deducted, on somebody saving an
+        // unrelated change to the delivery address.
+        //
+        // The draw scales with the quantity because that is the physical fact:
+        // twelve pieces from three sheets is four to a sheet, so twenty-four
+        // pieces need six. Rounded UP -- a part-used sheet has still left the
+        // shelf. An unchanged quantity scales by exactly one and comes back the
+        // number it went in as.
+        const wasCut = line.kind === LINE_KIND.CUT;
+        const quantity = Number(line.quantity);
+        const cutDraw = () => {
+          const originalQty = Number(line.seededQuantity);
+          const originalDraw = Number(line.stockUnits);
+          if (!originalDraw || !originalQty) return originalDraw || 0;
+          const perParent = originalQty / originalDraw;
+          return perParent > 0 ? Math.ceil(quantity / perParent) : originalDraw;
+        };
+
+        return {
+        kind: wasCut
+          ? LINE_KIND.CUT
+          : line.custom
           ? LINE_KIND.CUSTOM
           : Number(line.unitPrice) !== Number(line.listPrice)
             ? LINE_KIND.NEGOTIATED
@@ -275,14 +321,16 @@ export default function OrderFormPage({
         // The ledger row's id, not the catalogue row's — see stockRowIdFor.
         productId: line.custom ? null : stockRowIdFor(line.productId),
         name: line.name,
-        notes: line.custom ? line.notes.trim() || undefined : undefined,
-        quantity: Number(line.quantity),
+        // Cutting instructions are the point of a cut line, not decoration.
+        notes: wasCut || line.custom ? line.notes.trim() || undefined : undefined,
+        quantity,
         unitPrice: Number(line.unitPrice),
         listPrice: Number(line.listPrice),
-        lineTotal: Number(line.unitPrice) * Number(line.quantity),
+        lineTotal: Number(line.unitPrice) * quantity,
         // A custom shape consumes no catalog stock — see normalizeItem.
-        stockUnits: line.custom ? 0 : Number(line.quantity),
-      })),
+        stockUnits: wasCut ? cutDraw() : line.custom ? 0 : quantity,
+        };
+      }),
       totalAmount: total,
       delivery: address.trim()
         ? {

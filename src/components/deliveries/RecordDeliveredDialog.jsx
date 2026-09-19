@@ -133,16 +133,30 @@ export default function RecordDeliveredDialog({
           lineIndex: line.index,
           units: Math.min(asUnits(went[line.index]), line.ceiling),
         })),
-      manifest: lines.map((line) => ({
-        productId: line.productId ?? null,
-        name: line.name,
-        orderedQty: line.ordered,
-        deliveredQty: Math.min(asUnits(went[line.index]), line.ceiling),
-        backorderQty: Math.max(
-          0,
-          line.ceiling - Math.min(asUnits(went[line.index]), line.ceiling)
-        ),
-      })),
+      // THE MANIFEST IS THIS RUN'S LOAD, not the running total the ledger above
+      // is given. The two were written from the same number, so on a follow-up
+      // for a shortfall the second van's manifest claimed the whole order: 20
+      // ordered, 12 already gone, 8 actually carried -- and both manifests
+      // together reported 32 delivered against a 20-unit order. What the ledger
+      // deducted was right; what the delivery said it carried was not.
+      //
+      // Subtracting what had already gone leaves what this vehicle took. The
+      // input itself stays a running total, which is what it is labelled as
+      // ("20 on the order, 12 already gone") and what its min attribute
+      // enforces -- reading it as this trip alone would put the default below
+      // its own minimum.
+      manifest: lines.map((line) => {
+        const runningTotal = Math.min(asUnits(went[line.index]), line.ceiling);
+        return {
+          productId: line.productId ?? null,
+          name: line.name,
+          orderedQty: line.ordered,
+          deliveredQty: Math.max(0, runningTotal - line.committed),
+          // Still owed once this run is counted, which is a remainder rather
+          // than a per-trip figure and was already right.
+          backorderQty: Math.max(0, line.ceiling - runningTotal),
+        };
+      }),
       followUp: isShort ? { driver: driver.trim(), dueOn } : null,
     });
     setSaving(false);

@@ -235,3 +235,34 @@ test('desktop sidebar stays anchored through forms and dialogs; phone has no hor
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.screenshot({ path: 'test-results/remediation-mobile.png', fullPage: true, animations: 'disabled' });
 });
+
+/**
+ * A cut-to-size line survives an unrelated edit.
+ *
+ * Order #1041 carries one: twelve finished pieces cut from three parent sheets,
+ * with the cutting instructions in its notes. The form can only BUILD catalogue,
+ * negotiated and by-hand lines, so re-saving the order used to rewrite the cut
+ * line as one of those -- kind flipped, notes dropped, and the draw rewritten
+ * from three sheets to twelve. The order then reserved, and later deducted, four
+ * times the stock it should have, because somebody changed the address.
+ */
+test('editing an order leaves its cut-to-size line alone', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page); await signIn(page, baseURL);
+
+  const before = tables.orders.find((row) => row.id === 1041).items
+    .find((line) => line.kind === 'cut');
+  expect(before, 'fixture should carry a cut line').toBeTruthy();
+
+  await page.goto(`${baseURL}/orders/1041/edit`);
+  await expect(page.getByRole('heading', { level: 1, name: 'Change this order' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save the changes' }).click();
+  await expect(page).toHaveURL(/\/orders\/1041$/);
+
+  const after = tables.orders.find((row) => row.id === 1041).items
+    .find((line) => line.name === before.name);
+  expect(after.kind).toBe('cut');
+  // Three parent sheets, not twelve pieces.
+  expect(after.stockUnits).toBe(before.stockUnits);
+  expect(after.notes).toBe(before.notes);
+  expect(after.quantity).toBe(before.quantity);
+});

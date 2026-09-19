@@ -271,6 +271,64 @@ describe("goods coming back", () => {
   });
 });
 
+describe("an order stamped before the per-line counters existed", () => {
+  /**
+   * The shape: committed, but with no committedUnits on any line. uncommitOrder
+   * has always read this correctly. The other two functions did not, and the
+   * two failures point in opposite directions -- one strands stock off the
+   * shelf, the other takes it off twice.
+   */
+  const legacy = (overrides = {}) => ({
+    id: 2,
+    status: ORDER_STATUS.COMPLETED,
+    stockCommittedAt: "Sep 1, 2026",
+    items: [{ productId: 101, name: "Styro Ball 6in", price: 40, quantity: 4, stockUnits: 4 }],
+    ...overrides,
+  });
+
+  // The goods are handed back over the counter and the money is returned. If
+  // the count does not rise, the shop carries on selling from a number that is
+  // short by exactly what it just took back.
+  it("puts a refunded return back on the shelf", () => {
+    const { inventory, items } = handleRefundStock(shelf(5), legacy(), [
+      { lineIndex: 0, units: 2, disposition: REFUND_DISPOSITION.RESTOCK },
+    ]);
+    expect(stockOf(inventory, 101)).toBe(7);
+    // And the line leaves the legacy shape behind: 4 went out, 2 came back.
+    expect(items[0].committedUnits).toBe(2);
+    expect(items[0].voidedUnits).toBe(2);
+  });
+
+  // The same journey with the goods broken. Nothing goes back on the shelf,
+  // but it must be reported as scrapped rather than silently dropped.
+  it("reports a scrapped return without restocking it", () => {
+    const { inventory, scrapped } = handleRefundStock(shelf(5), legacy(), [
+      { lineIndex: 0, units: 2, disposition: REFUND_DISPOSITION.SCRAP },
+    ]);
+    expect(stockOf(inventory, 101)).toBe(5);
+    expect(scrapped).toEqual([{ productId: 101, name: "Styro Ball 6in", units: 2 }]);
+  });
+
+  // The other direction. Everything on this order already left the building, so
+  // a delivery run against it has nothing left to draw -- reading the absent
+  // counter as 0 would take the whole order off the shelf a second time.
+  it("does not deduct a second time when a delivery is recorded against it", () => {
+    const { inventory } = commitPartialDelivery(shelf(10), legacy(), [
+      { lineIndex: 0, units: 4 },
+    ]);
+    expect(stockOf(inventory, 101)).toBe(10);
+  });
+
+  // The guard must not catch an ordinary order that genuinely has nothing sent
+  // yet: no stamp means not committed, whatever the counters look like.
+  it("leaves an uncommitted order alone", () => {
+    const { inventory } = commitPartialDelivery(shelf(10), order(), [
+      { lineIndex: 0, units: 5 },
+    ]);
+    expect(stockOf(inventory, 101)).toBe(5);
+  });
+});
+
 describe("applyReservations", () => {
   // Load-bearing: the caller runs this from an effect that also writes to
   // Supabase, so a fresh array every render would be an infinite loop and a
