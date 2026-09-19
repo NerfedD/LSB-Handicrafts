@@ -28,30 +28,61 @@ const timeOf = (value) => {
   return date && !Number.isNaN(date.getTime()) ? date.getTime() : null;
 };
 
+/** The two ways an order can be found, kept apart so they cannot collide. */
+const idKey = (id) => `id:${id}`;
+const nameKey = (name) => `name:${String(name || "").trim().toLowerCase()}`;
+
 /**
- * customer name (lowercased) -> their orders.
+ * A key -> their orders, keyed by customer id where there is one and by name
+ * where there is not.
  *
- * Matched on NAME, not on an id, because `orders` stores `customer_name` as
- * free text and has no customer_id. That is a real weakness — two customers
- * with the same name are indistinguishable here, and a renamed customer loses
- * their history — and it is worth stating rather than hiding: fixing it means
- * a foreign key and a migration of existing rows, which is a bigger change
- * than a visual overhaul should be making on its own.
+ * ORDERS USED TO BE MATCHED ON NAME ALONE, because `orders` stored customer_name
+ * as free text and nothing else. Correcting a spelling on a customer card
+ * therefore lost their whole history at once, and two customers who share a name
+ * shared a history. `orders.customer_id` now carries the link.
+ *
+ * THE NAME PATH DOES NOT GO AWAY, and is not a leftover. The order form takes
+ * the customer as free text on purpose so a walk-in can be served without being
+ * enrolled first, so an order may name somebody who is no customer record at
+ * all. Those rows have no id to be found by and are found the way they always
+ * were. What changed is that the name is no longer the ONLY thread.
  */
 export function ordersByCustomer(orders = []) {
   const index = new Map();
   for (const order of orders) {
-    const key = String(order.customerName || "").trim().toLowerCase();
-    if (!key) continue;
+    const key = order.customerId != null ? idKey(order.customerId) : nameKey(order.customerName);
+    if (key === nameKey("")) continue;
     if (!index.has(key)) index.set(key, []);
     index.get(key).push(order);
   }
   return index;
 }
 
+/**
+ * One customer's orders, down both threads.
+ *
+ * MERGED, NOT FALLEN BACK TO. The ordinary state of a customer from here on is
+ * some orders linked by id and older ones still only findable by name -- so
+ * taking the id list and stopping would undercount exactly the long-standing
+ * customers whose history matters most. Ids first, then any name-matched order
+ * not already counted.
+ *
+ * EXPORTED so there is one answer to "which orders are theirs". The detail
+ * screen used to reach into the index with a bare name key of its own, which is
+ * how it came to disagree with the summary printed beside it the moment orders
+ * started carrying ids.
+ */
+export function ordersFor(customer, index) {
+  const byId = index.get(idKey(customer?.id)) ?? [];
+  const byName = index.get(nameKey(customer?.name)) ?? [];
+  if (byName.length === 0) return byId;
+  const seen = new Set(byId.map((order) => order.id));
+  return [...byId, ...byName.filter((order) => !seen.has(order.id))];
+}
+
 /** Everything the card and the chips need about one customer. */
 export function customerSummary(customer, index) {
-  const orders = index.get(String(customer.name || "").trim().toLowerCase()) ?? [];
+  const orders = ordersFor(customer, index);
   const spent = orders
     .filter((order) => order.status !== ORDER_STATUS.CANCELLED)
     .reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0);

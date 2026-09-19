@@ -22,7 +22,7 @@ import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
 import { ORDER_STATUS } from "../../utils/constants";
 import { orderLabel, orderTone } from "../../utils/copy";
-import { customerSummary, ordersByCustomer } from "../../utils/customers";
+import { customerSummary, ordersByCustomer, ordersFor } from "../../utils/customers";
 import { formatLongDate, formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
@@ -67,10 +67,12 @@ export default function CustomerDetailPage({
   const { summary, theirOrders } = useMemo(() => {
     if (!customer) return { summary: null, theirOrders: [] };
     const index = ordersByCustomer(orders);
-    const key = String(customer.name || "").trim().toLowerCase();
     return {
       summary: customerSummary(customer, index),
-      theirOrders: [...(index.get(key) ?? [])].sort(
+      // The same lookup the summary uses. Reaching into the index with a bare
+      // name key here left this list empty for any customer whose orders were
+      // linked by id, while the chips beside it counted them correctly.
+      theirOrders: [...ordersFor(customer, index)].sort(
         (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
       ),
     };

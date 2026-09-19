@@ -283,8 +283,22 @@ export default function OrderFormPage({
     }
 
     try {
+    // WHICH CUSTOMER RECORD THIS IS FOR, when that can be known for certain.
+    // The field stays free text with a datalist, deliberately, so a walk-in can
+    // be served without being enrolled first -- which means a typed name may
+    // match one customer, none, or more than one.
+    //
+    // Only an exact single match is linked. None is an ordinary unlinked order
+    // and behaves as every order did before the column existed. MORE than one is
+    // the case that matters: two people really do share a name, and quietly
+    // picking whichever sorts first would attach one person's spending to the
+    // other -- worse than the gap this is closing.
+    const typed = customerName.trim().toLowerCase();
+    const named = customers.filter((one) => String(one.name || "").trim().toLowerCase() === typed);
+
     const result = await onSave({
       customerName: customerName.trim(),
+      customerId: named.length === 1 ? named[0].id : null,
       items: filled.map((line) => {
         // A CUT LINE IS NOT REBUILT, IT IS CARRIED. This form knows how to make
         // a catalogue, negotiated or by-hand line and nothing else, so a saved

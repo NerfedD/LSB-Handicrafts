@@ -831,11 +831,17 @@ export default function App() {
       return;
     }
 
+    // Removing somebody with an order still waiting is refused, and that check
+    // has to follow the same two threads the rest of the app does -- an order
+    // linked by id counts even if the name has since been corrected, and an
+    // unlinked one still counts by name.
     const key = String(customer.name || "").trim().toLowerCase();
     const openOrders = orders.filter(
       (order) =>
         order.status === ORDER_STATUS.PENDING &&
-        String(order.customerName || "").trim().toLowerCase() === key
+        (order.customerId === customer.id ||
+          (order.customerId == null &&
+            String(order.customerName || "").trim().toLowerCase() === key))
     );
     if (openOrders.length > 0) {
       toast.error(`${customer.name} still has an order waiting.`, {
@@ -1119,7 +1125,7 @@ export default function App() {
   // ---- orders --------------------------------------------------------------
 
   /** Writes the order and, when there is an address, the delivery carrying it. */
-  async function saveOrder({ customerName, items, totalAmount, delivery }) {
+  async function saveOrder({ customerName, customerId, items, totalAmount, delivery }) {
     setBusy(true);
     try {
     // Set only on a retry, where the order row already exists and is being
@@ -1128,6 +1134,7 @@ export default function App() {
 
     const payload = {
       customerName,
+      customerId: customerId ?? null,
       items,
       totalAmount,
       status: ORDER_STATUS.PENDING,
@@ -1230,7 +1237,7 @@ export default function App() {
    * nothing is stored against the old lines, so replacing them re-derives every
    * count on the next read. See utils/productStock.
    */
-  async function updateOrder({ customerName, items, totalAmount, delivery }) {
+  async function updateOrder({ customerName, customerId, items, totalAmount, delivery }) {
     const order = selectedOrder;
     if (!order) return;
 
@@ -1248,6 +1255,10 @@ export default function App() {
     const result = await ordersState.update(order.id, {
       ...order,
       customerName,
+      // Re-resolved from the name that was just typed, so correcting a spelling
+      // to match a real customer LINKS the order rather than leaving it adrift,
+      // and retyping a walk-in's name over a linked one unlinks it honestly.
+      customerId: customerId ?? null,
       items,
       totalAmount,
     });
@@ -2163,14 +2174,21 @@ export default function App() {
         return (
           <OrderDetailPage
             order={selectedOrder}
-            // Matched on NAME: `orders` stores customer_name as free text with
-            // no customer_id. See the note in utils/customers -- it is a real
-            // weakness, and fixing it is a migration rather than a restyle.
-            customer={customers.find(
-              (c) =>
-                String(c.name || "").trim().toLowerCase() ===
-                String(selectedOrder?.customerName || "").trim().toLowerCase()
-            )}
+            // The linked customer where the order carries one, and the name
+            // match only for an order that does not -- a walk-in, or one taken
+            // before the link existed. A plain chain is right here, unlike the
+            // merge in utils/customers, because this resolves ONE order to one
+            // person rather than gathering a history.
+            customer={
+              customers.find((c) => c.id === selectedOrder?.customerId) ??
+              (selectedOrder?.customerId == null
+                ? customers.find(
+                    (c) =>
+                      String(c.name || "").trim().toLowerCase() ===
+                      String(selectedOrder?.customerName || "").trim().toLowerCase()
+                  )
+                : undefined)
+            }
             deliveries={deliveries}
             busy={busy}
             canHandleMoney={canHandleMoney(profile?.role)}

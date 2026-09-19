@@ -154,6 +154,11 @@ const deliveryFromRow = (r) => ({
 const orderToRow = (o) => ({
   id: o.id,
   customer_name: o.customerName,
+  // The link to the customer RECORD, where there is one. The name stays beside
+  // it and stays authoritative for display: an order taken for a walk-in names
+  // somebody who is not a customer record at all, and that order still has to
+  // read correctly on the list, on its own screen and on the printed slip.
+  customer_id: o.customerId ?? null,
   items: o.items || [],
   total_amount: o.totalAmount,
   status: o.status,
@@ -168,6 +173,7 @@ const orderToRow = (o) => ({
 const orderFromRow = (r) => ({
   id: r.id,
   customerName: r.customer_name,
+  customerId: r.customer_id ?? null,
   items: r.items || [],
   totalAmount: r.total_amount,
   status: r.status,
