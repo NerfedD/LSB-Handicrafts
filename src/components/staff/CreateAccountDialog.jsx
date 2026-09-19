@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ChoiceButtons, Field, RequirementList } from "../shared/forms";
 import { passwordIsAcceptable, passwordRequirements } from "../../utils/password";
-import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, phoneDigits, phoneDoubt, phoneProblem } from "../../utils/phone";
 import { ROLES } from "../../utils/staffData";
 
 /**
@@ -174,7 +174,19 @@ export default function CreateAccountDialog({
 
     setSubmitting(true);
     try {
-      const result = await onAccountCreated({ ...form, name: form.name.trim(), email: form.email.trim().toLowerCase() });
+      // The number goes to the server as DIGITS. This field deliberately accepts
+      // the way people actually write a phone number -- "0917 555 0201",
+      // "+63 917 123 4503", "(02) 8888-8888" -- but admin-accounts checks it
+      // against 7 to 15 bare digits, so every one of those formats was accepted
+      // here and then refused there, with a message about a field the person
+      // had filled in correctly. phoneDigits is the same helper phoneProblem
+      // already counts with, so the two sides now agree by construction.
+      const result = await onAccountCreated({
+        ...form,
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        contactNumber: phoneDigits(form.contactNumber),
+      });
       if (!result?.ok) {
         fail(result?.message || 'The account was not created. Check the details and retry.');
         return;

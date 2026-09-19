@@ -8,6 +8,11 @@ export const RECORD_KEYS = {
   'customer-detail': 'Customer', 'supplier-detail': 'Supplier',
   'product-detail': 'Product', 'product-form': 'Product',
   'order-detail': 'Order', 'delivery-detail': 'Delivery',
+  // Carries an id for the same reason product-form does: without it the path is
+  // a bare /order-edit, nothing seeds selectedOrderId on a reload, and the edit
+  // screen comes back with an undefined order and a save that silently does
+  // nothing.
+  'order-edit': 'Order',
 };
 const sections = { products: 'product', orders: 'order', customers: 'customer',
   suppliers: 'supplier', deliveries: 'delivery', staff: 'account', 'raw-materials': 'raw-material' };
@@ -24,8 +29,11 @@ export function readRoute(location) {
       id = /^\d+$/.test(parts[1]) ? Number(parts[1]) : null;
       view = section === 'staff' ? 'manage-account' : `${sections[section]}-detail`;
       if (parts[2] === 'edit' && section === 'products') view = 'product-form';
+      if (parts[2] === 'edit' && section === 'orders') view = 'order-edit';
       if (parts[2] === 'role' && section === 'staff') view = 'assign-role';
-      const validAction = (section === 'products' && parts[2] === 'edit') || (section === 'staff' && parts[2] === 'role');
+      const validAction = (section === 'products' && parts[2] === 'edit')
+        || (section === 'orders' && parts[2] === 'edit')
+        || (section === 'staff' && parts[2] === 'role');
       if (!id || parts.length > 3 || (parts[2] && !validAction)) view = 'not-found';
     }
   } else if (parts[1]) {
@@ -41,6 +49,7 @@ export function routePath(view, id) {
   }
   if (view === 'product-form') return id ? `/products/${id}/edit` : '/products/new';
   if (view === 'order-form') return '/orders/new';
+  if (view === 'order-edit') return `/orders/${id}/edit`;
   if (view === 'assign-role') return `/staff/${id}/role`;
   return `/${view}`;
 }

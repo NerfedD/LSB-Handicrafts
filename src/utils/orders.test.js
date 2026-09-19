@@ -164,6 +164,25 @@ describe("money on an order", () => {
     expect(totals.net).toBe(150);
   });
 
+  // A price corrected all the way down to nothing used to be read as "no total
+  // was stored" and quietly replaced by the sum of the lines, so an order
+  // written off in full still showed -- and printed -- the original amount due.
+  it("honours a price corrected down to nothing", () => {
+    const totals = orderTotals(order({ totalAmount: 0 }), []);
+    expect(totals.total).toBe(0);
+    expect(totals.net).toBe(0);
+  });
+
+  // The guard against fixing that by simply accepting every number >= 0:
+  // Number(null) is 0 and is perfectly finite, so an order carrying no total at
+  // all must still fall back to the lines rather than come out free.
+  it.each([[null], [undefined], [""]])(
+    "falls back to the lines when the stored total is %p",
+    (missing) => {
+      expect(orderTotals(order({ totalAmount: missing }), []).total).toBe(200);
+    },
+  );
+
   it("counts the chips from the unfiltered set", () => {
     const counts = orderCounts([
       order(),

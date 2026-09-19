@@ -359,14 +359,53 @@ const identity = (x) => x;
  * look identical otherwise, and a caller that treats a failed read as real
  * state used to sync that emptiness back and delete the table.
  */
-const loadTable = async (table, defaultData, fromRow = identity) => {
-  try {
+/**
+ * How many rows one request asks for.
+ *
+ * Under PostgREST's own cap, so a full page always means "there may be more"
+ * rather than "the server truncated us and we cannot tell".
+ */
+const PAGE = 500;
+
+/**
+ * Every row of a table, in id order, however many pages that takes.
+ *
+ * A PLAIN SELECT IS NOT THE WHOLE TABLE. PostgREST caps a response at the
+ * project's row limit -- 1000 unless it has been configured otherwise -- and
+ * says so nowhere in the body: the request succeeds, the array simply stops.
+ * This module used to issue exactly that one select and treat what came back as
+ * everything, so past the cap the oldest orders would quietly vanish from the
+ * list, their reservations would stop counting against stock, and the activity
+ * log would end mid-history, all while every read reported ok.
+ *
+ * The workshop tables already knew this and paged; the comment there --
+ * "a workshop history must not disappear at the API row limit" -- is true of
+ * orders and the activity log too. That loop now lives here and both sides
+ * import it, so there is one page size and one stopping rule rather than two
+ * that can drift.
+ *
+ * Stopping on a SHORT page rather than an empty one costs a request in the
+ * exact-multiple case and saves one every other time.
+ */
+export const loadAllRows = async (table) => {
+  const rows = [];
+  for (let start = 0; ; start += PAGE) {
     const { data, error } = await supabase
       .from(table)
       .select('*')
-      .order('id', { ascending: true });
+      .order('id', { ascending: true })
+      .range(start, start + PAGE - 1);
     if (error) throw error;
-    const rows = !data || data.length === 0 ? defaultData : data.map(fromRow);
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return rows;
+};
+
+const loadTable = async (table, defaultData, fromRow = identity) => {
+  try {
+    const data = await loadAllRows(table);
+    const rows = data.length === 0 ? defaultData : data.map(fromRow);
     return { ok: true, data: rows };
   } catch (error) {
     console.error(`Failed to load ${table} from Supabase:`, error);

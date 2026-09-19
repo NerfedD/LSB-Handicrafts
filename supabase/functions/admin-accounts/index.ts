@@ -27,7 +27,13 @@ Deno.serve(async (request: Request) => {
     const body = await request.json();
     const name = String(body.name ?? '').trim();
     const email = String(body.email ?? '').trim().toLowerCase();
-    const contactNumber = String(body.contactNumber ?? '');
+    // Stripped to digits, not demanded as digits. The form this arrives from
+    // accepts the way people write a phone number -- "0917 555 0201",
+    // "+63 917 123 4503", "(02) 8888-8888" -- and used to send it through
+    // untouched, so a correctly-filled field was refused here with a complaint
+    // about its formatting. The client normalises now too; this makes an older
+    // or cached bundle behave rather than fail.
+    const contactNumber = String(body.contactNumber ?? '').replace(/\D/g, '');
     const username = String(body.username ?? '').trim();
     const password = typeof body.password === 'string' ? body.password : '';
     if (!name || name.length > 200) return reply({ message: 'Enter a name of at most 200 characters.' }, 400);

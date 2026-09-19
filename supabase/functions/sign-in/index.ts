@@ -134,13 +134,29 @@ let rosterAt = 0;
 // on precisely the burst it was added for.
 let rosterInFlight: Promise<Roster> | null = null;
 
+// Under PostgREST's own response cap, so a full page means "there may be more"
+// rather than "you were truncated and cannot tell".
+const PAGE = 500;
+
 async function readRoster(): Promise<Roster> {
-  const { data, error } = await admin.from("staff").select("username, email");
-  if (error) throw error;
   const next: Roster = new Map();
-  for (const row of data ?? []) {
-    const name = (row.username ?? "").trim().toLowerCase();
-    if (name && row.email) next.set(name, row.email);
+  // Paged for the same reason the app's table loads are. A plain select stops
+  // at the project's row limit and reports nothing about having done so, and a
+  // username past that cap would fail to resolve to an email -- which this
+  // function answers identically to a wrong password, so the person would be
+  // told their details were wrong and nothing would explain why.
+  for (let start = 0; ; start += PAGE) {
+    const { data, error } = await admin
+      .from("staff")
+      .select("username, email")
+      .order("id", { ascending: true })
+      .range(start, start + PAGE - 1);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const name = (row.username ?? "").trim().toLowerCase();
+      if (name && row.email) next.set(name, row.email);
+    }
+    if (!data || data.length < PAGE) break;
   }
   roster = next;
   rosterAt = Date.now();

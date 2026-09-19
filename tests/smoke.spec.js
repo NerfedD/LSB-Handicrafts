@@ -30,15 +30,47 @@ import { signIn, stubSupabase } from "./stubSupabase.js";
  * the portal exactly, which is what tests/slip.spec.js already does.
  */
 
-/** Collects anything the page complains about, for assertion at the end. */
+/**
+ * Collects anything the page complains about, for assertion at the end.
+ *
+ * WHAT IS DELIBERATELY NOT A PROBLEM. This watches for defects in the app --
+ * a missing key, a null dereference in a formatter, a Radix component handed an
+ * invalid prop. A request to somebody else's server that did not arrive is not
+ * one of those, and counting it as one makes the whole suite a test of the
+ * machine's internet connection: index.html pulls Manrope from Google Fonts, so
+ * on a blocked or offline network EVERY case that signs in fails at its console
+ * check while the screen it was actually checking is perfectly correct. The
+ * font has a fallback in the stack and the app is fully usable without it.
+ *
+ * Only third-party hosts the app cannot control are exempt. Anything served by
+ * the app itself, including a failed lazy chunk, still counts.
+ */
+const IGNORED_SOURCES = [
+  // The stub does not serve favicon.png, and a 404 for it is not a defect in
+  // the app under test.
+  "favicon",
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+];
+
 function watchConsole(page) {
   const problems = [];
+  // The console message for a failed subresource is just "Failed to load
+  // resource: ..." with no URL in the text, so the URL has to come from the
+  // request that failed. Recorded here and matched against the message below.
+  const failedUrls = [];
+  page.on("requestfailed", (request) => failedUrls.push(request.url()));
+
   page.on("console", (message) => {
     if (message.type() !== "error") return;
     const text = message.text();
-    // The stub does not serve favicon.png, and a 404 for it is not a defect in
-    // the app under test.
-    if (text.includes("favicon")) return;
+    if (IGNORED_SOURCES.some((source) => text.includes(source))) return;
+    if (
+      text.includes("Failed to load resource") &&
+      failedUrls.some((url) => IGNORED_SOURCES.some((source) => url.includes(source)))
+    ) {
+      return;
+    }
     problems.push(text);
   });
   page.on("pageerror", (error) => problems.push(`Uncaught: ${error.message}`));

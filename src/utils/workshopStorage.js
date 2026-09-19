@@ -1,18 +1,14 @@
 import { supabase } from '../lib/supabaseClient';
-import { humanizeError } from './storageManager';
+import { humanizeError, loadAllRows } from './storageManager';
 
 // Read all pages; a workshop history must not disappear at the API row limit.
+// The paging itself now lives in storageManager beside the loader for the other
+// eight tables, which had the same gap and no loop at all -- one page size and
+// one stopping rule, rather than two that can drift apart.
 function workshopCollection(table) {
   return { table, fromRow: (row) => row, async load() {
     try {
-      const rows = [];
-      for (let start = 0; ; start += 500) {
-        const { data, error } = await supabase.from(table).select('*').order('id').range(start, start + 499);
-        if (error) throw error;
-        rows.push(...data);
-        if (data.length < 500) break;
-      }
-      return { ok: true, data: rows };
+      return { ok: true, data: await loadAllRows(table) };
     } catch (error) { return { ok: false, error, data: [] }; }
   } };
 }

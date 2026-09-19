@@ -261,8 +261,22 @@ export function orderTotals(order, deliveries = []) {
   // `total_amount` is what was agreed and stored; the item sum is what the
   // lines add up to now. They differ when a line was edited after the fact, and
   // the STORED figure is the one the customer was told, so it wins.
-  const stored = Number(order?.totalAmount);
-  const total = Number.isFinite(stored) && stored > 0 ? stored : items + delivery;
+  //
+  // ZERO IS A REAL AGREED PRICE. The test used to be `stored > 0`, which read a
+  // total corrected down to nothing as "there is no stored total" and quietly
+  // billed the item sum instead -- so an order written off in full still showed,
+  // and PRINTED, the original amount due. The price-correction dialog accepts 0
+  // deliberately (asMoney floors there), so the dialog was right and this was
+  // wrong.
+  //
+  // ABSENCE HAS TO BE SEPARATED FROM ZERO BEFORE COERCING, which is why this is
+  // not simply `stored >= 0`: Number(null) is 0 and passes Number.isFinite, so
+  // an order with no stored total at all would come back as costing nothing
+  // rather than falling back to the lines -- a worse bug than the one being
+  // fixed, and in the same direction.
+  const raw = order?.totalAmount;
+  const stored = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
+  const total = Number.isFinite(stored) && stored >= 0 ? stored : items + delivery;
   const refunded = orderRefunded(order);
   return { items, delivery, total, refunded, net: Math.max(0, total - refunded) };
 }

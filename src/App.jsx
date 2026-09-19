@@ -1981,7 +1981,15 @@ export default function App() {
             activity={activity}
             onNavigate={navigate}
             onOpenFiltered={openFiltered}
-            onAddProduct={() => navigate("product-form")}
+            // Clearing the selection is what makes this an ADD. The product
+            // form decides between adding and editing purely from
+            // selectedProductId (see saveProduct), and the dashboard is
+            // reachable from a product's own screen -- so without this, "Add a
+            // product" opened the last product viewed and saving it overwrote
+            // that product instead of creating a new one. The products list
+            // (onAdd below) and the header's primary action already clear it;
+            // this was the one entry point that did not.
+            onAddProduct={() => { setSelectedProductId(null); navigate("product-form"); }}
             onAddCustomer={() => openProfileForm("customer")}
             onWriteOrder={() => navigate("order-form")}
             onRecordMade={(productId, needed) => setRecordMadeFor({ productId: typeof productId === 'number' ? productId : undefined, needed })}
