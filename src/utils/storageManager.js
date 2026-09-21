@@ -125,6 +125,7 @@ const deliveryToRow = (d) => ({
 
 const deliveryFromRow = (r) => ({
   id: r.id,
+  revision: r.revision ?? 0,
   product: r.product,
   size: r.size,
   location: r.location,
@@ -172,6 +173,7 @@ const orderToRow = (o) => ({
 
 const orderFromRow = (r) => ({
   id: r.id,
+  revision: r.revision ?? 0,
   customerName: r.customer_name,
   customerId: r.customer_id ?? null,
   items: r.items || [],
@@ -368,8 +370,7 @@ const identity = (x) => x;
 /**
  * How many rows one request asks for.
  *
- * Under PostgREST's own cap, so a full page always means "there may be more"
- * rather than "the server truncated us and we cannot tell".
+ * The server may enforce a smaller cap, so this is only the requested maximum.
  */
 const PAGE = 500;
 
@@ -390,20 +391,29 @@ const PAGE = 500;
  * import it, so there is one page size and one stopping rule rather than two
  * that can drift.
  *
- * Stopping on a SHORT page rather than an empty one costs a request in the
- * exact-multiple case and saves one every other time.
+ * Continue until an empty page: a short page may be the server's lower cap.
+ * The last primary key is the cursor, avoiding growing OFFSET scans and
+ * skipped rows when an earlier page loses a record between requests.
  */
 export const loadAllRows = async (table) => {
   const rows = [];
-  for (let start = 0; ; start += PAGE) {
-    const { data, error } = await supabase
+  let lastId = null;
+  for (;;) {
+    let query = supabase
       .from(table)
       .select('*')
       .order('id', { ascending: true })
-      .range(start, start + PAGE - 1);
+      .limit(PAGE);
+    if (lastId !== null) query = query.gt('id', lastId);
+    const { data, error } = await query;
     if (error) throw error;
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE) break;
+    if (!data?.length) break;
+    rows.push(...data);
+    const nextId = data[data.length - 1].id;
+    if (nextId == null || (lastId !== null && Number(nextId) <= Number(lastId))) {
+      throw new Error(`The ${table} page did not advance.`);
+    }
+    lastId = nextId;
   }
   return rows;
 };
@@ -506,12 +516,13 @@ const updateRow = async (table, id, patch, toRow = identity) => {
   const payload = toRow(patch);
   delete payload.id;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from(table)
     .update(payload)
-    .eq('id', id)
-    .select()
-    .maybeSingle();
+    .eq('id', id);
+  const versioned = table === 'orders' || table === 'deliveries';
+  if (versioned) query = query.eq('revision', patch.revision ?? 0);
+  const { data, error } = await query.select().maybeSingle();
 
   if (error) {
     console.error(`Failed to update ${table} #${id}:`, error);
@@ -523,7 +534,9 @@ const updateRow = async (table, id, patch, toRow = identity) => {
   if (!data) {
     return {
       ok: false,
-      message: "You do not have permission to change that record, or it no longer exists.",
+      message: versioned
+        ? "This record changed or is no longer available. Refresh it before saving again."
+        : "You do not have permission to change that record, or it no longer exists.",
     };
   }
   return { ok: true, data };

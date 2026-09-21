@@ -16,6 +16,9 @@ dist-ssr
 test-results
 playwright-report
 
+# Generated Supabase CLI metadata
+supabase/.temp/
+
 # Environment variables (contains Supabase keys)
 .env
 

@@ -134,8 +134,7 @@ let rosterAt = 0;
 // on precisely the burst it was added for.
 let rosterInFlight: Promise<Roster> | null = null;
 
-// Under PostgREST's own response cap, so a full page means "there may be more"
-// rather than "you were truncated and cannot tell".
+// Requested maximum; the server can enforce a smaller cap.
 const PAGE = 500;
 
 async function readRoster(): Promise<Roster> {
@@ -145,18 +144,22 @@ async function readRoster(): Promise<Roster> {
   // username past that cap would fail to resolve to an email -- which this
   // function answers identically to a wrong password, so the person would be
   // told their details were wrong and nothing would explain why.
-  for (let start = 0; ; start += PAGE) {
-    const { data, error } = await admin
+  let lastId: number | null = null;
+  for (;;) {
+    let query = admin
       .from("staff")
-      .select("username, email")
+      .select("id, username, email")
       .order("id", { ascending: true })
-      .range(start, start + PAGE - 1);
+      .limit(PAGE);
+    if (lastId !== null) query = query.gt("id", lastId);
+    const { data, error } = await query;
     if (error) throw error;
+    if (!data?.length) break;
     for (const row of data ?? []) {
       const name = (row.username ?? "").trim().toLowerCase();
       if (name && row.email) next.set(name, row.email);
     }
-    if (!data || data.length < PAGE) break;
+    lastId = data[data.length - 1].id;
   }
   roster = next;
   rosterAt = Date.now();
