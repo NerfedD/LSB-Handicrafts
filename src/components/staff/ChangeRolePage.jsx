@@ -41,6 +41,8 @@ const ROLE_ICONS = {
 
 export default function ChangeRolePage({ account, onBack, onSave }) {
   const [role, setRole] = useState(account?.role ?? "");
+  // Captured on mount, for the reason spelled out in ManageAccountPage.
+  const [revision] = useState(account?.revision ?? 0);
   const [saving, setSaving] = useState(false);
 
   if (!account) return <NotFoundState noun="account" onBack={onBack} />;
@@ -52,7 +54,7 @@ export default function ChangeRolePage({ account, onBack, onSave }) {
     event.preventDefault();
     if (!changed || saving) return;
     setSaving(true);
-    await onSave?.(role);
+    await onSave?.(role, revision);
     setSaving(false);
   }
 

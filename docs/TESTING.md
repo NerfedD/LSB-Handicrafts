@@ -128,12 +128,22 @@ tests remain stubbed, and PGlite does not test multi-connection lock contention.
 
 ### What is still worth knowing
 
-- **Orders, deliveries, products, stock, customers, and suppliers reject stale
-  saves.** Forms keep the revision they opened with, even after a background
-  refresh. If somebody else saves first, keep the draft, close/reopen or refresh
-  the form, and reconcile the new values before saving. Apply
-  `supabase/migrations/20260921122520_qa_integrity_guards.sql` before deploying
-  this client, and refresh existing tabs after rollout.
+- **Orders, deliveries, products, stock, customers, suppliers, and staff reject
+  stale saves.** Forms keep the revision they opened with, even after a
+  background refresh. If somebody else saves first, keep the draft, close/reopen
+  or refresh the form, and reconcile the new values before saving. Apply
+  `supabase/migrations/20260921122520_qa_integrity_guards.sql` and then
+  `20260921213000_staff_revision_guard.sql` before deploying this client, and
+  refresh existing tabs after rollout.
+- **Your own name and phone number are the exception.** `update_own_profile`
+  writes two columns on your own row and takes no revision, so the later of two
+  simultaneous self-edits wins. It cannot carry another screen's stale role or
+  status, and it still bumps the revision, so an administrator screen held open
+  over your edit goes stale rather than overwriting it.
+- **Two devices on one account is supported.** Each gets its own session, and
+  signing out on one leaves the other alone. Changes cross over on a 30-second
+  poll or on window focus; there is no realtime push. The activity feed names
+  the person, not the device, so it cannot tell two of your own sessions apart.
 - **Activity records are written by the database.** Core business changes and
   their audit entries commit or roll back together. Clients cannot insert,
   edit, or delete activity rows. Older records remain visible but are marked

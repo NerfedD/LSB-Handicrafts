@@ -4,9 +4,9 @@ import { PGlite } from '@electric-sql/pglite';
 
 const { from } = vi.hoisted(() => ({ from: vi.fn() }));
 vi.mock('../lib/supabaseClient', () => ({ supabase: { from } }));
-import { customersCollection, suppliersCollection, productsCollection, inventoryCollection } from './storageManager';
+import { customersCollection, suppliersCollection, productsCollection, inventoryCollection, staffCollection } from './storageManager';
 
-for (const collection of [customersCollection, suppliersCollection, productsCollection, inventoryCollection]) {
+for (const collection of [customersCollection, suppliersCollection, productsCollection, inventoryCollection, staffCollection]) {
   it(`BUG-001: ${collection.table} rejects a stale save and preserves the newer record`, async () => {
     let stored = { id: 901, revision: 3, name: 'Original', contact_number: '09171234567', address: 'Old address' };
     const original = collection.fromRow(stored);
@@ -36,6 +36,7 @@ for (const collection of [customersCollection, suppliersCollection, productsColl
 
 let db;
 const migration = readFileSync(new URL('../../supabase/migrations/20260921122520_qa_integrity_guards.sql', import.meta.url), 'utf8');
+const staffMigration = readFileSync(new URL('../../supabase/migrations/20260921213000_staff_revision_guard.sql', import.meta.url), 'utf8');
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(`
@@ -46,7 +47,7 @@ beforeAll(async () => {
       select '{"email":"qa-sales@example.test","sub":"00000000-0000-4000-8000-000000000001","session_id":"00000000-0000-4000-8000-000000000002"}'::jsonb;
     $$;
     create function auth.uid() returns uuid language sql stable as $$ select (auth.jwt()->>'sub')::uuid $$;
-    create table public.staff(id bigint primary key, name text, email text, status text);
+    create table public.staff(id bigint primary key, name text, email text, status text, contact_number text);
     insert into public.staff values (1, 'Actual staff member', 'qa-sales@example.test', 'Active');
     create table public.customers(id bigint primary key, name text);
     create table public.suppliers(id bigint primary key, name text);
@@ -63,6 +64,7 @@ beforeAll(async () => {
     grant select, insert, update, delete on public.customers to authenticated;
   `);
   await db.exec(migration);
+  await db.exec(staffMigration);
 });
 afterAll(async () => { await db?.close(); });
 
@@ -129,4 +131,37 @@ it('BUG-002: anonymous and blocked staff cannot record a session event', async (
   } finally {
     await db.exec(`reset role; update public.staff set status = 'Active' where id = 1;`);
   }
+});
+
+it('BUG-005: a stale staff screen cannot write back the status it opened with', async () => {
+  await db.exec(`insert into public.staff(id, name, email, status) values (7, 'Departing person', 'leaver@example.test', 'Active')`);
+  const opened = (await db.query('select revision from public.staff where id = 7')).rows[0].revision;
+  // One administrator blocks them.
+  await db.exec(`update public.staff set status = 'Blocked' where id = 7 and revision = ${opened}`);
+  // Another, whose screen still holds the pre-block row, saves a name fix. It
+  // sends a WHOLE row, so without the predicate this reinstates 'Active'.
+  const stale = await db.query(
+    `update public.staff set name = 'Departing Person', status = 'Active' where id = 7 and revision = ${opened} returning *`);
+  expect(stale.rows).toHaveLength(0);
+  expect((await db.query('select name, status from public.staff where id = 7')).rows)
+    .toEqual([{ name: 'Departing person', status: 'Blocked' }]);
+});
+
+it('BUG-005: update_own_profile keeps its two-argument signature and still bumps the revision', async () => {
+  // Adding a revision parameter would revoke the grant from clients calling the
+  // old shape, so the guard is the trigger, not the signature.
+  expect(staffMigration).not.toMatch(/create or replace function public\.update_own_profile/);
+  await db.exec(`insert into public.staff(id, name, email, status) values (8, 'Self editor', 'self@example.test', 'Active')`);
+  const before = (await db.query('select revision from public.staff where id = 8')).rows[0].revision;
+  await db.exec(`update public.staff set contact_number = '09171234567' where id = 8`);
+  expect((await db.query('select revision from public.staff where id = 8')).rows[0].revision).toBe(before + 1);
+});
+
+it('BUG-005: the staff migration is reapplicable and mirrored in schema.sql', async () => {
+  await db.exec(staffMigration);
+  // Split/join rather than an escape, so the assertion survives this file
+  // being checked out with either line ending.
+  const lf = (text) => text.split(String.fromCharCode(13, 10)).join(String.fromCharCode(10));
+  const schema = readFileSync(new URL('../../supabase/schema.sql', import.meta.url), 'utf8');
+  expect(lf(schema)).toContain(lf(staffMigration).trim());
 });

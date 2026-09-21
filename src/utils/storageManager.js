@@ -213,6 +213,7 @@ const staffToRow = (s) => ({
 });
 
 const staffFromRow = (r) => ({
+  revision: r.revision ?? 0,
   id: r.id,
   name: r.name,
   role: r.role,
@@ -525,7 +526,7 @@ const updateRow = async (table, id, patch, toRow = identity) => {
     .from(table)
     .update(payload)
     .eq('id', id);
-  const versioned = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory'].includes(table);
+  const versioned = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff'].includes(table);
   if (versioned) query = query.eq('revision', patch.revision ?? 0);
   const { data, error } = await query.select().maybeSingle();
 

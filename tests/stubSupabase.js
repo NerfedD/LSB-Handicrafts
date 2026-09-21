@@ -259,7 +259,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       const expected = url.searchParams.get('revision');
       if (expected && Number(expected.replace('eq.', '')) !== (rows[index].revision ?? 0)) return json(route, [], 200);
       rows[index] = { ...rows[index], ...body };
-      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
+      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
       onWrite?.({ table: key, method, row: rows[index] });
       return json(route, [rows[index]]);
     }

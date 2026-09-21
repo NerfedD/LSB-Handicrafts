@@ -2429,8 +2429,8 @@ export default function App() {
             currentUserEmail={sessionEmail}
             onBack={() => navigate("staff")}
             onChangeRole={() => setView("assign-role")}
-            onStatusChange={async (status) => {
-              if (await updateSelectedAccount({ status })) {
+            onStatusChange={async (status, revision) => {
+              if (await updateSelectedAccount({ status, revision })) {
                 toast.success(
                   status === "Blocked"
                     ? `${selectedAccount.name} can no longer sign in.`
@@ -2467,11 +2467,11 @@ export default function App() {
           <ChangeRolePage
             account={selectedAccount}
             onBack={() => setView("manage-account")}
-            onSave={async (role) => {
+            onSave={async (role, revision) => {
               // Only leave the screen if the change actually persisted.
               // Navigating first is how a rejected write used to look like a
               // successful one.
-              if (await updateSelectedAccount({ role })) {
+              if (await updateSelectedAccount({ role, revision })) {
                 toast.success(`${selectedAccount.name} is now ${role}.`);
                 logActivity({
                   kind: ACTIVITY_KIND.ACCOUNT,

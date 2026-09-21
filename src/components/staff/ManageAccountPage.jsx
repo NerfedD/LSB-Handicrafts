@@ -45,6 +45,11 @@ export default function ManageAccountPage({
   onDelete,
 }) {
   const [name, setName] = useState(account?.name ?? "");
+  // The revision THIS SCREEN OPENED WITH, not the current one. App refreshes
+  // the staff list every 30 seconds, and saving here sends a whole row -- so
+  // taking the fresh revision would let this screen's stale `status` overwrite
+  // a block somebody else applied while it sat open. Captured once on mount.
+  const [revision] = useState(account?.revision ?? 0);
   // Same as the profile screen: normalised on the way in, and used as the
   // baseline, so opening the page is not itself a change.
   const seededPhone = localPhoneDigits(account?.contactNumber ?? "");
@@ -80,14 +85,14 @@ export default function ManageAccountPage({
 
     if (!changed || saving) return;
     setSaving(true);
-    await onSaveDetails?.({ name, contactNumber });
+    await onSaveDetails?.({ name, contactNumber, revision });
     setSaving(false);
   }
 
   async function runConfirm() {
     setWorking(true);
     if (confirm === "delete") await onDelete?.(account);
-    else await onStatusChange?.(confirm === "block" ? "Blocked" : "Active");
+    else await onStatusChange?.(confirm === "block" ? "Blocked" : "Active", revision);
     setWorking(false);
     setConfirm(null);
   }

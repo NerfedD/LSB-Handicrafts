@@ -111,3 +111,26 @@ test('BUG-001: a product edit cannot overwrite stock changed after the form open
   await expect(page.locator('[data-form-error]')).toContainText('record changed');
   expect(tables.inventory.find((row) => row.id === stock.id).stock).toBe(222);
 });
+
+// A staff row carries privilege, so a lost update here is not just a lost edit.
+// The manage screen sends a WHOLE row, and it refreshes every 30 seconds, so
+// without the guard a screen opened before a block writes 'Active' back over it.
+test('BUG-005: a stale staff screen cannot undo a block it never saw', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page);
+  await signIn(page, baseURL);
+  await page.getByRole('navigation').getByRole('button', { name: /^Staff & accounts/ }).click();
+  await page.getByRole('row', { name: /Juan Dela Cruz/ }).getByRole('button', { name: 'Manage' }).click();
+  await expect(page.getByLabel('Full name')).toHaveValue('Juan Dela Cruz');
+
+  // Another administrator blocks him while this screen sits open.
+  const row = tables.staff.find((member) => member.id === 2);
+  row.status = 'Blocked';
+  row.revision = 1;
+
+  await page.getByLabel('Full name').fill('Juan dela Cruz');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+
+  await expect(page.getByText(/record changed/i)).toBeVisible();
+  expect(row.status).toBe('Blocked');
+  expect(row.name).toBe('Juan Dela Cruz');
+});
