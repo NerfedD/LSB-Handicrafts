@@ -52,13 +52,21 @@ function runOrderCommand(tables, body, onWrite) {
   const deliveries = tables.deliveries ?? [];
   const inventory = tables.inventory ?? [];
 
-  const order = orders.find((row) => Number(row.id) === Number(data.orderId));
+  const storedOrder = orders.find((row) => Number(row.id) === Number(data.orderId));
+  const order = storedOrder ? structuredClone(storedOrder) : null;
   if (!order) throw new Error("stub: order_command got an order id it does not have");
 
-  const delivery =
+  const storedDelivery =
     data.deliveryId == null
       ? null
       : deliveries.find((row) => Number(row.id) === Number(data.deliveryId)) ?? null;
+  const delivery = storedDelivery ? structuredClone(storedDelivery) : null;
+  if (data.expectedRevision !== (order.revision ?? 0)) {
+    return { error: 'This order changed. Refresh it before trying again.', code: '40001' };
+  }
+  if (delivery && data.expectedDeliveryRevision !== (delivery.revision ?? 0)) {
+    return { error: 'This delivery changed. Refresh it before trying again.', code: '40001' };
+  }
 
   if (action === "complete" && order.status !== "Pending") {
     return { error: "Only an order that is still waiting can be marked done." };
@@ -70,12 +78,14 @@ function runOrderCommand(tables, body, onWrite) {
   const touched = [];
   for (const { productId, delta } of data.deltas ?? []) {
     if (!delta) continue;
-    const row = inventory.find((item) => Number(item.id) === Number(productId));
+    const row = touched.find((item) => Number(item.id) === Number(productId))
+      ?? structuredClone(inventory.find((item) => Number(item.id) === Number(productId)));
     // The real function aborts the whole transaction here, which is what stops
     // an unloaded shelf list from silently "succeeding".
-    if (!row) throw new Error("stub: a delta named a product not on the shelf list");
+    if (!row) return { error: 'One of the products on this order is not on the shelf list.' };
     row.stock = Number(row.stock) + Number(delta);
-    touched.push(row);
+    if (row.stock < 0) return { error: 'There is not enough of one of these products left to do that.' };
+    if (!touched.includes(row)) touched.push(row);
   }
 
   const COLUMN = {
@@ -90,15 +100,21 @@ function runOrderCommand(tables, body, onWrite) {
   for (const [key, value] of Object.entries(data.order ?? {})) {
     if (COLUMN[key]) order[COLUMN[key]] = value;
   }
-  onWrite?.({ table: "orders", method: "RPC", row: order });
+  order.revision = (order.revision ?? 0) + 1;
 
   if (delivery && data.delivery) {
     const DCOLUMN = { status: "status", itemsManifest: "items_manifest", driver: "driver" };
     for (const [key, value] of Object.entries(data.delivery)) {
       if (DCOLUMN[key]) delivery[DCOLUMN[key]] = value;
     }
-    onWrite?.({ table: "deliveries", method: "RPC", row: delivery });
+    delivery.revision = (delivery.revision ?? 0) + 1;
   }
+
+  Object.assign(storedOrder, order);
+  if (storedDelivery) Object.assign(storedDelivery, delivery);
+  for (const row of touched) Object.assign(inventory.find((item) => item.id === row.id), row);
+  onWrite?.({ table: "orders", method: "RPC", row: order });
+  if (delivery) onWrite?.({ table: "deliveries", method: "RPC", row: delivery });
 
   return { order, delivery, inventory: touched };
 }
@@ -119,13 +135,14 @@ function fakeJwt(payload) {
  * which is what nearly every case wants; pass another staff member's address
  * to exercise a screen as a role that sees less of it.
  */
-export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {}) {
+export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOrderResponseOnce = false } = {}) {
   // A per-run copy, so a test that blocks an account does not leak that state
   // into the next test in the file.
   const tables = Object.fromEntries(
-    Object.entries(TABLES).map(([name, rows]) => [name, rows.map((r) => ({ ...r }))])
+    Object.entries(TABLES).map(([name, rows]) => [name, structuredClone(rows)])
   );
   for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] = [];
+  const orderRequests = new Map();
 
   const json = (route, body, status = 200) =>
     route.fulfill({
@@ -180,7 +197,20 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
     const request = route.request();
     const url = new URL(request.url());
     if (url.pathname.endsWith("/rpc/order_command")) {
-      return json(route, runOrderCommand(tables, JSON.parse(request.postData() || "{}"), onWrite));
+      const body = request.postDataJSON();
+      const previous = orderRequests.get(body.p_request_id);
+      if (previous) {
+        if (previous.payload !== JSON.stringify(body)) return json(route, { code: 'P0001', message: 'This request has changed.' }, 400);
+        return json(route, previous.result);
+      }
+      const result = runOrderCommand(tables, body, onWrite);
+      if (result.error) return json(route, { code: result.code ?? 'P0001', message: result.error }, 400);
+      orderRequests.set(body.p_request_id, { payload: JSON.stringify(body), result: structuredClone(result) });
+      if (dropOrderResponseOnce) {
+        dropOrderResponseOnce = false;
+        return route.abort('connectionreset');
+      }
+      return json(route, result);
     }
     if (url.pathname.includes("/rpc/")) return json(route, null);
 
@@ -193,7 +223,13 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
 
     const method = request.method();
 
-    if (method === "GET") return json(route, rows);
+    if (method === "GET") {
+      const after = url.searchParams.get('id');
+      const selected = after?.startsWith('gt.') ? rows.filter((row) => row.id > Number(after.slice(3))) : rows;
+      const limit = Number(url.searchParams.get('limit') ?? 1000);
+      const offset = Number(url.searchParams.get('offset') ?? 0);
+      return json(route, [...selected].sort((a, b) => a.id - b.id).slice(offset, offset + limit));
+    }
 
     // `?id=eq.1041` is the only filter these screens send on a write.
     const idFilter = url.searchParams.get("id");
@@ -220,7 +256,10 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL } = {})
     if (method === "PATCH") {
       const index = rows.findIndex((r) => r.id === id);
       if (index === -1) return json(route, [], 200);
+      const expected = url.searchParams.get('revision');
+      if (expected && Number(expected.replace('eq.', '')) !== (rows[index].revision ?? 0)) return json(route, [], 200);
       rows[index] = { ...rows[index], ...body };
+      if (key === 'orders' || key === 'deliveries') rows[index].revision = (rows[index].revision ?? 0) + 1;
       onWrite?.({ table: key, method, row: rows[index] });
       return json(route, [rows[index]]);
     }
