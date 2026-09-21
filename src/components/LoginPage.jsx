@@ -103,9 +103,17 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
       // App.jsx decides whether this email actually gets in — it looks for a
       // matching row in the `staff` table, checks it isn't blocked, and routes
       // by role. Anyone it doesn't grant access to is signed straight back out.
+      //
+      // HOW WIDELY depends on WHY, because this account may be signed in
+      // somewhere else. A blocked account, or one with no staff row, should
+      // lose every session it has; that is the point of blocking it. But
+      // 'offline' is not a verdict on the account — it means the staff table
+      // could not be read just now — and signing out globally on a failed read
+      // logs out the other devices too. Somebody's laptop would drop them at
+      // its next token refresh because a phone briefly lost signal.
       const result = await onLoginAttempt?.(data.user.email);
       if (result !== "ok") {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut(result === "offline" ? { scope: "local" } : undefined);
         setStatus(result === "blocked" ? "blocked" : result === "offline" ? "offline" : "not-set-up");
         return;
       }

@@ -48,6 +48,35 @@ for (const response of ['staff', 'auth']) {
   });
 }
 
+// A second device must not be able to sign the first one out by failing to
+// read the staff table. Supabase defaults signOut() to scope=global, which
+// revokes every refresh token the account holds; only a verdict ON THE ACCOUNT
+// earns that. The scope travels as a query parameter on /logout.
+for (const { label, status, banner, scope } of [
+  { label: 'a failed staff read signs out only this device', status: 'offline',
+    banner: 'We could not reach the system.', scope: 'local' },
+  { label: 'a blocked account still loses every session', status: 'blocked',
+    banner: 'An administrator has blocked this account.', scope: 'global' },
+]) {
+  test(label, async ({ page, baseURL }) => {
+    const logouts = [];
+    await stubSupabase(page, { as: 'ana@lsbhandicrafts.test' });
+    await page.route('**/auth/v1/logout**', (route) => {
+      logouts.push(new URL(route.request().url()).searchParams.get('scope') ?? 'global');
+      return route.fulfill({ status: 204, body: '' });
+    });
+    if (status === 'offline') await page.route('**/rest/v1/staff**', (route) => route.fulfill({
+      status: 500, contentType: 'application/json', body: JSON.stringify({ message: 'upstream unavailable' }),
+    }));
+    await page.goto(baseURL);
+    await page.getByLabel('Username or email').fill('ana@lsbhandicrafts.test');
+    await page.getByLabel('Password', { exact: true }).fill('Password123');
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect(page.getByText(banner)).toBeVisible();
+    expect(logouts).toEqual([scope]);
+  });
+}
+
 test('failed product stock write retains inputs, focuses the error, and retries without a duplicate product', async ({ page, baseURL }) => {
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   let fail = true;
