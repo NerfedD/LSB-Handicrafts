@@ -1,27 +1,43 @@
 # Bug report
 
-Reviewed: 2026-09-19. Base commit: `2d43e52`, with the existing uncommitted changes included in the review.
+Original review: 2026-09-19, base commit `2d43e52`. Implementation recheck:
+2026-09-19, starting from `b366796`.
 
-**16 findings: 8 high priority and 8 medium priority. ALL 16 ARE NOW FIXED** —
-see the Status column below and the commits on `fix/bug-report-remediation`. The
-findings themselves are left as written, because what was wrong is worth keeping
-on the record; only the status has been added.
+**All 16 findings had remediation code, but the blanket “all fixed” claim was
+too strong.** The starting tree passed 97 unit tests and 70 browser tests while
+still containing the gaps below. They are corrected in this working tree;
+database and Edge Function changes still need deployment.
 
-Two things the review did not have, added while fixing:
+- **BUG-01/02:** Every retry generated a new request ID. Row locks also accepted
+  stale same-order refunds and dispatches, allowing duplicate stock movement or
+  lost history. Retries now retain the original payload and ID. Database-managed
+  revisions reject stale commands, order edits, delivery edits and price changes.
+  The order-save retry then had to carry that revision itself: it sent the 0 the
+  row was born with, so a second retry after two failed delivery writes was
+  refused by its own staleness check and the order could not be finished at all.
+- **BUG-06:** The line guard checked only product, quantity and unit price.
+  Names, notes, stock conversion and line totals are now guarded too. Commands
+  validate roles, delivery ownership, transitions and shelf deltas before writing.
+- **BUG-07:** A server cap below 500 still truncated the paged loader. Both the
+  shared loader and sign-in roster now continue by primary key until empty.
+  This also avoids growing OFFSET scans and skipped records after earlier rows
+  are deleted. Inventory locks are acquired in product-ID order to reduce
+  deadlock risk. See [PostgreSQL locking](https://www.postgresql.org/docs/current/explicit-locking.html#LOCKING-DEADLOCKS).
+- **BUG-08:** Returning one legacy line left other lines without commitment
+  counters; later returns then failed to restock. The refund form also still
+  omitted disposition for legacy goods. A shared per-line reader now handles
+  all these paths. Cancelling a partial dispatch restores its committed goods
+  even before the final order stamp exists.
+- **BUG-11:** Manifests had been corrected, but the input still asked for a
+  cumulative count. A follow-up for 8 remaining units now shows 8, then converts
+  that trip's quantity to the cumulative value needed by the ledger.
+- **BUG-15:** Saving an unrelated order edit could unlink a renamed customer.
+  An unchanged customer field now preserves its known ID, including when names
+  are duplicated. Selecting a different product also clears any old cut conversion.
 
-- **BUG-08 had a second site.** `commitPartialDelivery` carried the identical
-  missing-legacy-counter gap as `handleRefundStock`, pointing the other way:
-  reading an absent counter as zero treats stock that is long gone as still on
-  the shelf and deducts a whole order twice. Fixed with it.
-- **BUG-15 had five sites, not three.** Beyond the three listed, the check that
-  refuses to delete a customer with an order still waiting matched on name too,
-  and so did `CustomerDetailPage` — which reached into the index with a bare name
-  key of its own and therefore disagreed with the summary printed beside it. The
-  browser suite caught that one rather than a reading of the code.
-
-The database findings were re-verified against the **deployed** project
-(`tvdtzsputfnapswpurlr`) before and after, since this report flagged hosted state
-as unverified. BUG-06 was confirmed live and every probe was rolled back.
+Read-only inspection confirmed that the hosted project `tvdtzsputfnapswpurlr`
+has the earlier order RPC, customer-ID column and manager trigger. This recheck
+did not modify hosted records, schema, Auth settings or deployed functions.
 
 This review covered order and delivery workflows, stock accounting, refunds, product and customer forms, routing, account creation, the data layer, and relevant Supabase policies. Findings were checked against the older `BUGS_AND_FIX_PLAN.txt`; some previously documented problems remain and are identified below. This is not a claim that every possible defect has been found.
 
@@ -30,12 +46,23 @@ This review covered order and delivery workflows, stock accounting, refunds, pro
 | Check | Result |
 | --- | --- |
 | `npm run lint` | Passed. |
-| `npm test` | 74 tests passed across 5 files. |
+| `npm test` | 131 tests passed across 9 files, including 21 PostgreSQL tests. |
 | `npm run build -- --outDir test-results/bug-audit/dist` | Passed. Vite reported its existing large-chunk advisory. |
-| `npx --no-install playwright test --output test-results/bug-audit/browser` | 65 passed; 3 failed. All three failures are described in BUG-16. |
-| Targeted diagnostic probes | 14 scenarios successfully reproduced the observed behavior or client request contract. Temporary probes and artifacts are under the ignored `test-results/bug-audit/` directory. |
+| `npx --no-install playwright test --output test-results/bug-audit/browser-final` | 78 passed. |
+| Regression evidence | Six new unit assertions failed before the follow-up fixes; all now pass. Browser coverage includes lost responses, stale prices, legacy returns, follow-up manifests, dashboard navigation, edit refresh/customer identity and phone normalization. |
 
-Browser checks used the repository's in-memory Supabase stub. No live business records, Auth accounts, database policies, or deployed functions were changed. The stub does not enforce PostgreSQL constraints or RLS; the authorization finding is based on the checked-in SQL, and the account-phone finding combines an observed browser request with the function's validation code. Hosted deployment state was not verified.
+Browser checks use the in-memory Supabase stub. The new SQL suite executes the
+actual migrations and triggers in [PGlite](https://pglite.dev/docs/), with isolated
+fixture tables and JWT helpers. It verifies rollback and stale snapshots, but
+PGlite's single connection does not reproduce lock contention across independent
+database connections or the full hosted RLS environment.
+
+Before deploying this client, apply
+`supabase/migrations/20260919135654_order_command_safety.sql`, also included at
+the end of `supabase/schema.sql`. Then deploy the updated `sign-in` Edge Function.
+Coordinate the client rollout: the new RPC requires revisions, and older browser
+tabs must refresh. No hosted migration or function deployment was performed here.
+The existing large initial JavaScript chunk remains a separate optimization opportunity.
 
 Source locations below refer to the files as reviewed. P1 means high priority because records, stock, or authorization can become incorrect; P2 means medium priority for other workflow, reporting, and test failures.
 
@@ -43,21 +70,21 @@ Source locations below refer to the files as reviewed. P1 means high priority be
 
 | ID | Priority | Finding | Status |
 | --- | --- | --- | --- |
-| BUG-01 | P1 | Failed order saves leave stock changed; retries deduct again. | Fixed — one transaction, `public.order_command` |
-| BUG-02 | P1 | Concurrent saves overwrite stock deductions. | Fixed — relative deltas under `for update` locks |
+| BUG-01 | P1 | Failed order saves leave stock changed; retries deduct again. | Hardened — transaction plus persistent retry identity |
+| BUG-02 | P1 | Concurrent saves overwrite stock deductions. | Hardened — relative deltas and revision checks; migration required |
 | BUG-03 | P1 | Orders can complete before inventory has loaded. | Fixed — an unknown shelf row aborts the whole action |
 | BUG-04 | P1 | Editing cut-item orders changes their stock consumption. | Fixed — cut lines carried through the form |
 | BUG-05 | P1 | Fully refunded, cancelled orders can still be dispatched. | Fixed — a called-off order refuses dispatch |
-| BUG-06 | P1 | Database guards do not enforce all manager-only order changes. | Fixed — guard extended; confirmed live |
-| BUG-07 | P1 | Main collections silently stop at the API row limit. | Fixed — one shared paged loader |
-| BUG-08 | P1 | Refunds of legacy completed orders do not restore returned stock. | Fixed — both sites, incl. one not in this report |
+| BUG-06 | P1 | Database guards do not enforce all manager-only order changes. | Hardened — full line guard and command validation; migration required |
+| BUG-07 | P1 | Main collections silently stop at the API row limit. | Hardened — cursor pagination tolerates smaller server caps |
+| BUG-08 | P1 | Refunds of legacy completed orders do not restore returned stock. | Corrected — shared legacy counters, disposition UI and partial cancellation |
 | BUG-09 | P2 | A price corrected to zero is displayed and printed as a positive total. | Fixed — zero is a real agreed price |
 | BUG-10 | P2 | An arrived delivery leaves its fully fulfilled order waiting. | Fixed — arrival finishes a settled order |
-| BUG-11 | P2 | Follow-up delivery manifests record cumulative quantities as that run's load. | Fixed — manifest records this run's load |
+| BUG-11 | P2 | Follow-up delivery manifests record cumulative quantities as that run's load. | Corrected — input and manifest both count this trip |
 | BUG-12 | P2 | Dashboard's Add a product action can edit an existing product. | Fixed — dashboard clears the selection |
 | BUG-13 | P2 | Refreshing an order-edit page loses the order being edited. | Fixed — `/orders/{id}/edit` |
 | BUG-14 | P2 | Account creation rejects phone formatting accepted by the form. | Fixed — normalised on both sides |
-| BUG-15 | P2 | Renaming customers disconnects their order history. | Fixed — `orders.customer_id`, five sites |
+| BUG-15 | P2 | Renaming customers disconnects their order history. | Hardened — ID links also survive unrelated order edits |
 | BUG-16 | P2 | Print content causes three existing browser tests to fail. | Fixed — assertions scoped to `main` |
 
 ### BUG-01 — Failed order saves leave stock changed; retries deduct again
@@ -260,10 +287,13 @@ Source locations below refer to the files as reviewed. P1 means high priority be
 
 **Impact:** The browser test command exits unsuccessfully: 65 pass, 3 fail. These are test-selector regressions, not evidence that the corresponding on-screen content is missing. Failure screenshots and traces are under `test-results/bug-audit/browser/`. The existing tests were left unchanged.
 
-## Review limits and unchanged state
+## Original review limits (historical)
 
 The targeted probes exercised the existing application and utility functions with synthetic records, delayed responses, injected failures, and concurrent browser sessions. Successful diagnostic assertions confirm that the documented defects occur; they do not mean the defects were fixed.
 
 The hosted schema, Edge Function deployment, Auth settings, email delivery, and real concurrent database transactions were not exercised. The SQL finding should be validated against the deployed policies before assuming hosted behavior is identical to the repository.
 
-Original application, SQL, configuration, and test files were checked against content hashes captured during the review. No fixes were applied to them. This report is the review deliverable; diagnostic files and build/browser artifacts were confined to the ignored test-results directory.
+The paragraphs in this historical section describe the original `2d43e52`
+review, before remediation. The implementation recheck and current verification
+results are at the top of this document. Finding descriptions and their source
+line numbers above are retained as the original reproduction record.

@@ -21,7 +21,7 @@ import useSupabaseCollection from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
 import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
 import { provisionAccount } from "./utils/accounts";
-import { newRequestId, orderCommand } from "./utils/orderCommand";
+import { createOrderCommandRunner } from "./utils/orderCommand";
 import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigation";
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
 import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
@@ -31,6 +31,7 @@ import {
   commitPartialDelivery,
   handleRefundStock,
   outstandingOf,
+  stockLines,
   uncommitOrder,
 } from "./utils/stockLedger";
 import { normalizeItems } from "./utils/orderItems";
@@ -190,6 +191,7 @@ export default function App() {
   const staffRevision = useRef(0);
   const productRetryRef = useRef(null);
   const orderRetryRef = useRef(null);
+  const orderCommands = useRef(null);
   const [staff, setStaff] = useState([]);
   const [isStaffLoaded, setIsStaffLoaded] = useState(false);
   // A failed staff read used to be indistinguishable from a slow one: the page
@@ -558,6 +560,7 @@ export default function App() {
     productRetryRef.current = null;
     orderRetryRef.current = null;
     setSessionEmail(null);
+    orderCommands.current?.clear();
     setSessionClaims(null);
     setView('login');
   }
@@ -1130,7 +1133,8 @@ export default function App() {
     try {
     // Set only on a retry, where the order row already exists and is being
     // finished rather than written again. Otherwise the id is the database's.
-    const retryId = orderRetryRef.current?.id ?? null;
+    const retry = orderRetryRef.current;
+    const retryId = retry?.id ?? null;
 
     const payload = {
       customerName,
@@ -1140,6 +1144,13 @@ export default function App() {
       status: ORDER_STATUS.PENDING,
       createdAt: nowIso(),
       stockCommittedAt: null,
+      // A retry writes over the row the first attempt left behind, and that
+      // update is gated on the revision the row carries. Every retry that gets
+      // as far as the order bumps it, so the second one has to send what the
+      // first one produced rather than the 0 the row was born with -- otherwise
+      // a twice-failed delivery leaves the order unsaveable, telling somebody
+      // whose form is correct that their record changed underneath them.
+      ...(retryId !== null ? { revision: retry.revision ?? 0 } : {}),
     };
     const result = retryId !== null
       ? await ordersState.update(retryId, payload)
@@ -1179,7 +1190,7 @@ export default function App() {
         createdAt: nowIso(),
       });
       if (!deliveryResult.ok) {
-        orderRetryRef.current = { id };
+        orderRetryRef.current = { id, revision: result.data?.revision ?? 0 };
         const message = `The order was saved, but the delivery was not. ${deliveryResult.message || 'Check the delivery details and save again.'}`;
         toast.error(message);
         return { ok: false, message };
@@ -1430,9 +1441,7 @@ export default function App() {
    * contradicts what a customer was told — which is why it sits with the roles
    * that already handle money rather than with whoever wrote the order.
    *
-   * STOCK GOES BACK FIRST, mirroring markOrderDone: an order left Completed
-   * whose stock has already returned is a shelf that lies, and that is the
-   * worse of the two half-finished states.
+   * Stock and order status are restored together in the database transaction.
    */
   async function reopenOrder(order) {
     if (!canHandleMoney(profile?.role)) {
@@ -1561,8 +1570,22 @@ export default function App() {
    * still say what went off which shelf.
    */
   async function applyOrderChange(action, payload) {
-    const result = await orderCommand(action, payload, newRequestId());
-    if (!result.ok) return { ok: false, message: result.message, changed: [] };
+    const generation = authEpoch.current;
+    const sourceOrder = orders.find((row) => row.id === payload.orderId);
+    const sourceDelivery = deliveries.find((row) => row.id === payload.deliveryId);
+    orderCommands.current ??= createOrderCommandRunner();
+    const result = await orderCommands.current.run(action, {
+      ...payload,
+      expectedRevision: sourceOrder?.revision ?? 0,
+      ...(sourceDelivery ? { expectedDeliveryRevision: sourceDelivery.revision ?? 0 } : {}),
+    });
+    if (generation !== authEpoch.current) return { ok: false, message: 'The session changed. Reload to check the saved record.', changed: [] };
+    if (!result.ok) {
+      if (result.code === '40001') {
+        ordersState.reload(); deliveriesState.reload(); inventoryState.reload();
+      }
+      return { ok: false, message: result.message, changed: [] };
+    }
 
     const savedOrder = result.data.order ? ordersCollection.fromRow(result.data.order) : null;
     const savedDelivery = result.data.delivery
@@ -1574,16 +1597,17 @@ export default function App() {
     // sent, so a value it adjusted — or a concurrent change it merged past — is
     // on screen immediately instead of at the next reload.
     if (savedOrder) {
-      ordersState.setRows(orders.map((row) => (row.id === savedOrder.id ? savedOrder : row)));
+      ordersState.setRows((current) => current.map((row) => (row.id === savedOrder.id ? savedOrder : row)));
     }
     if (savedDelivery) {
       deliveriesState.setRows(
-        deliveries.map((row) => (row.id === savedDelivery.id ? savedDelivery : row))
+        (current) => current.map((row) => (row.id === savedDelivery.id ? savedDelivery : row))
       );
     }
     if (changed.length > 0) {
       const saved = new Map(changed.map((row) => [row.id, row]));
-      inventoryState.setRows(inventory.map((row) => saved.get(row.id) ?? row));
+      inventoryState.setRows((current) => current.map((row) => saved.get(row.id) ?? row));
+      if (!inventoryState.isLoaded) inventoryState.reload();
     }
     return { ok: true, changed, order: savedOrder, delivery: savedDelivery };
   }
@@ -1763,7 +1787,7 @@ export default function App() {
     const carried = nextStatus === DELIVERY_STAGE.ARRIVED ? orderForDelivery(delivery) : undefined;
     const settles =
       carried?.status === ORDER_STATUS.PENDING &&
-      normalizeItems(carried.items).every((line) => outstandingOf(line) === 0);
+      stockLines(carried).every((line) => outstandingOf(line) === 0);
 
     if (carried && settles) {
       const arrival = await applyOrderChange("arrive", {
@@ -1847,11 +1871,8 @@ export default function App() {
    * Records what actually went out, deducts only that, and raises a second
    * delivery for anything left behind.
    *
-   * FOUR WRITES, IN THIS ORDER, and the order is the whole design: shelf, then
-   * order, then the delivery that moved, then the follow-up. Each one is only
-   * attempted if the one before it landed, so a failure part-way leaves a state
-   * somebody can look at and finish by hand rather than a shelf and an order
-   * that disagree.
+   * The stock, order and manifest share one transaction. A follow-up delivery
+   * is raised afterwards; a failure there is reported separately.
    *
    * THE FOLLOW-UP KEEPS THE SAME "Order #N - " PREFIX. That string is how an
    * order finds its deliveries — there is no foreign key — so the suffix goes

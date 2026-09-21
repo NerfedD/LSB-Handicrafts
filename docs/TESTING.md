@@ -116,14 +116,21 @@ Since then the write path itself has changed. Marking an order done, calling it
 off, reopening it, refunding it and dispatching it all go through one database
 command that applies the stock change and the order row in a single transaction,
 against locked rows, sending the CHANGE rather than a recomputed total. Two
-people doing the same thing at once now queue behind each other instead of
-overwriting one another, and a half-finished action leaves nothing behind.
+people updating shared stock queue behind each other. Order and delivery
+revisions also reject arithmetic from an outdated browser. Retrying a request
+whose response was lost reuses its original ID and payload.
+
+This requires `supabase/migrations/20260919135654_order_command_safety.sql`
+before deploying the matching client. Existing browser tabs must refresh.
+`npm test` includes local PostgreSQL regression tests through PGlite; these run
+the actual order migrations without touching hosted business records. Browser
+tests remain stubbed, and PGlite does not test multi-connection lock contention.
 
 ### What is still worth knowing
 
-- **Two people editing the same record can still overwrite each other**, outside
-  the stock actions above. Ordinary saves write the whole row, so the last one
-  wins. Have testers work on different records where you can.
+- **Ordinary order and delivery edits reject stale saves**, including price
+  corrections. Other collections still use whole-row updates, so simultaneous
+  edits to products, customers or suppliers can overwrite each other.
 - **A new account cannot sign in for up to 30 seconds.** The `sign-in` function
   caches the username roster for that long so a burst of sign-ins costs one
   database read instead of thirty. Wait half a minute after creating an account.
