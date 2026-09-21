@@ -91,23 +91,21 @@ export function outstandingOf(line) {
   return Math.max(0, orderedOf(line) - committedOf(line) - voidedOf(line));
 }
 
-/**
- * True when the lines were written before the counters existed AND the order
- * has already been committed — so its whole draw is out there, unrecorded.
- *
- * Checked as `undefined` rather than falsy: a line that has been through a
- * partial delivery and had everything returned carries a real 0, and that is
- * not the same fact at all.
- */
-const isLegacyCommitted = (order, lines) =>
-  Boolean(order?.stockCommittedAt) && lines.every((line) => line.committedUnits === undefined);
+/** Resolve old commitment stamps per line, including untouched refund lines. */
+export function stockLines(order) {
+  return normalizeItems(order?.items).map((line) =>
+    order?.stockCommittedAt && line.committedUnits === undefined
+      ? { ...line, committedUnits: Math.max(0, orderedOf(line) - voidedOf(line)) }
+      : line
+  );
+}
 
 /** productId -> units still owed, across Pending orders only. */
 export function reservedByProduct(orders) {
   const totals = new Map();
   for (const order of orders || []) {
     if (order?.status !== ORDER_STATUS.PENDING) continue;
-    for (const line of normalizeItems(order.items)) {
+    for (const line of stockLines(order)) {
       const owed = outstandingOf(line);
       if (!line.productId || !owed) continue;
       totals.set(line.productId, (totals.get(line.productId) || 0) + owed);
@@ -141,7 +139,7 @@ export function applyReservations(inventory, orders) {
 /** The stock an order still has to draw, as productId -> units. */
 function drawOf(order) {
   const draw = new Map();
-  for (const line of normalizeItems(order?.items)) {
+  for (const line of stockLines(order)) {
     const owed = outstandingOf(line);
     if (!line.productId || !owed) continue;
     draw.set(line.productId, (draw.get(line.productId) || 0) + owed);
@@ -196,7 +194,7 @@ const isSettled = (lines) => lines.every((line) => outstandingOf(line) === 0);
  * back onto the order so the counters and the stamp stay in step.
  */
 export function commitOrder(inventory, order, now = new Date()) {
-  const lines = normalizeItems(order?.items);
+  const lines = stockLines(order);
 
   if (order?.stockCommittedAt) {
     return { inventory, items: lines, stockCommittedAt: order.stockCommittedAt, deltas: [] };
@@ -225,20 +223,15 @@ export function commitOrder(inventory, order, now = new Date()) {
  * back more than went out would invent stock.
  */
 export function uncommitOrder(inventory, order) {
-  const lines = normalizeItems(order?.items);
+  const lines = stockLines(order);
 
-  if (!order?.stockCommittedAt) {
+  if (!order?.stockCommittedAt && lines.every((line) => committedOf(line) === 0)) {
     return { inventory, items: lines, stockCommittedAt: null, deltas: [] };
   }
 
-  // An order stamped before the counters existed has no per-line record of what
-  // left, and its whole draw did. Reading its counters as 0 would strand that
-  // stock off the shelf permanently.
-  const legacy = isLegacyCommitted(order, lines);
-
   const back = new Map();
   const items = lines.map((line) => {
-    const units = legacy ? orderedOf(line) : committedOf(line);
+    const units = committedOf(line);
     if (line.productId && units) {
       back.set(line.productId, (back.get(line.productId) || 0) + units);
     }
@@ -278,18 +271,13 @@ export function commitPartialDelivery(inventory, order, delivered = [], now = ne
     wanted.set(index, positive(entry.units));
   }
 
-  const lines = normalizeItems(order?.items);
-  // Same reading uncommitOrder takes: an order stamped before the counters
-  // existed has no per-line record of what left, and its whole draw did.
-  // Reading `already` as 0 here would treat stock that is long gone as still on
-  // the shelf and deduct it a second time.
-  const legacy = isLegacyCommitted(order, lines);
+  const lines = stockLines(order);
 
   const draw = new Map();
   const items = lines.map((line, index) => {
     if (!wanted.has(index)) return line;
 
-    const already = legacy ? orderedOf(line) : committedOf(line);
+    const already = committedOf(line);
     const ceiling = Math.max(0, orderedOf(line) - voidedOf(line));
     const target = Math.min(wanted.get(index), ceiling);
     const delta = target - already;
@@ -355,15 +343,7 @@ export function handleRefundStock(inventory, order, refundLines = []) {
   const back = new Map();
   const scrapped = [];
 
-  const lines = normalizeItems(order?.items);
-  // THE COUNTER CAN BE MISSING RATHER THAN ZERO, and the two mean opposite
-  // things. uncommitOrder has always known this; this function did not, and read
-  // a legacy line's absent committedUnits as "nothing ever left the building".
-  // `returnable` was then min(units, 0) = 0, so a refund on an older completed
-  // order put NOTHING back on the shelf while still raising voidedUnits by the
-  // full amount -- the goods came back through the door and the system carried
-  // on selling from a count that did not include them.
-  const legacy = isLegacyCommitted(order, lines);
+  const lines = stockLines(order);
 
   const items = lines.map((line, index) => {
     const entry = byIndex.get(index);
@@ -371,8 +351,9 @@ export function handleRefundStock(inventory, order, refundLines = []) {
 
     // Writing the counter back below also migrates the line out of the legacy
     // shape, so this reading is needed once per line and never again.
-    const committed = legacy ? orderedOf(line) : committedOf(line);
-    const returnable = Math.min(entry.units, committed);
+    const committed = committedOf(line);
+    const units = Math.min(entry.units, Math.max(0, orderedOf(line) - voidedOf(line)));
+    const returnable = Math.min(units, committed);
 
     if (returnable > 0) {
       if (entry.disposition === REFUND_DISPOSITION.RESTOCK) {
@@ -391,7 +372,7 @@ export function handleRefundStock(inventory, order, refundLines = []) {
     return {
       ...line,
       committedUnits: committed - returnable,
-      voidedUnits: Math.min(orderedOf(line), voidedOf(line) + entry.units),
+      voidedUnits: voidedOf(line) + units,
     };
   });
 

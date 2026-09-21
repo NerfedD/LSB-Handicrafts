@@ -196,6 +196,9 @@ export default function OrderFormPage({
     if (!match) return;
     setLine(key, {
       productId,
+      kind: null,
+      stockUnits: null,
+      seededQuantity: null,
       name: match.product.name,
       unitPrice: Number(match.product.unitPrice) || 0,
       listPrice: Number(match.product.unitPrice) || 0,
@@ -227,8 +230,8 @@ export default function OrderFormPage({
       previous.map((line) => {
         if (line.key !== key) return line;
         return line.custom
-          ? { ...line, custom: false, productId: "", name: "", notes: "", unitPrice: 0, listPrice: 0 }
-          : { ...line, custom: true, productId: "", name: "", notes: "", unitPrice: 0, listPrice: 0 };
+          ? { ...emptyLine(), key: line.key, quantity: line.quantity, custom: false }
+          : { ...emptyLine(), key: line.key, quantity: line.quantity, custom: true };
       })
     );
     setError(null);
@@ -295,10 +298,17 @@ export default function OrderFormPage({
     // other -- worse than the gap this is closing.
     const typed = customerName.trim().toLowerCase();
     const named = customers.filter((one) => String(one.name || "").trim().toLowerCase() === typed);
+    // An unchanged name keeps the explicit identity, even after a rename or
+    // when two customer records happen to have the same name.
+    const originalName = isEdit ? order?.customerName : customer?.name;
+    const originalId = isEdit ? order?.customerId : customer?.id;
+    const customerId = originalId != null && typed === String(originalName || "").trim().toLowerCase()
+      ? originalId
+      : named.length === 1 ? named[0].id : null;
 
     const result = await onSave({
       customerName: customerName.trim(),
-      customerId: named.length === 1 ? named[0].id : null,
+      customerId,
       items: filled.map((line) => {
         // A CUT LINE IS NOT REBUILT, IT IS CARRIED. This form knows how to make
         // a catalogue, negotiated or by-hand line and nothing else, so a saved

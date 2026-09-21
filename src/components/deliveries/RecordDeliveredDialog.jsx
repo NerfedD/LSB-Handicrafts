@@ -16,8 +16,7 @@ import Callout from "../shared/Callout";
 import { Field } from "../shared/forms";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import { deliveryStage } from "../../utils/copy";
-import { normalizeItems } from "../../utils/orderItems";
-import { committedOf, orderedOf, outstandingOf, voidedOf } from "../../utils/stockLedger";
+import { committedOf, orderedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
 
 /**
  * What actually went on the van.
@@ -50,10 +49,9 @@ const asUnits = (value) => Math.max(0, Math.trunc(Number(value) || 0));
 
 /** Every line, with what is still owed on it and what it may be asked for. */
 function manifestFor(order) {
-  return normalizeItems(order?.items).map((line, index) => {
+  return stockLines(order).map((line, index) => {
     const ordered = orderedOf(line);
     const committed = committedOf(line);
-    const voided = voidedOf(line);
     return {
       index,
       productId: line.productId ?? null,
@@ -61,13 +59,11 @@ function manifestFor(order) {
       quantity: line.quantity,
       ordered,
       committed,
-      voided,
       owed: outstandingOf(line),
       // A carved shape draws no catalog stock, so there is nothing here for the
       // shelf to be short of. It still appears, so the manifest is a complete
       // list of what was on the order rather than a filtered one.
       tracked: ordered > 0,
-      ceiling: Math.max(0, ordered - voided),
     };
   });
 }
@@ -83,10 +79,9 @@ export default function RecordDeliveredDialog({
 }) {
   const lines = useMemo(() => manifestFor(order), [order]);
 
-  // Seeded with everything that is still owed plus whatever already went, i.e.
-  // "all of it" expressed as a running total rather than as this trip alone.
+  // The person loading the van counts this trip; the ledger receives a total.
   const [went, setWent] = useState(() =>
-    Object.fromEntries(lines.map((line) => [line.index, String(line.ceiling)]))
+    Object.fromEntries(lines.map((line) => [line.index, String(line.owed)]))
   );
   const [driver, setDriver] = useState(delivery?.driver ?? "");
   const [dueOn, setDueOn] = useState("");
@@ -97,9 +92,9 @@ export default function RecordDeliveredDialog({
   const shortfall = lines
     .map((line) => ({
       ...line,
-      going: Math.min(asUnits(went[line.index]), line.ceiling),
+      going: Math.min(asUnits(went[line.index]), line.owed),
     }))
-    .filter((line) => line.tracked && line.going < line.ceiling);
+    .filter((line) => line.tracked && line.going < line.owed);
 
   const isShort = shortfall.length > 0;
 
@@ -108,7 +103,7 @@ export default function RecordDeliveredDialog({
   }
 
   function reset() {
-    setWent(Object.fromEntries(lines.map((line) => [line.index, String(line.ceiling)])));
+    setWent(Object.fromEntries(lines.map((line) => [line.index, String(line.owed)])));
     setDriver(delivery?.driver ?? "");
     setDueOn("");
   }
@@ -131,30 +126,17 @@ export default function RecordDeliveredDialog({
         .filter((line) => line.tracked)
         .map((line) => ({
           lineIndex: line.index,
-          units: Math.min(asUnits(went[line.index]), line.ceiling),
+          units: line.committed + Math.min(asUnits(went[line.index]), line.owed),
         })),
-      // THE MANIFEST IS THIS RUN'S LOAD, not the running total the ledger above
-      // is given. The two were written from the same number, so on a follow-up
-      // for a shortfall the second van's manifest claimed the whole order: 20
-      // ordered, 12 already gone, 8 actually carried -- and both manifests
-      // together reported 32 delivered against a 20-unit order. What the ledger
-      // deducted was right; what the delivery said it carried was not.
-      //
-      // Subtracting what had already gone leaves what this vehicle took. The
-      // input itself stays a running total, which is what it is labelled as
-      // ("20 on the order, 12 already gone") and what its min attribute
-      // enforces -- reading it as this trip alone would put the default below
-      // its own minimum.
+      // Manifests retain only what this vehicle carried.
       manifest: lines.map((line) => {
-        const runningTotal = Math.min(asUnits(went[line.index]), line.ceiling);
+        const going = Math.min(asUnits(went[line.index]), line.owed);
         return {
           productId: line.productId ?? null,
           name: line.name,
           orderedQty: line.ordered,
-          deliveredQty: Math.max(0, runningTotal - line.committed),
-          // Still owed once this run is counted, which is a remainder rather
-          // than a per-trip figure and was already right.
-          backorderQty: Math.max(0, line.ceiling - runningTotal),
+          deliveredQty: going,
+          backorderQty: line.owed - going,
         };
       }),
       followUp: isShort ? { driver: driver.trim(), dueOn } : null,
@@ -190,8 +172,8 @@ export default function RecordDeliveredDialog({
                       line.quantity !== line.ordered
                         ? `${line.ordered} off the shelf, cut into ${line.quantity} pieces. Count what left the shelf.`
                         : line.committed > 0
-                          ? `${line.ordered} on the order, ${line.committed} already gone.`
-                          : `${line.ordered} on the order.`
+                          ? `${line.committed} already gone, ${line.owed} still owed. Count only this trip.`
+                          : `${line.ordered} on the order. Count only this trip.`
                     }
                   >
                     {(props) => (
@@ -199,8 +181,8 @@ export default function RecordDeliveredDialog({
                         {...props}
                         type="number"
                         inputMode="numeric"
-                        min={line.committed}
-                        max={line.ceiling}
+                        min={0}
+                        max={line.owed}
                         value={went[line.index] ?? ""}
                         onChange={(event) => setLine(line.index, event.target.value)}
                       />
@@ -229,7 +211,7 @@ export default function RecordDeliveredDialog({
                 {shortfall.map((line) => (
                   <span key={line.index} className="block">
                     <strong className="font-bold text-ink">
-                      {line.ceiling - line.going} × {line.name}
+                      {line.owed - line.going} × {line.name}
                     </strong>{" "}
                     still owed.
                   </span>

@@ -355,6 +355,34 @@ describe("an order stamped before the per-line counters existed", () => {
     ...overrides,
   });
 
+  it("preserves untouched legacy lines when returns happen on different days", () => {
+    const source = legacy({ items: order().items });
+    const first = handleRefundStock(shelf(5), source, [
+      { lineIndex: 0, units: 2, disposition: REFUND_DISPOSITION.RESTOCK },
+    ]);
+    const second = handleRefundStock(first.inventory, { ...source, items: first.items }, [
+      { lineIndex: 1, units: 2, disposition: REFUND_DISPOSITION.RESTOCK },
+    ]);
+    expect(stockOf(second.inventory, 102)).toBe(7);
+    expect(second.items[1].committedUnits).toBe(1);
+  });
+
+  it("does not invent outstanding stock after a legacy delivery is recorded", () => {
+    const source = legacy({ items: order().items });
+    const sent = commitPartialDelivery(shelf(5), source, [{ lineIndex: 0, units: 5 }]);
+    expect(sent.stockCommittedAt).toBe(source.stockCommittedAt);
+    expect(sent.deltas).toEqual([]);
+    expect(sent.items.map((line) => line.committedUnits)).toEqual([5, 3]);
+  });
+
+  it("returns a partial dispatch when cancelling before the final commitment stamp", () => {
+    const source = order();
+    const sent = commitPartialDelivery(shelf(20), source, [{ lineIndex: 0, units: 2 }]);
+    const cancelled = uncommitOrder(sent.inventory, { ...source, ...sent });
+    expect(stockOf(cancelled.inventory, 101)).toBe(20);
+    expect(cancelled.items[0].committedUnits).toBe(0);
+  });
+
   // The goods are handed back over the counter and the money is returned. If
   // the count does not rise, the shop carries on selling from a number that is
   // short by exactly what it just took back.

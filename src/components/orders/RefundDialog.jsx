@@ -20,9 +20,8 @@ import {
   REFUND_METHOD_OPTIONS,
   REFUND_REASON_OPTIONS,
 } from "../../utils/copy";
-import { normalizeItems } from "../../utils/orderItems";
 import { orderNetTotal } from "../../utils/orders";
-import { committedOf, orderedOf, voidedOf } from "../../utils/stockLedger";
+import { committedOf, orderedOf, stockLines, voidedOf } from "../../utils/stockLedger";
 import { formatPeso } from "../../utils/profileFormat";
 
 /**
@@ -52,7 +51,7 @@ const asMoney = (value) => Math.max(0, Number(value) || 0);
 
 /** The lines that can still have something refunded against them. */
 function refundableLines(order) {
-  return normalizeItems(order?.items).map((line, index) => {
+  return stockLines(order).map((line, index) => {
     const ordered = orderedOf(line);
     const voided = voidedOf(line);
     return {
