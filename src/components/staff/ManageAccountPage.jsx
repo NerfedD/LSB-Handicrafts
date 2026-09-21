@@ -12,7 +12,7 @@ import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
 import { NotFoundState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
 import { roleLabel, signInState } from "../../utils/copy";
-import { cleanPhoneInput, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 
 /**
  * Manage one account — screen 2p.
@@ -45,7 +45,10 @@ export default function ManageAccountPage({
   onDelete,
 }) {
   const [name, setName] = useState(account?.name ?? "");
-  const [contactNumber, setContactNumber] = useState(account?.contactNumber ?? "");
+  // Same as the profile screen: normalised on the way in, and used as the
+  // baseline, so opening the page is not itself a change.
+  const seededPhone = localPhoneDigits(account?.contactNumber ?? "");
+  const [contactNumber, setContactNumber] = useState(seededPhone);
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState(null);
   const [confirm, setConfirm] = useState(null); // "block" | "unblock" | "delete" | null
@@ -60,7 +63,7 @@ export default function ManageAccountPage({
   const isSelf = Boolean(account.email) && account.email === currentUserEmail;
   const first = String(account.name || "This person").split(" ")[0];
 
-  const changed = name !== account.name || contactNumber !== (account.contactNumber ?? "");
+  const changed = name !== account.name || contactNumber !== seededPhone;
 
   async function handleSaveDetails(event) {
     event.preventDefault();
@@ -175,13 +178,13 @@ export default function ManageAccountPage({
               {(props) => (
                 <Input
                   {...props}
-                  inputMode="tel"
+                  type="tel"
                   value={contactNumber}
                   onChange={(event) => {
                     setContactNumber(cleanPhoneInput(event.target.value));
                     setPhoneError(null);
                   }}
-                  placeholder="09XX XXX XXXX"
+                  placeholder="09171234503"
                 />
               )}
             </Field>

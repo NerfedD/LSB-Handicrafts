@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ChoiceButtons, Field, RequirementList } from "../shared/forms";
 import { passwordIsAcceptable, passwordRequirements } from "../../utils/password";
-import { cleanPhoneInput, phoneDigits, phoneDoubt, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 import { ROLES } from "../../utils/staffData";
 
 /**
@@ -95,10 +95,6 @@ export default function CreateAccountDialog({
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
-  // A phone number in an unexpected shape is asked about once, not refused —
-  // the same treatment as a duplicate name on the customer dialog.
-  const [fieldWarnings, setFieldWarnings] = useState({});
-  const [asked, setAsked] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   // A field's own error clears as it is retyped: leaving "that username is
@@ -108,10 +104,6 @@ export default function CreateAccountDialog({
     setFieldErrors((previous) =>
       previous[field] ? { ...previous, [field]: undefined } : previous
     );
-    setFieldWarnings((previous) =>
-      previous[field] ? { ...previous, [field]: undefined } : previous
-    );
-    setAsked((previous) => (previous[field] ? { ...previous, [field]: false } : previous));
   };
   const requirements = passwordRequirements(form.password);
 
@@ -123,8 +115,6 @@ export default function CreateAccountDialog({
       setForm(EMPTY);
       setError(null);
       setFieldErrors({});
-      setFieldWarnings({});
-      setAsked({});
     }
     onOpenChange?.(next);
   }
@@ -137,7 +127,6 @@ export default function CreateAccountDialog({
     setError(null);
     if (!guardForm(formElement)) return;
     setFieldErrors({});
-    setFieldWarnings({});
 
     if (!form.name.trim() || !form.email.trim()) {
       fail("A name and an email address are both needed — the email is how they sign in.");
@@ -163,29 +152,17 @@ export default function CreateAccountDialog({
       return;
     }
 
-    // Asked once, then it goes through. Last of the checks, because it is the
-    // only one that does not stop the account being created.
-    const doubt = phoneDoubt(form.contactNumber);
-    if (doubt && !asked.contactNumber) {
-      setFieldWarnings({ contactNumber: doubt });
-      setAsked((previous) => ({ ...previous, contactNumber: true }));
-      return;
-    }
-
     setSubmitting(true);
     try {
-      // The number goes to the server as DIGITS. This field deliberately accepts
-      // the way people actually write a phone number -- "0917 555 0201",
-      // "+63 917 123 4503", "(02) 8888-8888" -- but admin-accounts checks it
-      // against 7 to 15 bare digits, so every one of those formats was accepted
-      // here and then refused there, with a message about a field the person
-      // had filled in correctly. phoneDigits is the same helper phoneProblem
-      // already counts with, so the two sides now agree by construction.
+      // The number goes to the server as DIGITS, which is now also exactly what
+      // the box holds. localPhoneDigits is the same helper phoneProblem counts
+      // with, so the two sides agree by construction -- and a value seeded or
+      // pasted as +63 still reaches admin-accounts in the 09 form it checks.
       const result = await onAccountCreated({
         ...form,
         name: form.name.trim(),
         email: form.email.trim().toLowerCase(),
-        contactNumber: phoneDigits(form.contactNumber),
+        contactNumber: localPhoneDigits(form.contactNumber),
       });
       if (!result?.ok) {
         fail(result?.message || 'The account was not created. Check the details and retry.');
@@ -194,8 +171,6 @@ export default function CreateAccountDialog({
       setForm(EMPTY);
       setError(null);
       setFieldErrors({});
-      setFieldWarnings({});
-      setAsked({});
       onOpenChange?.(false);
     } catch {
       fail('The account could not be confirmed. Your entries are still here; check the connection and retry.');
@@ -283,16 +258,15 @@ export default function CreateAccountDialog({
             <Field
               label="Phone number"
               error={fieldErrors.contactNumber}
-              warning={fieldWarnings.contactNumber}
               hint="So colleagues can reach them without asking around."
             >
               {(props) => (
                 <Input
                   {...props}
-                  inputMode="tel"
+                  type="tel"
                   value={form.contactNumber}
                   onChange={(event) => setField("contactNumber")(cleanPhoneInput(event.target.value))}
-                  placeholder="09XX XXX XXXX"
+                  placeholder="09171234503"
                 />
               )}
             </Field>
@@ -331,11 +305,7 @@ export default function CreateAccountDialog({
               Cancel
             </Button>
             <Button type="submit" variant="cobalt" size="lg" disabled={submitting}>
-              {submitting
-                ? "Creating…"
-                : fieldWarnings.contactNumber
-                  ? "Create it anyway"
-                  : "Create the account"}
+              {submitting ? "Creating…" : "Create the account"}
             </Button>
           </DialogFooter>
         </form>

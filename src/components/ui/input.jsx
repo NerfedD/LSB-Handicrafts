@@ -37,6 +37,10 @@ const Input = forwardRef(function Input(
 ) {
   const errorId = useId();
   const [validationError, setValidationError] = useState('');
+  // A caller says WHAT the field is -- type="tel" -- and this decides how it
+  // behaves, down to which keypad. A caller that sets inputMode itself is
+  // therefore not declaring a phone field, which is why that spelling is still
+  // read but nothing relies on it.
   const phone = type === 'tel' || props.inputMode === 'tel';
   const { onChange, ...rest } = props;
 
@@ -59,7 +63,7 @@ const Input = forwardRef(function Input(
   const phoneProps = phone
     ? {
         type: 'tel',
-        inputMode: 'tel',
+        inputMode: 'numeric',
         pattern: PHONE_SHAPE_PATTERN,
         maxLength: PHONE_MAX_CHARS,
         title: PHONE_TITLE,

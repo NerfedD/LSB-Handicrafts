@@ -1,102 +1,108 @@
 /**
  * Contact numbers.
  *
- * WHY THIS IS TWO FUNCTIONS AND NOT ONE REGEX. A phone number field has three
- * possible verdicts, not two, and collapsing them into "valid / invalid" gets
- * one of them wrong every time:
+ * ONE SHAPE, AND ONLY ONE: eleven digits beginning 09, the Philippine mobile
+ * number. `09171234503` and nothing else.
  *
- *   1. IMPOSSIBLE — letters in it, four digits, forty digits. Nobody can ring
- *      this, it is a typo, and saving it helps no one. A hard error.
- *   2. UNEXPECTED — twelve digits starting 09, or eleven digits starting 3.
- *      Probably a typo. But this shop could genuinely be buying foam from a
- *      supplier in Cebu with a numbering plan nobody here anticipated, and a
- *      hard error on that is an app refusing to record a real phone number
- *      because it has opinions. A warning, and the person decides.
- *   3. FINE — a Philippine mobile or landline in any of the shapes people
- *      actually write them in.
+ * This file used to hold three verdicts — impossible, unexpected, fine — so
+ * that a supplier in Cebu with an unanticipated numbering plan could still be
+ * recorded after being asked about. That was the right shape for a rule that
+ * accepted landlines, international format and every way people punctuate a
+ * number. It is the wrong shape for this one: when exactly one form is valid,
+ * there is nothing left that is merely surprising, and a question with only one
+ * possible answer is a worse error message than an error message.
  *
- * The middle case is the whole reason this file exists. Every number already in
- * this database was typed with no checking at all, which is how it ended up
- * holding '34234234324' and a fourteen-digit mobile; but the answer to that is
- * to ASK, not to start rejecting numbers the shop knows are right.
+ * So `phoneDoubt` is gone, and with it the "Save it anyway?" prompt. What
+ * remains is `phoneProblem`, which refuses in a sentence naming the count, and
+ * `cleanPhoneInput`, which makes most of those refusals impossible to reach by
+ * keeping anything else out of the box in the first place.
  *
- * WHAT COUNTS AS FINE, deliberately generous about punctuation because people
- * write the same number five ways and all of them dial:
+ * WHAT THIS COSTS, stated plainly because it is a real loss. Landlines can no
+ * longer be stored: `(02) 8888 8888` is ten digits and is now refused, as is
+ * `082 555 0301`. No landline is currently recorded anywhere in this database,
+ * so nothing in the books breaks today, but a shop that starts buying from a
+ * supplier who answers a landline has nowhere to put the number.
  *
- *   09171234503        mobile, national
- *   0917 555 0201      the same, spaced
- *   +63 917 123 4503   the same, international
- *   082 555 0301       a Davao landline
- *   (02) 8888 8888     a Manila landline
+ * WHAT IT BUYS. Every number in the system dials, is the same length, sorts and
+ * compares as itself, and can be handed to anything expecting a bare mobile
+ * number without being parsed first. A field that admits one shape can also
+ * enforce that shape as it is typed, which is the only kind of validation that
+ * never surprises anybody at the end of a form.
  *
- * The 7-and-15-digit bounds are E.164's: 15 digits is the longest number the
- * international standard allows to exist, and under 7 there is no national
- * number anywhere that could be dialled.
+ * +63 IS NOT A SECOND SHAPE, it is this one written for abroad, so it is
+ * converted rather than refused: `+63 917 123 4503` becomes `09171234503` as it
+ * is typed. Nobody is told off for pasting a number out of a contact card.
  */
 
-/** Just the digits — what actually gets dialled. */
+/** Just the digits, exactly as written — no interpretation. */
 export const phoneDigits = (value) => String(value ?? "").replace(/\D/g, "");
 
 /**
- * The same rule, in the two forms an `<input>` needs it.
+ * The digits as this shop stores them: `+63 9…` and `63 9…` rewritten to `09…`.
  *
- * These exist so the phone field cannot quietly enforce a DIFFERENT rule from
- * the one below, which is exactly what it was doing: it carried
- * `pattern="[0-9]{7,15}"`, which is digits-only and counts CHARACTERS rather
- * than digits. Every layer around it — this module, and the
- * `contact_number_ok` constraint in schema.sql — allows punctuation and counts
- * digits, so the field was the strictest thing in the stack and the only one
- * that was wrong. The visible cost was that `0917 555 0204`, a number already
- * in the customers table and accepted by everything else, could not be saved
- * back: `guardForm` found the element invalid and refused the submit with the
- * browser's own "Please match the requested format".
- *
- * WHAT THE ATTRIBUTE IS FOR, now. Shape only — the characters a phone number
- * may be written with. It deliberately does NOT encode the digit count, even
- * though it easily could, because a count is a verdict and this file has three
- * of those, not two. `phoneProblem` refuses what cannot be dialled and says why
- * in words somebody can act on ("that has 4"); `phoneDoubt` asks about what is
- * merely surprising. A native `pattern` can only produce "Please match the
- * requested format", which names neither the problem nor the fix, and is the
- * sort of sentence rule 1 exists to keep out of this app.
+ * Applied to a HALF-TYPED value too, which is what makes it work in an onChange
+ * rather than only on submit. `6391` becomes `091` the moment the 9 lands, so
+ * the box walks toward the right shape while somebody types instead of
+ * rejecting the whole thing once they stop. The `[2] === "9"` guard is what
+ * keeps it honest: only a mobile is rewritten, so this can never invent a
+ * leading 0 for some other number that happens to start 63.
  */
-// Spelled character-for-character the same as the class in
-// `contact_number_ok` (schema.sql), so the two can be compared by eye.
-export const PHONE_SHAPE_PATTERN = "[0-9 ()+.-]*";
+export const localPhoneDigits = (value) => {
+  const digits = phoneDigits(value);
+  return digits.startsWith("63") && digits[2] === "9" ? `0${digits.slice(2)}` : digits;
+};
+
+/** How many digits a Philippine mobile number has. */
+export const PHONE_DIGITS = 11;
 
 /**
- * The character cap, matching `char_length(value) <= 32` in the same database
- * constraint. It is characters, not digits, which is why it is not 15: a
- * fifteen-digit number written as `+63 917 123 4503` is sixteen characters, and
- * a maxLength of 15 silently truncated the last digit off a number this
- * module's own docblock offers as an example of a valid one.
+ * The field's own shape rule: digits, and nothing else.
+ *
+ * It deliberately still does NOT encode the count, even though it now easily
+ * could. A `pattern` can only ever produce the browser's "Please match the
+ * requested format", which names neither the problem nor the fix; the count is
+ * `phoneProblem`'s to report, because it can say "that has 10" and point
+ * somebody at the digit they dropped.
+ */
+export const PHONE_SHAPE_PATTERN = "[0-9]*";
+
+/**
+ * The character cap, matching `char_length(value) <= 32` in the database.
+ *
+ * IT IS NOT 11, AND THAT IS NOT AN OVERSIGHT. The box only ever settles on
+ * digits, so eleven looks like the honest number — but `maxlength` is enforced
+ * by the browser on the way IN, before any of this code sees the value, and a
+ * paste arrives with its punctuation still attached. `0917 555 0201` is
+ * thirteen characters; under a cap of eleven the browser hands over
+ * `0917 555 02`, and `cleanPhoneInput` then faithfully cleans a number that has
+ * already had two digits cut off it. The person pasted a correct number and the
+ * box silently holds a wrong one.
+ *
+ * So the cap stays wide enough for the punctuation somebody might paste, and
+ * the ELEVEN is enforced by cleanPhoneInput, which counts digits and runs after
+ * the punctuation is gone. Typing is unaffected either way: each keystroke is
+ * cleaned as it lands, so the box never accumulates characters to cap.
  */
 export const PHONE_MAX_CHARS = 32;
 
 /** What the field says about itself, in this app's words rather than Chrome's. */
-export const PHONE_TITLE =
-  "Digits, and the spaces, brackets, dots, dashes or leading + people write around them.";
+export const PHONE_TITLE = "Eleven digits beginning 09 — for example 09171234503.";
 
 /**
  * What a phone field accepts as it is typed.
  *
- * A LETTER NEVER LANDS IN THE BOX AT ALL, rather than landing and being
- * complained about afterwards. The database now refuses letters outright (see
- * the contact_number_ok constraint in schema.sql), and a rule enforced three
- * screens later, by an error message, is a rule people learn by being told off.
- * Stripping as they type is the same rule applied where it costs nothing.
- *
- * It removes ONLY characters that cannot appear in a phone number. Spaces,
- * brackets, dashes, dots and a leading + all survive, because people write the
- * same number five different ways and every one of them dials.
+ * NOTHING BUT DIGITS LANDS IN THE BOX, and never a twelfth one. A rule enforced
+ * three screens later by an error message is a rule people learn by being told
+ * off; applied here it costs nothing and is never seen. Punctuation is not
+ * refused so much as absorbed — typing or pasting `0917 555 0201` leaves
+ * `09175550201` behind, which is the same number, so the person who wrote it
+ * the way they always write it is neither corrected nor stopped.
  */
-export const cleanPhoneInput = (value) => String(value ?? "").replace(/[^\d\s()+.-]/g, "");
+export const cleanPhoneInput = (value) =>
+  localPhoneDigits(value).slice(0, PHONE_DIGITS);
 
-/** Everything a person legitimately types around the digits. */
+/** Everything a person legitimately types around the digits, on a paste. */
 const SHAPE = /^[\d\s()+.-]*$/;
-
-const MIN_DIGITS = 7;
-const MAX_DIGITS = 15;
 
 /**
  * A reason this cannot be saved, or null.
@@ -104,6 +110,11 @@ const MAX_DIGITS = 15;
  * An empty value is NOT a problem here: whether the field is required is the
  * form's question, not this module's, and the two forms disagree (a customer
  * must have a number, a staff account need not).
+ *
+ * Still checks for letters even though `cleanPhoneInput` keeps them out of the
+ * box, because this function is also the rule applied to a value that arrived
+ * some other way — seeded, pasted into a field that forgot to clean, or already
+ * sitting in the database from before any of this existed.
  */
 export function phoneProblem(value) {
   const raw = String(value ?? "").trim();
@@ -113,42 +124,15 @@ export function phoneProblem(value) {
     return "A phone number is digits only — check for stray letters.";
   }
 
-  const digits = phoneDigits(raw);
-  if (digits.length < MIN_DIGITS) {
-    return `A phone number needs at least ${MIN_DIGITS} digits — that has ${digits.length}.`;
+  const digits = localPhoneDigits(raw);
+
+  if (digits.length !== PHONE_DIGITS) {
+    return `A phone number is ${PHONE_DIGITS} digits beginning 09 — that has ${digits.length}.`;
   }
-  if (digits.length > MAX_DIGITS) {
-    return `That is ${digits.length} digits. No phone number is longer than ${MAX_DIGITS}.`;
+  // Eleven digits, but not this shop's eleven: a landline written without its
+  // trunk 0, or a number from a plan this app no longer stores.
+  if (!digits.startsWith("09")) {
+    return "A phone number begins 09 — check the first two digits.";
   }
   return null;
-}
-
-/**
- * A reason to ask about this before saving it, or null.
- *
- * Only ever called on a value that already passed phoneProblem — a number that
- * cannot be saved does not also need a question about it, the same way a Field
- * shows an error OR a hint and never both.
- */
-export function phoneDoubt(value) {
-  const raw = String(value ?? "").trim();
-  if (!raw || phoneProblem(raw)) return null;
-
-  const digits = phoneDigits(raw);
-
-  // 09XXXXXXXXX — the shape almost every number in this business takes.
-  if (/^09\d{9}$/.test(digits)) return null;
-  // +639XXXXXXXXX / 639XXXXXXXXX — the same number written for abroad.
-  if (/^639\d{9}$/.test(digits)) return null;
-  // 0 + area code + subscriber: a landline, 8 to 10 digits after the trunk 0.
-  if (/^0[2-8]\d{7,9}$/.test(digits)) return null;
-  // +63 landline, written internationally.
-  if (/^63[2-8]\d{7,9}$/.test(digits)) return null;
-
-  // A near miss on the mobile shape is worth naming precisely — "that is 12
-  // digits" tells somebody where to look, where "invalid" does not.
-  if (digits.startsWith("09") || digits.startsWith("639")) {
-    return `That is ${digits.length} digits — a Philippine mobile number has 11. Save it anyway?`;
-  }
-  return "That does not look like a Philippine mobile or landline number. Save it anyway?";
 }

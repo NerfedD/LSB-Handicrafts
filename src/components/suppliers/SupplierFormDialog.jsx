@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { Field } from "../shared/forms";
-import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 
 /**
  * Add or edit a supplier.
@@ -48,9 +48,9 @@ function validate(values) {
   if (!values.contactNumber.trim()) {
     errors.contactNumber = "A phone number is the whole reason to have this record.";
   } else {
-    // Only what cannot be a phone number at all — see utils/phone. A supplier
-    // is the likeliest record in the system to hold a number in a shape nobody
-    // here expected, which is exactly why this refuses so little.
+    // One shape only — see utils/phone. A supplier is the likeliest record in
+    // the system to answer a landline, and this is where that stops being
+    // storable; the trade was made deliberately.
     const problem = phoneProblem(values.contactNumber);
     if (problem) errors.contactNumber = problem;
   }
@@ -60,12 +60,20 @@ function validate(values) {
   return errors;
 }
 
+// A number stored under the old rule is shown in the new shape, because the
+// field's own `pattern` is digits and a value carrying spaces would fail it —
+// which is guardForm refusing the submit with the browser's own "Please match
+// the requested format", on a screen the person opened to change something
+// else entirely. localPhoneDigits and not cleanPhoneInput: normalising the
+// punctuation is a migration, but truncating a twelve-digit number to eleven
+// would silently invent a different number, and that one has to be read and
+// corrected by somebody.
 const seed = (supplier, isEdit) =>
   isEdit && supplier
     ? {
         name: supplier.name ?? "",
         contactPerson: supplier.contactPerson ?? "",
-        contactNumber: supplier.contactNumber ?? "",
+        contactNumber: localPhoneDigits(supplier.contactNumber ?? ""),
         email: supplier.email ?? "",
         address: supplier.address ?? "",
       }
@@ -116,8 +124,6 @@ export default function SupplierFormDialog({
         twin.contactNumber ? ` on ${twin.contactNumber}` : ""
       }. Add this one anyway?`;
     }
-    const doubt = phoneDoubt(next.contactNumber);
-    if (doubt) raised.contactNumber = doubt;
     return raised;
   }
 
@@ -220,10 +226,10 @@ export default function SupplierFormDialog({
               {(props) => (
                 <Input
                   {...props}
-                  inputMode="tel"
+                  type="tel"
                   value={values.contactNumber}
                   onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
-                  placeholder="09XX XXX XXXX"
+                  placeholder="09171234503"
                 />
               )}
             </Field>

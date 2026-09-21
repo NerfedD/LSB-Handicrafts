@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
-import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 
 /**
  * Edit my details.
@@ -24,22 +24,20 @@ import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
  */
 export default function EditProfilePage({ profile, onBack, onSave }) {
   const [name, setName] = useState(profile?.name ?? "");
-  const [contactNumber, setContactNumber] = useState(profile?.contactNumber ?? "");
+  // See the note on the customer dialog's seed: a stored number is shown in
+  // the new shape, and the baseline below is that same shape so that merely
+  // opening this screen does not count as an edit.
+  const seededPhone = localPhoneDigits(profile?.contactNumber ?? "");
+  const [contactNumber, setContactNumber] = useState(seededPhone);
   const [phoneError, setPhoneError] = useState(null);
-  // Asked once. Your own number is the one you are most likely to be typing
-  // from memory, and the least likely to want an argument about.
-  const [phoneWarning, setPhoneWarning] = useState(null);
-  const [asked, setAsked] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const changed =
-    name !== (profile?.name ?? "") || contactNumber !== (profile?.contactNumber ?? "");
+    name !== (profile?.name ?? "") || contactNumber !== seededPhone;
 
   function setPhone(next) {
     setContactNumber(next);
     setPhoneError(null);
-    setPhoneWarning(null);
-    setAsked(false);
   }
 
   async function handleSubmit(event) {
@@ -52,13 +50,6 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
       setPhoneError(problem);
       return;
     }
-    const doubt = phoneDoubt(contactNumber);
-    if (doubt && !asked) {
-      setPhoneWarning(doubt);
-      setAsked(true);
-      return;
-    }
-
     setSaving(true);
     await onSave?.({ name: name.trim(), contactNumber: contactNumber.trim() });
     setSaving(false);
@@ -87,16 +78,15 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
             <Field
               label="Phone number"
               error={phoneError}
-              warning={phoneWarning}
               hint="So colleagues can reach you without asking around."
             >
               {(props) => (
                 <Input
                   {...props}
-                  inputMode="tel"
+                  type="tel"
                   value={contactNumber}
                   onChange={(event) => setPhone(cleanPhoneInput(event.target.value))}
-                  placeholder="09XX XXX XXXX"
+                  placeholder="09171234503"
                 />
               )}
             </Field>
@@ -123,7 +113,7 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
             right={
               <Button type="submit" variant="cobalt" size="lg" disabled={!changed || saving}>
                 <Save className="h-5 w-5" />
-                {saving ? "Saving…" : phoneWarning ? "Save it anyway" : "Save my details"}
+                {saving ? "Saving…" : "Save my details"}
               </Button>
             }
           />

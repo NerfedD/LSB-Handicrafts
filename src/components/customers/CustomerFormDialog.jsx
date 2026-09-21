@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
 import { ChoiceButtons, Field } from "../shared/forms";
-import { cleanPhoneInput, phoneDoubt, phoneProblem } from "../../utils/phone";
+import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 
 /**
  * Add or edit a customer.
@@ -57,8 +57,8 @@ function validate(values) {
   if (!values.contactNumber.trim()) {
     errors.contactNumber = "A phone number is how anyone reaches them later.";
   } else {
-    // Only what cannot be a phone number at all. A number that is merely
-    // surprising is a question asked below, not a refusal — see utils/phone.
+    // One shape only, and it is refused outright — see utils/phone. There is
+    // no longer a "merely surprising" number to ask a question about.
     const problem = phoneProblem(values.contactNumber);
     if (problem) errors.contactNumber = problem;
   }
@@ -70,12 +70,20 @@ function validate(values) {
   return errors;
 }
 
+// A number stored under the old rule is shown in the new shape, because the
+// field's own `pattern` is digits and a value carrying spaces would fail it —
+// which is guardForm refusing the submit with the browser's own "Please match
+// the requested format", on a screen the person opened to change something
+// else entirely. localPhoneDigits and not cleanPhoneInput: normalising the
+// punctuation is a migration, but truncating a twelve-digit number to eleven
+// would silently invent a different number, and that one has to be read and
+// corrected by somebody.
 const seed = (customer, isEdit) =>
   isEdit && customer
     ? {
         name: customer.name ?? "",
         kind: customer.kind ?? "walk-in",
-        contactNumber: customer.contactNumber ?? "",
+        contactNumber: localPhoneDigits(customer.contactNumber ?? ""),
         email: customer.email ?? "",
         address: customer.address ?? "",
       }
@@ -129,8 +137,6 @@ export default function CustomerFormDialog({
         twin.contactNumber ? ` on ${twin.contactNumber}` : ""
       }. Add this one anyway?`;
     }
-    const doubt = phoneDoubt(next.contactNumber);
-    if (doubt) raised.contactNumber = doubt;
     return raised;
   }
 
@@ -235,10 +241,10 @@ export default function CustomerFormDialog({
               {(props) => (
                 <Input
                   {...props}
-                  inputMode="tel"
+                  type="tel"
                   value={values.contactNumber}
                   onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
-                  placeholder="09XX XXX XXXX"
+                  placeholder="09171234503"
                 />
               )}
             </Field>
