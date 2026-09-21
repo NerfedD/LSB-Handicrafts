@@ -86,6 +86,7 @@ export function stockFor(product, index) {
     // is the only place a caller can learn the ledger id for a catalogue
     // entry without re-doing the join by hand.
     rowId: row.id,
+    revision: row.revision ?? 0,
     onHand,
     reserved,
     available,

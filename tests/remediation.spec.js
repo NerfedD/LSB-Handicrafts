@@ -2,18 +2,23 @@ import { expect, test } from '@playwright/test';
 import { signIn, stubSupabase } from './stubSupabase.js';
 import { SIGNED_IN_EMAIL } from './fixtures.js';
 
-test('refresh keeps a nested record, exact query, filters and browser history', async ({ page, baseURL }) => {
+test('refresh keeps a nested record and its exact query', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/products/1/edit?source=audit`);
   await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 4 inch');
   await page.reload();
   await expect(page).toHaveURL(/\/products\/1\/edit\?source=audit$/);
   await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 4 inch');
+});
+
+test('filtered orders retain the query through refresh and browser history', async ({ page, baseURL }) => {
+  await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/orders?tab=waiting&query=Maria&source=audit`);
   await expect(page.getByPlaceholder('Search by customer or order number')).toHaveValue('Maria');
   await page.reload();
   await expect(page).toHaveURL(/tab=waiting&query=Maria&source=audit/);
-  await page.getByRole('button', { name: /^Products & stock/ }).click();
+  await page.getByRole('navigation').getByRole('button', { name: /^Products & stock/ }).click();
+  await expect(page).toHaveURL(/\/products$/);
   await page.goBack();
   await expect(page.getByPlaceholder('Search by customer or order number')).toHaveValue('Maria');
 });

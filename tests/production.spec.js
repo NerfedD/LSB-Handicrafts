@@ -154,7 +154,9 @@ for (const view of ['standard', 'large']) {
     await setup(page, baseURL, 'ana@lsbhandicrafts.test', (tables) => {
       tables.staff[2].status = 'Active'; tables.staff[2].dashboard_view = view;
     });
-    await page.getByRole('button', { name: 'Start batch', exact: true }).first().click();
+    const productRow = page.locator('tr, li').filter({ has: page.getByRole('button', { name: 'Start batch', exact: true }) }).first();
+    await expect(productRow).toBeVisible();
+    await productRow.getByRole('button', { name: 'Start batch', exact: true }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     expect(await dialog.getByLabel('What are we making?').inputValue()).not.toBe('');

@@ -81,6 +81,7 @@ function validate(values) {
 const seed = (customer, isEdit) =>
   isEdit && customer
     ? {
+        revision: customer.revision ?? 0,
         name: customer.name ?? "",
         kind: customer.kind ?? "walk-in",
         contactNumber: localPhoneDigits(customer.contactNumber ?? ""),

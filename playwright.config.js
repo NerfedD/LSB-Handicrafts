@@ -15,6 +15,16 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: false,
+  // One worker. `fullyParallel: false` only serialises WITHIN a file; a second
+  // worker runs a second spec file against the same dev server at the same
+  // time, and the suite's stubs and sign-in fixtures are not built to be shared
+  // that way -- 57 of 94 tests failed on two workers, and the run was slower
+  // (7.7m) than serial (3.5m) because each worker also starts its own Edge.
+  workers: 1,
+  // On installed Edge, cold Vite chunks exceeded the default 5s assertion
+  // window in audit traces while the page correctly showed its loading state.
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
   reporter: [["list"]],
   outputDir: "test-results",
 

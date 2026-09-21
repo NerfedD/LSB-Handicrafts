@@ -128,9 +128,18 @@ tests remain stubbed, and PGlite does not test multi-connection lock contention.
 
 ### What is still worth knowing
 
-- **Ordinary order and delivery edits reject stale saves**, including price
-  corrections. Other collections still use whole-row updates, so simultaneous
-  edits to products, customers or suppliers can overwrite each other.
+- **Orders, deliveries, products, stock, customers, and suppliers reject stale
+  saves.** Forms keep the revision they opened with, even after a background
+  refresh. If somebody else saves first, keep the draft, close/reopen or refresh
+  the form, and reconcile the new values before saving. Apply
+  `supabase/migrations/20260921122520_qa_integrity_guards.sql` before deploying
+  this client, and refresh existing tabs after rollout.
+- **Activity records are written by the database.** Core business changes and
+  their audit entries commit or roll back together. Clients cannot insert,
+  edit, or delete activity rows. Older records remain visible but are marked
+  unverified because their original client-supplied attribution cannot be
+  authenticated retroactively. Sign-in notifications use a server-derived,
+  once-per-session entry.
 - **A new account cannot sign in for up to 30 seconds.** The `sign-in` function
   caches the username roster for that long so a burst of sign-ins costs one
   database read instead of thirty. Wait half a minute after creating an account.

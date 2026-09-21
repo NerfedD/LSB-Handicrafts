@@ -71,6 +71,8 @@ const EMPTY = {
 const seed = (product, stock) => {
   if (!product) return EMPTY;
   return {
+    revision: product.revision ?? 0,
+    stockRevision: stock?.revision ?? 0,
     productType: product.productType || PRODUCT_TYPE.OTHER,
     name: product.name ?? "",
     diameterIn: product.diameterIn ?? "",

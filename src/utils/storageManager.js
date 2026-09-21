@@ -75,6 +75,7 @@ const inventoryToRow = (i) => ({
 });
 
 const inventoryFromRow = (r) => ({
+  revision: r.revision ?? 0,
   id: r.id,
   sku: r.sku,
   name: r.name,
@@ -252,6 +253,7 @@ const activityToRow = (a) => ({
 });
 
 const activityFromRow = (r) => ({
+  source: r.source ?? 'legacy',
   id: r.id,
   type: r.type,
   title: r.title,
@@ -280,6 +282,7 @@ const customerToRow = (c) => ({
 });
 
 const customerFromRow = (r) => ({
+  revision: r.revision ?? 0,
   id: r.id,
   name: r.name,
   contactNumber: r.contact_number,
@@ -317,6 +320,7 @@ const productToRow = (p) => ({
 });
 
 const productFromRow = (r) => ({
+  revision: r.revision ?? 0,
   id: r.id,
   itemCode: r.item_code,
   name: r.name,
@@ -347,6 +351,7 @@ const supplierToRow = (s) => ({
 });
 
 const supplierFromRow = (r) => ({
+  revision: r.revision ?? 0,
   id: r.id,
   name: r.name,
   contactPerson: r.contact_person,
@@ -520,7 +525,7 @@ const updateRow = async (table, id, patch, toRow = identity) => {
     .from(table)
     .update(payload)
     .eq('id', id);
-  const versioned = table === 'orders' || table === 'deliveries';
+  const versioned = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory'].includes(table);
   if (versioned) query = query.eq('revision', patch.revision ?? 0);
   const { data, error } = await query.select().maybeSingle();
 

@@ -493,10 +493,8 @@ export default function App() {
   // ---- writes -------------------------------------------------------------
 
   /**
-   * Records what just happened, under the signed-in person's name.
-   *
-   * Not awaited by its callers and never surfaced: a failed log entry must not
-   * make a successful save look like it failed. See utils/activityLog.
+   * Compatibility notification for existing action handlers. Business changes
+   * are now audited by database triggers; only sign-in needs a client signal.
    */
   const logActivity = useCallback(
     (entry) => record({ ...entry, who: profile?.name }),
@@ -929,6 +927,7 @@ export default function App() {
       ? await productsState.update(knownId, {
           ...selectedProduct,
           ...catalogue,
+          revision: retryProduct?.revision ?? values.revision ?? 0,
           updatedAt: now,
         })
       : await productsState.create({ ...catalogue, createdAt: now, updatedAt: now });
@@ -969,7 +968,7 @@ export default function App() {
       };
 
       const stockResult = existingStock
-        ? await inventoryState.update(existingStock.id, { ...existingStock, ...ledger })
+        ? await inventoryState.update(existingStock.id, { ...existingStock, ...ledger, revision: values.stockRevision ?? 0 })
         // No id: the sequence supplies one. The `Date.now() + 1` that stood
         // here was a hand-patch for this insert landing in the same
         // millisecond as the catalogue row above it -- which it reliably did,
@@ -984,7 +983,7 @@ export default function App() {
         setBusy(false);
         // Only worth remembering if there is an id to retry against; without
         // one the retry would try to update a row keyed on null.
-        productRetryRef.current = productId === null ? null : { id: productId };
+        productRetryRef.current = productId === null ? null : { id: productId, revision: result.data?.revision ?? 0 };
         const message = `The product was saved, but its shelf count was not. ${stockResult.message || 'Check the count and save again.'}`;
         toast.error(message);
         return { ok: false, message };
