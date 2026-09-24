@@ -22,18 +22,22 @@ The app is a static React bundle talking to one Supabase project (Postgres, Auth
 
 ## An existing project
 
-Apply the migrations it has not had, oldest first. The hosted project `tvdtzsputfnapswpurlr` had everything up to `20260921213000_staff_revision_guard.sql` when this release was prepared; the one to apply is:
+Apply the migrations it has not had, **oldest first**. The hosted project `tvdtzsputfnapswpurlr` had everything up to `20260921213000_staff_revision_guard.sql` when this release was prepared; the two to apply are:
 
 **`20260924120000_stock_returns_loyalty.sql`** — adds the stock-movement ledger, damage and count corrections (`stock_command`), replacements and server-checked refunds in `order_command`, supplier delivery references, `deliveries.order_id` (back-filled from the "Order #N - " text), the one-row-per-code index on stock, product archiving (`remove_product`), loyalty rules with validated order discounts, per-customer totals (`customer_order_stats`), and the role policies in [workflows.md](workflows.md#roles). It deletes and overwrites nothing except the documented back-fill.
+
+**`20260924190000_material_crud_and_damage_undo.sql`** — adds `status` and `revision` to raw materials, `remove_material` and `restore_material` (archive-or-delete, the same rule as products), a `save_material` that can correct every field rather than only the name and reorder point, and `undo_damage` in `stock_command` with the `reverses_movement_id` link and the unique index that allows exactly one undo per damage record. It adds columns, constraints and functions only.
+
+Order matters. Each file redefines the functions it touches with `create or replace`, so running an older one after a newer one puts the older definitions back. If that happens, re-run the later files; nothing is lost.
 
 Deployment order:
 
 1. Run `supabase/integrity_check.sql` and read the report. Any duplicate stock codes leave the unique index uncreated (the migration says so and continues); stock rows without a catalogue entry are harmless to the migration but invisible in the app — correction A in the file fixes them.
-2. Apply the migration (SQL editor, or `supabase db push` / MCP `apply_migration`).
+2. Apply the migrations, oldest first (SQL editor, or `supabase db push` / MCP `apply_migration`).
 3. Deploy the client (`npm run build`; Vercel serves `dist/` with the SPA rewrite in `vercel.json`).
 4. Ask everyone to reload open tabs: an old tab would try to write stock counts directly, which the database now refuses.
 
-The migration is safe to re-run. Rolling back the client alone is not safe after step 2 (old clients write stock directly); roll forward instead.
+Both migrations are safe to re-run. Rolling back the client alone is not safe after step 2 (old clients write stock directly); roll forward instead.
 
 ## Edge Functions
 

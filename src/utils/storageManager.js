@@ -330,6 +330,7 @@ const stockMovementFromRow = (r) => ({
   supplierOrderId: r.supplier_order_id,
   batchId: r.batch_id,
   actorName: r.actor_name,
+  reversesMovementId: r.reverses_movement_id ?? null,
   at: r.created_at,
 });
 
@@ -612,6 +613,30 @@ export async function removeProduct(product) {
   });
   if (error) return { ok: false, message: humanizeError(error, "Couldn't remove that product.") };
   return { ok: true, outcome: data?.outcome ?? 'deleted' };
+}
+
+/**
+ * Removes a raw material the same way: archived if any delivery, batch, recipe,
+ * lot or movement refers to it -- or if there is still stock on the shelf --
+ * and deleted outright only when nothing does. Archiving is reversible.
+ */
+export async function removeMaterial(material) {
+  const { data, error } = await supabase.rpc('remove_material', {
+    p_material_id: material.id,
+    p_expected_revision: material.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't remove that raw material.") };
+  return { ok: true, outcome: data?.outcome ?? 'deleted' };
+}
+
+/** Puts an archived raw material back in use. */
+export async function restoreMaterial(material) {
+  const { data, error } = await supabase.rpc('restore_material', {
+    p_material_id: material.id,
+    p_expected_revision: material.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't put that raw material back in use.") };
+  return { ok: true, outcome: data?.outcome ?? 'restored' };
 }
 
 // ---- the signed-in person's own profile -----------------------------------

@@ -34,9 +34,16 @@ The browser cannot write `inventory.stock` directly (a trigger refuses it) and c
 
 - **Record damage** (Admin, Manager, Production Staff): a whole number, at most what is on the shelf, and a reason from a fixed list (*Something else* needs a note). The units come off the shelf once. A retried request replays its first answer rather than deducting again.
 - **Correct the count** (Admin, Manager): the number actually counted, plus a reason. The form carries the count it was opened against; if the shelf moved since, the correction is refused so nobody overwrites a change they have not seen.
+- **Put a damage record back** (Admin, Manager): a damage entry made wrong is not edited away — the history is append-only, and one that can be rewritten is worth nothing. *Put this back* on the entry in the stock history returns exactly the quantity it took off, as its own entry naming the one it reverses. The database allows exactly one per record (a unique index, not a hidden button), so the stock cannot go back twice, and both the mistake and the correction stay on the record. For a raw material the quantity comes back as a *Damage undone* lot, so the lots still match the count.
 - For raw materials, a decrease uses the oldest lots first and an increase opens a *Count correction* lot.
 
 Damage found at other moments is handled where it happens: on a supplier delivery (not added to stock, flags a claim), in production quality check (defect log), or on a customer return (*Thrown away* — not put back on the shelf). None of these deducts stock that was never counted, so nothing is deducted twice.
+
+## Raw materials
+
+A manager adds a material with its code, kind, unit, measurements and reorder point, and can **correct any of them afterwards** — a code, a unit or a measurement typed wrong when it was added is not permanent. A save carries the revision the form was opened on, so one that somebody else changed in the meantime is refused rather than overwritten. Changing the details never moves stock.
+
+Removing one is an administrator's job and follows the same rule as a product: see [Removing records safely](#removing-records-safely). A material taken out of use keeps its history and stays readable in the stock movements and batches that name it; it is only kept out of the materials list, new supplier orders and new recipes.
 
 ## Suppliers and deliveries
 
@@ -81,6 +88,7 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | Product | Archived (hidden from lists and the order form, all history kept, can be put back on sale) if anything refers to it; deleted, both halves in one transaction, only if nothing does. Refused while an order is waiting for it. Admin only. |
 | Customer | Admin only, refused while an order is waiting; past orders keep the name. |
 | Supplier | Admin only, refused once they have purchase history. |
+| Raw material | Archived (kept off the materials list, supplier orders and recipes, all history kept, can be put back in use) if anything refers to it or it still has stock; deleted only if nothing does. Refused while a delivery is on its way or a batch is using it. Admin only. |
 | Delivery | Only one that never left, by a manager or admin (or automatically when its order is called off). |
 | Staff account | Admin only; never the owner or yourself. Stock history keeps the person's name. |
 
@@ -93,13 +101,14 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | Add/edit products, prices, reorder points | ✓ | ✓ | | | |
 | Correct a stock count | ✓ | ✓ | | | |
 | Record damaged stock | ✓ | ✓ | | ✓ | |
+| Put a damage record back | ✓ | ✓ | | | |
 | Refunds, replacements, price fixes, change/call off/re-open orders | ✓ | ✓ | | | |
 | See customer contact details | ✓ | ✓ | ✓ | | ✓ |
 | Add/edit customers | ✓ | ✓ | ✓ | | |
 | Add/edit suppliers, order materials, settle claims | ✓ | ✓ | | | |
 | Loyalty rules, damage & yield report | ✓ | ✓ | | | |
 | Production batches | ✓ | ✓ | | ✓ | |
-| Remove customers, suppliers, products | ✓ | | | | |
+| Remove customers, suppliers, products, raw materials | ✓ | | | | |
 | Staff accounts, activity log | ✓ | | | | |
 
 The same lists are in `src/utils/permissions.js` (screens) and `supabase/schema.sql` (enforcement); `src/utils/permissions.test.js` and `src/utils/permissionsDatabase.test.js` keep them in step.

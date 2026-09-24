@@ -24,6 +24,22 @@ const stockOf = async (id) => (await one(db, 'select stock from public.inventory
 const movementsOf = (id) => all(db,
   'select kind, quantity_change, balance_after, reason, note, order_id, actor_name from public.stock_movements where inventory_id = $1 order by id', [id]);
 
+const MIGRATIONS = ['migrations/20260924120000_stock_returns_loyalty.sql',
+  'migrations/20260924190000_material_crud_and_damage_undo.sql'];
+
+/**
+ * Re-runs a migration to prove it is safe to run twice, then re-applies the
+ * ones after it. A migration only ever redefines a function `create or
+ * replace`, so running an old file on its own would leave the database a
+ * release behind for every test that follows -- which is not what applying
+ * migrations in order does, and is not what is being tested here.
+ */
+async function rerun(name, times = 1) {
+  const from = MIGRATIONS.indexOf(name);
+  for (let i = 0; i < times; i += 1) await db.exec(readSql(name));
+  for (const later of MIGRATIONS.slice(from + 1)) await db.exec(readSql(later));
+}
+
 describe('stock movements', () => {
   it('records an opening count when a stock row is created with stock on it', async () => {
     const { inventoryId } = await shelf({ stock: 12 });
@@ -38,9 +54,7 @@ describe('stock movements', () => {
     await db.exec(`alter table public.inventory disable trigger inventory_stock_movement;
       update public.inventory set stock = 9 where id = ${inventoryId};
       alter table public.inventory enable trigger inventory_stock_movement;`);
-    const migration = readSql('migrations/20260924120000_stock_returns_loyalty.sql');
-    await db.exec(migration);
-    await db.exec(migration);
+    await rerun('migrations/20260924120000_stock_returns_loyalty.sql', 2);
     expect(await movementsOf(inventoryId)).toEqual([
       expect.objectContaining({ kind: 'opening', quantity_change: 9, balance_after: 9, actor_name: 'System' }),
     ]);
@@ -198,6 +212,192 @@ describe('raw materials', () => {
   });
 });
 
+describe('correcting a raw material', () => {
+  const save = (data, key) => rpc(db, 'workshop_command', 'save_material', data, key);
+  const read = (id) => one(db, 'select * from public.raw_materials where id = $1', [id]);
+
+  async function material() {
+    const row = await save({ sku: `RM-${uid()}`, name: 'Sheet 1 inch', material_type: 'sheet',
+      unit: 'sheet', density: 1.5, thickness_in: 1, length_ft: 8, width_ft: 4, low_stock_threshold: 5 });
+    return Number(row.id);
+  }
+
+  it('puts right every detail that could have been typed wrong', async () => {
+    const id = await material();
+    const before = await read(id);
+    await save({ id, sku: 'rm-fixed-01', name: 'Sheet 2 inch', material_type: 'block', unit: 'block',
+      density: '2.25', thickness_in: '2', length_ft: '10', width_ft: '5', low_stock_threshold: '12',
+      expectedRevision: Number(before.revision) });
+    expect(await read(id)).toMatchObject({
+      sku: 'RM-FIXED-01', name: 'Sheet 2 inch', material_type: 'block', unit: 'block',
+      density: '2.25', thickness_in: '2', length_ft: '10', width_ft: '5', low_stock_threshold: 12,
+    });
+  });
+
+  it('clears a measurement that should never have been set, and leaves out fields alone', async () => {
+    const id = await material();
+    await save({ id, density: '' });
+    const row = await read(id);
+    expect(row.density).toBe(null);
+    // Not in the payload, so not touched.
+    expect(row).toMatchObject({ name: 'Sheet 1 inch', thickness_in: '1', length_ft: '8' });
+  });
+
+  it('refuses a save built on a stale read', async () => {
+    const id = await material();
+    await expect(save({ id, name: 'Later', expectedRevision: 99 }))
+      .rejects.toThrow(/changed while you were editing/);
+  });
+
+  it('is a manager\'s job, and not a stranger\'s', async () => {
+    const id = await material();
+    await signIn(db, 'production');
+    await expect(save({ id, name: 'Nope' })).rejects.toThrow(/manager or administrator/);
+    await signIn(db, 'admin');
+  });
+});
+
+describe('removing a raw material', () => {
+  const remove = (id, revision) => one(db,
+    'select public.remove_material($1, $2) as result', [id, revision]);
+  const restore = (id, revision) => one(db,
+    'select public.restore_material($1, $2) as result', [id, revision]);
+  const read = (id) => one(db, 'select * from public.raw_materials where id = $1', [id]);
+
+  async function material() {
+    const row = await rpc(db, 'workshop_command', 'save_material',
+      { sku: `RM-${uid()}`, name: 'Spare', material_type: 'sheet', unit: 'sheet', low_stock_threshold: 5 });
+    return Number(row.id);
+  }
+
+  it('deletes one that nothing refers to, and only for an administrator', async () => {
+    const id = await material();
+    await signIn(db, 'manager');
+    await expect(remove(id, 0)).rejects.toThrow(/Only an administrator/);
+    await signIn(db, 'admin');
+    expect((await remove(id, 0)).result).toEqual({ outcome: 'deleted' });
+    expect(await read(id)).toBeUndefined();
+  });
+
+  it('archives one that has stock, keeping the count and its history', async () => {
+    const id = await material();
+    await rpc(db, 'stock_command', 'correct_count',
+      { target: 'material', id, quantity: 7, expectedStock: 0, reason: 'found' });
+    const before = await read(id);
+    expect((await remove(id, Number(before.revision))).result).toEqual({ outcome: 'archived' });
+    const after = await read(id);
+    expect(after).toMatchObject({ status: 'Archived', stock: 7 });
+    expect(await all(db, 'select id from public.stock_movements where raw_material_id = $1', [id]))
+      .not.toHaveLength(0);
+    // And it can be put back in use.
+    expect((await restore(id, Number(after.revision))).result).toEqual({ outcome: 'restored' });
+    expect((await read(id)).status).toBe('Active');
+  });
+
+  it('will not remove one a supplier order is still bringing in', async () => {
+    const id = await material();
+    const supplier = uid();
+    await db.query(`insert into public.suppliers (id, name) values ($1, 'Davao Foam')`, [supplier]);
+    await rpc(db, 'workshop_command', 'save_order',
+      { supplier_id: supplier, raw_material_id: id, quantity_ordered: 10, unit_price: 50 });
+    await expect(remove(id, Number((await read(id)).revision)))
+      .rejects.toThrow(/has not arrived yet/);
+  });
+
+  it('refuses a removal built on a stale read', async () => {
+    const id = await material();
+    await expect(remove(id, 99)).rejects.toThrow(/changed/);
+  });
+
+  it('cannot be changed while it is archived', async () => {
+    const id = await material();
+    await rpc(db, 'stock_command', 'correct_count',
+      { target: 'material', id, quantity: 3, expectedStock: 0, reason: 'found' });
+    await remove(id, Number((await read(id)).revision));
+    await expect(rpc(db, 'workshop_command', 'save_material', { id, name: 'Changed' }))
+      .rejects.toThrow(/archived/);
+  });
+});
+
+describe('undoing a damage record entered wrong', () => {
+  const undo = (movementId, extra = {}, key) =>
+    rpc(db, 'stock_command', 'undo_damage', { movementId, ...extra }, key);
+  const lastDamage = async (column, id) => (await one(db,
+    `select id from public.stock_movements where ${column} = $1 and kind = 'damage' order by id desc limit 1`,
+    [id])).id;
+
+  it('puts the quantity back as its own movement naming what it reverses', async () => {
+    const { inventoryId } = await shelf({ stock: 20 });
+    await rpc(db, 'stock_command', 'record_damage',
+      { target: 'product', id: inventoryId, quantity: 8, reason: 'broken' });
+    expect(await stockOf(inventoryId)).toBe(12);
+
+    const damageId = await lastDamage('inventory_id', inventoryId);
+    const result = await undo(damageId, { note: 'Counted the wrong pallet' });
+    expect(result).toMatchObject({ target: 'product', undid: Number(damageId) });
+    expect(await stockOf(inventoryId)).toBe(20);
+
+    const last = await one(db,
+      'select kind, quantity_change, balance_after, note, reverses_movement_id, actor_name from public.stock_movements where inventory_id = $1 order by id desc limit 1',
+      [inventoryId]);
+    expect(last).toEqual({ kind: 'damage_undone', quantity_change: 8, balance_after: 20,
+      note: 'Counted the wrong pallet', reverses_movement_id: Number(damageId), actor_name: 'admin person' });
+  });
+
+  it('happens once, however many times it is asked for', async () => {
+    const { inventoryId } = await shelf({ stock: 10 });
+    await rpc(db, 'stock_command', 'record_damage',
+      { target: 'product', id: inventoryId, quantity: 4, reason: 'crushed' });
+    const damageId = await lastDamage('inventory_id', inventoryId);
+
+    const key = crypto.randomUUID();
+    const first = await undo(damageId, {}, key);
+    // The same request again replays its first answer; a new request is refused.
+    expect(await undo(damageId, {}, key)).toEqual(first);
+    await expect(undo(damageId)).rejects.toThrow(/already been undone/);
+    expect(await stockOf(inventoryId)).toBe(10);
+  });
+
+  it('puts material stock back as a lot, so the lots still match the count', async () => {
+    const row = await rpc(db, 'workshop_command', 'save_material',
+      { sku: `RM-${uid()}`, name: 'Sheets', material_type: 'sheet', unit: 'sheet', low_stock_threshold: 5 });
+    const id = Number(row.id);
+    await rpc(db, 'stock_command', 'correct_count',
+      { target: 'material', id, quantity: 10, expectedStock: 0, reason: 'found' });
+    await rpc(db, 'stock_command', 'record_damage',
+      { target: 'material', id, quantity: 6, reason: 'water' });
+
+    const damageId = await lastDamage('raw_material_id', id);
+    await undo(damageId);
+
+    expect((await one(db, 'select stock from public.raw_materials where id = $1', [id])).stock).toBe(10);
+    const lots = await all(db,
+      'select quantity, remaining, source from public.raw_material_lots where raw_material_id = $1 order by id', [id]);
+    expect(lots).toEqual([
+      { quantity: 10, remaining: 4, source: 'Count correction' },
+      { quantity: 6, remaining: 6, source: 'Damage undone' },
+    ]);
+    const total = lots.reduce((sum, lot) => sum + lot.remaining, 0);
+    expect(total).toBe(10);
+  });
+
+  it('is for managers and administrators, and only for a damage record', async () => {
+    const { inventoryId } = await shelf({ stock: 10 });
+    await rpc(db, 'stock_command', 'record_damage',
+      { target: 'product', id: inventoryId, quantity: 2, reason: 'handling' });
+    const damageId = await lastDamage('inventory_id', inventoryId);
+
+    await signIn(db, 'production');
+    await expect(undo(damageId)).rejects.toThrow(/manager or administrator/);
+    await signIn(db, 'admin');
+
+    const opening = await one(db,
+      `select id from public.stock_movements where inventory_id = $1 and kind = 'opening'`, [inventoryId]);
+    await expect(undo(opening.id)).rejects.toThrow(/Only a damage record can be undone/);
+    expect(await stockOf(inventoryId)).toBe(8);
+  });
+});
+
 describe('removing a product', () => {
   const revisionOf = async (id) => Number((await one(db, 'select revision from public.products where id = $1', [id])).revision);
 
@@ -247,7 +447,7 @@ describe('integrity constraints', () => {
     const deliveryId = uid();
     await db.query(`insert into public.orders (id, customer_name, items) values ($1, 'Ana', '[]')`, [orderId]);
     await db.query(`insert into public.deliveries (id, product, location) values ($1, $2, 'Davao')`, [deliveryId, `Order #${orderId} - Ana`]);
-    await db.exec(readSql('migrations/20260924120000_stock_returns_loyalty.sql'));
+    await rerun('migrations/20260924120000_stock_returns_loyalty.sql');
     expect((await one(db, 'select order_id from public.deliveries where id = $1', [deliveryId])).order_id).toBe(orderId);
     await asApi(db, 'admin', async () => {
       await expect(db.query('update public.deliveries set order_id = null where id = $1', [deliveryId])).rejects.toThrow(/different order/);

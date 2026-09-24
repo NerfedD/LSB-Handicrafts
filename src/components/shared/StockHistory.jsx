@@ -7,6 +7,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { EmptySlot } from "./PageStates";
 import { movementLabel, stockReasonLabel } from "../../utils/copy";
@@ -17,8 +18,15 @@ import { whenLabel } from "../../utils/activityLog";
  * the change, and the count it left. Read from public.stock_movements, which
  * the database writes in the same transaction as the change itself -- so a
  * count that moved always has a line here saying why.
+ *
+ * UNDOING DAMAGE. A damage record entered wrong is not edited away: the history
+ * is append-only, and one that can be rewritten is worth nothing. `onUndoDamage`
+ * puts the quantity back as its own entry that names the one it reverses, so
+ * both the mistake and the correction stay on the record. The offer is withdrawn
+ * once a record has been undone -- the database allows exactly one -- and it is
+ * only passed in for the roles that may do it.
  */
-export default function StockHistory({ rows = [], isLoaded = true, error = null }) {
+export default function StockHistory({ rows = [], isLoaded = true, error = null, onUndoDamage = null, busy = false }) {
   if (error) {
     return <EmptySlot className="py-10 text-[15px]">The stock history could not be loaded. Reopen this screen to try again.</EmptySlot>;
   }
@@ -32,6 +40,9 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null 
       </EmptySlot>
     );
   }
+  // A damage record that something else already reverses cannot be undone
+  // again, so it is read off the history rather than asked of the server.
+  const undone = new Set(rows.map((row) => row.reversesMovementId).filter(Boolean));
   return (
     <Table minWidth={640}>
       <TableCaption>Every change to this stock count, newest first</TableCaption>
@@ -41,6 +52,7 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null 
           <TableHead>What happened</TableHead>
           <TableHead className="w-24 text-right">Change</TableHead>
           <TableHead className="w-24 text-right">Left</TableHead>
+          {onUndoDamage && <TableHead className="w-36">Entered wrong?</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -71,6 +83,23 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null 
                 {Math.abs(row.change)}
               </TableCell>
               <TableCell className="text-right text-[16px] tabular-nums">{row.balanceAfter}</TableCell>
+              {onUndoDamage && (
+                <TableCell>
+                  {row.kind === "damage" && !undone.has(row.id) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={busy}
+                      onClick={() => onUndoDamage(row)}
+                    >
+                      Put this back
+                    </Button>
+                  )}
+                  {row.kind === "damage" && undone.has(row.id) && (
+                    <span className="text-[14.5px] text-muted">Already put back</span>
+                  )}
+                </TableCell>
+              )}
             </TableRow>
           );
         })}

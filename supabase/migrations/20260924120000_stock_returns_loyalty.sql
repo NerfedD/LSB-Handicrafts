@@ -475,7 +475,7 @@ begin
     if damaged>0 then insert into public.production_defect_logs(batch_id,product_id,damaged_quantity,reason,logged_by_staff_id)
       values(batch.id,product.id,damaged,reason,actor.id); end if;
     result:=to_jsonb(batch); subject:=product.item_code;
-    message:=format('%s completed: %s pieces of %s added to shelf; %s nasira (%s); %s %s of %s consumed',batch.batch_code,good,product.name,damaged,coalesce(reason,'none'),batch.raw_material_used_qty,mat.unit,mat.name);
+    message:=format('%s completed: %s pieces of %s added to shelf; %s damaged (%s); %s %s of %s consumed',batch.batch_code,good,product.name,damaged,coalesce(reason,'none'),batch.raw_material_used_qty,mat.unit,mat.name);
   when 'transfer_stock' then
     -- An explicit manager-approved move, never a copy of the same stock.
     select * into mat from public.raw_materials where id=(p_data->>'raw_material_id')::bigint for update;

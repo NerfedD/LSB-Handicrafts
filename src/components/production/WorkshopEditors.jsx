@@ -13,22 +13,32 @@ const SIZE_FIELDS = [
 
 export function MaterialDialog({ material, onSave, onClose }) {
   const editing = Boolean(material);
+  // The revision the form was opened on travels with the save, so a material
+  // somebody else changed in the meantime is refused rather than overwritten.
+  const submit = editing
+    ? (values, key) => onSave({ ...values, expectedRevision: material.revision ?? 0 }, key)
+    : onSave;
+  // A measurement that was never filled in comes back null, and a null in an
+  // input is React's uncontrolled/controlled warning. These fields were hidden
+  // while editing until now, so nothing had met it.
+  const initial = material
+    ? { ...material, density: material.density ?? '', thickness_in: material.thickness_in ?? '',
+        length_ft: material.length_ft ?? '', width_ft: material.width_ft ?? '' }
+    : { sku: '', name: '', material_type: 'sheet', unit: 'sheet', density: '', thickness_in: '', length_ft: '', width_ft: '', low_stock_threshold: '20' };
   return <WorkshopForm title={editing ? 'Change raw material' : 'Add raw material'} description="Keep workshop supplies separate from products for sale."
-    submitLabel="Save material" initial={material || { sku: '', name: '', material_type: 'sheet', unit: 'sheet', density: '', thickness_in: '', length_ft: '', width_ft: '', low_stock_threshold: '20' }} onSave={onSave} onClose={onClose}>
+    submitLabel="Save material" initial={initial} onSave={submit} onClose={onClose}>
     {(v, change) => <>
-      {!editing && <WorkshopField label="Material code" hint="Use the supplier or workshop code, such as SS-100-4X8." required maxLength={80} value={v.sku} onChange={(e) => change('sku', e.target.value)} />}
+      <WorkshopField label="Material code" hint="Use the supplier or workshop code, such as SS-100-4X8." required maxLength={80} value={v.sku} onChange={(e) => change('sku', e.target.value)} />
       <WorkshopField label="Material name" hint="Write the name staff use on the floor." required maxLength={200} value={v.name} onChange={(e) => change('name', e.target.value)} />
-      {!editing && <>
-        <WorkshopField label="Kind of material" hint="Choose what the workshop uses it as." required options={MATERIAL_KINDS} value={v.material_type} onChange={(e) => change('material_type', e.target.value)} />
-        <WorkshopField label="Unit we count" hint="For example: sheet, block, bottle or roll. All receipts and batches use this unit." required value={v.unit} onChange={(e) => change('unit', e.target.value)} />
-        {SIZE_FIELDS.map(([key, label]) => <WorkshopField key={key} label={label} hint="Optional. Leave blank if this does not apply." type="number" min="0.01" step="any" value={v[key]} onChange={(e) => change(key, e.target.value)} />)}
-      </>}
+      <WorkshopField label="Kind of material" hint="Choose what the workshop uses it as." required options={MATERIAL_KINDS} value={v.material_type} onChange={(e) => change('material_type', e.target.value)} />
+      <WorkshopField label="Unit we count" hint="For example: sheet, block, bottle or roll. All receipts and batches use this unit." required value={v.unit} onChange={(e) => change('unit', e.target.value)} />
+      {SIZE_FIELDS.map(([key, label]) => <WorkshopField key={key} label={label} hint="Optional. Leave blank if this does not apply." type="number" min="0.01" step="any" value={v[key]} onChange={(e) => change(key, e.target.value)} />)}
       <WorkshopField label="Warn when stock reaches" hint="A material at or below this count is shown as running low." required type="number" min="0" max="2000000000" step="1" value={v.low_stock_threshold} onChange={(e) => change('low_stock_threshold', e.target.value)} />
       {/* The note only holds while the record is being created. Telling somebody
           editing a material that "new materials start at zero" answered a
           question they had not asked, about a material that already has stock. */}
       <ReviewBox>{editing
-        ? 'Changing these details does not move stock. The count on hand only changes when a delivery is received, stock is moved here, or a batch is finished.'
+        ? 'Every detail here can be put right, including a code, a unit or a measurement typed wrong when the material was added. Changing them does not move stock: the count on hand only changes when a delivery is received, stock is moved here, a batch is finished, or a manager corrects the count.'
         : 'New materials start at zero. Receive a supplier delivery or move matching sheet stock to add a counted supply.'}</ReviewBox>
     </>}
   </WorkshopForm>;

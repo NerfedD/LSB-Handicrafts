@@ -8,8 +8,8 @@ React 19 + Vite + Tailwind in the browser, Supabase (Postgres, Auth, Edge Functi
 
 | Area | What staff can do |
 | --- | --- |
-| Products & stock | Catalogue with sizes, prices and a reorder point per product; stock on the shelf, set aside for orders and free to sell; running-low and run-out filters; record damage; correct a count; full stock history per product; archive a product without losing its history. |
-| Raw materials & suppliers | Materials with measurements and reorder points; order from a supplier; receive a delivery once, with damaged units and the supplier's reference; claims; stock history per material; what each supplier has supplied. |
+| Products & stock | Catalogue with sizes, prices and a reorder point per product; stock on the shelf, set aside for orders and free to sell; running-low and run-out filters; record damage and put a damage record back if it was entered wrong; correct a count; full stock history per product; archive a product without losing its history. |
+| Raw materials & suppliers | Add, correct and remove materials with their measurements and reorder points; order from a supplier; receive a delivery once, with damaged units and the supplier's reference; claims; stock history per material; what each supplier has supplied. |
 | Production | A make list led by goods owed to customers; batches with material set aside, quality check, defects and yield. |
 | Orders & deliveries | Write, change, finish, call off or re-open orders; deliveries with a five-stage board, short deliveries and follow-ups; print slip. |
 | Returns | Refund or replace goods that came back, saying whether they can be sold again. |
@@ -41,7 +41,7 @@ Set up the database from **[docs/database.md](docs/database.md)**: a fresh proje
 
 ## Deploying a change
 
-1. Apply any new migration first (see [docs/database.md](docs/database.md#an-existing-project) — this release adds `20260924120000_stock_returns_loyalty.sql`).
+1. Apply any new migrations first, oldest first (see [docs/database.md](docs/database.md#an-existing-project) — this release adds `20260924120000_stock_returns_loyalty.sql` and `20260924190000_material_crud_and_damage_undo.sql`).
 2. Deploy any changed Edge Function.
 3. `npm run build` and deploy `dist/` (Vercel; `vercel.json` rewrites every path to the app).
 4. Ask staff to reload open tabs.

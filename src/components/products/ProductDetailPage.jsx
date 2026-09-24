@@ -60,6 +60,7 @@ export default function ProductDetailPage({
   canEdit = false,
   canRecordDamage = false,
   canCorrectStock = false,
+  canUndoDamage = false,
   canDelete = false,
   onBack,
   onEdit,
@@ -84,6 +85,17 @@ export default function ProductDetailPage({
   const roomToFill = Math.max(0, (stock.ceiling ?? 0) - (stock.onHand ?? 0));
   const promised = stock.tracked ? stock.reserved ?? 0 : 0;
   const blocked = promised > 0;
+
+  /**
+   * Puts back stock written off by a damage record entered wrong. The database
+   * works out how much from the record itself and allows it once, so there is
+   * nothing to type and nothing to get wrong a second time.
+   */
+  async function undoDamage(movement) {
+    setWorking(true);
+    await onStockCommand?.("undo_damage", { movementId: movement.id }, crypto.randomUUID());
+    setWorking(false);
+  }
 
   async function runDelete() {
     setWorking(true);
@@ -252,7 +264,13 @@ export default function ProductDetailPage({
               <CardTitle>Stock movements</CardTitle>
             </CardHeader>
 
-            <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error} />
+            <StockHistory
+              rows={movements.rows}
+              isLoaded={movements.isLoaded}
+              error={movements.error}
+              busy={working}
+              onUndoDamage={canUndoDamage ? undoDamage : null}
+            />
           </Card>
         </div>
       </div>

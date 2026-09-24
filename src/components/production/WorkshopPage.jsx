@@ -4,7 +4,8 @@ import { ArrowLeft, Boxes, ClipboardCheck, ClipboardList, Hammer, Layers, Packag
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
-import Callout from '../shared/Callout';
+import Callout, { DangerBlock } from '../shared/Callout';
+import ConfirmDialog from '../shared/ConfirmDialog';
 import IconChip, { Mono } from '../shared/Chip';
 import StatusPill from '../shared/StatusPill';
 import StockBar from '../shared/StockBar';
@@ -188,16 +189,27 @@ function MaterialFigures({ material, batches }) {
 }
 
 /** One material's stock history, re-read whenever its count changes. */
-function MaterialHistory({ material }) {
+function MaterialHistory({ material, onUndoDamage = null }) {
+  const [busy, setBusy] = useState(false);
   const movements = useStockMovements({ rawMaterialId: material.id, balance: material.stock });
-  return <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error} />;
+  const undo = onUndoDamage
+    ? async (movement) => {
+        setBusy(true);
+        await onUndoDamage(movement);
+        setBusy(false);
+      }
+    : null;
+  return <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error}
+    onUndoDamage={undo} busy={busy} />;
 }
 
 /* -------------------------------------------------------------------------- */
 
-export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onStockCommand, onContext, onNavigate, change, initialFilter }) {
+export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onStockCommand, onRemoveMaterial, onRestoreMaterial, onContext, onNavigate, change, initialFilter }) {
   const { materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff } = data;
   const [dialog, setDialog] = useState(null);
+  const [removing, setRemoving] = useState(false);
+  const [working, setWorking] = useState(false);
   const [filter, setFilter] = useState(initialFilter ?? (section === 'raw-materials' ? 'all' : 'active'));
   const [query, setQuery] = useState('');
 
@@ -205,6 +217,8 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const canMake = can(profile.role, 'makeBatches');
   const canRecordDamage = can(profile.role, 'recordDamage');
   const canCorrectStock = can(profile.role, 'correctStock');
+  const canUndoDamage = can(profile.role, 'undoDamage');
+  const canRemoveMaterial = can(profile.role, 'removeRecords');
   const production = section === 'production';
   const reports = section === 'production-report';
   const purchasing = section === 'raw-material-orders';
@@ -263,8 +277,12 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
    */
   const justChanged = (kind, id) => Boolean(change && change.kind === kind && change.id === id);
 
-  const toReorder = materials.filter((m) => needsReorder(m, batches));
-  const displayMaterials = materials
+  // A material taken out of use is still looked up by name from history, so it
+  // stays in `materials` and is only kept out of what is offered from here on:
+  // the list, the reorder count, and the order and recipe pickers.
+  const inUse = materials.filter((m) => m.status !== 'Archived');
+  const toReorder = inUse.filter((m) => needsReorder(m, batches));
+  const displayMaterials = inUse
     .filter((m) => filter !== 'reorder' || needsReorder(m, batches) || justChanged('material', m.id))
     .filter((m) => matches(`${m.name} ${m.sku}`));
   const displayOrders = materialOrders
@@ -482,7 +500,12 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
         <div className="flex flex-col gap-3.5">
           {renderMaterialCard(material, { standalone: false })}
           <SectionCard title="Stock history">
-            <MaterialHistory material={material} />
+            <MaterialHistory
+              material={material}
+              onUndoDamage={canUndoDamage
+                ? (movement) => onStockCommand('undo_damage', { movementId: movement.id }, crypto.randomUUID())
+                : null}
+            />
           </SectionCard>
           <SectionCard title="Where this material was used">
             {(() => {
@@ -517,6 +540,43 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               );
             })()}
           </SectionCard>
+
+          {/* -- the only place a raw material can be removed -- */}
+          {material.status === 'Archived' && (
+            <Callout
+              tone="amber"
+              title="No longer in use"
+              action={canRemoveMaterial && (
+                <Button variant="outline" size="sm" disabled={working} onClick={async () => {
+                  setWorking(true);
+                  await onRestoreMaterial?.(material);
+                  setWorking(false);
+                }}>
+                  Put it back in use
+                </Button>
+              )}
+            >
+              {material.name} is kept off the materials list and out of new supplier orders,
+              batches and recipes. Everything it has been part of is unchanged.
+            </Callout>
+          )}
+          {canRemoveMaterial && material.status !== 'Archived' && (
+            <DangerBlock
+              title="Remove this raw material"
+              action={(
+                <Button variant="danger" size="lg" onClick={() => setRemoving(true)}>
+                  Remove {material.name}
+                </Button>
+              )}
+            >
+              {material.name} disappears from the materials list, the order form and the
+              recipe picker. If it has ever been delivered, counted, used or has stock on
+              the shelf, it is kept as &ldquo;no longer in use&rdquo; with all of its
+              history and can be put back. Only a material nothing has ever happened to is
+              deleted outright. A delivery still on its way or a batch on the floor stops
+              it either way.
+            </DangerBlock>
+          )}
         </div>
       )}
 
@@ -703,7 +763,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     {b.status === 'Completed' && (
                       <p className="pt-1">
                         <strong className="font-bold tabular-nums text-ink">{b.good_output_qty} good pieces</strong> ·{' '}
-                        {b.damaged_qty} nasira · Checked by {worker(b.completed_by_staff_id)}
+                        {b.damaged_qty} damaged · Checked by {worker(b.completed_by_staff_id)}
                       </p>
                     )}
                   </div>
@@ -786,7 +846,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                 <StatTiles
                   tiles={[
                     { label: 'Good pieces', value: totals.good, hint: `of ${totals.total} processed` },
-                    { label: 'Nasira / damaged', value: totals.damaged, hint: totals.damageRate === null ? 'No output yet' : `${totals.damageRate.toFixed(1)}% of what was made` },
+                    { label: 'Damaged', value: totals.damaged, hint: totals.damageRate === null ? 'No output yet' : `${totals.damageRate.toFixed(1)}% of what was made` },
                     { label: 'Good yield', value: totals.yield === null ? '—' : `${totals.yield.toFixed(1)}%`, hint: totals.yield === null ? 'No batch finished yet' : 'across every finished batch' },
                   ]}
                 />
@@ -823,7 +883,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                         <IconChip icon={<Package className="h-4.5 w-4.5" />} tone="red" size="sm" />
                         <div className="min-w-0 flex-1">
                           <p className="font-bold text-ink">
-                            <span className="tabular-nums">{d.damaged_quantity}</span> nasira · {prod(d.product_id)?.name}
+                            <span className="tabular-nums">{d.damaged_quantity}</span> damaged · {prod(d.product_id)?.name}
                           </p>
                           <p className="pt-0.5 text-[15px] text-muted">
                             {d.reason} · {b?.batch_code} · {worker(d.logged_by_staff_id)}
@@ -848,8 +908,31 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {/* -- dialogs ---------------------------------------------------------- */}
 
       {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} onSave={save('save_material')} onClose={close} />}
-      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} materials={materials} suppliers={suppliers} profile={profile} onSave={save('save_order')} onClose={close} />}
-      {dialog?.kind === 'recipe' && <RecipeDialog products={products} materials={materials} onSave={save('save_recipe')} onClose={close} />}
+      {detail && material && (
+        <ConfirmDialog
+          open={removing}
+          onOpenChange={(next) => !next && setRemoving(false)}
+          title={`Remove ${material.name}?`}
+          consequences={
+            <>
+              It stops appearing in the materials list, on new supplier orders and in
+              recipes. Anything that has happened to it is kept, and a material with
+              history or stock can be put back in use. Finished batches and deliveries
+              keep their records exactly as written.
+            </>
+          }
+          confirmLabel="Yes, remove it"
+          busy={working}
+          onConfirm={async () => {
+            setWorking(true);
+            await onRemoveMaterial?.(material);
+            setWorking(false);
+            setRemoving(false);
+          }}
+        />
+      )}
+      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} materials={inUse} suppliers={suppliers} profile={profile} onSave={save('save_order')} onClose={close} />}
+      {dialog?.kind === 'recipe' && <RecipeDialog products={products} materials={inUse} onSave={save('save_recipe')} onClose={close} />}
       {dialog?.kind === 'transfer' && <TransferDialog material={dialog.material} inventory={inventory.find((i) => i.sku.toLowerCase() === dialog.material.sku.toLowerCase())} profile={profile} onSave={save('transfer_stock')} onClose={close} />}
       {dialog?.kind === 'receive' && <ReceiveSupplierDeliveryDialog order={dialog.record} material={mat(dialog.record.raw_material_id)} profile={profile} onSave={save('receive_delivery')} onClose={close} />}
       {dialog?.kind === 'complete' && <CompleteBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} inventory={inventory.find((i) => i.id === dialog.record.inventory_id)} material={mat(dialog.record.raw_material_id)} batches={batches} profile={profile} onSave={save('complete_batch')} onClose={close} />}

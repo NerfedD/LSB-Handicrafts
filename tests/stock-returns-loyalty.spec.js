@@ -44,6 +44,51 @@ test('damaged stock comes off the shelf once, with a reason, and shows in the st
   await expect(history.getByText(/Broken or cracked · Dropped by the loading bay/)).toBeVisible();
 });
 
+test('a damage record entered wrong is put back once, and stays on the record', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page);
+  await signIn(page, baseURL);
+  await openProduct(page, baseURL, 'Styro Ball 4 inch');
+
+  await page.getByRole('button', { name: 'Record damage' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('How many are damaged').fill('5');
+  await dialog.getByLabel('What happened').selectOption('handling');
+  await dialog.getByRole('button', { name: 'Write it off' }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(tables.inventory.find((row) => row.sku === 'SB-040').stock).toBe(135);
+
+  const history = page.getByRole('table', { name: /Every change to this stock count/ });
+  const damaged = history.getByRole('row', { name: /Written off as damaged/ });
+  await damaged.getByRole('button', { name: 'Put this back' }).click();
+
+  await expect(page.getByText('The damaged stock was put back.')).toBeVisible();
+  expect(tables.inventory.find((row) => row.sku === 'SB-040').stock).toBe(140);
+  // Both the mistake and the correction stay on the record, and the offer goes.
+  await expect(history.getByText('Damage record undone')).toBeVisible();
+  await expect(history.getByText('Written off as damaged')).toBeVisible();
+  await expect(history.getByRole('button', { name: 'Put this back' })).toHaveCount(0);
+  await expect(history.getByText('Already put back')).toBeVisible();
+});
+
+test('only a manager or administrator is offered the undo', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page, { as: SALES });
+  // A damage record to offer: without one the history is empty and the test
+  // would pass on an empty screen rather than on the role.
+  tables.stock_movements.push({
+    id: 9001, inventory_id: 101, raw_material_id: null, item_code: 'SB-040',
+    item_name: 'Styro Ball 4 inch', quantity_change: -4, balance_after: 136, kind: 'damage',
+    reason: 'broken', note: null, order_id: null, supplier_order_id: null, batch_id: null,
+    actor_staff_id: 1, actor_name: 'Maria Santos', created_at: new Date().toISOString(),
+  });
+  await signIn(page, baseURL, SALES);
+  await openProduct(page, baseURL, 'Styro Ball 4 inch');
+
+  const history = page.getByRole('table', { name: /Every change to this stock count/ });
+  await expect(history.getByText('Written off as damaged')).toBeVisible();
+  await expect(history.getByRole('button', { name: 'Put this back' })).toHaveCount(0);
+  await expect(page.getByRole('columnheader', { name: 'Entered wrong?' })).toHaveCount(0);
+});
+
 test('a count correction refuses to overwrite a count that moved after the form opened', async ({ page, baseURL }) => {
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);

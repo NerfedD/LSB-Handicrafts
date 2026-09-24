@@ -379,6 +379,27 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
     if (url.pathname.endsWith("/rpc/stock_command")) {
       const { p_action: action, p_data: data, p_request_id: key } = request.postDataJSON();
       if (stockRequests.has(key)) return json(route, stockRequests.get(key));
+      // Putting back a damage record: the amount comes from the record itself,
+      // and the unique link is what allows exactly one, as in the database.
+      if (action === 'undo_damage') {
+        const damage = tables.stock_movements.find((m) => Number(m.id) === Number(data.movementId));
+        if (!damage || damage.kind !== 'damage') {
+          return json(route, { code: 'P0001', message: 'Only a damage record can be undone.' }, 400);
+        }
+        if (tables.stock_movements.some((m) => Number(m.reverses_movement_id) === Number(damage.id))) {
+          return json(route, { code: 'P0001', message: 'That damage record has already been undone.' }, 400);
+        }
+        const item = tables.inventory.find((i) => Number(i.id) === Number(damage.inventory_id));
+        if (!item) return json(route, { code: 'P0001', message: 'stub: product stock only' }, 400);
+        item.stock += -damage.quantity_change;
+        item.revision = (item.revision ?? 0) + 1;
+        recordMovement(tables, item, -damage.quantity_change, 'damage_undone',
+          { note: data.note || null, reverses_movement_id: damage.id });
+        const undone = { target: 'product', inventory: structuredClone(item), undid: damage.id };
+        stockRequests.set(key, undone);
+        onWrite?.({ table: 'inventory', method: 'RPC', row: item, action });
+        return json(route, undone);
+      }
       const row = tables.inventory.find((item) => Number(item.id) === Number(data.id));
       if (data.target !== 'product' || !row) return json(route, { code: 'P0001', message: 'stub: product stock only' }, 400);
       const amount = Number(data.quantity);

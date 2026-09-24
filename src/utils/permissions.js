@@ -23,6 +23,8 @@ export const CAPABILITIES = {
   correctStock: MANAGERS,
   /** Write off damaged or broken stock. */
   recordDamage: [...MANAGERS, "Production Staff"],
+  /** Put back stock written off by a damage record entered wrong. */
+  undoDamage: MANAGERS,
   /**
    * Money and undoing: refunds, replacements, price corrections, changing an
    * order's lines, calling an order off, putting a finished order back.
@@ -40,7 +42,7 @@ export const CAPABILITIES = {
   makeBatches: [...MANAGERS, "Production Staff"],
   /** The damage & yield report. */
   viewReports: MANAGERS,
-  /** Remove a customer, supplier or product for good. */
+  /** Remove a customer, supplier, product or raw material for good. */
   removeRecords: ["Admin"],
   /** Staff accounts and the activity log. */
   manageStaff: ["Admin"],

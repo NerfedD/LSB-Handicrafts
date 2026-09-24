@@ -16,6 +16,8 @@ import {
   ordersCollection,
   productsCollection,
   removeProduct,
+  removeMaterial,
+  restoreMaterial,
   saveOwnDashboardView,
   saveOwnProfile,
   staffCollection,
@@ -1135,9 +1137,49 @@ export default function App() {
   }
 
   /**
-   * Records damaged stock, or sets a count to what was actually counted,
-   * through stock_command: one transaction, a stock movement with a reason and
-   * a name, and a request id so a retried save cannot take stock off twice.
+   * Removes a raw material the only way that keeps its history: remove_material
+   * archives one that anything refers to -- or that still has stock -- and
+   * deletes only one nothing has ever touched. It refuses while a delivery is
+   * on its way or a batch is using it, and for anyone but an administrator.
+   */
+  async function deleteMaterial(material) {
+    const result = await removeMaterial(material);
+    if (!result.ok) {
+      toast.error(result.message);
+      return result;
+    }
+    reloadWorkshop();
+    activityState.reload();
+    if (result.outcome === "archived") {
+      toast.success(`${material.name} is no longer in use.`, {
+        description: "It has history or stock, so it was kept: every delivery, batch and movement that names it is untouched.",
+      });
+    } else {
+      if (selectedRawMaterialId === material.id) setSelectedRawMaterialId(null);
+      toast.success(`${material.name} was removed.`, {
+        description: "Nothing had ever happened to it, so there was no history to keep.",
+      });
+    }
+    return result;
+  }
+
+  /** Puts an archived raw material back in use. */
+  async function putMaterialBack(material) {
+    const result = await restoreMaterial(material);
+    if (!result.ok) {
+      toast.error(result.message);
+      return result;
+    }
+    reloadWorkshop();
+    toast.success(`${material.name} is in use again.`);
+    return result;
+  }
+
+  /**
+   * Records damaged stock, sets a count to what was actually counted, or puts
+   * back a damage record that was entered wrong -- through stock_command: one
+   * transaction, a stock movement with a reason and a name, and a request id so
+   * a retried save cannot take stock off twice.
    */
   async function handleStockCommand(action, values, requestId) {
     const result = await runCommand("stock_command", action, values, requestId);
@@ -1152,7 +1194,11 @@ export default function App() {
       materialLotsState.reload();
       markLanded("material", saved.id);
     }
-    toast.success(action === "record_damage" ? "The damaged stock was written off." : "The count was corrected.", {
+    toast.success({
+      record_damage: "The damaged stock was written off.",
+      correct_count: "The count was corrected.",
+      undo_damage: "The damaged stock was put back.",
+    }[action] ?? "The stock was updated.", {
       description: "It is in the stock history with your name and the reason.",
     });
     return result;
@@ -2064,6 +2110,7 @@ export default function App() {
           error={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].find((s) => s.error)?.error || staffError}
           onRetry={() => { reloadWorkshop(); productsState.reload(); inventoryState.reload(); ordersState.reload(); suppliersState.reload(); resolveStaff({ force: true }); }}
           onCommand={handleWorkshopCommand} onStockCommand={handleStockCommand} initialFilter={pendingFilter}
+          onRemoveMaterial={deleteMaterial} onRestoreMaterial={putMaterialBack}
           onContext={handleContext} onNavigate={navigate}
           change={recordChange} />;
 
@@ -2110,6 +2157,7 @@ export default function App() {
             canEdit={can(role, "manageCatalogue")}
             canRecordDamage={can(role, "recordDamage")}
             canCorrectStock={can(role, "correctStock")}
+            canUndoDamage={can(role, "undoDamage")}
             canDelete={can(role, "removeRecords")}
             onDelete={deleteProduct}
             onRestore={restoreProduct}
