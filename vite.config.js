@@ -20,7 +20,7 @@ export default defineConfig({
   // then re-optimize, which forces a full page reload part-way through the
   // first paint.
   optimizeDeps: {
-    include: ['react', 'react-dom/client', '@supabase/supabase-js'],
+    include: ['react', 'react-dom/client', '@supabase/auth-js', '@supabase/postgrest-js', '@supabase/functions-js'],
   },
 
   // Unit tests, for the pure domain functions only.

@@ -45,16 +45,6 @@ export const DELIVERY_STAGE = {
 };
 
 /**
- * The previous name for the subset above. Kept as an alias because the legacy
- * workspace screens imported it; new code should use DELIVERY_STAGE.
- */
-export const DELIVERY_STATUS = {
-  NOT_YET: DELIVERY_STAGE.NOT_SENT,
-  ON_THE_WAY: DELIVERY_STAGE.ON_THE_WAY,
-  DELIVERED: DELIVERY_STAGE.ARRIVED,
-};
-
-/**
  * Derived from available stock, never typed by a user — see stockLedger.statusOf.
  * OUT is new: before per-product thresholds existed the UI only distinguished
  * "Low Stock" from everything else.
@@ -113,13 +103,6 @@ export const LINE_KIND = {
   CUT: 'cut',
   CUSTOM: 'custom',
 };
-
-export const LINE_KIND_OPTIONS = [
-  { value: LINE_KIND.CATALOG, label: 'From the catalogue' },
-  { value: LINE_KIND.NEGOTIATED, label: 'Agreed price' },
-  { value: LINE_KIND.CUT, label: 'Cut to size' },
-  { value: LINE_KIND.CUSTOM, label: 'Custom shape' },
-];
 
 /**
  * How a person wants their dashboard. A per-account preference, not a global

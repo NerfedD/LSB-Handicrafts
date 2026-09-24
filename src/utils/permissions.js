@@ -1,51 +1,61 @@
 /**
- * Who may open which screen.
+ * Who may do what.
  *
- * These rules are DERIVED from NAV_TREE in utils/navigation.js rather than
- * written out again here. They used to be a hand-maintained copy of the
- * sidebar's `adminOnly` / `hideFrom` flags, which meant the nav and the route
- * gate had to be edited in lockstep — and when they drifted, a nav item was
- * hidden while the screen behind it stayed reachable. That is exactly how
- * non-admins were getting into User Management.
+ * THIS IS THE COURTESY HALF. The anon key ships in the JS bundle, so anyone
+ * holding a session can call Supabase directly; the real boundary is the RLS
+ * policies, guard triggers and command functions in supabase/schema.sql. What
+ * this file does is keep honest people out of screens and buttons that the
+ * database would refuse -- and it must say the same thing the database says.
+ * The table below and the role lists in schema.sql are one rule written twice;
+ * README.md's permissions table is the third copy, for people.
  *
- * One tree now feeds both, so hiding an entry and denying its views are the
- * same edit.
- *
- * Enforcement here is client-side and therefore cosmetic on its own: the anon
- * key ships in the JS bundle, so anyone can call Supabase directly. The real
- * boundary is the RLS policies in supabase/schema.sql. This stops staff walking
- * into the wrong screen; that stops them writing what they shouldn't.
+ * Screen access (canAccess) is derived from NAV_TREE in utils/navigation.js, so
+ * hiding a nav entry and denying its screens are the same edit.
  */
-import { ADMIN_ONLY_VIEWS, DENIED_BY_ROLE } from "./navigation";
+import { ADMIN_ONLY_VIEWS, DENIED_BY_ROLE, VIEW_CAPABILITY } from "./navigation";
+
+const MANAGERS = ["Admin", "Manager"];
+
+export const CAPABILITIES = {
+  /** Add or edit products, prices and reorder points. */
+  manageCatalogue: MANAGERS,
+  /** Set a shelf count to what was actually counted. */
+  correctStock: MANAGERS,
+  /** Write off damaged or broken stock. */
+  recordDamage: [...MANAGERS, "Production Staff"],
+  /**
+   * Money and undoing: refunds, replacements, price corrections, changing an
+   * order's lines, calling an order off, putting a finished order back.
+   */
+  handleMoney: MANAGERS,
+  /** See customers' contact details. */
+  viewCustomers: [...MANAGERS, "Sales Staff", "Delivery Staff"],
+  /** Add or edit customers. */
+  editCustomers: [...MANAGERS, "Sales Staff"],
+  /** Add or edit suppliers, and order materials from them. */
+  manageSuppliers: MANAGERS,
+  /** Change the loyalty rules. */
+  manageLoyalty: MANAGERS,
+  /** Start, move and finish production batches. */
+  makeBatches: [...MANAGERS, "Production Staff"],
+  /** The damage & yield report. */
+  viewReports: MANAGERS,
+  /** Remove a customer, supplier or product for good. */
+  removeRecords: ["Admin"],
+  /** Staff accounts and the activity log. */
+  manageStaff: ["Admin"],
+};
+
+export const can = (role, capability) => CAPABILITIES[capability]?.includes(role) ?? false;
 
 export const isAdminRole = (role) => role === "Admin";
 
 /**
- * Who may give money back or put a price right.
- *
- * NARROWER THAN "can open an order", and deliberately so. Every other action on
- * an order is recoverable — a status can be flipped back, a driver reassigned.
- * A refund moves money out of the business and a price correction rewrites what
- * a customer was told, and neither is undone by pressing something again.
- *
- * A MANAGER AS WELL AS AN ADMIN, because the owner is not always in the shop
- * and a rule that sends every wrong price to one person is a rule that gets
- * worked around with a pen.
- *
- * This is the UI half only. The other half is the guard trigger on
- * public.orders in supabase/schema.sql, which refuses the write whatever the
- * client believes — see the note there. A hidden button is a courtesy.
- */
-export const canHandleMoney = (role) => role === "Admin" || role === "Manager";
-
-export { ADMIN_ONLY_VIEWS };
-
-/**
- * Unlisted keys are allowed, which is what leaves the pre-auth views (login,
- * forgot-password, reset-password, checking-session) and the shared screens
- * (dashboard, workspace, profile, credentials, products) alone.
+ * Unlisted views are open to every signed-in role, which leaves the pre-auth
+ * views and the shared screens (dashboard, profile, products) alone.
  */
 export function canAccess(role, view) {
   if (ADMIN_ONLY_VIEWS.has(view)) return isAdminRole(role);
+  if (VIEW_CAPABILITY[view] && !can(role, VIEW_CAPABILITY[view])) return false;
   return !DENIED_BY_ROLE[role]?.has(view);
 }

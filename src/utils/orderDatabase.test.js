@@ -1,79 +1,38 @@
-import { readFileSync } from 'node:fs';
-import { PGlite } from '@electric-sql/pglite';
+// order_command against the real schema in PGlite (see src/test/database.js).
+// One connection: these prove stale-snapshot rejection and rollback, not lock
+// contention between independent PostgreSQL connections.
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { all, asApi, freshDatabase, one, rpc, signIn } from '../test/database';
 import { commitOrder, commitPartialDelivery, handleRefundStock, uncommitOrder } from './stockLedger';
 
-// Real PostgreSQL functions and triggers, with isolated tables and JWT helpers.
-// PGlite has one connection: these tests prove stale-snapshot rejection and
-// rollback, not contention between independent PostgreSQL connections.
 let db;
-const migration = (name) => readFileSync(new URL(`../../supabase/migrations/${name}.sql`, import.meta.url), 'utf8');
-const line = (quantity = 4, productId = 101) => ({ productId, name: 'Sheets', quantity, stockUnits: quantity, unitPrice: 150, kind: 'catalog' });
+const line = (quantity = 4, productId = 101) =>
+  ({ productId, name: 'Sheets', quantity, stockUnits: quantity, unitPrice: 150, kind: 'catalog' });
 
-beforeAll(async () => {
-  db = new PGlite();
-  await db.exec(`
-    create role anon; create role authenticated;
-    create schema auth; create schema private;
-    create function auth.jwt() returns jsonb language sql stable as $$
-      select nullif(current_setting('request.jwt.claims', true), '')::jsonb;
-    $$;
-    create function auth.uid() returns uuid language sql stable as $$
-      select (auth.jwt() ->> 'sub')::uuid;
-    $$;
-    create table public.staff (id bigint primary key, email text, role text, status text);
-    create table public.customers (id bigint primary key, name text);
-    create table public.inventory (id bigint primary key, stock integer not null);
-    create table public.orders (id bigint primary key, customer_name text, items jsonb not null,
-      status text default 'Pending', total_amount numeric default 600, stock_committed_at timestamptz,
-      refunded_amount numeric not null default 0, refund_history jsonb not null default '[]',
-      price_adjustments jsonb not null default '[]', backorder_status text default 'none');
-    create table public.deliveries (id bigint primary key, product text, status text,
-      driver text, items_manifest jsonb default '[]');
-    create function private.is_manager_or_admin() returns boolean language sql stable as $$
-      select exists (select 1 from public.staff where email = auth.jwt() ->> 'email'
-        and role in ('Admin', 'Manager') and status = 'Active');
-    $$;
-  `);
-  for (const name of ['202609190002_orders_guard_contents', '202609190003_order_command',
-    '202609190004_orders_customer_id', '20260919135654_order_command_safety']) {
-    await db.exec(migration(name));
-  }
-}, 30_000);
-
+beforeAll(async () => { db = await freshDatabase(); }, 60_000);
 afterAll(async () => { await db?.close(); });
 
 beforeEach(async () => {
-  await db.exec(`truncate public.orders, public.inventory, public.deliveries, public.staff, private.order_requests;
-    insert into public.staff values (1, 'admin@test.invalid', 'Admin', 'Active'), (2, 'sales@test.invalid', 'Sales Staff', 'Active');
-    insert into public.inventory values (101, 64), (102, 20);
-    insert into public.deliveries values (11, 'Order #1 - Test', 'Ready To Go', null, '[]'),
-      (12, 'Order #2 - Test', 'Ready To Go', null, '[]');`);
-  await db.query("insert into public.orders(id, customer_name, items) values (1, 'Test', $1), (2, 'Test', $2)",
-    [JSON.stringify([line()]), JSON.stringify([line(8)])]);
-  await actor('admin');
+  await db.exec(`
+    delete from public.stock_movements; delete from public.deliveries; delete from public.orders;
+    delete from public.inventory; delete from private.order_requests;
+    insert into public.inventory (id, sku, name, category, stock) values
+      (101, 'SS-100', 'Sheets', 'Test', 64), (102, 'SB-040', 'Balls', 'Test', 20);
+    insert into public.deliveries (id, product, location, status) values
+      (11, 'Order #1 - Test', 'Davao', 'Ready To Go'), (12, 'Order #2 - Test', 'Davao', 'Ready To Go');`);
+  await db.query(`insert into public.orders (id, customer_name, items, total_amount) values
+    (1, 'Test', $1, 600), (2, 'Test', $2, 1200)`, [JSON.stringify([line()]), JSON.stringify([line(8)])]);
+  await signIn(db, 'admin');
 });
 
-async function actor(name) {
-  await db.query("select set_config('request.jwt.claims', $1, false)", [JSON.stringify({
-    sub: '00000000-0000-4000-8000-000000000001', email: `${name}@test.invalid`,
-  })]);
-}
-
 async function order(id = 1) {
-  const { rows: [row] } = await db.query('select * from public.orders where id = $1', [id]);
-  return { id: row.id, revision: row.revision, items: row.items, status: row.status,
-    stockCommittedAt: row.stock_committed_at, refundedAmount: Number(row.refunded_amount), refundHistory: row.refund_history };
+  const row = await one(db, 'select * from public.orders where id = $1', [id]);
+  return { id: row.id, revision: Number(row.revision), items: row.items, status: row.status,
+    stockCommittedAt: row.stock_committed_at, refundedAmount: Number(row.refunded_amount),
+    refundHistory: row.refund_history, replacementHistory: row.replacement_history, totalAmount: Number(row.total_amount) };
 }
-
-async function stocks() {
-  return (await db.query('select stock from public.inventory order by id')).rows.map((row) => row.stock);
-}
-
-async function command(action, data, requestId = crypto.randomUUID()) {
-  const result = await db.query('select public.order_command($1, $2, $3) as result', [action, JSON.stringify(data), requestId]);
-  return result.rows[0].result;
-}
+const stocks = async () => (await all(db, 'select stock from public.inventory order by id')).map((row) => row.stock);
+const command = (action, data, requestId) => rpc(db, 'order_command', action, data, requestId);
 
 function complete(source) {
   const moved = commitOrder([], source);
@@ -81,12 +40,15 @@ function complete(source) {
     order: { items: moved.items, stockCommittedAt: moved.stockCommittedAt, status: 'Completed' } };
 }
 
-function refund(source, amount = 150) {
-  const moved = handleRefundStock([], source, [{ lineIndex: 0, units: 1, disposition: 'restock' }]);
+function refund(source, amount = 150, { units = 1, disposition = 'restock', status } = {}) {
+  const moved = handleRefundStock([], source, [{ lineIndex: 0, units, disposition }]);
   return { orderId: source.id, expectedRevision: source.revision, deltas: moved.deltas,
-    order: { items: moved.items, refundedAmount: source.refundedAmount + amount,
-      refundHistory: [...source.refundHistory, { id: crypto.randomUUID(), amount }] } };
+    order: { items: moved.items, refundedAmount: source.refundedAmount + amount, status: status ?? source.status,
+      refundHistory: [...source.refundHistory, { id: crypto.randomUUID(), amount, refundedBy: 'Somebody else' }] } };
 }
+
+const replace = (source, extra = {}) => ({ orderId: source.id, expectedRevision: source.revision,
+  lineIndex: 0, quantity: 2, disposition: 'scrap', reason: 'damaged', ...extra });
 
 describe('order transactions', () => {
   it('completes against database stock even while the browser shelf is empty', async () => {
@@ -107,11 +69,14 @@ describe('order transactions', () => {
     await expect(command('complete', complete(await order()))).rejects.toThrow(/not on the shelf/);
     expect(await stocks()).toEqual([64, 20]);
     expect((await order()).status).toBe('Pending');
-    expect((await db.query('select * from private.order_requests')).rows).toHaveLength(0);
+    expect(await all(db, 'select * from private.order_requests')).toHaveLength(0);
+    expect(await all(db, "select * from public.stock_movements where kind <> 'opening'")).toHaveLength(0);
   });
 
   it('rolls back stock and order when stock would become negative', async () => {
+    await signIn(db, null);
     await db.exec('update public.inventory set stock = 2 where id = 101');
+    await signIn(db, 'admin');
     await expect(command('complete', complete(await order()))).rejects.toThrow(/not enough/);
     expect(await stocks()).toEqual([2, 20]);
     expect((await order()).status).toBe('Pending');
@@ -154,14 +119,20 @@ describe('order transactions', () => {
   });
 
   it('does not dispatch a cancelled order', async () => {
+    await signIn(db, null);
     await db.exec("update public.orders set status = 'Cancelled' where id = 1");
+    await signIn(db, 'admin');
     await expect(command('dispatch', { orderId: 1, deliveryId: 11, expectedRevision: 1, expectedDeliveryRevision: 0,
       order: {}, delivery: { status: 'On The Way' } })).rejects.toThrow(/called off/);
     expect(await stocks()).toEqual([64, 20]);
   });
 
-  it('rejects a delivery belonging to another order', async () => {
+  it('rejects a delivery belonging to another order, by id as well as by text', async () => {
     await expect(command('dispatch', { orderId: 1, deliveryId: 12, expectedRevision: 0, expectedDeliveryRevision: 0 }))
+      .rejects.toThrow(/different order/);
+    await db.exec(`insert into public.deliveries (id, product, location, status, order_id)
+      values (13, 'Order #1 - Test', 'Davao', 'Ready To Go', 2)`);
+    await expect(command('dispatch', { orderId: 1, deliveryId: 13, expectedRevision: 0, expectedDeliveryRevision: 0 }))
       .rejects.toThrow(/different order/);
   });
 
@@ -174,6 +145,14 @@ describe('order transactions', () => {
     await command('cancel', { orderId: 1, expectedRevision: source.revision, deltas: back.deltas,
       order: { items: back.items, status: 'Cancelled', stockCommittedAt: null } });
     expect(await stocks()).toEqual([64, 20]);
+  });
+
+  it('takes an unsent delivery off the board with the cancelled order, in the same transaction', async () => {
+    const source = await order(2);
+    const result = await command('cancel', { orderId: 2, expectedRevision: source.revision, deltas: [],
+      order: { items: source.items, status: 'Cancelled', stockCommittedAt: null } });
+    expect(result.removedDeliveries).toEqual([12]);
+    expect(await all(db, 'select id from public.deliveries where id = 12')).toEqual([]);
   });
 
   it('refuses arbitrary shelf deltas unrelated to the committed quantities', async () => {
@@ -197,23 +176,127 @@ describe('order transactions', () => {
   });
 });
 
+describe('refunds', () => {
+  it('stamps who gave the money back and when from the database, not the browser', async () => {
+    await command('complete', complete(await order()));
+    await command('refund', refund(await order()));
+    const [entry] = (await order()).refundHistory;
+    expect(entry).toMatchObject({ amount: 150, refundedBy: 'admin person', refundedByStaffId: 11 });
+    expect(Date.parse(entry.refundedAt)).toBeGreaterThan(Date.now() - 60_000);
+  });
+
+  it('refuses a refund entry that does not match the money moved', async () => {
+    await command('complete', complete(await order()));
+    const payload = refund(await order());
+    payload.order.refundHistory.at(-1).amount = 20;
+    await expect(command('refund', payload)).rejects.toThrow(/does not match the amount/);
+  });
+
+  it('calls the order off on a full refund, and only then', async () => {
+    await command('complete', complete(await order()));
+    await expect(command('refund', refund(await order(), 150, { status: 'Cancelled' })))
+      .rejects.toThrow(/partial refund does not change/);
+    await expect(command('refund', refund(await order(), 600, { units: 4 })))
+      .rejects.toThrow(/calls the order off/);
+    await command('refund', refund(await order(), 600, { units: 4, status: 'Cancelled' }));
+    expect((await order()).status).toBe('Cancelled');
+    expect(await stocks()).toEqual([64, 20]);
+  });
+});
+
+describe('replacements', () => {
+  const movements = () => all(db, 'select inventory_id, kind, quantity_change, order_id from public.stock_movements order by id');
+
+  it('scraps what came back and sends the same product out once, leaving the money alone', async () => {
+    await command('complete', complete(await order()));
+    const key = crypto.randomUUID();
+    const first = await command('replace', replace(await order()), key);
+    expect(await command('replace', replace({ ...(await order()), revision: 1 }), key)).toEqual(first);
+    expect(await stocks()).toEqual([58, 20]);
+    const saved = await order();
+    expect(saved).toMatchObject({ status: 'Completed', refundedAmount: 0, totalAmount: 600 });
+    expect(saved.replacementHistory).toEqual([expect.objectContaining({
+      lineIndex: 0, quantity: 2, disposition: 'scrap', reason: 'damaged', replacementProductId: 101,
+      replacementQuantity: 2, handledBy: 'admin person', handledByStaffId: 11,
+    })]);
+    expect((await movements()).at(-1)).toEqual({ inventory_id: 101, kind: 'replacement', quantity_change: -2, order_id: 1 });
+  });
+
+  it('puts sellable returns back on the shelf and can replace with a different product', async () => {
+    await command('complete', complete(await order()));
+    await command('replace', replace(await order(), { disposition: 'restock', replacementProductId: 102, replacementQuantity: 3, reason: 'wrong' }));
+    expect(await stocks()).toEqual([62, 17]);
+    expect((await movements()).slice(-2).map((m) => `${m.kind} ${m.inventory_id} ${m.quantity_change}`))
+      .toEqual(['return 101 2', 'replacement 102 -3']);
+  });
+
+  it('allows no more back than the customer received on that line', async () => {
+    await expect(command('replace', replace(await order()))).rejects.toThrow(/up to 0 on this line/);
+    const moved = commitPartialDelivery([], await order(), [{ lineIndex: 0, units: 1 }]);
+    await command('dispatch', { orderId: 1, deliveryId: 11, expectedRevision: 0, expectedDeliveryRevision: 0,
+      deltas: moved.deltas, order: { items: moved.items, stockCommittedAt: moved.stockCommittedAt }, delivery: { status: 'On The Way' } });
+    await expect(command('replace', replace(await order()))).rejects.toThrow(/up to 1 on this line/);
+    expect(await stocks()).toEqual([63, 20]);
+  });
+
+  it('reads legacy orders that were stamped done before the per-line counters existed', async () => {
+    await signIn(db, null);
+    await db.exec(`update public.orders set status = 'Completed', stock_committed_at = now() where id = 1`);
+    await signIn(db, 'admin');
+    await command('replace', replace(await order(), { quantity: 4 }));
+    expect(await stocks()).toEqual([60, 20]);
+  });
+
+  it('refuses when the replacement is not on the shelf, changing nothing', async () => {
+    await command('complete', complete(await order()));
+    await expect(command('replace', replace(await order(), { disposition: 'restock', replacementProductId: 102, replacementQuantity: 21 })))
+      .rejects.toThrow(/Only 20 of Balls/);
+    expect(await stocks()).toEqual([60, 20]);
+    expect((await order()).replacementHistory).toEqual([]);
+  });
+
+  it('is for managers and administrators, and not for a called-off or stale order', async () => {
+    await command('complete', complete(await order()));
+    const source = await order();
+    await signIn(db, 'sales');
+    await expect(command('replace', replace(source))).rejects.toThrow(/administrator or a manager/);
+    await signIn(db, 'manager');
+    await expect(command('replace', replace({ ...source, revision: 0 }))).rejects.toThrow(/order changed/);
+    await signIn(db, null);
+    await db.exec("update public.orders set status = 'Cancelled' where id = 1");
+    await signIn(db, 'manager');
+    await expect(command('replace', replace(await order()))).rejects.toThrow(/called off/);
+  });
+});
+
 describe('manager-only changes', () => {
   it.each(['name', 'notes', 'stockUnits', 'lineTotal', 'kind'])('guards the %s field against direct staff updates', async (field) => {
     const items = [line()];
     items[0][field] = ['stockUnits', 'lineTotal'].includes(field) ? 999 : 'changed';
-    await actor('sales');
-    await expect(db.query('update public.orders set items = $1 where id = 1', [JSON.stringify(items)]))
-      .rejects.toThrow(/administrator or a manager/);
+    await asApi(db, 'sales', async () => {
+      await expect(db.query('update public.orders set items = $1 where id = 1', [JSON.stringify(items)]))
+        .rejects.toThrow(/administrator or a manager/);
+    });
+  });
+
+  it.each([
+    ['replacement_history', `'[{"quantity": 9}]'::jsonb`],
+    ['discount_amount', '50'],
+  ])('guards %s against direct staff updates', async (column, value) => {
+    await asApi(db, 'sales', async () => {
+      await expect(db.query(`update public.orders set ${column} = ${value} where id = 1`))
+        .rejects.toThrow(/administrator or a manager/);
+    });
   });
 
   it('permits staff to complete without changing the agreed lines', async () => {
-    await actor('sales');
+    await signIn(db, 'sales');
     await command('complete', complete(await order()));
     expect(await stocks()).toEqual([60, 20]);
   });
 
   it('refuses staff cancellation through the command', async () => {
-    await actor('sales');
+    await signIn(db, 'sales');
     await expect(command('cancel', { orderId: 1, expectedRevision: 0, order: { status: 'Cancelled' } }))
       .rejects.toThrow(/administrator or a manager/);
   });

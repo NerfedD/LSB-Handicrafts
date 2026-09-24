@@ -54,6 +54,9 @@ for (const width of [375, 768, 1440, 2560]) {
 for (const [table, label] of [['customers', 'customer'], ['suppliers', 'supplier']]) {
   test(`BUG-001: an open ${label} form keeps its original revision after background refresh`, async ({ page, baseURL }) => {
     const tables = await stubSupabase(page);
+    // The page's clock, so the background refresh can be brought forward rather
+    // than waited for. A bare window focus no longer re-reads data this fresh.
+    await page.clock.install();
     const row = tables[table][0];
     row.contact_number = '09171234567';
     row.revision = 0;
@@ -65,7 +68,7 @@ for (const [table, label] of [['customers', 'customer'], ['suppliers', 'supplier
     row.contact_number = '09179876543';
     row.revision = 1;
     const refreshed = page.waitForResponse((response) => response.url().includes(`/rest/v1/${table}`) && response.request().method() === 'GET');
-    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.clock.fastForward(61_000);
     await refreshed;
     await dialog.getByRole('button', { name: 'Save the changes' }).click();
     await expect(dialog.locator('[data-form-error]')).toContainText('record changed');

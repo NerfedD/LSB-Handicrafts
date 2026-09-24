@@ -12,6 +12,7 @@ import {
   Pencil,
   Phone,
   Printer,
+  Repeat,
   Tag,
   Truck,
   UserRound,
@@ -43,6 +44,7 @@ import {
   priceReasonLabel,
   refundMethodLabel,
   refundReasonLabel,
+  replacementReasonLabel,
 } from "../../utils/copy";
 import { normalizeItems } from "../../utils/orderItems";
 import {
@@ -55,8 +57,9 @@ import {
   lastPriceAdjustment,
   orderProgress,
   orderTotals,
+  returnHistory,
 } from "../../utils/orders";
-import { outstandingOf } from "../../utils/stockLedger";
+import { committedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
@@ -87,8 +90,8 @@ import { formatPeso, formatShortDate } from "../../utils/profileFormat";
  *
  * WHAT WAS DONE TO THE MONEY IS SHOWN, NOT JUST THE RESULT. A total that moved
  * with no explanation is indistinguishable from a mistake, so a corrected price
- * carries a banner naming the day, the person and the reason, and every refund
- * is listed with what happened to the goods.
+ * carries a banner naming the day, the person and the reason, and every return
+ * -- refunded or replaced -- is listed with what happened to the goods.
  */
 export default function OrderDetailPage({
   order,
@@ -100,6 +103,7 @@ export default function OrderDetailPage({
   onAssignDriver,
   onPrint,
   onRefund,
+  onReplace,
   onAdjustPrice,
   onReopen,
   canEdit = false,
@@ -128,7 +132,9 @@ export default function OrderDetailPage({
   const isCancelled = order.status === ORDER_STATUS.CANCELLED;
   const partial = hasBackorder(order);
   const correction = lastPriceAdjustment(order);
-  const refunds = Array.isArray(order.refundHistory) ? order.refundHistory : [];
+  const returns = returnHistory(order);
+  // Only goods the customer received can come back to be replaced.
+  const delivered = stockLines(order).some((line) => committedOf(line) > 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -327,6 +333,17 @@ export default function OrderDetailPage({
                         {totals.delivery > 0 ? formatPeso(totals.delivery) : "Free"}
                       </dd>
                     </div>
+                    {totals.discount > 0 && (
+                      <div className="flex items-baseline justify-between gap-6">
+                        <dt className="text-[15.5px] text-muted">
+                          {order.promotion?.label || "Loyalty reward"}
+                          {order.promotion?.percent ? ` (${order.promotion.percent}%)` : ""}
+                        </dt>
+                        <dd className="text-[16.5px] font-bold tabular-nums text-green dark:text-dk-green">
+                          −{formatPeso(totals.discount)}
+                        </dd>
+                      </div>
+                    )}
                     <div
                       className="h-px bg-rule"
                       aria-hidden="true"
@@ -370,44 +387,48 @@ export default function OrderDetailPage({
           </Card>
 
           {/* ---- what came back ---- */}
-          {refunds.length > 0 && (
+          {returns.length > 0 && (
             <Card>
               <CardHeader>
                 <IconChip icon={<Banknote />} tone="red" size="sm" />
-                <CardTitle>Money given back</CardTitle>
+                <CardTitle>Returns</CardTitle>
               </CardHeader>
               <ul>
-                {refunds.map((refund, index) => (
+                {returns.map((entry, index) => (
                   <li
-                    key={refund.id ?? index}
+                    key={entry.id ?? index}
                     className="border-b border-hair px-5.5 py-4 last:border-b-0"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-3">
                       <p className="text-[16.5px] font-bold text-ink">
-                        {formatPeso(refund.amount)} · {refundMethodLabel(refund.method)}
+                        {entry.resolution === "refund"
+                          ? `${formatPeso(entry.amount)} given back · ${refundMethodLabel(entry.method)}`
+                          : `Replaced: ${entry.replacementQuantity} × ${entry.replacementName} sent out`}
                       </p>
                       <p className="text-[14.5px] text-muted">
-                        {formatShortDate(refund.refundedAt)}
-                        {refund.refundedBy ? ` · ${refund.refundedBy}` : ""}
+                        {formatShortDate(entry.at)}
+                        {entry.handledBy ? ` · ${entry.handledBy}` : ""}
                       </p>
                     </div>
                     <p className="pt-1 text-[15px] leading-[1.5] text-ink-2">
-                      {refundReasonLabel(refund.reason)}
+                      {entry.resolution === "refund"
+                        ? refundReasonLabel(entry.reason)
+                        : replacementReasonLabel(entry.reason)}
+                      {entry.note ? ` — ${entry.note}` : ""}
                     </p>
-                    {Array.isArray(refund.restockedItems) &&
-                      refund.restockedItems.length > 0 && (
-                        <ul className="pt-1.5">
-                          {refund.restockedItems.map((line, lineIndex) => (
-                            <li
-                              key={`${refund.id ?? index}-${lineIndex}`}
-                              className="text-[14.5px] text-muted"
-                            >
-                              {line.quantity} × {line.name} —{" "}
-                              {dispositionLabel(line.disposition).toLowerCase()}
+                    <ul className="pt-1.5">
+                      {entry.resolution === "refund"
+                        ? (entry.restockedItems || []).map((line, lineIndex) => (
+                            <li key={lineIndex} className="text-[14.5px] text-muted">
+                              {line.quantity} × {line.name} — {dispositionLabel(line.disposition).toLowerCase()}
                             </li>
-                          ))}
-                        </ul>
-                      )}
+                          ))
+                        : (
+                            <li className="text-[14.5px] text-muted">
+                              {entry.quantity} × {entry.name} came back — {dispositionLabel(entry.disposition).toLowerCase()}
+                            </li>
+                          )}
+                    </ul>
                   </li>
                 ))}
               </ul>
@@ -424,6 +445,12 @@ export default function OrderDetailPage({
                     <Banknote className="h-5 w-5" />
                     Give money back
                   </Button>
+                  {delivered && onReplace && (
+                    <Button variant="outline" size="lg" disabled={busy} onClick={onReplace}>
+                      <Repeat className="h-5 w-5" />
+                      Replace goods
+                    </Button>
+                  )}
                   <Button variant="outline" size="lg" disabled={busy} onClick={onAdjustPrice}>
                     <Tag className="h-5 w-5" />
                     Fix the price
@@ -433,7 +460,8 @@ export default function OrderDetailPage({
             >
               Giving money back records where it went and what happened to the goods —
               whether they went back on the shelf or were thrown away. Anything thrown
-              away is counted as waste and is not sold again.
+              away is counted as waste and is not sold again. Replacing goods sends new
+              ones out instead and moves no money.
               <br />
               <br />
               Fixing the price never overwrites what {order.customerName} was told. The old

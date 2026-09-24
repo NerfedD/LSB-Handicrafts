@@ -44,6 +44,13 @@ export const materialShortfall = (material, batches, exceptId) =>
 /** Never negative: what a worker can actually take off the shelf today. */
 export const freeMaterial = (material, batches, exceptId) =>
   Math.max(0, availableMaterial(material, batches, exceptId));
+
+/**
+ * Raw materials at or below their reorder point once unfinished batches have
+ * taken their share: the same rule products follow (stockLedger.stockState).
+ */
+export const needsReorder = (material, batches = []) =>
+  availableMaterial(material, batches) <= (Number(material?.low_stock_threshold) || 0);
 export function countValue(value, minimum = 0) {
   const n = Number(value);
   return value !== '' && value !== null && value !== undefined && Number.isInteger(n) && n >= minimum && n <= MAX_COUNT ? n : null;

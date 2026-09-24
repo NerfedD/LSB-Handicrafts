@@ -129,7 +129,10 @@ test('customer failure stays open and invalid phone input never dispatches', asy
 });
 
 test('account provisioning sends a password and a late staff read cannot erase the new row', async ({ page, baseURL }) => {
-  const tables = await stubSupabase(page); await signIn(page, baseURL);
+  const tables = await stubSupabase(page);
+  // The page's clock, so the background staff refresh can be brought forward.
+  await page.clock.install();
+  await signIn(page, baseURL);
   let release;
   let started;
   const readStarted = new Promise((resolve) => { started = resolve; });
@@ -142,7 +145,7 @@ test('account provisioning sends a password and a late staff read cannot erase t
     }
     await route.fallback();
   });
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await page.clock.fastForward(61_000);
   await readStarted;
   await page.getByRole('button', { name: /^Staff & accounts/ }).click();
   await page.getByRole('button', { name: 'Add a staff account', exact: true }).first().click();

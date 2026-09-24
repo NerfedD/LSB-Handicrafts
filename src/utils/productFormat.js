@@ -154,22 +154,3 @@ export function suggestItemCode(item, taken = []) {
   }
   return `${base}-${Date.now()}`;
 }
-
-/**
- * Sort key for dimension-based ordering. Balls sort by diameter, sheets by
- * face area. Returns null for rows with nothing to sort on so callers can push
- * them to the end rather than treating them as zero.
- */
-export function sizeSortKey(item) {
-  if (!item) return null;
-  if (item.productType === PRODUCT_TYPE.BALL) {
-    const d = Number(item.diameterIn);
-    return Number.isNaN(d) || !item.diameterIn ? null : d;
-  }
-  const l = Number(item.lengthFt);
-  const w = Number(item.widthFt);
-  if (!item.lengthFt || !item.widthFt || Number.isNaN(l) || Number.isNaN(w)) {
-    return null;
-  }
-  return l * w;
-}

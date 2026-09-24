@@ -166,21 +166,6 @@ export const orderTone = (status) => ORDER_TONE[status] ?? "neutral";
  * on the tracker and the heading on the callout, so somebody who learns it once
  * recognises it everywhere.
  */
-export const BACKORDER_LABEL = {
-  [BACKORDER_STATUS.NONE]: "All gone out",
-  [BACKORDER_STATUS.PARTIAL]: "Some left behind",
-  [BACKORDER_STATUS.RESOLVED]: "The rest went later",
-};
-
-export const BACKORDER_TONE = {
-  [BACKORDER_STATUS.NONE]: "green",
-  [BACKORDER_STATUS.PARTIAL]: "amber",
-  [BACKORDER_STATUS.RESOLVED]: "green",
-};
-
-export const backorderLabel = (status) => BACKORDER_LABEL[status] ?? "All gone out";
-export const backorderTone = (status) => BACKORDER_TONE[status] ?? "neutral";
-
 /** The chip on the orders list and the deliveries board. */
 export const BACKORDER_CHIP = "Some left behind";
 
@@ -268,6 +253,60 @@ export const REFUND_REASON_LABEL = Object.fromEntries(
 );
 
 export const refundReasonLabel = (value) => REFUND_REASON_LABEL[value] ?? "—";
+
+// ---- replacing goods instead of refunding them ------------------------------
+
+/** Why goods came back to be replaced. The values are the ones order_command accepts. */
+export const REPLACEMENT_REASON_OPTIONS = [
+  { value: "damaged", label: "Broken or damaged", description: "It left here fine and arrived broken, or broke soon after." },
+  { value: "defective", label: "Made wrong", description: "The wrong size, the wrong shape, or a bad cut." },
+  { value: "wrong", label: "Wrong item sent", description: "They were sent something other than what they ordered." },
+];
+
+export const replacementReasonLabel = (value) =>
+  REPLACEMENT_REASON_OPTIONS.find((option) => option.value === value)?.label ?? "—";
+
+// ---- stock that changed without a sale --------------------------------------
+
+/** Why stock was written off. The values are the ones stock_command accepts. */
+export const DAMAGE_REASON_OPTIONS = [
+  { value: "broken", label: "Broken or cracked" },
+  { value: "crushed", label: "Crushed or dented" },
+  { value: "water", label: "Water or dirt damage" },
+  { value: "handling", label: "Dropped or handled badly" },
+  { value: "other", label: "Something else" },
+];
+
+/** Why a count was corrected. The values are the ones stock_command accepts. */
+export const COUNT_REASON_OPTIONS = [
+  { value: "recount", label: "Counted the shelf" },
+  { value: "found", label: "Found stock that was not on record" },
+  { value: "missing", label: "Stock is missing" },
+  { value: "entry-error", label: "A count was typed wrong" },
+  { value: "other", label: "Something else" },
+];
+
+const STOCK_REASON_LABEL = Object.fromEntries(
+  [...DAMAGE_REASON_OPTIONS, ...COUNT_REASON_OPTIONS].map((option) => [option.value, option.label])
+);
+export const stockReasonLabel = (value) => STOCK_REASON_LABEL[value] ?? value ?? "";
+
+/** What a stock movement was, in the words the stock history uses. */
+const MOVEMENT_LABEL = {
+  opening: "Opening count",
+  sale: "Sold",
+  dispatch: "Sent out on a delivery",
+  cancellation: "Put back from an order",
+  return: "Came back from a customer",
+  replacement: "Sent out as a replacement",
+  damage: "Written off as damaged",
+  adjustment: "Count corrected",
+  delivery: "Delivered by a supplier",
+  production: "Made in the workshop",
+  production_use: "Used in the workshop",
+  transfer: "Moved between selling and workshop stock",
+};
+export const movementLabel = (kind) => MOVEMENT_LABEL[kind] ?? "Stock changed";
 
 // ---- putting a price right -------------------------------------------------
 

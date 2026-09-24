@@ -1,10 +1,11 @@
 import useUrlState from "../../hooks/useUrlState";
 import { useEffect, useMemo } from "react";
 
-import { ArrowRight, Building2, MapPin, Phone, UserPlus, UserRound } from "../icons";
+import { ArrowRight, Building2, Gift, MapPin, Phone, UserPlus, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "../shared/Chip";
+import StatusPill from "../shared/StatusPill";
 import { FilterBar, StickyCta } from "../shared/ListScreen";
 import { ActiveFilterSummary, FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
@@ -16,8 +17,8 @@ import {
   citiesOf,
   customerChips,
   customerSummary,
+  DEFAULT_LOYALTY,
   matchesCustomerChip,
-  ordersByCustomer,
 } from "../../utils/customers";
 
 /**
@@ -47,9 +48,14 @@ export default function CustomerListPage({
   loadError = null,
   onRetry,
   customers = [],
-  orders = [],
+  /** Whole-history totals per customer (utils/customers statsIndex). */
+  customerStats = new Map(),
+  loyalty = DEFAULT_LOYALTY,
   onView,
+  /** Absent for a role that cannot add customers. */
   onAdd,
+  /** Opens the loyalty rules; absent for a role that cannot change them. */
+  onEditLoyalty,
   onGoToDashboard,
   onContext,
   initialFilter,
@@ -65,15 +71,12 @@ export default function CustomerListPage({
   const [area, setArea] = useUrlState("area", "any", "customers");
   const [sort, setSort] = useUrlState("sort", "name", "customers");
 
-  const rows = useMemo(() => {
-    const index = ordersByCustomer(orders);
-    return customers.map((customer) => ({
-      customer,
-      summary: customerSummary(customer, index),
-    }));
-  }, [customers, orders]);
+  const rows = useMemo(
+    () => customers.map((customer) => ({ customer, summary: customerSummary(customer, customerStats, loyalty) })),
+    [customers, customerStats, loyalty]
+  );
 
-  const chips = useMemo(() => customerChips(rows), [rows]);
+  const chips = useMemo(() => customerChips(rows, loyalty), [rows, loyalty]);
   const cities = useMemo(() => citiesOf(customers), [customers]);
 
   const lapsed = chips.find((c) => c.value === "lapsed")?.count ?? 0;
@@ -186,6 +189,12 @@ export default function CustomerListPage({
           ]}
         />
         <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
+        {onEditLoyalty && (
+          <Button variant="outline" onClick={onEditLoyalty}>
+            <Gift className="h-4.5 w-4.5" />
+            Loyalty rules
+          </Button>
+        )}
       </FilterBar>
 
       <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which customers" />
@@ -203,7 +212,7 @@ export default function CustomerListPage({
           onClearSearch={clearSearch}
           filtered={hasActiveFilters(chip !== "all", area !== "any")}
           onClearFilters={clearFilters}
-          actionLabel="Add a customer"
+          actionLabel={onAdd ? "Add a customer" : undefined}
           onAction={onAdd}
         />
       ) : (
@@ -256,10 +265,15 @@ export default function CustomerListPage({
                       in the row, so a customer with no address does not leave a
                       card whose "Open" button sits higher than its neighbours'. */}
                   <div className="mt-auto flex items-center justify-between gap-3 border-t border-hair pt-3.5">
-                    <span className="text-[15px] text-muted">
+                    <span className="flex flex-wrap items-center gap-2 text-[15px] text-muted">
                       {summary.orderCount === 0
                         ? "No orders yet"
                         : `${summary.orderCount} ${summary.orderCount === 1 ? "order" : "orders"}`}
+                      {summary.rewardEligible ? (
+                        <StatusPill label="Loyalty reward" tone="green" size="sm" />
+                      ) : summary.isRegular ? (
+                        <StatusPill label="Regular" tone="green" size="sm" />
+                      ) : null}
                     </span>
                     <Button variant="outline" size="sm" onClick={() => onView(customer.id)}>
                       Open
@@ -275,12 +289,14 @@ export default function CustomerListPage({
             <Pager {...paged} noun="customers" />
           </Card>
 
-          <StickyCta>
-            <Button variant="cobalt" size="xl" block onClick={onAdd}>
-              <UserPlus className="h-5.5 w-5.5" />
-              Add a customer
-            </Button>
-          </StickyCta>
+          {onAdd && (
+            <StickyCta>
+              <Button variant="cobalt" size="xl" block onClick={onAdd}>
+                <UserPlus className="h-5.5 w-5.5" />
+                Add a customer
+              </Button>
+            </StickyCta>
+          )}
         </>
       )}
     </div>

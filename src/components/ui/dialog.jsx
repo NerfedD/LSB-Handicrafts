@@ -33,16 +33,10 @@ const DialogOverlay = forwardRef(function DialogOverlay({ className, ...props },
       ref={ref}
       className={cn(
         "fixed inset-0 z-50 bg-[#111d2b7a]",
-        // THE BLUR IS A DESKTOP FEATURE NOW. It was on at every width, which
-        // put a full-viewport backdrop-filter on the cheapest device in the
-        // building every time somebody opened a dialog on the workshop floor —
-        // and that is the one effect on this page a low-end tablet GPU actually
-        // struggles with, composited over whatever list is underneath it. The
-        // ink wash alone already separates the dialog from the page; the blur
-        // was the refinement on top, so the refinement is where the machine can
-        // afford it. It is static once painted, and only the overlay's opacity
-        // animates, so it never costs anything per frame even there.
-        "desk:backdrop-blur-[2px]",
+        // NO BLUR. A full-viewport backdrop-filter is the one effect a low-end
+        // GPU struggles with -- on the shop's older desktops as much as on a
+        // floor tablet -- and the ink wash alone already separates the dialog
+        // from the page. Only the overlay's opacity animates.
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
         className

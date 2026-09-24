@@ -31,6 +31,8 @@ import { matches } from "../../utils/search";
 export default function ActivityLogPage({
   entries = [],
   isLoaded = true,
+  /** Present while older entries exist beyond the ones loaded. */
+  onShowOlder,
   onBack,
   onExport,
   onContext,
@@ -40,7 +42,7 @@ export default function ActivityLogPage({
 
   useEffect(() => {
     if (!isLoaded) return;
-    onContext?.(`${entries.length} ${entries.length === 1 ? "entry" : "entries"} recorded`);
+    onContext?.(`The newest ${entries.length} ${entries.length === 1 ? "entry" : "entries"}`);
   }, [entries.length, isLoaded, onContext]);
 
   const filtered = useMemo(() => {
@@ -130,6 +132,14 @@ export default function ActivityLogPage({
             </Card>
           ))}
         </div>
+      )}
+      {/* The log is read newest first and a screenful at a time, never whole:
+          it grows with every change anybody makes. */}
+      {isLoaded && onShowOlder && (
+        <Button variant="outline" size="lg" className="self-center" onClick={onShowOlder}>
+          <History className="h-5 w-5" />
+          Show older entries
+        </Button>
       )}
     </div>
   );

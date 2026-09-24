@@ -40,7 +40,7 @@ import { productIcon } from "../shared/productIcons";
 import LargeTextDashboard from "./LargeTextDashboard";
 import { whenLabel } from "../../utils/activityLog";
 import { DASHBOARD_VIEW, ORDER_STATUS } from "../../utils/constants";
-import { customerSummary, ordersByCustomer } from "../../utils/customers";
+import { customerSummary, DEFAULT_LOYALTY } from "../../utils/customers";
 import {
   attentionFor,
   daySummary,
@@ -82,9 +82,13 @@ export default function DashboardPage({
   orders = [],
   deliveries = [],
   customers = [],
+  customerStats = new Map(),
+  loyalty = DEFAULT_LOYALTY,
   suppliers = [],
   staff = [],
   activity = [],
+  materials = [],
+  batches = [],
   onNavigate,
   onOpenFiltered,
   onAddProduct,
@@ -101,19 +105,16 @@ export default function DashboardPage({
   // not part of your job" is worse than no link.
   const canSeeTheLog = role === "Admin";
 
-  const customerRows = useMemo(() => {
-    const index = ordersByCustomer(orders);
-    return customers.map((customer) => ({
-      customer,
-      summary: customerSummary(customer, index),
-    }));
-  }, [customers, orders]);
+  const customerRows = useMemo(
+    () => customers.map((customer) => ({ customer, summary: customerSummary(customer, customerStats, loyalty) })),
+    [customers, customerStats, loyalty]
+  );
 
   const attention = useMemo(() => {
     if (isProduction) return [];
     if (isSales) return followUpsFor({ orders, customerRows });
-    return attentionFor({ role, products, inventory, orders, deliveries, staff });
-  }, [isProduction, isSales, role, products, inventory, orders, deliveries, staff, customerRows]);
+    return attentionFor({ role, products, inventory, orders, deliveries, staff, materials, batches });
+  }, [isProduction, isSales, role, products, inventory, orders, deliveries, staff, customerRows, materials, batches]);
 
   const stock = useMemo(
     () => stockCounts(products, inventory, orders),

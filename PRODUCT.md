@@ -10,9 +10,9 @@ web
 
 LSB Handicrafts' own staff, across five roles: **Admin**, **Manager**, **Sales Staff**, **Production Staff**, and **Delivery Staff** (`supabase/schema.sql` staff_role_check). The shared trait across all of them, stated as an explicit design constraint: many are not confident computer users. The interface is read by the shop owner, office staff, and production/delivery crew on the floor, not by a technical operator.
 
-- **Admin / Manager** — run the business side: products & stock, orders, deliveries, customers, suppliers, staff accounts, the activity log. Managers additionally handle refunds and price corrections (`canHandleMoney`); only Admins reach staff/user management (`ADMIN_ONLY_VIEWS` in `src/utils/navigation.js`).
+- **Admin / Manager** — run the business side: products, prices and stock counts, suppliers and purchasing, refunds, replacements and price corrections, loyalty rules, reports. Only Admins remove records and reach staff management and the activity log. The full table is in `docs/workflows.md`; the code is `can()` in `src/utils/permissions.js`, enforced again in `supabase/schema.sql`.
 - **Sales Staff** — work orders and customer follow-ups; have their own dashboard variant ("sales follow-ups").
-- **Production Staff** — work from a "production make list" dashboard: what to build next.
+- **Production Staff** — work from a "production make list" dashboard: what to build next. They record damaged stock and run production batches, and do not see customer contact details.
 - **Delivery Staff** — work the deliveries board and individual delivery records.
 
 ## Product Purpose
@@ -31,7 +31,7 @@ Not a generic off-the-shelf inventory/CRM tool repurposed for a small manufactur
 - **Devices:** desktop/office use plus phone and tablet on the floor and for deliveries (`2w-phone-and-tablet.png` in the design handoff; responsive behavior is an explicit screen).
 - **Status:** pre-launch. The app currently runs on seed data and demo accounts (`supabase/seed_demo_accounts.sql`, `seed_profiles.sql`, `seed_staff.sql`, `seed_inventory.sql`); no real customer, order, or stock data depends on it yet, so this is the point to get the interface right before staff start relying on it daily.
 - **Prior system:** paper — order books, paper stock counts, phone calls for delivery coordination. This is the business's first digital system, not a migration from another app or spreadsheets.
-- **Auth/session:** Supabase Auth with a role carried via a custom access-token hook; idle sign-out after a configurable timeout (default 30 min); a temporary email allowlist exists for admin access during setup.
+- **Auth/session:** Supabase Auth; people sign in with a username through the `sign-in` Edge Function, and the app re-reads their staff row (role, blocked or not) on sign-in and on every refresh. Idle sign-out after a configurable timeout (default 30 min).
 
 ## Capabilities and Constraints
 
@@ -55,7 +55,7 @@ Not a generic off-the-shelf inventory/CRM tool repurposed for a small manufactur
 - Real screens already exist as committed design references: `LSB Current UI.dc.html` (incumbent) and `LSB Handicrafts UI.dc.html` (overhaul target) plus ~20 annotated screenshots covering sign-in (including error/forgot-password states), all four dashboards, products/stock, orders, deliveries, customers/suppliers, staff, profile, dialogs/toasts, empty/loading/error states, dark mode, and phone/tablet layouts.
 - **No real photography exists.** The sign-in brand panel (4:3, ~1600×1200) and product photo slots (1:1, 800×800) are honest dashed placeholders in the current build — do not fabricate product photos or a brand image; state the placeholder as a known gap when relevant.
 - **No real customer/order/testimonial data** — only seed/demo data (`supabase/seed_*.sql`). Do not invent customer names, testimonials, or business metrics as if real.
-- `BUGS_AND_FIX_PLAN.txt` at the repo root tracks known defects/fixes in progress — check it before assuming a rough edge is undiscovered.
+- Known gaps and deferred work are listed at the end of `README.md` — check there before assuming a rough edge is undiscovered.
 
 ## Product Principles
 

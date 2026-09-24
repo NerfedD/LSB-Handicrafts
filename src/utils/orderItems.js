@@ -60,16 +60,3 @@ export function normalizeItems(items) {
 export function orderTotal(items) {
   return normalizeItems(items).reduce((sum, item) => sum + item.lineTotal, 0);
 }
-
-/** Recomputes lineTotal after a quantity or price edit. */
-export function withLineTotal(item) {
-  const quantity = Number(item.quantity) || 0;
-  const unitPrice = Number(item.unitPrice) || 0;
-  return { ...item, quantity, unitPrice, price: unitPrice, lineTotal: unitPrice * quantity };
-}
-
-/** True when the line draws from a tracked inventory row. */
-export function drawsStock(item) {
-  const line = normalizeItem(item);
-  return Boolean(line && line.productId && line.stockUnits > 0);
-}

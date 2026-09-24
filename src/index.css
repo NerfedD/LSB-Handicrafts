@@ -248,14 +248,10 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
  * movement is transform and opacity only — no blur, no filter, no shadow
  * animation, nothing that asks a cheap GPU for a favour.
  *
- * WHAT THE DESK BREAKPOINT IS ALLOWED TO BUY. Above 1280px the machine is an
- * office desktop rather than a floor tablet, and two effects are permitted
- * there that are not permitted below it. Both are paid for once, at paint:
- * they are a static shadow and a static backdrop filter sitting underneath an
- * animation that is still nothing but opacity. Neither adds a per-frame cost,
- * which is the actual line — not "desktops are fast", but "this costs the same
- * whether it is moving or not". An effect that has to be recomputed every
- * frame does not get in at any width.
+ * WIDER SCREENS ARE NOT FASTER MACHINES. The office desktops are as old as the
+ * floor tablets, so no width gets a backdrop filter. The one extra permitted
+ * above 1280px is a static shadow, paid for once at paint. An effect that has
+ * to be recomputed every frame does not get in at any width.
  */
 
 @keyframes lsb-rise {

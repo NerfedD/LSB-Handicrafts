@@ -8,7 +8,8 @@ import IconChip from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
 import { NotFoundState } from "../shared/PageStates";
-import { formatLongDate } from "../../utils/profileFormat";
+import { formatLongDate, formatShortDate } from "../../utils/profileFormat";
+import { units } from "../../utils/production";
 
 /**
  * One supplier.
@@ -37,7 +38,10 @@ import { formatLongDate } from "../../utils/profileFormat";
 export default function SupplierDetailPage({
   supplier,
   purchaseOrders = [],
+  /** Raw materials, to name what this supplier has delivered. */
+  materials = [],
   onOpenPurchases,
+  canEdit = false,
   canDelete = false,
   onBack,
   onEdit,
@@ -51,6 +55,20 @@ export default function SupplierDetailPage({
   // raw_material_orders.supplier_id refuses the delete, and this is the client
   // telling somebody that before they reach for the button.
   const blocked = purchaseOrders.length > 0;
+
+  // What they supply, as their own purchase orders show it: each material with
+  // how much has been ordered and when it last arrived. Derived rather than
+  // kept as a separate list, so it cannot disagree with the orders.
+  const supplied = [...purchaseOrders.reduce((byMaterial, order) => {
+    const entry = byMaterial.get(order.raw_material_id)
+      ?? { material: materials.find((m) => m.id === order.raw_material_id), ordered: 0, usable: 0, lastArrived: null };
+    if (order.status !== 'Cancelled') entry.ordered += Number(order.quantity_ordered) || 0;
+    entry.usable += Number(order.quantity_usable) || 0;
+    if (order.actual_delivery_date && (!entry.lastArrived || order.actual_delivery_date > entry.lastArrived)) {
+      entry.lastArrived = order.actual_delivery_date;
+    }
+    return byMaterial.set(order.raw_material_id, entry);
+  }, new Map()).values()].filter((entry) => entry.material);
 
   if (!supplier) return <NotFoundState noun="supplier" onBack={onBack} />;
 
@@ -97,10 +115,12 @@ export default function SupplierDetailPage({
                 </a>
               </Button>
             )}
-            <Button variant="outline" size="lg" onClick={() => onEdit(supplier.id)}>
-              <Pencil className="h-5 w-5" />
-              Edit details
-            </Button>
+            {canEdit && (
+              <Button variant="outline" size="lg" onClick={() => onEdit(supplier.id)}>
+                <Pencil className="h-5 w-5" />
+                Edit details
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -148,6 +168,19 @@ export default function SupplierDetailPage({
           {' · '}
           {claimsNeedingReview} {claimsNeedingReview === 1 ? 'claim needs' : 'claims need'} review.
         </p>
+        {supplied.length > 0 && (
+          <ul className="mb-4 divide-y divide-hair rounded-field border border-hair">
+            {supplied.map(({ material, ordered, usable, lastArrived }) => (
+              <li key={material.id} className="flex flex-wrap items-baseline justify-between gap-3 px-4 py-3">
+                <span className="font-bold text-ink">{material.name}</span>
+                <span className="text-[15px] text-muted">
+                  {units(ordered, material.unit)} ordered · {units(usable, material.unit)} received usable
+                  {lastArrived ? ` · last arrived ${formatShortDate(lastArrived)}` : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
         <Button variant="outline" size="lg" onClick={onOpenPurchases}>Open supplier deliveries</Button>
       </Card>
       {/* THE HEADING HAS TO AGREE WITH THE BUTTON UNDER IT.

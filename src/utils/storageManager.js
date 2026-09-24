@@ -1,57 +1,37 @@
 /**
  * The data layer: one Supabase table per collection, and one row per write.
  *
- * WHAT IT REPLACED, TWICE OVER. First localStorage, then a whole-table
- * reconcile that upserted every row and deleted anything missing from the
- * in-memory array — which is what destroyed data during class testing, because
- * a read denied by RLS is indistinguishable from an empty table. That path is
- * gone entirely (see the note where it used to live, below the write helpers).
+ * Every write goes through createRow / updateRow / deleteRow: one row, awaited,
+ * with the result checked and reported, so a rejected write is visible on
+ * screen. Anything that moves stock or money is not a row write at all -- it is
+ * a database command (see utils/commands.js).
  *
- * Everything now goes through createRow / updateRow / deleteRow: one row,
- * awaited, with the result checked and reported. A rejected write is visible on
- * screen rather than a console.error nobody sees under a green success panel.
+ * Reads are bounded. Open work is always loaded in full; history is loaded for
+ * a recent window, and older records are fetched when somebody asks for them.
  */
 import { supabase } from '../lib/supabaseClient';
 
 // ---- row <-> app-object mapping -------------------------------------------
-// activity_log columns already match the JS shape 1:1. Every other table needs
-// camelCase <-> snake_case translation.
-//
-// These mappers enumerate their keys by hand, which means a field missing from
-// one is dropped silently — on read AND on write. Whenever a column is added to
-// schema.sql, both directions here have to gain it too.
+// These mappers enumerate their keys by hand, so a field missing from one is
+// dropped silently -- on read AND on write. A column added to schema.sql has to
+// be added in both directions here.
 
-/**
- * Numeric columns that are nullable in Postgres. An empty form field arrives
- * here as '', which PostgREST rejects for a numeric column — and syncTable only
- * console.errors that rejection, so the whole table's write is lost with nothing
- * on screen to show for it. Send an explicit null instead.
- */
+/** Nullable numeric columns: '' from an empty form field goes up as null. */
 const numOrNull = (v) =>
-  v === '' || v === undefined || v === null || Number.isNaN(Number(v))
-    ? null
-    : Number(v);
+  v === '' || v === undefined || v === null || Number.isNaN(Number(v)) ? null : Number(v);
 
-/**
- * Integer columns that are NOT NULL with a default in Postgres. The fallback
- * passed here must match that column's SQL default exactly: syncTable upserts
- * whole rows, so a mismatch quietly overwrites real values with the wrong
- * number on the next save.
- */
+/** NOT NULL integer columns: the fallback must match the column's SQL default. */
 const intOr = (v, fallback) =>
-  v === '' || v === undefined || v === null || Number.isNaN(Number(v))
-    ? fallback
-    : Math.trunc(Number(v));
+  v === '' || v === undefined || v === null || Number.isNaN(Number(v)) ? fallback : Math.trunc(Number(v));
 
 /**
- * Inventory is the styro catalog: one row per size. `productType` decides which
- * dimension fields are meaningful — a ball has a diameter and no length/width,
- * a sheet has thickness/length/width and no diameter — so the unused ones go to
- * the database as null rather than 0.
+ * The stock row for a catalogue product. `stock` counts SELLING units (a sheet
+ * sold by the bundle stores 25 to mean 25 bundles); `packSize` turns that back
+ * into pieces for display.
  *
- * `stock` and `reserved` count SELLING units, not pieces: a sheet sold by the
- * bundle stores 25 to mean 25 bundles. `packSize` is what turns that back into
- * pieces for display.
+ * `stock` is written only when the row is created (the opening count). After
+ * that it moves only through recorded movements, and the database refuses a
+ * direct write -- see stock_command in schema.sql.
  */
 const inventoryToRow = (i) => ({
   id: i.id,
@@ -61,7 +41,6 @@ const inventoryToRow = (i) => ({
   price: numOrNull(i.price) ?? 0,
   stock: intOr(i.stock, 0),
   max_stock: intOr(i.maxStock, 0),
-  status: i.status || 'In Stock',
   product_type: i.productType || 'other',
   diameter_in: numOrNull(i.diameterIn),
   thickness_in: numOrNull(i.thicknessIn),
@@ -70,7 +49,6 @@ const inventoryToRow = (i) => ({
   unit: i.unit || 'piece',
   pack_size: intOr(i.packSize, 1),
   low_stock_threshold: intOr(i.lowStockThreshold, 50),
-  reserved: intOr(i.reserved, 0),
   is_cuttable: !!i.isCuttable,
 });
 
@@ -83,7 +61,6 @@ const inventoryFromRow = (r) => ({
   price: r.price,
   stock: r.stock,
   maxStock: r.max_stock,
-  status: r.status,
   productType: r.product_type,
   diameterIn: r.diameter_in,
   thicknessIn: r.thickness_in,
@@ -92,32 +69,23 @@ const inventoryFromRow = (r) => ({
   unit: r.unit,
   packSize: r.pack_size,
   lowStockThreshold: r.low_stock_threshold,
-  reserved: r.reserved,
   isCuttable: r.is_cuttable,
 });
 
-// `driver` is free text and nullable: a delivery with nobody assigned yet is a
-// real state the board has a column for, so an empty string goes up as null
-// rather than as "", which would count as assigned.
-//
-// `parent_delivery_id` points a follow-up run at the one it follows, and it is
-// a real foreign key rather than another parsed string: the order link had to
-// stay text for compatibility, but nothing forced a second one to. Null on
-// every original run, which is most of them.
-//
-// `items_manifest` is what was actually loaded — jsonb, and untyped for the
-// same reason `orders.items` is: it records a moment, and the shape of that
-// moment should be able to grow without a migration.
+// `order_id` links a delivery to its order. The "Order #12 - Name" text in
+// `product` stays because every screen and the printed slip read it, but it is
+// no longer the only link. `driver` goes up as null rather than "" so an
+// unassigned delivery is not counted as assigned.
 const deliveryToRow = (d) => ({
   id: d.id,
+  order_id: d.orderId ?? null,
   product: d.product,
   size: d.size,
   location: d.location,
   amount: d.amount === '' || d.amount === undefined ? null : Number(d.amount),
   status: d.status,
   driver: d.driver?.trim() || null,
-  // A `date` column: '' from an untouched form field is not a date and
-  // PostgREST rejects it, taking the whole write with it.
+  // A `date` column: '' from an untouched form field is not a date.
   due_on: d.dueOn || null,
   created_at: d.createdAt,
   parent_delivery_id: d.parentDeliveryId ?? null,
@@ -127,6 +95,7 @@ const deliveryToRow = (d) => ({
 const deliveryFromRow = (r) => ({
   id: r.id,
   revision: r.revision ?? 0,
+  orderId: r.order_id ?? null,
   product: r.product,
   size: r.size,
   location: r.location,
@@ -139,30 +108,19 @@ const deliveryFromRow = (r) => ({
   itemsManifest: r.items_manifest || [],
 });
 
-// `items` is untyped jsonb, so line-item shape changes need no migration here —
-// but a new top-level order field does. stockCommittedAt is stamped when a
-// Pending order is marked Completed and its stock is actually deducted; its
-// presence is what keeps that deduction from happening twice.
-//
-// The per-line delivery counters (committedUnits, voidedUnits) live INSIDE
-// `items` and therefore need nothing here — which is the whole reason they were
-// put there. The four columns below are the ones that could not be: money and
-// history that SQL reporting has to be able to read without unpacking jsonb.
-//
-// `refunded_amount` and `backorder_status` are NOT NULL with defaults in
-// Postgres, so the fallbacks here have to match those defaults exactly. See the
-// note on intOr above: this mapper feeds whole-row updates, and a mismatch
-// quietly overwrites a real value with the wrong one on the next save.
+// The per-line counters (committedUnits, voidedUnits) live inside `items`, so
+// they need nothing here. refund_history and replacement_history are written
+// by order_command; replacement_history is read-only from the browser.
 const orderToRow = (o) => ({
   id: o.id,
   customer_name: o.customerName,
-  // The link to the customer RECORD, where there is one. The name stays beside
-  // it and stays authoritative for display: an order taken for a walk-in names
-  // somebody who is not a customer record at all, and that order still has to
-  // read correctly on the list, on its own screen and on the printed slip.
+  // The link to the customer record where there is one. The name stays beside
+  // it and stays what is displayed: a walk-in has no record at all.
   customer_id: o.customerId ?? null,
   items: o.items || [],
   total_amount: o.totalAmount,
+  discount_amount: numOrNull(o.discountAmount) ?? 0,
+  promotion: o.promotion ?? null,
   status: o.status,
   created_at: o.createdAt,
   stock_committed_at: o.stockCommittedAt || null,
@@ -179,29 +137,24 @@ const orderFromRow = (r) => ({
   customerId: r.customer_id ?? null,
   items: r.items || [],
   totalAmount: r.total_amount,
+  discountAmount: Number(r.discount_amount) || 0,
+  promotion: r.promotion ?? null,
   status: r.status,
   createdAt: r.created_at,
   stockCommittedAt: r.stock_committed_at,
   priorityPosition: r.priority_position ?? 0,
   backorderStatus: r.backorder_status || 'none',
   refundHistory: r.refund_history || [],
+  replacementHistory: r.replacement_history || [],
   priceAdjustments: r.price_adjustments || [],
   refundedAmount: r.refunded_amount ?? 0,
 });
 
-// `username` is nullable and uniquely indexed (case-insensitively), so an empty
-// form field has to go up as null rather than '' — otherwise the second account
-// saved without a username collides with the first.
-//
-// `email` goes up lowercased. Supabase Auth stores and returns emails in lower
-// case, and the RLS predicates match on lower(email); a row saved as
-// 'FinalTest@gmail.com' used to never match its own JWT, which locked that
-// account out of the entire app.
-//
-// `is_super_admin` is read but deliberately NOT written: staffToRow feeds
-// inserts and updates, and the database refuses to let anyone but a superadmin
-// set that flag. Leaving it out keeps the client from ever sending a value the
-// server would reject.
+// `username` goes up as null, not '', or the second account without one would
+// collide with the first on the unique index. `email` goes up lowercased to
+// match what Supabase Auth returns. `is_super_admin` and `dashboard_view` are
+// read but never written here: the first only a superadmin may set, the second
+// is each person's own preference (set_own_dashboard_view).
 const staffToRow = (s) => ({
   id: s.id,
   name: s.name,
@@ -222,37 +175,14 @@ const staffFromRow = (r) => ({
   email: r.email,
   username: r.username,
   isSuperAdmin: !!r.is_super_admin,
-  // Which of the two dashboards this person sees. Read but deliberately NOT
-  // written by staffToRow, for the same reason as is_super_admin: that mapper
-  // feeds every admin insert and update, and one person's view preference is
-  // not something another person's edit should be able to overwrite. It is
-  // changed only through set_own_dashboard_view() below.
   dashboardView: r.dashboard_view || 'standard',
 });
 
 /**
- * The activity feed's rows.
- *
- * `staff_name`, `subject` and `at` are the columns the UI overhaul added (see
- * supabase/schema.sql). The four original ones are still mapped because rows
- * written by the legacy workspace screens carry them, and utils/activityLog.js
- * falls back to `title`/`date` when the new columns are null — otherwise every
- * pre-existing entry would render as a blank line.
+ * The activity feed. Written only by the database (audit triggers and the
+ * command functions), so there is no toRow. The original `title`/`date`
+ * columns are still read for entries written before `staff_name`/`at` existed.
  */
-const activityToRow = (a) => ({
-  id: a.id,
-  type: a.type,
-  title: a.title ?? null,
-  description: a.description ?? null,
-  amount: numOrNull(a.amount),
-  status: a.status ?? null,
-  color: a.color ?? null,
-  date: a.date ?? null,
-  staff_name: a.staffName ?? null,
-  subject: a.subject ?? null,
-  at: a.at ?? new Date().toISOString(),
-});
-
 const activityFromRow = (r) => ({
   source: r.source ?? 'legacy',
   id: r.id,
@@ -260,17 +190,13 @@ const activityFromRow = (r) => ({
   title: r.title,
   description: r.description,
   amount: r.amount,
-  status: r.status,
-  color: r.color,
   date: r.date,
   staffName: r.staff_name,
   subject: r.subject,
   at: r.at,
 });
 
-// `kind` is 'business' | 'walk-in' and is NOT NULL with a default, so an
-// unanswered form field has to fall back to that default rather than going up
-// as null and being rejected.
+// `kind` is NOT NULL with a default, so an unanswered field falls back to it.
 const customerToRow = (c) => ({
   id: c.id,
   name: c.name,
@@ -294,21 +220,18 @@ const customerFromRow = (r) => ({
   updatedAt: r.updated_at,
 });
 
-// The catalog twin of `inventory`: same styro shape, no stock columns. `size`
-// is no longer typed by hand — it's a label derived from the dimensions, kept
-// as a column so anything already reading it keeps working.
+// The catalogue half of a product. `size` is a label derived from the
+// dimensions, kept as a column so older readers keep working. `status` is
+// Active or Archived; archiving is done by remove_product.
 const productToRow = (p) => ({
   id: p.id,
   item_code: p.itemCode,
   name: p.name,
   size: p.size,
-  unit_price:
-    p.unitPrice === '' || p.unitPrice === undefined ? null : Number(p.unitPrice),
+  unit_price: p.unitPrice === '' || p.unitPrice === undefined ? null : Number(p.unitPrice),
   low_stock_threshold:
-    p.lowStockThreshold === '' || p.lowStockThreshold === undefined
-      ? null
-      : Number(p.lowStockThreshold),
-  status: p.status,
+    p.lowStockThreshold === '' || p.lowStockThreshold === undefined ? null : Number(p.lowStockThreshold),
+  status: p.status || 'Active',
   created_at: p.createdAt,
   updated_at: p.updatedAt,
   product_type: p.productType || 'other',
@@ -328,7 +251,7 @@ const productFromRow = (r) => ({
   size: r.size,
   unitPrice: r.unit_price,
   lowStockThreshold: r.low_stock_threshold,
-  status: r.status,
+  status: r.status || 'Active',
   createdAt: r.created_at,
   updatedAt: r.updated_at,
   productType: r.product_type,
@@ -363,53 +286,77 @@ const supplierFromRow = (r) => ({
   updatedAt: r.updated_at,
 });
 
+const loyaltyToRow = (l) => ({
+  enabled: !!l.enabled,
+  regular_after_orders: intOr(l.regularAfterOrders, 3),
+  reward_after_orders: intOr(l.rewardAfterOrders, 5),
+  reward_percent: numOrNull(l.rewardPercent) ?? 5,
+});
+
+const loyaltyFromRow = (r) => ({
+  id: r.id,
+  revision: r.revision ?? 0,
+  enabled: !!r.enabled,
+  regularAfterOrders: r.regular_after_orders,
+  rewardAfterOrders: r.reward_after_orders,
+  rewardPercent: Number(r.reward_percent),
+  updatedAt: r.updated_at,
+  updatedBy: r.updated_by,
+});
+
+/** One row of public.customer_order_stats: a customer's whole history, summed. */
+const customerStatsFromRow = (r) => ({
+  id: r.customer_key,
+  key: r.customer_key,
+  orderCount: Number(r.order_count) || 0,
+  completedCount: Number(r.completed_count) || 0,
+  openCount: Number(r.open_count) || 0,
+  spent: Number(r.spent) || 0,
+  lastOrderAt: r.last_order_at,
+});
+
+const stockMovementFromRow = (r) => ({
+  id: r.id,
+  inventoryId: r.inventory_id,
+  rawMaterialId: r.raw_material_id,
+  itemCode: r.item_code,
+  itemName: r.item_name,
+  change: r.quantity_change,
+  balanceAfter: r.balance_after,
+  kind: r.kind,
+  reason: r.reason,
+  note: r.note,
+  orderId: r.order_id,
+  supplierOrderId: r.supplier_order_id,
+  batchId: r.batch_id,
+  actorName: r.actor_name,
+  at: r.created_at,
+});
+
 const identity = (x) => x;
 
-// ---- generic load/write helpers -------------------------------------------
+// ---- reads ----------------------------------------------------------------
 
 /**
- * Reads a table. Returns { ok, data } rather than a bare array so callers can
- * tell "the table is legitimately empty" apart from "the read failed" — they
- * look identical otherwise, and a caller that treats a failed read as real
- * state used to sync that emptiness back and delete the table.
- */
-/**
- * How many rows one request asks for.
- *
- * The server may enforce a smaller cap, so this is only the requested maximum.
+ * How many rows one request asks for. The server may enforce a smaller cap,
+ * so this is only the requested maximum.
  */
 const PAGE = 500;
 
 /**
- * Every row of a table, in id order, however many pages that takes.
+ * Every row a query matches, in id order, however many pages that takes.
  *
- * A PLAIN SELECT IS NOT THE WHOLE TABLE. PostgREST caps a response at the
- * project's row limit -- 1000 unless it has been configured otherwise -- and
- * says so nowhere in the body: the request succeeds, the array simply stops.
- * This module used to issue exactly that one select and treat what came back as
- * everything, so past the cap the oldest orders would quietly vanish from the
- * list, their reservations would stop counting against stock, and the activity
- * log would end mid-history, all while every read reported ok.
- *
- * The workshop tables already knew this and paged; the comment there --
- * "a workshop history must not disappear at the API row limit" -- is true of
- * orders and the activity log too. That loop now lives here and both sides
- * import it, so there is one page size and one stopping rule rather than two
- * that can drift.
- *
- * Continue until an empty page: a short page may be the server's lower cap.
- * The last primary key is the cursor, avoiding growing OFFSET scans and
- * skipped rows when an earlier page loses a record between requests.
+ * PostgREST caps a response at the project's row limit and says so nowhere in
+ * the body, so one select is not the whole table. This continues until an
+ * empty page (a short page may just be the server's lower cap), using the last
+ * primary key as the cursor, which avoids growing OFFSET scans and skipped rows
+ * when an earlier page loses a record between requests.
  */
-export const loadAllRows = async (table) => {
+export const loadAllRows = async (table, refine = identity) => {
   const rows = [];
   let lastId = null;
   for (;;) {
-    let query = supabase
-      .from(table)
-      .select('*')
-      .order('id', { ascending: true })
-      .limit(PAGE);
+    let query = refine(supabase.from(table).select('*')).order('id', { ascending: true }).limit(PAGE);
     if (lastId !== null) query = query.gt('id', lastId);
     const { data, error } = await query;
     if (error) throw error;
@@ -424,109 +371,106 @@ export const loadAllRows = async (table) => {
   return rows;
 };
 
-const loadTable = async (table, defaultData, fromRow = identity) => {
+/** Reads that fail say so, rather than looking like an empty table. */
+async function readRows(table, read, fromRow) {
   try {
-    const data = await loadAllRows(table);
-    const rows = data.length === 0 ? defaultData : data.map(fromRow);
-    return { ok: true, data: rows };
+    return { ok: true, data: (await read()).map(fromRow) };
   } catch (error) {
-    console.error(`Failed to load ${table} from Supabase:`, error);
-    return { ok: false, data: defaultData, error };
+    console.error(`Failed to load ${table}:`, error);
+    return { ok: false, data: [], error };
   }
-};
+}
 
 /**
- * Turns anything Supabase hands back into a message worth showing a user.
+ * Open work plus recent history, plus any older record somebody opened.
  *
- * Postgres constraint names leak through verbatim otherwise — "new row for
- * relation \"staff\" violates check constraint \"staff_role_check\"" is not a
- * sentence anyone should read on screen.
+ * `since` is a yyyy-mm-dd date; without it the whole table is read (the "show
+ * everything" choice on a list screen). `pinned` are ids of older records that
+ * were opened directly; `pinnedOrders` pulls in the deliveries of such orders.
  */
-const humanizeError = (error, fallback) => {
+function openOrRecent(openFilter) {
+  const ids = (list = []) => list.filter((id) => Number.isSafeInteger(Number(id)));
+  return (query, { since, pinned, pinnedOrders } = {}) => {
+    if (!since) return query;
+    const parts = [openFilter, `created_at.gte.${since}`];
+    if (ids(pinned).length) parts.push(`id.in.(${ids(pinned).join(',')})`);
+    if (ids(pinnedOrders).length) parts.push(`order_id.in.(${ids(pinnedOrders).join(',')})`);
+    return query.or(parts.join(','));
+  };
+}
+const openOrders = openOrRecent('status.eq.Pending');
+const openDeliveries = openOrRecent('status.neq.Delivered');
+
+/**
+ * Turns anything Supabase hands back into a message worth showing a person.
+ *
+ * The database's own functions and guards raise messages written for staff
+ * (P0001, and 40001 for "this changed under you"), so those pass through.
+ * Constraint names are translated rather than shown.
+ */
+export const humanizeError = (error, fallback) => {
   if (!error) return fallback;
   const raw = error.message || String(error);
 
+  if (['P0001', '40001'].includes(error.code)) return raw;
   if (error.code === '23505' || /duplicate key/i.test(raw)) {
     if (/email/i.test(raw)) return 'That email address is already in use.';
     if (/username/i.test(raw)) return 'That username is already taken.';
-    if (/item_code/i.test(raw)) return 'That item code is already in use.';
+    if (/item_code|sku/i.test(raw)) return 'That item code is already in use.';
     return 'That record already exists.';
   }
-  if (error.code === '23503' && /production_|raw_material_/i.test(raw)) {
-    return 'This record is used in purchasing or production history and cannot be removed.';
+  if (error.code === '23503') {
+    return 'Other records still point at this one, so it has to stay.';
   }
   if (error.code === '23514' || /check constraint/i.test(raw)) {
     if (/role/i.test(raw)) return 'That is not a valid role.';
     if (/status/i.test(raw)) return 'That is not a valid status.';
-    if (/contact_number/i.test(raw)) return 'That contact number is too long.';
+    if (/contact_number/i.test(raw)) return 'That contact number is not one that can be dialled.';
+    if (/stock/i.test(raw)) return 'There is not enough stock for that.';
     if (/price|amount/i.test(raw)) return 'That amount is outside the allowed range.';
     return 'One of the values is outside the allowed range.';
   }
-  if (error.code === '22003' || /out of range/i.test(raw)) {
-    return 'That number is too large.';
-  }
-  if (error.code === '42501' || /row-level security/i.test(raw)) {
-    return 'You do not have permission to do that.';
-  }
-  // Raised by the staff guard trigger; already written for a human.
-  if (/super administrator|Only an administrator/i.test(raw)) return raw;
-
+  if (error.code === '22003' || /out of range/i.test(raw)) return 'That number is too large.';
+  if (error.code === '42501' || /row-level security/i.test(raw)) return 'You do not have permission to do that.';
   if (/timeout|abort/i.test(raw)) return 'The request timed out. Check the connection and retry.';
   if (/fetch|network/i.test(raw)) return 'We could not reach the database. Check your connection and retry.';
   return fallback;
 };
 
+// ---- writes ---------------------------------------------------------------
+
 /**
- * Insert one row.
- *
- * Returns { ok, data, error } — never a bare boolean, and never swallowed. The
- * previous write path only console.error'd, so a rejected write still showed
- * the user a green "saved successfully" panel.
+ * Insert one row. The id is the database's to pick (every table defaults it to
+ * a sequence), so it is deleted from the payload rather than sent as null --
+ * an explicit null does not fall back to the column default.
  */
 const createRow = async (table, row, toRow = identity) => {
   const payload = toRow(row);
-
-  // The id is the DATABASE'S to pick, and leaving it out is how it gets to.
-  // Every table here defaults its id to nextval('private.record_id_seq') --
-  // see the note beside that sequence in schema.sql for why the browser is no
-  // longer trusted with a clock reading as a primary key.
-  //
-  // It has to be DELETED rather than left undefined. The toRow mappers all
-  // write `id: x` unconditionally, and while JSON.stringify drops an undefined
-  // value, a null one survives -- and an explicit null does not fall back to a
-  // column default, it violates the primary key's NOT NULL. So both go.
   if (payload.id === undefined || payload.id === null) delete payload.id;
 
-  const { data, error } = await supabase
-    .from(table)
-    .insert(payload)
-    .select()
-    .maybeSingle();
-
+  const { data, error } = await supabase.from(table).insert(payload).select().maybeSingle();
   if (error) {
     console.error(`Failed to insert into ${table}:`, error);
     return { ok: false, error, message: humanizeError(error, `Couldn't save that ${table} record.`) };
   }
-  // RLS can accept the statement and still return nothing if the new row is
+  // RLS can accept the insert and still return nothing if the new row is
   // outside the caller's SELECT policy.
   return { ok: true, data };
 };
 
+/** Tables whose rows carry a revision: a save made from an older copy is refused. */
+const VERSIONED = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules'];
+
 /**
- * Update one row by id.
- *
- * `patch` is a whole app-shaped object; `id` is never part of the payload, so a
- * mis-typed id can't silently repoint the row.
+ * Update one row by id. `id` is never part of the payload, so a mis-typed id
+ * cannot silently repoint the row.
  */
 const updateRow = async (table, id, patch, toRow = identity) => {
   const payload = toRow(patch);
   delete payload.id;
 
-  let query = supabase
-    .from(table)
-    .update(payload)
-    .eq('id', id);
-  const versioned = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff'].includes(table);
+  let query = supabase.from(table).update(payload).eq('id', id);
+  const versioned = VERSIONED.includes(table);
   if (versioned) query = query.eq('revision', patch.revision ?? 0);
   const { data, error } = await query.select().maybeSingle();
 
@@ -534,100 +478,148 @@ const updateRow = async (table, id, patch, toRow = identity) => {
     console.error(`Failed to update ${table} #${id}:`, error);
     return { ok: false, error, message: humanizeError(error, `Couldn't save your changes.`) };
   }
-  // No error and no row means RLS filtered the row out of the UPDATE. Postgres
-  // reports that as success with zero rows affected, so it has to be caught
-  // here or the UI will claim a save that never happened.
+  // No error and no row: the revision moved on, or RLS filtered the row out.
+  // Postgres reports both as success with nothing changed.
   if (!data) {
     return {
       ok: false,
       message: versioned
-        ? "This record changed or is no longer available. Refresh it before saving again."
-        : "You do not have permission to change that record, or it no longer exists.",
+        ? 'This record changed or is no longer available. Refresh it before saving again.'
+        : 'You do not have permission to change that record, or it no longer exists.',
     };
   }
   return { ok: true, data };
 };
 
-/**
- * Delete one row by id.
- *
- * Uses an exact count for the same reason updateRow checks for a returned row:
- * a DELETE blocked by RLS is not an error, it simply matches nothing. That is
- * exactly what happens when an ordinary admin tries to delete the superadmin,
- * and reporting it as success would put the UI back out of step with the
- * database — which is how a deleted-looking row kept reappearing on refresh.
- */
+/** Delete one row by id. A delete blocked by RLS matches nothing, hence the count. */
 const deleteRow = async (table, id) => {
-  const { error, count } = await supabase
-    .from(table)
-    .delete({ count: 'exact' })
-    .eq('id', id);
-
+  const { error, count } = await supabase.from(table).delete({ count: 'exact' }).eq('id', id);
   if (error) {
     console.error(`Failed to delete ${table} #${id}:`, error);
     return { ok: false, error, message: humanizeError(error, `Couldn't delete that record.`) };
   }
-  if (!count) {
-    return {
-      ok: false,
-      message: "You do not have permission to delete that record.",
-    };
-  }
+  if (!count) return { ok: false, message: 'You do not have permission to delete that record.' };
   return { ok: true };
 };
 
+const without = (row, keys) => {
+  const copy = { ...row };
+  for (const key of keys) delete copy[key];
+  return copy;
+};
+
 /**
- * A collection definition: everything the hook and the write helpers need to
- * talk to one table. Passing one of these around replaces the eight pairs of
- * load and save functions this module used to export.
+ * A collection definition: everything the hook and the write helpers need for
+ * one table. `load(params)` reads it -- whole, or refined by `refine` -- and
+ * `omitOnUpdate` lists columns only the database may change after insert.
  */
-const collection = (table, fromRow = identity, toRow = identity) => ({
+const collection = (table, fromRow = identity, toRow = identity, { refine, omitOnUpdate = [] } = {}) => ({
   table,
   fromRow,
   toRow,
-  load: (defaultData = []) => loadTable(table, defaultData, fromRow),
+  load: (params) => readRows(table, () => loadAllRows(table, (query) => (refine ? refine(query, params) : query)), fromRow),
   create: (row) => createRow(table, row, toRow),
-  update: (id, patch) => updateRow(table, id, patch, toRow),
+  update: (id, patch) => updateRow(table, id, patch, (value) => without(toRow(value), omitOnUpdate)),
   remove: (id) => deleteRow(table, id),
 });
 
-export const inventoryCollection = collection('inventory', inventoryFromRow, inventoryToRow);
-export const deliveriesCollection = collection('deliveries', deliveryFromRow, deliveryToRow);
-export const ordersCollection = collection('orders', orderFromRow, orderToRow);
-export const activityLogCollection = collection('activity_log', activityFromRow, activityToRow);
+export const inventoryCollection = collection('inventory', inventoryFromRow, inventoryToRow, { omitOnUpdate: ['stock'] });
+export const deliveriesCollection = collection('deliveries', deliveryFromRow, deliveryToRow, { refine: openDeliveries });
+export const ordersCollection = collection('orders', orderFromRow, orderToRow, { refine: openOrders });
 export const staffCollection = collection('staff', staffFromRow, staffToRow);
 export const customersCollection = collection('customers', customerFromRow, customerToRow);
 export const productsCollection = collection('products', productFromRow, productToRow);
 export const suppliersCollection = collection('suppliers', supplierFromRow, supplierToRow);
+export const customerStatsCollection = {
+  table: 'customer_order_stats',
+  fromRow: customerStatsFromRow,
+  load: () => readRows('customer_order_stats',
+    async () => {
+      const { data, error } = await supabase.from('customer_order_stats').select('*');
+      if (error) throw error;
+      return data ?? [];
+    }, customerStatsFromRow),
+};
+export const loyaltyCollection = collection('loyalty_rules', loyaltyFromRow, loyaltyToRow);
 
-export { createRow, updateRow, deleteRow, loadTable, humanizeError };
+/**
+ * The newest `limit` activity entries. The feed grows with every change to
+ * every record, so it is never read whole; the activity screen asks for more.
+ */
+export const activityLogCollection = {
+  table: 'activity_log',
+  fromRow: activityFromRow,
+  load: ({ limit = 200 } = {}) => readRows('activity_log', async () => {
+    const { data, error } = await supabase.from('activity_log').select('*')
+      .order('at', { ascending: false, nullsFirst: false }).order('id', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, activityFromRow),
+};
 
-// ---- what used to live here -----------------------------------------------
-//
-// A block of whole-table load/save helpers and, at its centre, replaceAllRows()
-// -- "upsert every row, then delete anything in the table that is not in this
-// array". That function was the app's only write primitive and the root cause
-// of the data loss during class testing: a read denied by RLS came back empty,
-// the app appended one row to that emptiness, and the sync deleted every other
-// row in the table.
-//
-// Two heuristic guards were bolted on to stop it, which in turn made legitimate
-// bulk edits fail silently. It survived only because the unrouted legacy
-// workspace still called it. The UI overhaul replaced those screens, so the
-// last caller is gone and the function with it -- every write in this app is
-// now one row, awaited, with its result checked (createRow / updateRow /
-// deleteRow above).
+/** The newest activity entries about one record (its `subject`), newest first. */
+export async function fetchActivityFor(subject, limit = 50) {
+  return readRows('activity_log', async () => {
+    const { data, error } = await supabase.from('activity_log').select('*').eq('subject', subject)
+      .order('at', { ascending: false, nullsFirst: false }).order('id', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, activityFromRow);
+}
+
+/** One product's or material's stock history, newest first. */
+export async function fetchStockMovements({ inventoryId = null, rawMaterialId = null, limit = 50 }) {
+  return readRows('stock_movements', async () => {
+    let query = supabase.from('stock_movements').select('*');
+    query = inventoryId != null ? query.eq('inventory_id', inventoryId) : query.eq('raw_material_id', rawMaterialId);
+    const { data, error } = await query.order('created_at', { ascending: false }).order('id', { ascending: false }).limit(limit);
+    if (error) throw error;
+    return data ?? [];
+  }, stockMovementFromRow);
+}
+
+/** Escapes a value for an ilike match so it matches only itself. */
+const literalPattern = (text) => String(text ?? '').trim().replace(/[\\%_]/g, (c) => `\\${c}`);
+
+/**
+ * One customer's orders, newest first, found by id or -- for orders that carry
+ * no id -- by the name they were written under, as utils/customers does.
+ */
+export async function fetchCustomerOrders(customer, limit = 50) {
+  return readRows('orders', async () => {
+    const byId = supabase.from('orders').select('*').eq('customer_id', customer.id)
+      .order('created_at', { ascending: false }).limit(limit);
+    const byName = supabase.from('orders').select('*').is('customer_id', null)
+      .ilike('customer_name', literalPattern(customer.name))
+      .order('created_at', { ascending: false }).limit(limit);
+    const [a, b] = await Promise.all([byId, byName]);
+    if (a.error) throw a.error;
+    if (b.error) throw b.error;
+    return [...(a.data ?? []), ...(b.data ?? [])]
+      .sort((x, y) => new Date(y.created_at) - new Date(x.created_at))
+      .slice(0, limit);
+  }, orderFromRow);
+}
+
+/**
+ * Removes a product the only safe way: archived if anything refers to it,
+ * deleted (both halves, in one transaction) if nothing does.
+ */
+export async function removeProduct(product) {
+  const { data, error } = await supabase.rpc('remove_product', {
+    p_product_id: product.id,
+    p_expected_revision: product.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't remove that product.") };
+  return { ok: true, outcome: data?.outcome ?? 'deleted' };
+}
 
 // ---- the signed-in person's own profile -----------------------------------
 
 /**
- * Saves the signed-in person's own name and contact number.
- *
- * Deliberately not a direct table write: RLS gates which ROWS you may write,
- * not which COLUMNS, so any policy permissive enough to let someone edit their
- * own row would also let them set their own role to 'Admin'. This RPC updates
- * exactly two columns on exactly the caller's row, decided server-side from
- * their token rather than from anything passed in here.
+ * Saves the signed-in person's own name and contact number through an RPC that
+ * updates exactly those two columns on exactly the caller's row -- a policy
+ * permissive enough for that would also let them change their own role.
  */
 export const saveOwnProfile = async ({ name, contactNumber }) => {
   const { error } = await supabase.rpc('update_own_profile', {
@@ -635,33 +627,18 @@ export const saveOwnProfile = async ({ name, contactNumber }) => {
     p_contact_number: contactNumber ?? '',
   });
   if (error) {
-    console.error('Failed to save your profile to Supabase:', error);
+    console.error('Failed to save your profile:', error);
     return { ok: false, error, message: humanizeError(error, "Couldn't save your profile.") };
   }
   return { ok: true };
 };
 
-/**
- * Saves which dashboard the signed-in person wants to see.
- *
- * A separate RPC rather than two more parameters on update_own_profile, for the
- * reason spelled out beside it in schema.sql: that function is granted by exact
- * signature, so changing its arity would revoke the grant from any client still
- * calling the old shape.
- *
- * The preference is reachable from two places — the profile screen and the
- * header's account menu — because the handoff flags the profile screen alone as
- * possibly too buried for it.
- */
+/** Saves which dashboard the signed-in person wants to see. */
 export const saveOwnDashboardView = async (view) => {
   const { error } = await supabase.rpc('set_own_dashboard_view', { p_view: view });
   if (error) {
     console.error('Failed to save your dashboard preference:', error);
-    return {
-      ok: false,
-      error,
-      message: humanizeError(error, "Couldn't save how your dashboard looks."),
-    };
+    return { ok: false, error, message: humanizeError(error, "Couldn't save how your dashboard looks.") };
   }
   return { ok: true };
 };
@@ -669,25 +646,10 @@ export const saveOwnDashboardView = async (view) => {
 // ---- the sign-in behind a staff account ------------------------------------
 
 /**
- * Deletes the Supabase Auth user for a staff account.
- *
- * WHY THIS IS NOT A CALL FROM HERE. auth.admin.deleteUser() needs the
- * service-role key, which bypasses RLS entirely -- putting it in this bundle
- * would hand every visitor the whole database. So the work happens in the
- * `delete-staff-auth-user` Edge Function (supabase/functions), which holds the
- * key server-side and re-checks that the caller is an active administrator
- * before it does anything. This is only the request.
- *
- * WHY IT NEEDS DOING AT ALL. Removing somebody's `staff` row already revokes
- * every scrap of access -- the RLS predicates all gate on having an Active row
- * there. What the leftover Auth user does is squat on the email address for
- * ever: Auth enforces uniqueness on it, so re-hiring that person, or fixing a
- * typo by recreating the account, fails at signUp with "user already
- * registered" and nothing in the app can clear it.
- *
- * Accepts either half of the identity: `userId` where the caller has it (the
- * create dialog gets one back from signUp), `email` otherwise (a staff row
- * carries no auth id).
+ * Deletes the Supabase Auth user for a staff account, through the
+ * `delete-staff-auth-user` Edge Function: it needs the service-role key, which
+ * must never be in this bundle. Removing the staff row already revokes access;
+ * this frees the email address so the person can be added again.
  */
 export const deleteStaffAuthUser = async ({ userId = null, email = null } = {}) => {
   const { data, error } = await supabase.functions.invoke('delete-staff-auth-user', {
@@ -695,44 +657,18 @@ export const deleteStaffAuthUser = async ({ userId = null, email = null } = {}) 
   });
 
   if (error) {
-    // supabase-js flattens every non-2xx into the same "returned a non-2xx
-    // status code" message, which tells a person nothing. The function writes
-    // a real sentence into the body, so dig that out before falling back.
+    // supabase-js flattens every non-2xx into one generic message; the function
+    // writes a real sentence into the body.
     let detail = null;
     try {
       detail = (await error.context?.json())?.error ?? null;
     } catch {
-      // The body was not JSON -- a gateway error, or the function is not
-      // deployed. The fallback message covers it.
+      // Not JSON: a gateway error, or the function is not deployed.
     }
     console.error('Failed to remove the sign-in behind a staff account:', error);
-    return {
-      ok: false,
-      error,
-      message: detail || humanizeError(error, "Couldn't remove their sign-in."),
-    };
+    return { ok: false, error, message: detail || humanizeError(error, "Couldn't remove their sign-in.") };
   }
 
-  // `deleted: false` means there was no Auth user to remove, which is the state
-  // the caller wanted to reach anyway. Success either way.
+  // `deleted: false` means there was no Auth user to remove -- the state wanted.
   return { ok: true, deleted: !!data?.deleted };
-};
-
-// ---- export / backup --------------------------------------------------
-
-/**
- * Export the full admin workspace state as JSON (for a manual backup download).
- */
-export const exportBackupData = ({ inventory = [], deliveries = [], orders = [] } = {}) => {
-  const exportData = {
-    exportDate: new Date().toISOString(),
-    counts: {
-      inventory: inventory.length,
-      deliveries: deliveries.length,
-      orders: orders.length,
-    },
-    data: { inventory, deliveries, orders },
-  };
-
-  return JSON.stringify(exportData, null, 2);
 };

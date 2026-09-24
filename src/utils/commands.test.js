@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('../lib/supabaseClient', () => ({ supabase: { rpc } }));
-import { createOrderCommandRunner, orderCommand } from './orderCommand';
+import { createCommandRunner, orderCommand } from './commands';
 
 describe('retrying an order action', () => {
   it('reuses the original payload and key despite regenerated refund timestamps', async () => {
     const send = vi.fn().mockResolvedValueOnce({ ok: false, retryable: true }).mockResolvedValue({ ok: true });
-    const runner = createOrderCommandRunner(send);
+    const runner = createCommandRunner(send);
     const data = { orderId: 1, expectedRevision: 0, order: { refundHistory: [{ id: 100, refundedAt: 'first', amount: 50 }] } };
     await runner.run('refund', data);
     await runner.run('refund', { ...data, order: { refundHistory: [{ id: 101, refundedAt: 'later', amount: 50 }] } });
@@ -15,7 +15,7 @@ describe('retrying an order action', () => {
 
   it('uses a new key for an edited amount or a known rejection', async () => {
     const send = vi.fn().mockResolvedValue({ ok: false, retryable: true });
-    const runner = createOrderCommandRunner(send);
+    const runner = createCommandRunner(send);
     await runner.run('refund', { orderId: 1, order: { refundedAmount: 50 } });
     await runner.run('refund', { orderId: 1, order: { refundedAmount: 60 } });
     expect(send.mock.calls[1][2]).not.toBe(send.mock.calls[0][2]);
@@ -28,7 +28,7 @@ describe('retrying an order action', () => {
   it('does not let a double click submit a second action', async () => {
     let release;
     const send = vi.fn(() => new Promise((resolve) => { release = resolve; }));
-    const runner = createOrderCommandRunner(send);
+    const runner = createCommandRunner(send);
     const first = runner.run('complete', { orderId: 1 });
     expect((await runner.run('complete', { orderId: 1 })).ok).toBe(false);
     expect(send).toHaveBeenCalledTimes(1);

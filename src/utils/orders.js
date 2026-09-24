@@ -54,9 +54,15 @@ export const PARTLY_DELIVERED = "Partly delivered";
 /** The suffix that marks a follow-up delivery for goods left behind. */
 export const BACKORDER_SUFFIX = " (backorder)";
 
-/** Does this delivery row belong to that order? See the note above on "-". */
+/**
+ * Does this delivery row belong to that order? By `orderId` where the row has
+ * one (every delivery raised since the column existed, and every older one the
+ * migration could link), by the text otherwise. See the note above on "-".
+ */
 export const deliveryBelongsToOrder = (delivery, orderId) =>
-  String(delivery?.product || "").startsWith(`Order #${orderId} - `);
+  delivery?.orderId != null
+    ? Number(delivery.orderId) === Number(orderId)
+    : String(delivery?.product || "").startsWith(`Order #${orderId} - `);
 
 /** Is this the follow-up run rather than the original one? */
 export const isBackorderDelivery = (delivery) =>
@@ -159,6 +165,22 @@ export const orderNetTotal = (order) =>
 
 /** Has any money gone back on this order? */
 export const hasRefund = (order) => orderRefunded(order) > 0;
+
+/**
+ * Every return on an order, oldest first: money given back and goods replaced,
+ * in one list, because to the customer they are two answers to the same
+ * complaint. Both are written by the database (order_command), including who
+ * handled them and when.
+ */
+export function returnHistory(order) {
+  const refunds = (order?.refundHistory || []).map((entry) => ({
+    ...entry, resolution: "refund", at: entry.refundedAt, handledBy: entry.refundedBy,
+  }));
+  const replacements = (order?.replacementHistory || []).map((entry) => ({
+    ...entry, resolution: "replacement", at: entry.replacedAt,
+  }));
+  return [...refunds, ...replacements].sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0));
+}
 
 /** The most recent price correction, for the banner on the order screen. */
 export function lastPriceAdjustment(order) {
@@ -276,9 +298,12 @@ export function orderTotals(order, deliveries = []) {
   // fixed, and in the same direction.
   const raw = order?.totalAmount;
   const stored = raw === null || raw === undefined || raw === '' ? NaN : Number(raw);
-  const total = Number.isFinite(stored) && stored >= 0 ? stored : items + delivery;
+  // The loyalty reward is already taken off the stored total; it is returned so
+  // the screen and the slip can say where the difference went.
+  const discount = Number(order?.discountAmount) || 0;
+  const total = Number.isFinite(stored) && stored >= 0 ? stored : Math.max(0, items + delivery - discount);
   const refunded = orderRefunded(order);
-  return { items, delivery, total, refunded, net: Math.max(0, total - refunded) };
+  return { items, delivery, discount, total, refunded, net: Math.max(0, total - refunded) };
 }
 
 /** How many orders are in each state, from the unfiltered set. */

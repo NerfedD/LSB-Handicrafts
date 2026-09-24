@@ -20,21 +20,16 @@
  * lie the make list would then act on.
  */
 
-import { reservedByProduct, statusOf } from "./stockLedger";
+import { STOCK_STATUS } from "./constants";
+import { reservedByProduct, stockState } from "./stockLedger";
 
 /**
  * sku (lowercased) -> { row, reserved }. Build once, reuse across a render.
  *
- * RESERVED IS RECOMPUTED FROM THE ORDERS, not read from the column.
- * `inventory.reserved` is a cache, and stockLedger has always said the orders
- * array is the source of truth — but the only thing that ever refreshed that
- * cache was the legacy workspace, which the UI overhaul removed. Deriving it on
- * read means it cannot go stale, and it is correct by construction for create,
- * edit, cancel and re-open alike: there is no double-apply bug available to
- * have.
- *
- * The column is left in the database and still written on save, so any SQL
- * reporting built against it keeps working; nothing in the app reads it.
+ * RESERVED IS RECOMPUTED FROM THE ORDERS still waiting, on every read. It
+ * cannot go stale, and it is correct by construction for create, edit, cancel
+ * and re-open alike: there is no double-apply bug available to have. The old
+ * `inventory.reserved` column is neither read nor written by the app.
  */
 export function stockIndex(inventory = [], orders = []) {
   const reserved = reservedByProduct(orders);
@@ -69,14 +64,14 @@ export function stockFor(product, index) {
   const available = onHand - reserved;
   const threshold = Number(row.lowStockThreshold ?? product?.lowStockThreshold ?? 0);
   const maxStock = Number(row.maxStock) || 0;
+  const status = stockState(available, threshold);
 
   return {
     tracked: true,
     // THE INVENTORY ROW'S OWN ID, and the reason it is exposed at all.
     //
-    // Everything that moves stock — reservedByProduct, moveStock,
-    // applyReservations, stockIssuesForOrder in utils/stockLedger — keys on
-    // this id. An order line that stores the CATALOGUE id instead looks up
+    // Everything that moves stock -- the ledger in utils/stockLedger and the
+    // database commands behind it -- keys on this id. An order line that stores the CATALOGUE id instead looks up
     // nothing, is skipped in silence, and the goods on it are never reserved
     // and never deducted. That is exactly what happened to the first order
     // written through the new order form, and it is invisible from the
@@ -98,9 +93,9 @@ export function stockFor(product, index) {
     category: row.category ?? null,
     unit: row.unit,
     packSize: row.packSize,
-    status: statusOf({ ...row, reserved }),
-    isLow: available <= threshold,
-    isOut: available <= 0,
+    status,
+    isLow: status !== STOCK_STATUS.IN,
+    isOut: status === STOCK_STATUS.OUT,
   };
 }
 

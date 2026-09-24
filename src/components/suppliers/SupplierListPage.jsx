@@ -201,7 +201,7 @@ export default function SupplierListPage({
           onClearSearch={clearSearch}
           filtered={hasActiveFilters(area !== "any")}
           onClearFilters={clearFilters}
-          actionLabel="Add a supplier"
+          actionLabel={onAdd ? "Add a supplier" : undefined}
           onAction={onAdd}
         />
       ) : (
@@ -338,12 +338,14 @@ export default function SupplierListPage({
           </div>
           )}
 
-          <StickyCta>
-            <Button variant="clay" size="xl" block onClick={onAdd}>
-              <Handshake className="h-5.5 w-5.5" />
-              Add a supplier
-            </Button>
-          </StickyCta>
+          {onAdd && (
+            <StickyCta>
+              <Button variant="clay" size="xl" block onClick={onAdd}>
+                <Handshake className="h-5.5 w-5.5" />
+                Add a supplier
+              </Button>
+            </StickyCta>
+          )}
         </>
       )}
     </div>

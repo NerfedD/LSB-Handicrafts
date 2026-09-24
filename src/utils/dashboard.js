@@ -21,6 +21,7 @@ import { ORDER_STATUS } from "./constants";
 import { isLate } from "./deliveries";
 import { backorderDemand, daysWaiting } from "./orders";
 import { lowStockProducts, shelfItems } from "./productStock";
+import { needsReorder } from "./production";
 import { signInState } from "./copy";
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -31,8 +32,11 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
  * `icon` and `actionIcon` are names resolved by the dashboard component — this
  * module stays free of React so the same shapes can be tested and reused.
  */
-export function attentionFor({ role, products, inventory, orders, deliveries, staff }) {
+export function attentionFor({ role, products, inventory, orders, deliveries, staff, materials = [], batches = [] }) {
   const items = [];
+  const reorder = role === "Admin" || role === "Manager"
+    ? materials.filter((material) => needsReorder(material, batches))
+    : [];
 
   const low = lowStockProducts(products, inventory, orders);
   const out = low.filter(({ stock }) => stock.isOut);
@@ -96,6 +100,23 @@ export function attentionFor({ role, products, inventory, orders, deliveries, st
       actionLabel: "Restock these",
       actionIcon: "PackagePlus",
       target: { view: "products", filter: "low" },
+    });
+  }
+
+  // Ordering from a supplier is a manager's decision, so only they are told.
+  if (reorder.length > 0) {
+    items.push({
+      key: "materials",
+      tone: "amber",
+      icon: "Boxes",
+      title:
+        reorder.length === 1
+          ? `${reorder[0].name} needs ordering`
+          : `${plural(reorder.length, "raw material needs", "raw materials need")} ordering`,
+      body: "At or below the level you asked to be warned at, after what the unfinished batches will use.",
+      actionLabel: "See raw materials",
+      actionIcon: "ArrowRight",
+      target: { view: "raw-materials", filter: "reorder" },
     });
   }
 

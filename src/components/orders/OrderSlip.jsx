@@ -59,6 +59,7 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
   const totals = orderTotals(order, deliveries);
   const correction = lastPriceAdjustment(order);
   const refunds = Array.isArray(order.refundHistory) ? order.refundHistory : [];
+  const replacements = Array.isArray(order.replacementHistory) ? order.replacementHistory : [];
   const refunded = Number(totals.refunded) || 0;
   const showBreakdown = totals.delivery > 0 || totals.items !== totals.total;
   const cancelled = order.status === ORDER_STATUS.CANCELLED;
@@ -161,6 +162,12 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
               <dd>{formatPeso(totals.delivery)}</dd>
             </div>
           )}
+          {totals.discount > 0 && (
+            <div>
+              <dt>Loyalty reward</dt>
+              <dd>−{formatPeso(totals.discount)}</dd>
+            </div>
+          )}
           <div className="slip-total-row">
             <dt>Total to pay</dt>
             <dd>{formatPeso(totals.total)}</dd>
@@ -182,7 +189,7 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
 
       {/* A slip that quietly omits a refund or a corrected price is the version
           of this document that causes an argument at the counter. */}
-      {(correction || refunds.length > 0) && (
+      {(correction || refunds.length > 0 || replacements.length > 0) && (
         <section className="slip-notes">
           {correction && (
             <p>
@@ -195,6 +202,12 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
             <p key={refund.id ?? index}>
               {formatPeso(refund.amount)} was given back on{" "}
               {formatLongDate(refund.refundedAt)} — {refundReasonLabel(refund.reason).toLowerCase()}.
+            </p>
+          ))}
+          {replacements.map((entry, index) => (
+            <p key={entry.id ?? index}>
+              {entry.quantity} × {entry.name} came back on {formatLongDate(entry.replacedAt)} and{" "}
+              {entry.replacementQuantity} × {entry.replacementName} went out in its place.
             </p>
           ))}
         </section>

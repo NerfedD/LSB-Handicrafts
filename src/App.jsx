@@ -1,30 +1,37 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 
 import { supabase } from "./lib/supabaseClient";
-import { canAccess, canHandleMoney, isAdminRole } from "./utils/permissions";
+import { can, canAccess } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
   activityLogCollection,
   customersCollection,
+  customerStatsCollection,
   deliveriesCollection,
   deleteStaffAuthUser,
+  fetchActivityFor,
+  fetchCustomerOrders,
   inventoryCollection,
+  loyaltyCollection,
   ordersCollection,
   productsCollection,
+  removeProduct,
   saveOwnDashboardView,
   saveOwnProfile,
   staffCollection,
   suppliersCollection,
 } from "./utils/storageManager";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
-import useSupabaseCollection from "./hooks/useSupabaseCollection";
+import useSupabaseCollection, { STALE_MS, subscribe as subscribeToRefresh } from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
 import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
 import { provisionAccount } from "./utils/accounts";
-import { createOrderCommandRunner } from "./utils/orderCommand";
+import { createCommandRunner, runCommand } from "./utils/commands";
 import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigation";
+import { collectionsFor, DIALOG_NEEDS } from "./utils/screenData";
+import { DEFAULT_LOYALTY, statsIndex } from "./utils/customers";
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
-import { ACTIVITY_KIND, readAll, record } from "./utils/activityLog";
+import { readAll, recordSignIn } from "./utils/activityLog";
 import { deliveryStage } from "./utils/copy";
 import {
   commitOrder,
@@ -46,7 +53,7 @@ import {
 } from "./utils/orders";
 import { stockCounts, stockForProduct } from "./utils/productStock";
 import { rawMaterialsCollection, rawMaterialOrdersCollection, productionBatchesCollection, productionRecipesCollection,
-  productionDefectsCollection, materialLotsCollection, materialUsageCollection, workshopCommand } from './utils/workshopStorage';
+  productionDefectsCollection, materialLotsCollection, materialUsageCollection } from './utils/workshopStorage';
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
 import { Toaster, toast } from "@/components/ui/sonner";
@@ -68,12 +75,6 @@ const StartBatchDialog = lazy(() => import("./components/products/StartBatchDial
 const WorkshopPage = lazy(() => import("./components/production/WorkshopPage"));
 
 /**
- * Which kind of record each workshop command hands back, so the screen knows
- * which card to mark once it is saved. Mirrors the collection map inside
- * `handleWorkshopCommand`; kept beside it deliberately, because the two are
- * wrong together or right together.
- */
-/**
  * How long a saved record stays marked — see `markLanded`.
  *
  * The same 6s the confirmation toast runs for (ui/sonner.jsx), because they are
@@ -84,6 +85,12 @@ const WorkshopPage = lazy(() => import("./components/production/WorkshopPage"));
  */
 const LANDING_WINDOW_MS = 6000;
 
+/**
+ * Which kind of record each workshop command hands back, so the screen knows
+ * which card to mark once it is saved. Mirrors the collection map inside
+ * `handleWorkshopCommand`; kept beside it deliberately, because the two are
+ * wrong together or right together.
+ */
 const WORKSHOP_RECORD_KIND = {
   save_material: "material", transfer_stock: "material",
   // "material-order", not "order". A purchase from a supplier and a customer's
@@ -110,6 +117,8 @@ const RecordDeliveredDialog = lazy(() =>
 );
 
 const RefundDialog = lazy(() => import("./components/orders/RefundDialog"));
+const ReplacementDialog = lazy(() => import("./components/orders/ReplacementDialog"));
+const LoyaltyRulesDialog = lazy(() => import("./components/customers/LoyaltyRulesDialog"));
 const PriceAdjustmentDialog = lazy(() => import("./components/orders/PriceAdjustmentDialog"));
 
 const CustomerListPage = lazy(() => import("./components/customers/CustomerListPage"));
@@ -150,6 +159,19 @@ const LIST_VIEW_OF = { customer: "customers", supplier: "suppliers" };
 // deployment via .env; 30 minutes if unset.
 const IDLE_TIMEOUT_MS =
   (Number(import.meta.env.VITE_IDLE_TIMEOUT_MINUTES) || 30) * 60_000;
+
+/**
+ * How much history the orders and deliveries screens hold. Open orders and
+ * deliveries are always loaded in full; finished ones from this many days back,
+ * and older ones when somebody asks for them. 120 days covers "this month" and
+ * the recent past without holding years of history in memory on every screen.
+ */
+const HISTORY_DAYS = 120;
+/** The activity log is read this many entries at a time, newest first. */
+const ACTIVITY_PAGE = 200;
+
+/** yyyy-mm-dd, `days` before today. */
+const daysAgo = (days) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 /** Shown while a route chunk is still downloading, outside the shell. */
 function RouteFallback() {
@@ -200,10 +222,6 @@ export default function App() {
   // a retry, and this is what lets the staff list do the same.
   const [staffError, setStaffError] = useState(null);
   const [sessionEmail, setSessionEmail] = useState(null);
-  // The staff claims carried on the access token, when the Auth hook is
-  // enabled. Used to route before the staff table has been read -- never as an
-  // access decision; see utils/sessionClaims.js.
-  const [sessionClaims, setSessionClaims] = useState(null);
 
   // Which record each detail screen is looking at. One per collection so
   // navigating between sections doesn't drag the previous selection along.
@@ -214,6 +232,15 @@ export default function App() {
   const [selectedOrderId, setSelectedOrderId] = useState(initialRoute.record === "Order" ? initialRoute.id : null);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState(initialRoute.record === "Delivery" ? initialRoute.id : null);
   const [selectedRawMaterialId, setSelectedRawMaterialId] = useState(initialRoute.record === 'RawMaterial' ? initialRoute.id : null);
+
+  // Older orders and deliveries opened directly -- from a customer's history, a
+  // link or the address bar -- are fetched on top of the recent window and kept
+  // for the session. The one in the address bar at start-up is pinned at once.
+  const [pinnedOrderIds, setPinnedOrderIds] = useState(initialRoute.record === "Order" ? [initialRoute.id] : []);
+  const [pinnedDeliveryIds, setPinnedDeliveryIds] = useState(initialRoute.record === "Delivery" ? [initialRoute.id] : []);
+  const [allOrders, setAllOrders] = useState(false);
+  const [activityLimit, setActivityLimit] = useState(ACTIVITY_PAGE);
+  const [historySince] = useState(() => daysAgo(HISTORY_DAYS));
 
   // Which dialog is open, and on what. `id: null` means adding.
   const [profileDialog, setProfileDialog] = useState(null); // { kind, id } | null
@@ -271,6 +298,8 @@ export default function App() {
   // { deliveryId, toStage } — the manifest asked for when goods actually leave.
   const [recordDeliveredFor, setRecordDeliveredFor] = useState(null);
   const [refundFor, setRefundFor] = useState(null); // orderId | null
+  const [replaceFor, setReplaceFor] = useState(null); // orderId | null
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
   const [adjustPriceFor, setAdjustPriceFor] = useState(null); // orderId | null
   const [busy, setBusy] = useState(false);
 
@@ -282,20 +311,59 @@ export default function App() {
   const [orderDraftFor, setOrderDraftFor] = useState(null);
 
   const isSignedIn = !!sessionEmail;
-  const customersState = useSupabaseCollection(customersCollection, { enabled: isSignedIn });
-  const productsState = useSupabaseCollection(productsCollection, { enabled: isSignedIn });
-  const suppliersState = useSupabaseCollection(suppliersCollection, { enabled: isSignedIn });
-  const inventoryState = useSupabaseCollection(inventoryCollection, { enabled: isSignedIn });
-  const ordersState = useSupabaseCollection(ordersCollection, { enabled: isSignedIn });
-  const deliveriesState = useSupabaseCollection(deliveriesCollection, { enabled: isSignedIn });
-  const activityState = useSupabaseCollection(activityLogCollection, { enabled: isSignedIn });
-  const rawMaterialsState = useSupabaseCollection(rawMaterialsCollection, { enabled: isSignedIn });
-  const rawMaterialOrdersState = useSupabaseCollection(rawMaterialOrdersCollection, { enabled: isSignedIn });
-  const productionBatchesState = useSupabaseCollection(productionBatchesCollection, { enabled: isSignedIn });
-  const productionRecipesState = useSupabaseCollection(productionRecipesCollection, { enabled: isSignedIn });
-  const productionDefectsState = useSupabaseCollection(productionDefectsCollection, { enabled: isSignedIn });
-  const materialLotsState = useSupabaseCollection(materialLotsCollection, { enabled: isSignedIn });
-  const materialUsageState = useSupabaseCollection(materialUsageCollection, { enabled: isSignedIn });
+
+  /**
+   * The signed-in person's own staff row, matched by email. Falls back to a
+   * synthesized record for the brief window before their row has been read.
+   *
+   * That fallback is deliberately NOT an Admin. An unknown role has to be the
+   * least privileged one, or any moment the row could not be found would
+   * silently promote whoever was signed in to full admin rights.
+   */
+  const profile = useMemo(() => {
+    const match = staff.find((s) => sameEmail(s.email, sessionEmail));
+    if (match) return match;
+    return {
+      id: null,
+      name: nameFromEmail(sessionEmail),
+      role: null,
+      contactNumber: "",
+      status: "Active",
+      email: sessionEmail,
+      isSuperAdmin: false,
+      dashboardView: DASHBOARD_VIEW.STANDARD,
+    };
+  }, [staff, sessionEmail]);
+  const role = profile?.role;
+
+  // Only what the screen on show (and any open dialog) needs is read, and only
+  // that is refreshed in the background -- see utils/screenData.
+  const dialogNeeds = [
+    ...(profileDialog?.kind === "customer" ? DIALOG_NEEDS.customer : []),
+    ...(profileDialog?.kind === "supplier" ? DIALOG_NEEDS.supplier : []),
+    ...(recordMadeFor ? DIALOG_NEEDS.startBatch : []),
+  ];
+  const needed = collectionsFor(view, { role, open: dialogNeeds });
+  const use = (key, params) => ({ enabled: isSignedIn, active: key ? needed.has(key) : true, params });
+
+  const customersState = useSupabaseCollection(customersCollection, use("customers"));
+  const customerStatsState = useSupabaseCollection(customerStatsCollection, use("customerStats"));
+  const loyaltyState = useSupabaseCollection(loyaltyCollection, use("loyalty"));
+  const productsState = useSupabaseCollection(productsCollection, use());
+  const suppliersState = useSupabaseCollection(suppliersCollection, use("suppliers"));
+  const inventoryState = useSupabaseCollection(inventoryCollection, use());
+  const ordersState = useSupabaseCollection(ordersCollection,
+    use(null, allOrders ? undefined : { since: historySince, pinned: pinnedOrderIds }));
+  const deliveriesState = useSupabaseCollection(deliveriesCollection,
+    use(null, { since: historySince, pinned: pinnedDeliveryIds, pinnedOrders: pinnedOrderIds }));
+  const activityState = useSupabaseCollection(activityLogCollection, use("activity", { limit: activityLimit }));
+  const rawMaterialsState = useSupabaseCollection(rawMaterialsCollection, use("rawMaterials"));
+  const rawMaterialOrdersState = useSupabaseCollection(rawMaterialOrdersCollection, use("materialOrders"));
+  const productionBatchesState = useSupabaseCollection(productionBatchesCollection, use("batches"));
+  const productionRecipesState = useSupabaseCollection(productionRecipesCollection, use("recipes"));
+  const productionDefectsState = useSupabaseCollection(productionDefectsCollection, use("defects"));
+  const materialLotsState = useSupabaseCollection(materialLotsCollection, use("lots"));
+  const materialUsageState = useSupabaseCollection(materialUsageCollection, use("usage"));
 
   const { rows: customers } = customersState;
   const { rows: products } = productsState;
@@ -305,6 +373,11 @@ export default function App() {
   const { rows: deliveries } = deliveriesState;
 
   const activity = useMemo(() => readAll(activityState.rows), [activityState.rows]);
+  const customerStats = useMemo(() => statsIndex(customerStatsState.rows), [customerStatsState.rows]);
+  const loyalty = loyaltyState.rows[0] ?? DEFAULT_LOYALTY;
+  // Archived products keep their history but leave the lists and the order form.
+  const activeProducts = useMemo(() => products.filter((p) => p.status !== "Archived"), [products]);
+  const archivedProducts = useMemo(() => products.filter((p) => p.status === "Archived"), [products]);
 
   // Derived so they always reflect the latest edit rather than a stale copy.
   const selectedAccount = staff.find((s) => s.id === selectedAccountId);
@@ -338,30 +411,6 @@ export default function App() {
       threshold: row.lowStockThreshold ?? selectedProduct.lowStockThreshold,
     };
   }, [selectedProduct, inventory]);
-
-  /**
-   * The signed-in person's own staff row, matched by email. Falls back to a
-   * synthesized record for the brief window before their row has been read.
-   *
-   * That fallback is deliberately NOT an Admin. It used to be, which meant any
-   * moment the staff row couldn't be found silently promoted whoever was signed
-   * in to full admin rights. An unknown role has to be the least privileged one.
-   */
-  const profile = useMemo(() => {
-    const match = staff.find((s) => sameEmail(s.email, sessionEmail));
-    if (match) return match;
-
-    return {
-      id: null,
-      name: nameFromEmail(sessionEmail),
-      role: sessionClaims?.role ?? null,
-      contactNumber: "",
-      status: sessionClaims?.status ?? "Active",
-      email: sessionEmail,
-      isSuperAdmin: sessionClaims?.isSuperAdmin ?? false,
-      dashboardView: DASHBOARD_VIEW.STANDARD,
-    };
-  }, [staff, sessionEmail, sessionClaims]);
 
   const dashboardView = profile?.dashboardView ?? DASHBOARD_VIEW.STANDARD;
 
@@ -450,10 +499,16 @@ export default function App() {
 
   useEffect(() => {
     if (!sessionEmail) return;
-    const refresh = () => { if (document.visibilityState === 'visible') resolveStaff({ force: true }); };
-    window.addEventListener('focus', refresh);
-    const timer = window.setInterval(refresh, 30_000);
-    return () => { window.removeEventListener('focus', refresh); window.clearInterval(timer); };
+    // On the same shared refresh as every collection: once a minute while the
+    // page is visible, and on coming back to the window if older than 30s. A
+    // blocked account loses data access at once in the database; this is the
+    // screens catching up.
+    let readAt = Date.now();
+    return subscribeToRefresh((why) => {
+      if (why !== 'tick' && Date.now() - readAt <= STALE_MS) return;
+      readAt = Date.now();
+      resolveStaff({ force: true });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionEmail]);
 
@@ -464,6 +519,8 @@ export default function App() {
         Product: setSelectedProductId, Supplier: setSelectedSupplierId,
         Order: setSelectedOrderId, Delivery: setSelectedDeliveryId, RawMaterial: setSelectedRawMaterialId };
       if (route.record) setters[route.record](route.id);
+      if (route.record === 'Order') pinOrder(route.id);
+      if (route.record === 'Delivery') pinDelivery(route.id);
       setPendingFilter(null);
       setView(sessionEmail ? route.view : 'login');
     };
@@ -492,15 +549,6 @@ export default function App() {
 
   // ---- writes -------------------------------------------------------------
 
-  /**
-   * Compatibility notification for existing action handlers. Business changes
-   * are now audited by database triggers; only sign-in needs a client signal.
-   */
-  const logActivity = useCallback(
-    (entry) => record({ ...entry, who: profile?.name }),
-    [profile?.name]
-  );
-
   /** Writes one staff row, syncing local state only once the database agrees. */
   async function persistStaff(operation, optimisticApply) {
     staffRevision.current += 1;
@@ -528,7 +576,7 @@ export default function App() {
     window.history.replaceState(null, '', '/dashboard');
     setSessionEmail(email);
     setView('dashboard');
-    record({ kind: ACTIVITY_KIND.SIGN_IN, who: match.name, what: 'signed in' });
+    recordSignIn();
     return 'ok';
   }
 
@@ -554,12 +602,17 @@ export default function App() {
     setAssignDriverFor(null);
     setRecordDeliveredFor(null);
     setRefundFor(null);
+    setReplaceFor(null);
     setAdjustPriceFor(null);
+    setIsLoyaltyOpen(false);
+    setPinnedOrderIds([]);
+    setPinnedDeliveryIds([]);
+    setAllOrders(false);
+    setActivityLimit(ACTIVITY_PAGE);
     productRetryRef.current = null;
     orderRetryRef.current = null;
     setSessionEmail(null);
     orderCommands.current?.clear();
-    setSessionClaims(null);
     setView('login');
   }
 
@@ -621,7 +674,7 @@ export default function App() {
   }
 
   async function handleAccountCreated(values) {
-    const { name, email } = values;
+    const { name } = values;
     let savedId = null;
     const result = await persistStaff(() => provisionAccount(values), (r) => {
       const saved = staffCollection.fromRow(r.data);
@@ -636,11 +689,6 @@ export default function App() {
       // bottom where somebody would look for it. The mark is what says which
       // row is theirs.
       markLanded("account", savedId);
-      logActivity({
-        kind: ACTIVITY_KIND.ACCOUNT,
-        what: `set up an account for ${name}`,
-        subject: `staff:${email}`,
-      });
     }
     return result;
   }
@@ -665,11 +713,6 @@ export default function App() {
         if (selectedAccountId === account.id) setSelectedAccountId(null);
         toast.success(`${account.name} was removed.`, {
           description: "Orders and stock records they made are untouched.",
-        });
-        logActivity({
-          kind: ACTIVITY_KIND.ACCOUNT,
-          what: `removed ${account.name}'s account`,
-          subject: `staff:${account.email}`,
         });
         setView("staff");
       }
@@ -709,10 +752,10 @@ export default function App() {
    */
   function makeRecordSaveHandler(kind) {
     const byKind = {
-      customer: [customersState, customers, setSelectedCustomerId, "customer-detail", "Customer", ACTIVITY_KIND.CUSTOMER],
-      supplier: [suppliersState, suppliers, setSelectedSupplierId, "supplier-detail", "Supplier", ACTIVITY_KIND.SUPPLIER],
+      customer: [customersState, customers, setSelectedCustomerId, "customer-detail"],
+      supplier: [suppliersState, suppliers, setSelectedSupplierId, "supplier-detail"],
     };
-    const [state, records, setSelectedId, detailView, label, activityKind] = byKind[kind];
+    const [state, records, setSelectedId, detailView] = byKind[kind];
     const targetId = profileDialog?.id ?? null;
 
     return async (values) => {
@@ -728,11 +771,6 @@ export default function App() {
         setProfileDialog(null);
         toast.success(`${values.name} was updated.`);
         markLanded(kind, targetId);
-        logActivity({
-          kind: activityKind,
-          what: `updated ${label.toLowerCase()} ${values.name}`,
-          subject: `${kind}:${targetId}`,
-        });
         return targetId;
       }
 
@@ -748,12 +786,10 @@ export default function App() {
       // a success and must be reported as one -- the dialog reads null as a
       // failure and would tell somebody to retype a record that already
       // exists. What is dropped is only what needs the number: "View" would
-      // open a detail screen with nothing selected, and the activity entry
-      // would be filed under a subject nothing can match.
+      // open a detail screen with nothing selected, and nothing can be marked.
       if (id === null) {
         setProfileDialog(null);
         toast.success(`${values.name} was added.`);
-        logActivity({ kind: activityKind, what: `added ${label.toLowerCase()} ${values.name}` });
         return { ok: true };
       }
 
@@ -763,11 +799,6 @@ export default function App() {
         action: { label: "View", onClick: () => setView(detailView) },
       });
       markLanded(kind, id);
-      logActivity({
-        kind: activityKind,
-        what: `added ${label.toLowerCase()} ${values.name}`,
-        subject: `${kind}:${id}`,
-      });
       return id;
     };
   }
@@ -785,7 +816,7 @@ export default function App() {
    * deletion once a supplier has order history.
    */
   async function deleteSupplier(supplier) {
-    if (!isAdminRole(profile?.role)) {
+    if (!can(role, "removeRecords")) {
       toast.error("Only an administrator can remove a supplier.");
       return;
     }
@@ -805,11 +836,6 @@ export default function App() {
     toast.success(`${supplier.name} was removed.`, {
       description: "Orders and stock records are untouched.",
     });
-    logActivity({
-      kind: ACTIVITY_KIND.SUPPLIER,
-      what: `removed supplier ${supplier.name}`,
-      subject: `supplier:${supplier.id}`,
-    });
     navigate("suppliers");
   }
 
@@ -827,7 +853,7 @@ export default function App() {
    * is the phone number, the email and the address.
    */
   async function deleteCustomer(customer) {
-    if (!isAdminRole(profile?.role)) {
+    if (!can(role, "removeRecords")) {
       toast.error("Only an administrator can remove a customer.");
       return;
     }
@@ -861,11 +887,6 @@ export default function App() {
     toast.success(`${customer.name} was removed.`, {
       description: "Their past orders stay in the system under their name.",
     });
-    logActivity({
-      kind: ACTIVITY_KIND.CUSTOMER,
-      what: `removed customer ${customer.name}`,
-      subject: `customer:${customer.id}`,
-    });
     navigate("customers");
   }
 
@@ -878,8 +899,51 @@ export default function App() {
    * disappear.
    */
   function openProfileForm(kind, id = null) {
-    if (!canAccess(profile?.role, LIST_VIEW_OF[kind])) return;
+    if (!canAccess(role, LIST_VIEW_OF[kind])) return;
+    if (!can(role, kind === "customer" ? "editCustomers" : "manageSuppliers")) return;
     setProfileDialog({ kind, id });
+  }
+
+  /**
+   * Opens an order or a delivery that may be older than the recent history
+   * the screens hold, fetching it on top of that window for the session.
+   */
+  function pinOrder(id) {
+    setPinnedOrderIds((prev) => (id == null || prev.includes(id) ? prev : [...prev, id]));
+  }
+  function pinDelivery(id) {
+    setPinnedDeliveryIds((prev) => (id == null || prev.includes(id) ? prev : [...prev, id]));
+  }
+  function openOrder(id) {
+    if (!orders.some((order) => order.id === id)) pinOrder(id);
+    setSelectedOrderId(id);
+    setView("order-detail");
+  }
+  function openDelivery(id) {
+    if (!deliveries.some((delivery) => delivery.id === id)) pinDelivery(id);
+    setSelectedDeliveryId(id);
+    setView("delivery-detail");
+  }
+
+  const loadRecordActivity = useCallback(async (subject) => {
+    const result = await fetchActivityFor(subject);
+    return result.ok ? { ok: true, data: readAll(result.data) } : result;
+  }, []);
+
+  const loadCustomerOrders = useCallback(
+    async (customer) => {
+      const result = await fetchCustomerOrders(customer);
+      return result.ok ? { ok: true, data: result.data } : result;
+    },
+    []
+  );
+
+  async function saveLoyaltyRules(values) {
+    const result = await loyaltyState.update(loyalty.id ?? 1, { ...loyalty, ...values });
+    if (!result.ok) return result;
+    toast.success(values.enabled ? "The loyalty rules were saved." : "The loyalty reward is switched off.");
+    customerStatsState.reload();
+    return result;
   }
 
   // ---- products (catalogue + stock, written together) ---------------------
@@ -910,7 +974,8 @@ export default function App() {
       unitPrice: values.unitPrice === "" ? null : Number(values.unitPrice),
       lowStockThreshold:
         values.lowStockThreshold === "" ? null : Number(values.lowStockThreshold),
-      status: "Active",
+      // Saving the form never changes whether a product is on sale.
+      status: editing ? selectedProduct?.status ?? "Active" : "Active",
       productType: values.productType,
       diameterIn: values.diameterIn === "" ? null : Number(values.diameterIn),
       thicknessIn: values.thicknessIn === "" ? null : Number(values.thicknessIn),
@@ -952,7 +1017,9 @@ export default function App() {
         name: catalogue.name,
         category: values.category?.trim() || "Uncategorised",
         price: catalogue.unitPrice ?? 0,
-        stock: stockCount ?? existingStock?.stock ?? 0,
+        // Written only when the row is created: after that the count moves
+        // through recorded movements, and the update omits it.
+        stock: stockCount ?? 0,
         maxStock: existingStock?.maxStock ?? 0,
         productType: values.productType,
         diameterIn: catalogue.diameterIn,
@@ -962,9 +1029,7 @@ export default function App() {
         unit: values.unit,
         packSize: catalogue.packSize,
         lowStockThreshold: catalogue.lowStockThreshold ?? 0,
-        reserved: existingStock?.reserved ?? 0,
         isCuttable: existingStock?.isCuttable ?? false,
-        status: existingStock?.status ?? "In Stock",
       };
 
       const stockResult = existingStock
@@ -1002,11 +1067,6 @@ export default function App() {
     // activity entry is unaffected: it is filed under the item code, not the id.
     if (productId === null) {
       toast.success(`${catalogue.name} was saved.`);
-      logActivity({
-        kind: ACTIVITY_KIND.PRODUCT,
-        what: editing ? `updated ${catalogue.name}` : `added ${catalogue.name}`,
-        subject: values.itemCode,
-      });
       return { ok: true };
     }
 
@@ -1016,41 +1076,25 @@ export default function App() {
       action: { label: "View", onClick: () => setView("product-detail") },
     });
     markLanded("product", productId);
-    logActivity({
-      kind: ACTIVITY_KIND.PRODUCT,
-      what: editing ? `updated ${catalogue.name}` : `added ${catalogue.name}`,
-      subject: values.itemCode,
-    });
     return { ok: true };
     } finally { setBusy(false); }
   }
 
   /**
-   * Removes a product — the catalogue entry AND its stock row.
+   * Removes a product the only way that keeps its history.
    *
-   * TWO TABLES, ONE PRODUCT. saveProduct writes both, because the split between
-   * a catalogue entry and its shelf count is a database fact nobody using this
-   * app is asked to care about. Deleting only one half would leave a stock row
-   * no screen can reach and nothing can ever edit again, so both go — catalogue
-   * first, the same order saveProduct writes them in.
-   *
-   * ADMIN ONLY, CHECKED IN THREE PLACES, exactly as deleteSupplier is: the
-   * detail screen renders the block only for an admin, this refuses outright,
-   * and the RLS policies on public.products and public.inventory grant DELETE
-   * to is_admin() alone. Only the last of those is the permission.
-   *
-   * REFUSED WHILE STOCK IS PROMISED, the way deleteCustomer refuses while an
-   * order is open. `reserved` is derived from the units still owed on orders
-   * that have not gone out, so anything above zero means somebody is waiting
-   * for one of these — and an order pointing at a product the system has
-   * forgotten how to count is not something to leave behind.
+   * remove_product decides in one transaction: a product anything has happened
+   * to is ARCHIVED (hidden from the lists and the order form, every record
+   * kept), and only one nothing refers to is deleted -- catalogue entry and
+   * stock row together. It refuses while an order is still waiting for it, and
+   * for anyone but an administrator; the checks here only spare a doomed
+   * request.
    */
   async function deleteProduct(product) {
-    if (!isAdminRole(profile?.role)) {
+    if (!can(role, "removeRecords")) {
       toast.error("Only an administrator can remove a product.");
       return;
     }
-
     const stock = stockForProduct(product, inventory, orders);
     if (stock.tracked && (stock.reserved ?? 0) > 0) {
       toast.error(`${product.name} is promised to an order that is still waiting.`, {
@@ -1059,47 +1103,65 @@ export default function App() {
       return;
     }
 
-    const result = await productsState.remove(product.id);
+    const result = await removeProduct(product);
     if (!result.ok) {
-      toast.error(result.message || "That product was not removed.");
+      toast.error(result.message);
       return;
     }
-
-    // The stock half, found on the same sku == itemCode join saveProduct uses.
-    // A product with no stock row is an ordinary state, not a failure.
-    const stockRow = inventory.find(
-      (row) =>
-        String(row.sku || "").toLowerCase() === String(product.itemCode || "").toLowerCase()
-    );
-    const stockRemoved = stockRow ? (await inventoryState.remove(stockRow.id)).ok : true;
-
-    if (selectedProductId === product.id) setSelectedProductId(null);
-
-    if (stockRemoved) {
-      toast.success(`${product.name} was removed.`, {
-        description: "Past orders keep the lines they were written with.",
+    productsState.reload();
+    inventoryState.reload();
+    if (result.outcome === "archived") {
+      productsState.setRows((rows) => rows.map((row) => (row.id === product.id ? { ...row, status: "Archived" } : row)));
+      toast.success(`${product.name} is no longer sold.`, {
+        description: "It has history, so it was kept: its stock record and every order that mentions it are untouched.",
       });
     } else {
-      // Half a delete, reported as half a delete. Claiming a clean removal here
-      // would leave a stock row in the ledger that no screen can show and
-      // nobody knows about — the same reasoning as saveProduct's split failure.
-      toast.error("The product was removed, but its shelf count was not.", {
-        description: `The stock record against ${product.itemCode} is still in the system with nothing pointing at it.`,
-      });
+      productsState.setRows((rows) => rows.filter((row) => row.id !== product.id));
+      if (selectedProductId === product.id) setSelectedProductId(null);
+      toast.success(`${product.name} was removed.`, { description: "Nothing had happened to it yet, so nothing else changed." });
     }
-
-    logActivity({
-      kind: ACTIVITY_KIND.PRODUCT,
-      what: `removed ${product.name}`,
-      subject: product.itemCode,
-    });
     navigate("products");
+  }
+
+  /** Puts an archived product back on the lists and the order form. */
+  async function restoreProduct(product) {
+    const result = await productsState.update(product.id, { ...product, status: "Active", updatedAt: nowIso() });
+    if (!result.ok) {
+      toast.error(result.message || "That product was not put back on sale.");
+      return;
+    }
+    markLanded("product", product.id);
+    toast.success(`${product.name} is on sale again.`);
+  }
+
+  /**
+   * Records damaged stock, or sets a count to what was actually counted,
+   * through stock_command: one transaction, a stock movement with a reason and
+   * a name, and a request id so a retried save cannot take stock off twice.
+   */
+  async function handleStockCommand(action, values, requestId) {
+    const result = await runCommand("stock_command", action, values, requestId);
+    if (!result.ok) return result;
+    if (result.data.inventory) {
+      const saved = inventoryCollection.fromRow(result.data.inventory);
+      inventoryState.setRows((rows) => rows.map((row) => (row.id === saved.id ? saved : row)));
+    }
+    if (result.data.material) {
+      const saved = result.data.material;
+      rawMaterialsState.setRows((rows) => rows.map((row) => (row.id === saved.id ? saved : row)));
+      materialLotsState.reload();
+      markLanded("material", saved.id);
+    }
+    toast.success(action === "record_damage" ? "The damaged stock was written off." : "The count was corrected.", {
+      description: "It is in the stock history with your name and the reason.",
+    });
+    return result;
   }
 
   // The database locks the records, checks permissions and saves stock + logs
   // in one transaction. Never recreate these stock movements with client writes.
   async function handleWorkshopCommand(action, payload, requestId) {
-    const result = await workshopCommand(action, payload, requestId);
+    const result = await runCommand("workshop_command", action, payload, requestId);
     if (!result.ok) return result;
     const target = {
       save_material: rawMaterialsState, transfer_stock: rawMaterialsState,
@@ -1127,7 +1189,7 @@ export default function App() {
   // ---- orders --------------------------------------------------------------
 
   /** Writes the order and, when there is an address, the delivery carrying it. */
-  async function saveOrder({ customerName, customerId, items, totalAmount, delivery }) {
+  async function saveOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery }) {
     setBusy(true);
     try {
     // Set only on a retry, where the order row already exists and is being
@@ -1140,6 +1202,8 @@ export default function App() {
       customerId: customerId ?? null,
       items,
       totalAmount,
+      discountAmount,
+      promotion,
       status: ORDER_STATUS.PENDING,
       createdAt: nowIso(),
       stockCommittedAt: null,
@@ -1179,6 +1243,7 @@ export default function App() {
       // The link between the two tables is this string. See utils/orders --
       // there is no foreign key, and the trailing "-" is load-bearing.
       const deliveryResult = await deliveriesState.create({
+        orderId: id,
         product: `Order #${id} - ${customerName}`,
         size: items.map((item) => `${item.quantity} × ${item.name}`).join(", "),
         location: delivery.location,
@@ -1198,6 +1263,7 @@ export default function App() {
 
     setBusy(false);
     orderRetryRef.current = null;
+    customerStatsState.reload();
     setSelectedOrderId(id);
     setOrderDraftFor(null);
     setView("order-detail");
@@ -1205,24 +1271,10 @@ export default function App() {
       description: formatPeso(totalAmount),
     });
     markLanded("order", id);
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `wrote order #${id} for ${customerName}`,
-      subject: `order:${id}`,
-      amount: totalAmount,
-    });
     return { ok: true };
     } finally { setBusy(false); }
   }
 
-  /**
-   * Marks an order done, which DEDUCTS STOCK — a one-way event.
-   *
-   * `commitOrder` stamps the order so a second press cannot deduct the same
-   * goods twice; that stamp is the only thing standing between this and double
-   * deduction, since no later reading of the orders array can tell whether the
-   * goods have already left.
-   */
   /**
    * Rewrites an order that nothing has happened to yet.
    *
@@ -1247,11 +1299,11 @@ export default function App() {
    * nothing is stored against the old lines, so replacing them re-derives every
    * count on the next read. See utils/productStock.
    */
-  async function updateOrder({ customerName, customerId, items, totalAmount, delivery }) {
+  async function updateOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery }) {
     const order = selectedOrder;
     if (!order) return;
 
-    if (!canHandleMoney(profile?.role)) {
+    if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can change an order.");
       return;
     }
@@ -1271,6 +1323,8 @@ export default function App() {
       customerId: customerId ?? null,
       items,
       totalAmount,
+      discountAmount,
+      promotion,
     });
     if (!result.ok) {
       setBusy(false);
@@ -1298,6 +1352,7 @@ export default function App() {
       if (!moved.ok) deliveryNote = "The order was saved, but its delivery was not updated.";
     } else if (delivery && !existing) {
       const raised = await deliveriesState.create({
+        orderId: order.id,
         product: `Order #${order.id} - ${customerName}`,
         size: summary,
         location: delivery.location,
@@ -1321,11 +1376,6 @@ export default function App() {
       deliveryNote ? "Saved, with one thing left over." : `Order #${order.id} was changed.`,
       { description: deliveryNote }
     );
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `changed order #${order.id}`,
-      subject: `order:${order.id}`,
-    });
     navigate("order-detail");
   }
 
@@ -1344,7 +1394,7 @@ export default function App() {
    * holding stock.
    */
   async function cancelOrder(order) {
-    if (!canHandleMoney(profile?.role)) {
+    if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can call an order off.");
       return;
     }
@@ -1369,31 +1419,17 @@ export default function App() {
       toast.error(result.message || "That order was not called off.");
       return;
     }
-    const { changed } = result;
+    const { changed, removedDeliveries } = result;
 
-    // THE RUN THAT WAS GOING TO CARRY IT. A cancelled order leaving a live
-    // delivery on the board is a van still scheduled for goods nobody is
-    // sending -- the delivery crew works off that board and has no way of
-    // knowing the order behind it is dead.
-    //
-    // Only a run that has NOT left is removed. Once something is on the way or
-    // has arrived, the delivery is a record of a journey that really happened,
-    // and a record is not ours to delete because the order was called off
-    // afterwards. That one is left alone and named in the toast instead.
+    // THE RUN THAT WAS GOING TO CARRY IT. order_command took any delivery that
+    // had not left off the board in the same transaction; one that went out is
+    // the record of a journey and stays.
     const run = deliveryForOrder(order, deliveries);
-    const hasLeft =
-      run &&
-      ([DELIVERY_STAGE.ON_THE_WAY, DELIVERY_STAGE.ARRIVED].includes(run.status) ||
-        (run.itemsManifest || []).length > 0);
-    let runNote;
-    if (run && !hasLeft) {
-      const dropped = await deliveriesState.remove(run.id);
-      runNote = dropped.ok
-        ? "Its delivery has come off the board too."
-        : "Its delivery is still on the board — take it off there.";
-    } else if (hasLeft) {
-      runNote = "Its delivery stays on the board, because it already went out.";
-    }
+    const runNote = removedDeliveries.length > 0
+      ? "Its delivery has come off the board too."
+      : run
+        ? "Its delivery stays on the board, because it already went out."
+        : undefined;
 
     markLanded("order", order.id);
     toast.success(`Order #${order.id} was called off.`, {
@@ -1406,20 +1442,6 @@ export default function App() {
         .filter(Boolean)
         .join(" "),
     });
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `called order #${order.id} off`,
-      subject: `order:${order.id}`,
-    });
-    for (const row of changed) {
-      const before = inventory.find((item) => item.id === row.id);
-      logActivity({
-        kind: ACTIVITY_KIND.STOCK,
-        what: `put ${row.stock - (before?.stock ?? 0)} × ${row.name} back from the called-off order #${order.id}`,
-        subject: row.sku,
-        amount: row.stock - (before?.stock ?? 0),
-      });
-    }
   }
 
   /**
@@ -1443,7 +1465,7 @@ export default function App() {
    * Stock and order status are restored together in the database transaction.
    */
   async function reopenOrder(order) {
-    if (!canHandleMoney(profile?.role)) {
+    if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can put an order back to waiting.");
       return;
     }
@@ -1474,22 +1496,14 @@ export default function App() {
       description:
         changed.length > 0 ? "What it took off the shelf has been put back." : undefined,
     });
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `put order #${order.id} back to waiting`,
-      subject: `order:${order.id}`,
-    });
-    for (const row of changed) {
-      const before = inventory.find((item) => item.id === row.id);
-      logActivity({
-        kind: ACTIVITY_KIND.STOCK,
-        what: `put ${row.stock - (before?.stock ?? 0)} × ${row.name} back on the shelf from order #${order.id}`,
-        subject: row.sku,
-        amount: row.stock - (before?.stock ?? 0),
-      });
-    }
   }
 
+  /**
+   * Marks an order done, which DEDUCTS STOCK — a one-way event.
+   *
+   * `commitOrder` stamps the order so a second press cannot deduct the same
+   * goods twice; the database checks the same counters before it moves stock.
+   */
   async function markOrderDone(order) {
     setBusy(true);
     const { items, stockCommittedAt, deltas } = commitOrder(inventory, order);
@@ -1526,20 +1540,6 @@ export default function App() {
     toast.success(`Order #${order.id} is done.`, {
       description: changed.length > 0 ? "Stock has been taken off the shelf." : undefined,
     });
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `marked order #${order.id} as done`,
-      subject: `order:${order.id}`,
-    });
-    for (const row of changed) {
-      const before = inventory.find((item) => item.id === row.id);
-      logActivity({
-        kind: ACTIVITY_KIND.STOCK,
-        what: `sold ${(before?.stock ?? 0) - row.stock} × ${row.name} on order #${order.id}`,
-        subject: row.sku,
-        amount: row.stock - (before?.stock ?? 0),
-      });
-    }
   }
 
   /**
@@ -1572,7 +1572,7 @@ export default function App() {
     const generation = authEpoch.current;
     const sourceOrder = orders.find((row) => row.id === payload.orderId);
     const sourceDelivery = deliveries.find((row) => row.id === payload.deliveryId);
-    orderCommands.current ??= createOrderCommandRunner();
+    orderCommands.current ??= createCommandRunner();
     const result = await orderCommands.current.run(action, {
       ...payload,
       expectedRevision: sourceOrder?.revision ?? 0,
@@ -1587,6 +1587,12 @@ export default function App() {
     }
 
     const savedOrder = result.data.order ? ordersCollection.fromRow(result.data.order) : null;
+    const removedDeliveries = result.data.removedDeliveries ?? [];
+    if (removedDeliveries.length > 0) {
+      deliveriesState.setRows((current) => current.filter((row) => !removedDeliveries.includes(row.id)));
+    }
+    // Finished, reopened and cancelled orders change who counts as a regular.
+    customerStatsState.reload();
     const savedDelivery = result.data.delivery
       ? deliveriesCollection.fromRow(result.data.delivery)
       : null;
@@ -1608,7 +1614,7 @@ export default function App() {
       inventoryState.setRows((current) => current.map((row) => saved.get(row.id) ?? row));
       if (!inventoryState.isLoaded) inventoryState.reload();
     }
-    return { ok: true, changed, order: savedOrder, delivery: savedDelivery };
+    return { ok: true, changed, removedDeliveries, order: savedOrder, delivery: savedDelivery };
   }
 
   /**
@@ -1625,13 +1631,13 @@ export default function App() {
    * reserves nothing without a single number being decremented anywhere.
    */
   async function issueRefund(order, { amount, method, reason, full, lines }) {
-    if (!canHandleMoney(profile?.role)) {
+    if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can give money back.");
       return false;
     }
 
     setBusy(true);
-    const { items, scrapped, deltas } = handleRefundStock(inventory, order, lines);
+    const { items, deltas } = handleRefundStock(inventory, order, lines);
 
     const source = normalizeItems(order.items);
     const entry = {
@@ -1679,24 +1685,30 @@ export default function App() {
         ? "The order is cancelled. Anything set aside for it has been released."
         : "What was put back on the shelf is on sale again.",
     });
-    logActivity({
-      kind: ACTIVITY_KIND.ORDER,
-      what: `gave back ${formatPeso(amount)} on order #${order.id}`,
-      subject: `order:${order.id}`,
-      amount,
-    });
-    // Waste is logged per item and separately from the refund. A month-end
-    // question about how much stock is being thrown away cannot be answered
-    // from a money figure.
-    for (const item of scrapped) {
-      logActivity({
-        kind: ACTIVITY_KIND.STOCK,
-        what: `wrote off ${item.units} × ${item.name} returned on order #${order.id}`,
-        subject: `order:${order.id}`,
-        amount: -item.units,
-      });
-    }
     return true;
+  }
+
+  /**
+   * Replaces goods that came back instead of refunding them. order_command
+   * works out the stock from the saved order: what came back goes on the shelf
+   * only if it can be sold again, and the replacement leaves the shelf once. No
+   * money moves, and the event joins the order's return history.
+   */
+  async function replaceGoods(order, values) {
+    if (!can(role, "handleMoney")) {
+      return { ok: false, message: "Only an administrator or a manager can replace goods." };
+    }
+    setBusy(true);
+    const result = await applyOrderChange("replace", { orderId: order.id, ...values });
+    setBusy(false);
+    if (!result.ok) return result;
+    markLanded("order", order.id);
+    toast.success(`Replacement recorded on order #${order.id}.`, {
+      description: values.disposition === "restock"
+        ? "What came back is on the shelf again, and the replacement has come off it."
+        : "What came back is written off, and the replacement has come off the shelf.",
+    });
+    return { ok: true };
   }
 
   /**
@@ -1708,7 +1720,7 @@ export default function App() {
    * with no record is indistinguishable from a mistake a month later.
    */
   async function adjustPrice(order, { oldTotal, newTotal, difference, reason }) {
-    if (!canHandleMoney(profile?.role)) {
+    if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can change what an order costs.");
       return false;
     }
@@ -1746,12 +1758,6 @@ export default function App() {
       action: overcharged
         ? { label: "Give it back", onClick: () => setRefundFor(order.id) }
         : { label: "Print it", onClick: () => window.print() },
-    });
-    logActivity({
-      kind: ACTIVITY_KIND.PRICE,
-      what: `changed order #${order.id} from ${formatPeso(oldTotal)} to ${formatPeso(newTotal)}`,
-      subject: `order:${order.id}`,
-      amount: difference,
     });
     return true;
   }
@@ -1804,16 +1810,6 @@ export default function App() {
       toast.success(`Delivery #${delivery.id} arrived, and order #${carried.id} is done.`, {
         description: "Everything on the order has now gone out.",
       });
-      logActivity({
-        kind: ACTIVITY_KIND.DELIVERY,
-        what: `marked delivery #${delivery.id} as ${deliveryStage(nextStatus).label.toLowerCase()}`,
-        subject: `delivery:${delivery.id}`,
-      });
-      logActivity({
-        kind: ACTIVITY_KIND.ORDER,
-        what: `marked order #${carried.id} as done when its delivery arrived`,
-        subject: `order:${carried.id}`,
-      });
       return;
     }
 
@@ -1834,14 +1830,6 @@ export default function App() {
     // the mark on the card in its new column does.
     markLanded("delivery", delivery.id);
     toast.success(`Delivery #${delivery.id} is now ${to.label.toLowerCase()}.`);
-    // Every advance writes a history entry automatically — the delivery's own
-    // screen reads these back, and a log people have to maintain is a log that
-    // is empty by March.
-    logActivity({
-      kind: ACTIVITY_KIND.DELIVERY,
-      what: `moved delivery #${delivery.id} to ${to.label.toLowerCase()}`,
-      subject: `delivery:${delivery.id}`,
-    });
   }
 
   /**
@@ -1903,13 +1891,13 @@ export default function App() {
       toast.error(result.message || "That delivery was not recorded.");
       return false;
     }
-    const { changed } = result;
 
     const short = manifest.filter((line) => line.backorderQty > 0);
     let raised = true;
 
     if (short.length > 0) {
       const followUpResult = await deliveriesState.create({
+        orderId: order.id,
         product: `Order #${order.id} - ${order.customerName}${BACKORDER_SUFFIX}`,
         size: short.map((line) => `${line.backorderQty} × ${line.name}`).join(", "),
         location: delivery.location,
@@ -1941,25 +1929,6 @@ export default function App() {
       });
     }
 
-    logActivity({
-      kind: ACTIVITY_KIND.DELIVERY,
-      what:
-        short.length === 0
-          ? `sent delivery #${delivery.id} out in full`
-          : `sent delivery #${delivery.id} out short by ${short
-              .map((line) => `${line.backorderQty} × ${line.name}`)
-              .join(", ")}`,
-      subject: `delivery:${delivery.id}`,
-    });
-    for (const row of changed) {
-      const before = inventory.find((item) => item.id === row.id);
-      logActivity({
-        kind: ACTIVITY_KIND.STOCK,
-        what: `sent out ${(before?.stock ?? 0) - row.stock} × ${row.name} on order #${order.id}`,
-        subject: row.sku,
-        amount: row.stock - (before?.stock ?? 0),
-      });
-    }
     return true;
   }
 
@@ -1975,13 +1944,6 @@ export default function App() {
         ? `${driver} is taking delivery #${delivery.id}.`
         : `Delivery #${delivery.id} has nobody assigned.`
     );
-    logActivity({
-      kind: ACTIVITY_KIND.DELIVERY,
-      what: driver
-        ? `gave delivery #${delivery.id} to ${driver}`
-        : `took the driver off delivery #${delivery.id}`,
-      subject: `delivery:${delivery.id}`,
-    });
     return true;
   }
 
@@ -2015,7 +1977,7 @@ export default function App() {
   // Counts for the sidebar badges. "products" is an ATTENTION count -- how many
   // need making -- which is why it paints clay rather than white.
   const navCounts = useMemo(() => {
-    const stock = stockCounts(products, inventory, orders);
+    const stock = stockCounts(activeProducts, inventory, orders);
     return {
       products: stock.low + stock.out || undefined,
       orders: orders.filter((order) => order.status === ORDER_STATUS.PENDING).length || undefined,
@@ -2023,7 +1985,7 @@ export default function App() {
         deliveries.filter((delivery) => delivery.status !== DELIVERY_STAGE.ARRIVED).length ||
         undefined,
     };
-  }, [products, inventory, orders, deliveries]);
+  }, [activeProducts, inventory, orders, deliveries]);
 
   // ---- rendering -----------------------------------------------------------
 
@@ -2033,6 +1995,9 @@ export default function App() {
     if (state && !state.isLoaded) return state.error
       ? <div role="alert">Could not load this record. <button onClick={state.reload}>Try again</button></div>
       : <RouteFallback />;
+    if ((state === ordersState && !selectedOrder) || (state === deliveriesState && !selectedDelivery)) {
+      if (!state.settled) return <RouteFallback />;
+    }
     switch (view) {
       case "checking-session":
         return <RouteFallback />;
@@ -2058,14 +2023,18 @@ export default function App() {
           <DashboardPage
             profile={profile}
             dashboardView={dashboardView}
-            products={products}
+            products={activeProducts}
             inventory={inventory}
             orders={orders}
             deliveries={deliveries}
             customers={customers}
+            customerStats={customerStats}
+            loyalty={loyalty}
             suppliers={suppliers}
             staff={staff}
             activity={activity}
+            materials={rawMaterialsState.rows}
+            batches={productionBatchesState.rows}
             onNavigate={navigate}
             onOpenFiltered={openFiltered}
             // Clearing the selection is what makes this an ADD. The product
@@ -2076,8 +2045,8 @@ export default function App() {
             // that product instead of creating a new one. The products list
             // (onAdd below) and the header's primary action already clear it;
             // this was the one entry point that did not.
-            onAddProduct={() => { setSelectedProductId(null); navigate("product-form"); }}
-            onAddCustomer={() => openProfileForm("customer")}
+            onAddProduct={can(role, "manageCatalogue") ? () => { setSelectedProductId(null); navigate("product-form"); } : undefined}
+            onAddCustomer={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
             onWriteOrder={() => navigate("order-form")}
             onRecordMade={(productId, needed) => setRecordMadeFor({ productId: typeof productId === 'number' ? productId : undefined, needed })}
             onContext={handleContext}
@@ -2094,7 +2063,8 @@ export default function App() {
           isLoaded={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].every((s) => s.isLoaded) && isStaffLoaded}
           error={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].find((s) => s.error)?.error || staffError}
           onRetry={() => { reloadWorkshop(); productsState.reload(); inventoryState.reload(); ordersState.reload(); suppliersState.reload(); resolveStaff({ force: true }); }}
-          onCommand={handleWorkshopCommand} onContext={handleContext} onNavigate={navigate}
+          onCommand={handleWorkshopCommand} onStockCommand={handleStockCommand} initialFilter={pendingFilter}
+          onContext={handleContext} onNavigate={navigate}
           change={recordChange} />;
 
       // ---- products ----
@@ -2108,17 +2078,18 @@ export default function App() {
               productsState.reload();
               inventoryState.reload();
             }}
-            products={products}
+            products={activeProducts}
+            archived={archivedProducts}
             inventory={inventory}
             orders={orders}
             onView={(id) => {
               setSelectedProductId(id);
               setView("product-detail");
             }}
-            onEdit={(id) => {
+            onEdit={can(role, "manageCatalogue") ? (id) => {
               setSelectedProductId(id);
               setView("product-form");
-            }}
+            } : undefined}
             onAdd={() => {
               setSelectedProductId(null);
               navigate("product-form");
@@ -2136,9 +2107,13 @@ export default function App() {
             product={selectedProduct}
             inventory={inventory}
             orders={orders}
-            activity={activity}
-            canDelete={isAdminRole(profile?.role)}
+            canEdit={can(role, "manageCatalogue")}
+            canRecordDamage={can(role, "recordDamage")}
+            canCorrectStock={can(role, "correctStock")}
+            canDelete={can(role, "removeRecords")}
             onDelete={deleteProduct}
+            onRestore={restoreProduct}
+            onStockCommand={handleStockCommand}
             onBack={() => navigate("products")}
             onEdit={(id) => {
               setSelectedProductId(id);
@@ -2170,6 +2145,8 @@ export default function App() {
             loadError={ordersState.error}
             onRetry={ordersState.reload}
             orders={orders}
+            historyNote={allOrders ? null : `Showing every open order, and the rest from the last ${HISTORY_DAYS} days.`}
+            onShowOlder={() => setAllOrders(true)}
             onReorder={async (ids) => {
               const { error } = await supabase.rpc('reorder_orders', { p_ids: ids });
               if (error) return { ok: false, message: error.message };
@@ -2211,21 +2188,19 @@ export default function App() {
             }
             deliveries={deliveries}
             busy={busy}
-            canHandleMoney={canHandleMoney(profile?.role)}
+            canHandleMoney={can(role, "handleMoney")}
             onBack={() => navigate("orders")}
             onMarkDone={() => markOrderDone(selectedOrder)}
             onPrint={() => window.print()}
             onRefund={() => setRefundFor(selectedOrder.id)}
+            onReplace={() => setReplaceFor(selectedOrder.id)}
             onAdjustPrice={() => setAdjustPriceFor(selectedOrder.id)}
             onReopen={reopenOrder}
-            canEdit={canHandleMoney(profile?.role) && orderIsEditable(selectedOrder)}
+            canEdit={can(role, "handleMoney") && orderIsEditable(selectedOrder)}
             editBlocker={orderEditBlocker(selectedOrder)}
             onEdit={() => navigate("order-edit")}
             onCancelOrder={() => cancelOrder(selectedOrder)}
-            onOpenDelivery={(id) => {
-              setSelectedDeliveryId(id);
-              setView("delivery-detail");
-            }}
+            onOpenDelivery={openDelivery}
             onAssignDriver={() => {
               const delivery = deliveryForOrder(selectedOrder, deliveries);
               if (delivery) setAssignDriverFor(delivery.id);
@@ -2241,7 +2216,9 @@ export default function App() {
         return (
           <OrderFormPage
             customers={customers}
-            products={products}
+            customerStats={customerStats}
+            loyalty={loyalty}
+            products={activeProducts}
             inventory={inventory}
             existingOrders={orders}
             customer={orderDraftFor}
@@ -2262,6 +2239,8 @@ export default function App() {
             order={selectedOrder}
             delivery={deliveryForOrder(selectedOrder, deliveries)}
             customers={customers}
+            customerStats={customerStats}
+            loyalty={loyalty}
             products={products}
             inventory={inventory}
             // Its own reservations are excluded, or the order would be shown as
@@ -2299,7 +2278,7 @@ export default function App() {
           <DeliveryDetailPage
             delivery={selectedDelivery}
             deliveries={deliveries}
-            activity={activity}
+            loadActivity={loadRecordActivity}
             busy={busy}
             onBack={() => navigate("deliveries")}
             // Forward can open the manifest dialog; back never does. Moving a
@@ -2308,14 +2287,8 @@ export default function App() {
             onMoveForward={(next) => advanceDelivery(selectedDelivery, next)}
             onMoveBack={(next) => moveDelivery(selectedDelivery, next)}
             onAssignDriver={() => setAssignDriverFor(selectedDelivery.id)}
-            onOpenOrder={(id) => {
-              setSelectedOrderId(id);
-              setView("order-detail");
-            }}
-            onOpenDelivery={(id) => {
-              setSelectedDeliveryId(id);
-              setView("delivery-detail");
-            }}
+            onOpenOrder={openOrder}
+            onOpenDelivery={openDelivery}
           />
         );
 
@@ -2328,12 +2301,14 @@ export default function App() {
             loadError={customersState.error}
             onRetry={customersState.reload}
             customers={customers}
-            orders={orders}
+            customerStats={customerStats}
+            loyalty={loyalty}
             onView={(id) => {
               setSelectedCustomerId(id);
               setView("customer-detail");
             }}
-            onAdd={() => openProfileForm("customer")}
+            onAdd={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
+            onEditLoyalty={can(role, "manageLoyalty") ? () => setIsLoyaltyOpen(true) : undefined}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
             initialFilter={pendingFilter}
@@ -2345,8 +2320,11 @@ export default function App() {
         return (
           <CustomerDetailPage
             customer={selectedCustomer}
-            orders={orders}
-            canDelete={isAdminRole(profile?.role)}
+            customerStats={customerStats}
+            loyalty={loyalty}
+            loadOrders={loadCustomerOrders}
+            canEdit={can(role, "editCustomers")}
+            canDelete={can(role, "removeRecords")}
             onDelete={deleteCustomer}
             onBack={() => navigate("customers")}
             onEdit={(id) => openProfileForm("customer", id)}
@@ -2354,10 +2332,7 @@ export default function App() {
               setOrderDraftFor(one);
               setView("order-form");
             }}
-            onOpenOrder={(id) => {
-              setSelectedOrderId(id);
-              setView("order-detail");
-            }}
+            onOpenOrder={openOrder}
           />
         );
 
@@ -2374,7 +2349,7 @@ export default function App() {
               setSelectedSupplierId(id);
               setView("supplier-detail");
             }}
-            onAdd={() => openProfileForm("supplier")}
+            onAdd={can(role, "manageSuppliers") ? () => openProfileForm("supplier") : undefined}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
           />
@@ -2385,8 +2360,10 @@ export default function App() {
           <SupplierDetailPage
             supplier={selectedSupplier}
             purchaseOrders={rawMaterialOrdersState.rows.filter((order) => order.supplier_id === selectedSupplierId)}
+            materials={rawMaterialsState.rows}
+            canEdit={can(role, "manageSuppliers")}
             onOpenPurchases={() => navigate('raw-material-orders')}
-            canDelete={isAdminRole(profile?.role)}
+            canDelete={can(role, "removeRecords")}
             onBack={() => navigate("suppliers")}
             onEdit={(id) => openProfileForm("supplier", id)}
             onDelete={deleteSupplier}
@@ -2442,14 +2419,6 @@ export default function App() {
                         : "Their existing password still works.",
                   }
                 );
-                logActivity({
-                  kind: ACTIVITY_KIND.ACCOUNT,
-                  what:
-                    status === "Blocked"
-                      ? `blocked ${selectedAccount.name} from signing in`
-                      : `let ${selectedAccount.name} sign in again`,
-                  subject: `staff:${selectedAccount.email}`,
-                });
               }
             }}
             onSaveDetails={async (changes) => {
@@ -2473,11 +2442,6 @@ export default function App() {
               // successful one.
               if (await updateSelectedAccount({ role, revision })) {
                 toast.success(`${selectedAccount.name} is now ${role}.`);
-                logActivity({
-                  kind: ACTIVITY_KIND.ACCOUNT,
-                  what: `changed what ${selectedAccount.name} does to ${role}`,
-                  subject: `staff:${selectedAccount.email}`,
-                });
                 setView("manage-account");
               }
             }}
@@ -2498,6 +2462,9 @@ export default function App() {
         return (
           <ActivityLogPage
             entries={activity}
+            onShowOlder={activityState.rows.length >= activityLimit
+              ? () => setActivityLimit((limit) => limit + ACTIVITY_PAGE)
+              : undefined}
             isLoaded={activityState.isLoaded}
             onBack={() => navigate("staff")}
             onContext={handleContext}
@@ -2603,7 +2570,8 @@ export default function App() {
         // indexes in schema.sql are still the boundary; this is only faster.
         staff={staff}
       />
-      {recordMadeFor !== null && <StartBatchDialog {...workshopData}
+      {recordMadeFor !== null && rawMaterialsState.isLoaded && productionRecipesState.isLoaded
+        && productionBatchesState.isLoaded && <StartBatchDialog {...workshopData}
         productId={recordMadeFor.productId} needed={recordMadeFor.needed} profile={profile}
         onClose={() => setRecordMadeFor(null)}
         onSave={async (values, key) => {
@@ -2641,6 +2609,21 @@ export default function App() {
           return recordDelivered(delivery, order, payload);
         }}
       />
+      <ReplacementDialog
+        key={`replace-${replaceFor ?? "none"}`}
+        open={replaceFor !== null}
+        onOpenChange={(next) => !next && setReplaceFor(null)}
+        order={orders.find((o) => o.id === replaceFor)}
+        inventory={inventory}
+        onSave={(values) => replaceGoods(orders.find((o) => o.id === replaceFor), values)}
+      />
+      {isLoyaltyOpen && (
+        <LoyaltyRulesDialog
+          rules={loyalty}
+          onSave={saveLoyaltyRules}
+          onClose={() => setIsLoyaltyOpen(false)}
+        />
+      )}
       <RefundDialog
         key={`refund-${refundFor ?? "none"}`}
         open={refundFor !== null}

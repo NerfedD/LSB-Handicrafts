@@ -8,13 +8,9 @@
  *   stock    — on hand. Only ever moved by a real physical event: goods leaving
  *              the building, or goods coming back through the door.
  *
- * `reserved` is recomputed rather than incremented on purpose. The status
- * dropdown lets an order flip Pending -> Completed -> Pending freely, and
- * persistence rewrites whole tables, so an incremental +=/-= has no reliable
- * point to run exactly once. Recomputing from the orders array is correct by
- * construction for create, edit, delete, cancel and re-open alike — there is no
- * double-apply bug available to have. The database column is a cache of this
- * for SQL reporting; the orders array is the source of truth.
+ * `reserved` is recomputed from the waiting orders rather than stored, so it is
+ * correct by construction for create, edit, cancel and re-open alike -- there
+ * is no double-apply bug available to have.
  *
  * The one thing that genuinely can't be derived is the deduction: once stock
  * has physically left, no later reading of the orders array can tell you
@@ -56,21 +52,25 @@ import { ORDER_STATUS, REFUND_DISPOSITION, STOCK_STATUS } from './constants';
 import { normalizeItems } from './orderItems';
 
 /** What's actually sellable. Reserved stock is spoken for. */
-export function availableOf(item) {
+function availableOf(item) {
   return (Number(item?.stock) || 0) - (Number(item?.reserved) || 0);
 }
 
 /**
- * Stock status, derived from available rather than on-hand — a product whose
- * entire shelf is already promised to pending orders is not "In Stock".
+ * THE reorder rule, for products and raw materials alike: at or below the
+ * reorder point needs replenishing, and nothing free to sell is out. Judged on
+ * what is free, not what is on the shelf -- a shelf entirely promised to
+ * waiting orders is not "In Stock".
  */
-export function statusOf(item) {
-  const available = availableOf(item);
+export function stockState(available, threshold) {
   if (available <= 0) return STOCK_STATUS.OUT;
+  return available <= (Number(threshold) || 0) ? STOCK_STATUS.LOW : STOCK_STATUS.IN;
+}
+
+/** Stock status for a stock row carrying its own `reserved` count. */
+export function statusOf(item) {
   const threshold = Number(item?.lowStockThreshold);
-  return available < (Number.isNaN(threshold) ? 50 : threshold)
-    ? STOCK_STATUS.LOW
-    : STOCK_STATUS.IN;
+  return stockState(availableOf(item), Number.isNaN(threshold) ? 50 : threshold);
 }
 
 // ---- the three counters ----------------------------------------------------
@@ -112,28 +112,6 @@ export function reservedByProduct(orders) {
     }
   }
   return totals;
-}
-
-/**
- * Returns inventory with `reserved` and `status` recomputed from the orders.
- *
- * Returns the SAME ARRAY REFERENCE when nothing changed. This is load-bearing:
- * the caller runs it from an effect that also writes to Supabase, so a fresh
- * array on every render would be an infinite loop and a write per frame.
- */
-export function applyReservations(inventory, orders) {
-  const totals = reservedByProduct(orders);
-  let changed = false;
-
-  const next = (inventory || []).map((item) => {
-    const reserved = totals.get(item.id) || 0;
-    const status = statusOf({ ...item, reserved });
-    if (item.reserved === reserved && item.status === status) return item;
-    changed = true;
-    return { ...item, reserved, status };
-  });
-
-  return changed ? next : inventory;
 }
 
 /** The stock an order still has to draw, as productId -> units. */
@@ -382,62 +360,4 @@ export function handleRefundStock(inventory, order, refundLines = []) {
     scrapped,
     deltas: deltasOf(back, +1),
   };
-}
-
-/**
- * Checks an order against what's actually sellable. Returns human-readable
- * messages, empty when clear.
- *
- * `ignoreOrderId` excludes an order's own existing reservation, so editing a
- * pending order doesn't read as competing with itself.
- */
-export function stockIssuesForOrder(inventory, order, { orders = [], ignoreOrderId } = {}) {
-  const otherOrders = ignoreOrderId
-    ? orders.filter((o) => o.id !== ignoreOrderId)
-    : orders;
-  const reserved = reservedByProduct(otherOrders);
-  const issues = [];
-
-  for (const [productId, units] of drawOf(order)) {
-    const item = inventory.find((i) => i.id === productId);
-    if (!item) continue;
-    const available = (Number(item.stock) || 0) - (reserved.get(productId) || 0);
-    if (units > available) {
-      issues.push(
-        `${item.name}: ordering ${units} but only ${Math.max(available, 0)} available.`
-      );
-    }
-  }
-
-  return issues;
-}
-
-/**
- * How many pieces of `cut` come out of one `parent` sheet, cutting straight
- * across in one orientation (a guillotine cut — the way sheets are actually
- * trimmed). Takes the better of the two orientations.
- *
- * Deliberately not an area ratio: dividing areas pretends the offcuts can be
- * sold, and they can't. 0 means the cut doesn't fit at all.
- */
-export function piecesPerSheet(parent, cut) {
-  const pl = Number(parent?.lengthFt);
-  const pw = Number(parent?.widthFt);
-  const cl = Number(cut?.lengthFt);
-  const cw = Number(cut?.widthFt);
-  if (!pl || !pw || !cl || !cw) return 0;
-
-  const straight = Math.floor(pl / cl) * Math.floor(pw / cw);
-  const turned = Math.floor(pl / cw) * Math.floor(pw / cl);
-  return Math.max(straight, turned);
-}
-
-/**
- * Parent sheets needed for `qty` pieces of `cut`. Null when the cut doesn't fit
- * the parent — the caller should block the line rather than guess.
- */
-export function sheetsNeeded(parent, cut, qty) {
-  const per = piecesPerSheet(parent, cut);
-  if (per === 0) return null;
-  return Math.ceil((Number(qty) || 0) / per);
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ArrowLeft,
@@ -71,7 +71,8 @@ const STAGE_ICONS = {
 export default function DeliveryDetailPage({
   delivery,
   deliveries = [],
-  activity = [],
+  /** Reads one record's activity: (subject) => Promise<{ ok, data }>. */
+  loadActivity,
   onBack,
   onMoveForward,
   onMoveBack,
@@ -80,13 +81,19 @@ export default function DeliveryDetailPage({
   onOpenDelivery,
   busy = false,
 }) {
-  const history = useMemo(
-    () =>
-      delivery
-        ? activity.filter((entry) => entry.subject === `delivery:${delivery.id}`)
-        : [],
-    [activity, delivery]
-  );
+  // This delivery's own entries, read for it and again whenever it changes --
+  // not picked out of the newest page of the whole feed, which an older
+  // delivery would have scrolled off.
+  const [history, setHistory] = useState([]);
+  const subject = delivery ? `delivery:${delivery.id}` : null;
+  useEffect(() => {
+    if (!subject || !loadActivity) return undefined;
+    let cancelled = false;
+    loadActivity(subject).then((result) => {
+      if (!cancelled && result.ok) setHistory(result.data);
+    });
+    return () => { cancelled = true; };
+  }, [subject, loadActivity, delivery?.revision]);
 
   // The run this one follows, or the one raised because this one came up short.
   // Linked by id rather than by parsing a string: the order link had to stay

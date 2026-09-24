@@ -2,11 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { ORDER_STATUS, REFUND_DISPOSITION } from "./constants";
 import {
-  applyReservations,
   commitOrder,
   commitPartialDelivery,
   handleRefundStock,
   reservedByProduct,
+  statusOf,
+  stockState,
   uncommitOrder,
 } from "./stockLedger";
 
@@ -426,22 +427,18 @@ describe("an order stamped before the per-line counters existed", () => {
   });
 });
 
-describe("applyReservations", () => {
-  // Load-bearing: the caller runs this from an effect that also writes to
-  // Supabase, so a fresh array every render would be an infinite loop and a
-  // write per frame.
-  it("hands back the same array when nothing changed", () => {
-    const before = applyReservations(shelf(), [order()]);
-    expect(applyReservations(before, [order()])).toBe(before);
+describe("when stock needs replenishing", () => {
+  // One rule for the pill, the filters, the counts and the make list. The pill
+  // used to say "In stock" for a product sitting exactly on its reorder point
+  // while the "Running low" filter counted the same product.
+  it("is low at or below the reorder point, and out with nothing free to sell", () => {
+    expect(stockState(11, 10)).toBe("In Stock");
+    expect(stockState(10, 10)).toBe("Low Stock");
+    expect(stockState(0, 10)).toBe("Out of Stock");
+    expect(stockState(-3, 10)).toBe("Out of Stock");
   });
 
-  it("frees the shelf up again once goods are written off", () => {
-    const withOrder = applyReservations(shelf(), [order()]);
-    expect(withOrder.find((row) => row.id === 101).reserved).toBe(5);
-
-    const cancelled = applyReservations(withOrder, [
-      { ...order(), status: ORDER_STATUS.CANCELLED },
-    ]);
-    expect(cancelled.find((row) => row.id === 101).reserved).toBe(0);
+  it("judges what is free to sell, not what is on the shelf", () => {
+    expect(statusOf({ stock: 20, reserved: 12, lowStockThreshold: 10 })).toBe("Low Stock");
   });
 });

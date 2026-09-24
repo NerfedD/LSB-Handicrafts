@@ -82,6 +82,12 @@ export default function OrderListPage({
   onContext,
   initialFilter,
   onReorder,
+  /**
+   * The list holds every open order and recent history. When older orders
+   * exist beyond that, this says so and `onShowOlder` loads them.
+   */
+  historyNote = null,
+  onShowOlder,
   /** The last record a write changed — see shared/Landed.jsx. */
   change = null,
 }) {
@@ -318,6 +324,12 @@ export default function OrderListPage({
         </>
       )}
       </>}
+      {historyNote && onShowOlder && (
+        <p className="flex flex-wrap items-center justify-center gap-3 text-[15px] text-muted">
+          {historyNote}
+          <Button variant="outline" size="sm" onClick={onShowOlder}>Show older orders</Button>
+        </p>
+      )}
     </div>
   );
 }

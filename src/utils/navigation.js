@@ -163,6 +163,16 @@ export const DENIED_BY_ROLE = (() => {
   return out;
 })();
 
+/**
+ * Screens that need more than their section does. Everybody can look at
+ * products and orders; changing a product or rewriting an order is a
+ * manager's job. Capability names are the ones in utils/permissions.js.
+ */
+export const VIEW_CAPABILITY = {
+  "product-form": "manageCatalogue",
+  "order-edit": "handleMoney",
+};
+
 /** Screens that render without the shell — pre-auth, and the boot state. */
 export const CHROMELESS_VIEWS = new Set([
   "checking-session",
@@ -237,11 +247,14 @@ export function metaForView(view) {
  * screens where the main action lives in the content (a detail screen's own
  * buttons, a form's footer). An always-present header button would be a second
  * primary competing with those.
+ *
+ * `capability` hides it from a role the database would refuse (see
+ * utils/permissions.js).
  */
 export const PRIMARY_ACTION = {
-  products: { label: "Add a product", icon: "PackagePlus", view: "product-form" },
+  products: { label: "Add a product", icon: "PackagePlus", view: "product-form", capability: "manageCatalogue" },
   orders: { label: "Write a new order", icon: "ClipboardList", view: "order-form" },
-  customers: { label: "Add a customer", icon: "UserPlus", action: "add-customer" },
-  suppliers: { label: "Add a supplier", icon: "Handshake", action: "add-supplier", tone: "clay" },
-  staff: { label: "Add a staff account", icon: "UserPlus", action: "add-staff" },
+  customers: { label: "Add a customer", icon: "UserPlus", action: "add-customer", capability: "editCustomers" },
+  suppliers: { label: "Add a supplier", icon: "Handshake", action: "add-supplier", tone: "clay", capability: "manageSuppliers" },
+  staff: { label: "Add a staff account", icon: "UserPlus", action: "add-staff", capability: "manageStaff" },
 };

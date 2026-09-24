@@ -1,27 +1,19 @@
 import { useMemo, useState } from "react";
 
-import { ArrowLeft, Boxes, Pencil } from "../icons";
+import { ArchiveRestore, ArrowLeft, Boxes, ClipboardCheck, PackageX, Pencil } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { DangerBlock } from "../shared/Callout";
+import Callout, { DangerBlock } from "../shared/Callout";
 import IconChip, { Mono } from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
 import { PhotoSlot } from "../shared/forms";
-import { EmptySlot, NotFoundState } from "../shared/PageStates";
+import { NotFoundState } from "../shared/PageStates";
 import { BarLegend, SegmentedBar } from "../shared/StockBar";
-import { activityIcon } from "../shared/activityIcons";
+import StockHistory from "../shared/StockHistory";
 import { productIcon } from "../shared/productIcons";
-import { movementsFor, whenLabel } from "../../utils/activityLog";
+import StockChangeDialog from "./StockChangeDialog";
+import useStockMovements from "../../hooks/useStockMovements";
 import { formatDimensions, formatProductType, formatUnit } from "../../utils/productFormat";
 import { formatLongDate, formatPeso } from "../../utils/profileFormat";
 import { stockForProduct } from "../../utils/productStock";
@@ -45,51 +37,48 @@ import { cn } from "@/lib/utils";
  * segmented bar puts them in proportion, and the legend names all three,
  * because a colour key without words is a key nobody can use.
  *
- * STOCK MOVEMENTS ARE REAL ENTRIES, not a fabricated history. They come from
- * activity_log filtered to this product's item code — see utils/activityLog.
- * A product nothing has happened to yet says so rather than showing invented
- * rows.
+ * STOCK MOVEMENTS ARE THE LEDGER. Every change to the count -- sold, sent out,
+ * returned, replaced, damaged, corrected, made -- is a row in stock_movements,
+ * written by the database in the same transaction as the change. The two stock
+ * actions here (record damage, correct the count) go through stock_command so
+ * they land there too, with a reason; the product form no longer edits a count.
  *
  * REMOVING ONE LIVES AT THE BOTTOM, IN ITS OWN BLOCK, and only an admin sees it
  * — `canDelete`, the same shape as the supplier and customer screens. Rule 6:
  * never a red trash icon in a row.
  *
- * AND IT IS REFUSED WHILE STOCK IS PROMISED. `reserved` is derived from the
- * units still owed on orders that have not gone out (see utils/stockLedger), so
- * anything above zero means somebody is waiting for one of these. Deleting the
- * product then would leave that order pointing at a thing the system no longer
- * knows how to count — the same reasoning as the customer screen's open-order
- * refusal, and the block explains the refusal rather than silently vanishing.
- *
- * WHAT A DELETE ACTUALLY REMOVES IS TWO ROWS. The catalogue entry and its stock
- * ledger row are one product to everybody who uses this app — App.saveProduct
- * writes both, so App.deleteProduct removes both. Past orders keep their line
- * exactly as written: the name, the price and the quantity live on the order
- * itself.
+ * REFUSED WHILE STOCK IS PROMISED to an order still waiting. Otherwise the
+ * database decides (remove_product): a product anything has happened to --
+ * sold, made, counted -- is ARCHIVED, which hides it from the lists and the
+ * order form and keeps every record; only a product nothing refers to is
+ * deleted, catalogue entry and stock row together in one transaction.
  */
 export default function ProductDetailPage({
   product,
   inventory = [],
   orders = [],
-  activity = [],
+  canEdit = false,
+  canRecordDamage = false,
+  canCorrectStock = false,
   canDelete = false,
   onBack,
   onEdit,
   onDelete,
+  onRestore,
+  onStockCommand,
 }) {
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
+  const [stockDialog, setStockDialog] = useState(null); // 'damage' | 'correct' | null
   const stock = useMemo(
     () => (product ? stockForProduct(product, inventory, orders) : { tracked: false }),
     [product, inventory, orders]
   );
-
-  const movements = useMemo(
-    () => (product ? movementsFor(product.itemCode, activity) : []),
-    [product, activity]
-  );
+  const movements = useStockMovements({ inventoryId: stock.tracked ? stock.rowId : null, balance: stock.onHand });
 
   if (!product) return <NotFoundState noun="product" onBack={onBack} />;
+
+  const archived = product.status === "Archived";
 
   const tone = stock.tracked ? stockTone(stock.status) : "neutral";
   const roomToFill = Math.max(0, (stock.ceiling ?? 0) - (stock.onHand ?? 0));
@@ -150,14 +139,35 @@ export default function ProductDetailPage({
             />
           </Card>
 
-          <Button variant="outline" size="lg" block onClick={() => onEdit(product.id)}>
-            <Pencil className="h-5 w-5" />
-            Edit this product
-          </Button>
+          {canEdit && (
+            <Button variant="outline" size="lg" block onClick={() => onEdit(product.id)}>
+              <Pencil className="h-5 w-5" />
+              Edit this product
+            </Button>
+          )}
         </div>
 
         {/* ---- the stock story ---- */}
         <div className="flex min-w-0 flex-col gap-4">
+          {archived && (
+            <Callout
+              tone="amber"
+              icon={<ArchiveRestore />}
+              title="No longer sold"
+              action={
+                canEdit && (
+                  <Button variant="outline" size="sm" onClick={() => onRestore?.(product)}>
+                    <ArchiveRestore className="h-4.5 w-4.5" />
+                    Put it back on sale
+                  </Button>
+                )
+              }
+            >
+              It is hidden from the products list and the order form. Its stock record and
+              every order, delivery and batch that mentions it are kept.
+            </Callout>
+          )}
+
           <Card className="p-5.5">
             {stock.tracked ? (
               <>
@@ -203,6 +213,23 @@ export default function ProductDetailPage({
 
                 <SegmentedBar segments={segments} className="mt-5" />
                 <BarLegend segments={segments} className="pt-3.5" />
+
+                {(canRecordDamage || canCorrectStock) && (
+                  <div className="mt-5 flex flex-wrap gap-2.5 border-t border-hair pt-4.5">
+                    {canRecordDamage && (
+                      <Button variant="outline" disabled={stock.onHand <= 0} onClick={() => setStockDialog("damage")}>
+                        <PackageX className="h-4.5 w-4.5" />
+                        Record damage
+                      </Button>
+                    )}
+                    {canCorrectStock && (
+                      <Button variant="outline" onClick={() => setStockDialog("correct")}>
+                        <ClipboardCheck className="h-4.5 w-4.5" />
+                        Correct the count
+                      </Button>
+                    )}
+                  </div>
+                )}
               </>
             ) : (
               <>
@@ -225,67 +252,15 @@ export default function ProductDetailPage({
               <CardTitle>Stock movements</CardTitle>
             </CardHeader>
 
-            {movements.length === 0 ? (
-              <EmptySlot className="py-10 text-[15px]">
-                Nothing has moved yet. Changes show up here as soon as stock is recorded or
-                an order goes out.
-              </EmptySlot>
-            ) : (
-              <Table minWidth={620}>
-                <TableCaption>Every change to this product&rsquo;s stock</TableCaption>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-52">When</TableHead>
-                    <TableHead>What happened</TableHead>
-                    <TableHead className="w-32 text-right">Change</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {movements.map((entry) => {
-                    const up = (entry.amount ?? 0) > 0;
-                    return (
-                      <TableRow key={entry.id}>
-                        <TableCell className="text-[15px] text-muted">
-                          {whenLabel(entry.at)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <IconChip
-                              icon={activityIcon(entry.icon)}
-                              tone={entry.tone}
-                              size="sm"
-                            />
-                            <span className="min-w-0 text-[15.5px]">
-                              <strong className="font-extrabold">{entry.who}</strong> {entry.what}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            "text-right text-[17px] font-extrabold tabular-nums",
-                            entry.amount === null
-                              ? "text-muted"
-                              : up
-                                ? "text-green dark:text-dk-green"
-                                : "text-red dark:text-dk-red"
-                          )}
-                        >
-                          {entry.amount === null ? "—" : `${up ? "+" : "−"}${Math.abs(entry.amount)}`}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
+            <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error} />
           </Card>
         </div>
       </div>
 
       {/* ---- the only place a product can be removed ---- */}
-      {canDelete && (
+      {canDelete && !archived && (
         <DangerBlock
-          title="Remove this product for good"
+          title="Remove this product"
           action={
             blocked ? null : (
               <Button variant="danger" size="lg" onClick={() => setConfirming(true)}>
@@ -303,22 +278,10 @@ export default function ProductDetailPage({
             </>
           ) : (
             <>
-              {product.name} disappears from the products list
-              {stock.tracked ? (
-                <>
-                  , and the stock record against {product.itemCode} goes with it — including
-                  the {stock.onHand} on the shelf
-                </>
-              ) : (
-                <> — there is no stock record against {product.itemCode} to lose</>
-              )}
-              . Past orders are NOT changed: each line keeps the name, the price and the
-              quantity it was written with, because those are stored on the order itself.
-              This cannot be undone.
-              <br />
-              <br />
-              If you have simply stopped making it, leaving the entry alone costs nothing and
-              keeps its price and size to hand if it comes back.
+              {product.name} disappears from the products list and the order form. If it
+              has ever been sold, made or counted, it is kept as &ldquo;no longer sold&rdquo;
+              with all of its history, and can be put back on sale. Only a product nothing
+              has ever happened to is deleted outright. Past orders are never changed.
             </>
           )}
         </DangerBlock>
@@ -330,16 +293,26 @@ export default function ProductDetailPage({
         title={`Remove ${product.name}?`}
         consequences={
           <>
-            {stock.tracked
-              ? `The catalogue entry and its stock record are both deleted, including the ${stock.onHand} counted on the shelf.`
-              : "The catalogue entry is deleted. There is no stock record against it to lose."}{" "}
-            Past orders keep their lines exactly as written. This cannot be undone.
+            It stops appearing in the products list and on new orders. Anything that has
+            happened to it is kept, and a product with history can be put back on sale.
+            Past orders keep their lines exactly as written.
           </>
         }
         confirmLabel="Yes, remove it"
         busy={working}
         onConfirm={runDelete}
       />
+
+      {stockDialog && stock.tracked && (
+        <StockChangeDialog
+          mode={stockDialog}
+          target="product"
+          record={{ id: stock.rowId, name: product.name, stock: stock.onHand, unit: product.unit }}
+          onSave={(values, requestId) =>
+            onStockCommand(stockDialog === "damage" ? "record_damage" : "correct_count", values, requestId)}
+          onClose={() => setStockDialog(null)}
+        />
+      )}
     </div>
   );
 }

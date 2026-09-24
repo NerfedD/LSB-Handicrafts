@@ -2,7 +2,7 @@ import FormError from "../shared/FormError";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
-import { Plus, Save, Trash2, TriangleAlert } from "../icons";
+import { Gift, Plus, Save, Trash2, TriangleAlert } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,9 @@ import {
 import Callout from "../shared/Callout";
 import { EmptySlot } from "../shared/PageStates";
 import { Field, FormBand, FormFooter, Row } from "../shared/forms";
+import { Checkbox } from "../shared/AuthField";
 import { LINE_KIND } from "../../utils/constants";
+import { customerSummary, DEFAULT_LOYALTY, loyaltyDiscount } from "../../utils/customers";
 import { normalizeItems, orderTotal } from "../../utils/orderItems";
 import { formatPeso } from "../../utils/profileFormat";
 import { shelfItems } from "../../utils/productStock";
@@ -38,6 +40,11 @@ import { stockLabel } from "../../utils/copy";
  * table has always used (see utils/orders). Writing both here is what stops
  * somebody having to remember to raise a delivery separately, which is how
  * orders end up finished with nothing ever going out.
+ *
+ * THE LOYALTY REWARD IS OFFERED, NOT HIDDEN. When the order is for a saved
+ * customer who has earned it under the rules a manager set, the form says so
+ * and applies it, and the order records that it did. The database checks the
+ * same rules when it saves (private.validate_order_promotion).
  *
  * PRICES DEFAULT, THEY DO NOT LOCK. A line starts at the catalogue price and
  * can be changed, because the real business negotiates. What it cannot do is
@@ -134,6 +141,9 @@ export default function OrderFormPage({
   inventory = [],
   /** Every order already written, so "free to sell" excludes what is promised. */
   existingOrders = [],
+  /** Customers' whole-history totals (utils/customers statsIndex) and the rules. */
+  customerStats = new Map(),
+  loyalty = DEFAULT_LOYALTY,
   /** Pre-selected when the order was started from a customer's own screen. */
   customer,
   /** The order being rewritten, when this screen is opened as an edit. */
@@ -182,7 +192,33 @@ export default function OrderFormPage({
       unitPrice: Number(line.unitPrice),
     }))
   );
-  const total = itemsTotal + (Number(deliveryCharge) || 0);
+  // WHICH CUSTOMER RECORD THIS IS FOR, when that can be known for certain.
+  // The field stays free text with a datalist, deliberately, so a walk-in can
+  // be served without being enrolled first -- which means a typed name may
+  // match one customer, none, or more than one.
+  //
+  // Only an exact single match is linked. None is an ordinary unlinked order.
+  // MORE than one is the case that matters: two people really do share a name,
+  // and quietly picking whichever sorts first would attach one person's
+  // spending to the other. An unchanged name keeps the identity the order or
+  // the customer screen started with, even after a rename.
+  const typed = customerName.trim().toLowerCase();
+  const originalName = isEdit ? order?.customerName : customer?.name;
+  const originalId = isEdit ? order?.customerId : customer?.id;
+  const named = customers.filter((one) => String(one.name || "").trim().toLowerCase() === typed);
+  const customerId = originalId != null && typed === String(originalName || "").trim().toLowerCase()
+    ? originalId
+    : named.length === 1 ? named[0].id : null;
+  const linked = customers.find((one) => one.id === customerId);
+
+  const [useReward, setUseReward] = useState(true);
+  const earned = linked ? customerSummary(linked, customerStats, loyalty) : null;
+  const offerReward = Boolean(earned?.rewardEligible);
+  // A reward already on an order being changed stays as it was agreed, even if
+  // the rules have moved since; the database re-checks only a changed amount.
+  const keptDiscount = isEdit && !offerReward ? Number(order?.discountAmount) || 0 : 0;
+  const discount = offerReward && useReward ? loyaltyDiscount(itemsTotal, loyalty) : keptDiscount;
+  const total = Math.max(0, itemsTotal + (Number(deliveryCharge) || 0) - discount);
 
   function setLine(key, changes) {
     setLines((previous) =>
@@ -286,26 +322,6 @@ export default function OrderFormPage({
     }
 
     try {
-    // WHICH CUSTOMER RECORD THIS IS FOR, when that can be known for certain.
-    // The field stays free text with a datalist, deliberately, so a walk-in can
-    // be served without being enrolled first -- which means a typed name may
-    // match one customer, none, or more than one.
-    //
-    // Only an exact single match is linked. None is an ordinary unlinked order
-    // and behaves as every order did before the column existed. MORE than one is
-    // the case that matters: two people really do share a name, and quietly
-    // picking whichever sorts first would attach one person's spending to the
-    // other -- worse than the gap this is closing.
-    const typed = customerName.trim().toLowerCase();
-    const named = customers.filter((one) => String(one.name || "").trim().toLowerCase() === typed);
-    // An unchanged name keeps the explicit identity, even after a rename or
-    // when two customer records happen to have the same name.
-    const originalName = isEdit ? order?.customerName : customer?.name;
-    const originalId = isEdit ? order?.customerId : customer?.id;
-    const customerId = originalId != null && typed === String(originalName || "").trim().toLowerCase()
-      ? originalId
-      : named.length === 1 ? named[0].id : null;
-
     const result = await onSave({
       customerName: customerName.trim(),
       customerId,
@@ -356,6 +372,8 @@ export default function OrderFormPage({
         };
       }),
       totalAmount: total,
+      discountAmount: discount,
+      promotion: discount > 0 ? { kind: "loyalty" } : null,
       delivery: address.trim()
         ? {
             location: address.trim(),
@@ -649,6 +667,32 @@ export default function OrderFormPage({
             </>
           )}
         </FormBand>
+
+        {offerReward && (
+          <div className="border-t border-hair bg-surface px-6.5 py-5">
+            <Callout
+              tone="green"
+              icon={<Gift />}
+              title={`${linked.name} has earned the loyalty reward`}
+            >
+              {earned.completedCount} finished orders. The reward is {loyalty.rewardPercent}% off the
+              items{useReward ? `: −${formatPeso(discount)} on this order.` : "."}
+              <span className="block pt-3">
+                <Checkbox
+                  id="apply-reward"
+                  checked={useReward}
+                  onChange={setUseReward}
+                  label="Apply it to this order"
+                />
+              </span>
+            </Callout>
+          </div>
+        )}
+        {keptDiscount > 0 && (
+          <div className="border-t border-hair bg-surface px-6.5 py-4 text-[15.5px] text-muted">
+            The loyalty reward agreed when this order was written stays on it: −{formatPeso(keptDiscount)}.
+          </div>
+        )}
 
         {/* The total, at the size the order detail screen uses for it, so the
             number somebody reads out to a customer looks the same in both

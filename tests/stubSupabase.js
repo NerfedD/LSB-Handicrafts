@@ -14,12 +14,124 @@ import { SIGNED_IN_EMAIL, TABLES } from "./fixtures.js";
  *      account — have to be PRESENT. A healthy production database exercises
  *      almost none of the design.
  *
- * WHAT IT IS NOT. It does not implement PostgREST. It answers the handful of
- * shapes this app actually sends: a whole-table select ordered by id, and
- * single-row insert/update/delete with `?id=eq.N`. If a screen starts issuing
- * something else, the request falls through to a 501 and the test fails loudly
+ * WHAT IT IS NOT. It does not implement PostgREST. It answers the shapes this
+ * app sends: selects with the filters in FILTERS below, `or=(...)`, `order`
+ * and `limit`; single-row insert/update/delete with `?id=eq.N`; and the
+ * command RPCs. Anything else falls through to a 501 and the test fails loudly
  * rather than quietly returning nothing.
  */
+
+const same = (a, b) => (a !== null && b !== '' && !Number.isNaN(Number(a)) && !Number.isNaN(Number(b)) ? Number(a) === Number(b) : String(a) === String(b));
+const compare = (a, b) => (!Number.isNaN(Number(a)) && !Number.isNaN(Number(b)) ? Number(a) - Number(b) : String(a).localeCompare(String(b)));
+/** An ilike pattern as a regex: % and * match anything, _ one character, \x is a literal x. */
+function likeRegex(pattern) {
+  const literal = (c) => c.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`);
+  let source = '';
+  for (let i = 0; i < pattern.length; i += 1) {
+    const c = pattern[i];
+    if (c === '\\' && i + 1 < pattern.length) source += literal(pattern[++i]);
+    else if (c === '%' || c === '*') source += '.*';
+    else if (c === '_') source += '.';
+    else source += literal(c);
+  }
+  return new RegExp(`^${source}$`, 'i');
+}
+
+/** PostgREST operators, as the app uses them. */
+const FILTERS = {
+  eq: (value, arg) => value !== null && value !== undefined && same(value, arg),
+  neq: (value, arg) => !same(value, arg),
+  gt: (value, arg) => value !== null && value !== undefined && compare(value, arg) > 0,
+  gte: (value, arg) => value !== null && value !== undefined && compare(value, arg) >= 0,
+  lt: (value, arg) => value !== null && value !== undefined && compare(value, arg) < 0,
+  lte: (value, arg) => value !== null && value !== undefined && compare(value, arg) <= 0,
+  in: (value, arg) => arg.replace(/^\(|\)$/g, '').split(',').some((one) => same(value, one)),
+  is: (value, arg) => (arg === 'null' ? value === null || value === undefined : String(value) === arg),
+  ilike: (value, arg) => likeRegex(arg).test(String(value ?? '')),
+};
+
+/** "col.op.value" -> predicate on a row. */
+function condition(text) {
+  const [column, op, ...rest] = text.split('.');
+  const test = FILTERS[op];
+  if (!test) throw new Error(`stub: unsupported filter ${text}`);
+  const arg = rest.join('.');
+  return (row) => test(row[column], arg);
+}
+
+/** Splits "a.eq.1,b.in.(1,2)" on top-level commas. */
+function splitTopLevel(text) {
+  const parts = [];
+  let depth = 0;
+  let current = '';
+  for (const c of text) {
+    if (c === '(') depth += 1;
+    if (c === ')') depth -= 1;
+    if (c === ',' && depth === 0) { parts.push(current); current = ''; } else current += c;
+  }
+  if (current) parts.push(current);
+  return parts;
+}
+
+/** Applies a GET's filters, ordering and limit to a table's rows. */
+function select(rows, params) {
+  let result = [...rows];
+  for (const [key, value] of params) {
+    if (['select', 'order', 'limit', 'offset'].includes(key)) continue;
+    if (key === 'or') {
+      const tests = splitTopLevel(value.replace(/^\(|\)$/g, '')).map(condition);
+      result = result.filter((row) => tests.some((test) => test(row)));
+    } else {
+      const test = condition(`${key}.${value}`);
+      result = result.filter(test);
+    }
+  }
+  const order = (params.get('order') ?? 'id.asc').split(',').map((part) => part.split('.'));
+  result.sort((a, b) => {
+    for (const [column, direction = 'asc'] of order) {
+      const x = a[column] ?? null;
+      const y = b[column] ?? null;
+      if (x === y) continue;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      const diff = compare(x, y);
+      if (diff) return direction === 'desc' ? -diff : diff;
+    }
+    return 0;
+  });
+  const offset = Number(params.get('offset') ?? 0);
+  const limit = Number(params.get('limit') ?? 1000);
+  return result.slice(offset, offset + limit);
+}
+
+/** Stands in for the customer_order_stats view: whole-history sums per customer. */
+function customerStats(orders) {
+  const byKey = new Map();
+  for (const order of orders) {
+    const key = order.customer_id != null ? `id:${order.customer_id}` : `name:${String(order.customer_name || '').trim().toLowerCase()}`;
+    const row = byKey.get(key) ?? { customer_key: key, order_count: 0, completed_count: 0, open_count: 0, spent: 0, last_order_at: null };
+    if (order.status !== 'Cancelled') {
+      row.order_count += 1;
+      row.spent += Number(order.total_amount || 0) - Number(order.refunded_amount || 0);
+      if (!row.last_order_at || order.created_at > row.last_order_at) row.last_order_at = order.created_at;
+    }
+    if (order.status === 'Completed') row.completed_count += 1;
+    if (order.status === 'Pending') row.open_count += 1;
+    byKey.set(key, row);
+  }
+  return [...byKey.values()];
+}
+
+/** Records a stock change the way the database trigger does. */
+function recordMovement(tables, row, change, kind, extra = {}) {
+  if (!change) return;
+  tables.stock_movements.push({
+    id: nextRecordId(), inventory_id: row.id, raw_material_id: null, item_code: row.sku, item_name: row.name,
+    quantity_change: change, balance_after: row.stock, kind, reason: null, note: null, order_id: null,
+    supplier_order_id: null, batch_id: null, actor_staff_id: 1, actor_name: 'Maria Santos',
+    created_at: new Date().toISOString(), ...extra,
+  });
+}
 
 /**
  * Stands in for private.record_id_seq.
@@ -68,6 +180,37 @@ function runOrderCommand(tables, body, onWrite) {
     return { error: 'This delivery changed. Refresh it before trying again.', code: '40001' };
   }
 
+  if (action === "replace") {
+    if (order.status === "Cancelled") return { error: "This order was called off, so nothing on it can be replaced." };
+    const line = order.items[data.lineIndex];
+    const held = Number(line?.committedUnits ?? (order.stock_committed_at ? line?.stockUnits ?? line?.quantity : 0)) || 0;
+    if (!line || data.quantity < 1 || data.quantity > held) {
+      return { error: `Only goods the customer received can be replaced: up to ${held} on this line.` };
+    }
+    const moved = [];
+    if (data.disposition === "restock" && line.productId != null) {
+      const back = inventory.find((item) => Number(item.id) === Number(line.productId));
+      back.stock += data.quantity;
+      recordMovement(tables, back, data.quantity, "return", { order_id: order.id, reason: data.reason });
+      moved.push(back);
+    }
+    const out = inventory.find((item) => Number(item.id) === Number(data.replacementProductId ?? line.productId));
+    if (!out || out.stock < data.replacementQuantity) return { error: "The replacement is not on the shelf." };
+    out.stock -= data.replacementQuantity;
+    recordMovement(tables, out, -data.replacementQuantity, "replacement", { order_id: order.id, reason: data.reason });
+    if (!moved.includes(out)) moved.push(out);
+    order.replacement_history = [...(order.replacement_history ?? []), {
+      id: crypto.randomUUID(), lineIndex: data.lineIndex, productId: line.productId, name: line.name,
+      quantity: data.quantity, disposition: data.disposition, reason: data.reason, note: data.note ?? null,
+      replacementProductId: out.id, replacementName: out.name, replacementQuantity: data.replacementQuantity,
+      handledBy: "Maria Santos", handledByStaffId: 1, replacedAt: new Date().toISOString(),
+    }];
+    order.revision = (order.revision ?? 0) + 1;
+    Object.assign(storedOrder, order);
+    onWrite?.({ table: "orders", method: "RPC", row: order });
+    return { order, delivery: null, inventory: moved, removedDeliveries: [] };
+  }
+
   if (action === "complete" && order.status !== "Pending") {
     return { error: "Only an order that is still waiting can be marked done." };
   }
@@ -86,6 +229,7 @@ function runOrderCommand(tables, body, onWrite) {
     row.stock = Number(row.stock) + Number(delta);
     if (row.stock < 0) return { error: 'There is not enough of one of these products left to do that.' };
     if (!touched.includes(row)) touched.push(row);
+    row.lastDelta = (row.lastDelta ?? 0) + Number(delta);
   }
 
   const COLUMN = {
@@ -110,13 +254,30 @@ function runOrderCommand(tables, body, onWrite) {
     delivery.revision = (delivery.revision ?? 0) + 1;
   }
 
+  const kind = { complete: 'sale', dispatch: 'dispatch', refund: 'return' }[action] ?? 'cancellation';
+  for (const row of touched) {
+    const change = row.lastDelta;
+    delete row.lastDelta;
+    Object.assign(inventory.find((item) => item.id === row.id), row);
+    recordMovement(tables, row, change, kind, { order_id: order.id });
+  }
+  // As order_command does: a delivery that never left goes with the cancelled order.
+  const removedDeliveries = [];
+  if (action === 'cancel') {
+    for (const run of [...deliveries]) {
+      const theirs = run.order_id != null ? Number(run.order_id) === Number(order.id) : String(run.product).startsWith(`Order #${order.id} - `);
+      if (theirs && !['On The Way', 'Delivered'].includes(run.status) && !(run.items_manifest ?? []).length) {
+        deliveries.splice(deliveries.indexOf(run), 1);
+        removedDeliveries.push(run.id);
+      }
+    }
+  }
   Object.assign(storedOrder, order);
   if (storedDelivery) Object.assign(storedDelivery, delivery);
-  for (const row of touched) Object.assign(inventory.find((item) => item.id === row.id), row);
   onWrite?.({ table: "orders", method: "RPC", row: order });
   if (delivery) onWrite?.({ table: "deliveries", method: "RPC", row: delivery });
 
-  return { order, delivery, inventory: touched };
+  return { order, delivery, inventory: touched, removedDeliveries };
 }
 
 /** An unsigned JWT. Nothing client-side verifies it; supabase-js only decodes. */
@@ -141,7 +302,10 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
   const tables = Object.fromEntries(
     Object.entries(TABLES).map(([name, rows]) => [name, structuredClone(rows)])
   );
-  for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] = [];
+  for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] ??= [];
+  tables.stock_movements ??= [];
+  tables.loyalty_rules ??= [{ id: 1, enabled: false, regular_after_orders: 3, reward_after_orders: 5, reward_percent: 5, revision: 0, updated_at: null, updated_by: null }];
+  const stockRequests = new Map();
   const orderRequests = new Map();
 
   const json = (route, body, status = 200) =>
@@ -212,11 +376,47 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       }
       return json(route, result);
     }
+    if (url.pathname.endsWith("/rpc/stock_command")) {
+      const { p_action: action, p_data: data, p_request_id: key } = request.postDataJSON();
+      if (stockRequests.has(key)) return json(route, stockRequests.get(key));
+      const row = tables.inventory.find((item) => Number(item.id) === Number(data.id));
+      if (data.target !== 'product' || !row) return json(route, { code: 'P0001', message: 'stub: product stock only' }, 400);
+      const amount = Number(data.quantity);
+      const change = action === 'record_damage' ? -amount : amount - row.stock;
+      if (action === 'record_damage' && amount > row.stock) {
+        return json(route, { code: 'P0001', message: `Only ${row.stock} on the shelf, so ${amount} cannot be written off.` }, 400);
+      }
+      if (action === 'correct_count' && Number(data.expectedStock) !== row.stock) {
+        return json(route, { code: '40001', message: 'The shelf count changed since you opened this. Close it and look again.' }, 400);
+      }
+      row.stock += change;
+      row.revision = (row.revision ?? 0) + 1;
+      recordMovement(tables, row, change, action === 'record_damage' ? 'damage' : 'adjustment', { reason: data.reason, note: data.note || null });
+      const result = { target: 'product', inventory: structuredClone(row) };
+      stockRequests.set(key, result);
+      onWrite?.({ table: 'inventory', method: 'RPC', row, action });
+      return json(route, result);
+    }
+    if (url.pathname.endsWith("/rpc/remove_product")) {
+      const { p_product_id: id } = request.postDataJSON();
+      const product = tables.products.find((row) => Number(row.id) === Number(id));
+      const stock = tables.inventory.find((row) => String(row.sku).toLowerCase() === String(product?.item_code).toLowerCase());
+      const referenced = stock && tables.orders.some((order) => (order.items ?? []).some((line) => Number(line.productId) === Number(stock.id)));
+      if (referenced) {
+        product.status = 'Archived';
+        onWrite?.({ table: 'products', method: 'RPC', row: product });
+        return json(route, { outcome: 'archived' });
+      }
+      tables.products.splice(tables.products.indexOf(product), 1);
+      if (stock) tables.inventory.splice(tables.inventory.indexOf(stock), 1);
+      onWrite?.({ table: 'products', method: 'RPC', row: product });
+      return json(route, { outcome: 'deleted' });
+    }
     if (url.pathname.includes("/rpc/")) return json(route, null);
 
     // /rest/v1/<table>  ->  ["", "rest", "v1", "<table>"]
     const key = url.pathname.split("/")[3];
-    const rows = tables[key];
+    const rows = key === 'customer_order_stats' ? customerStats(tables.orders) : tables[key];
     if (!rows) {
       return json(route, { message: `stub has no table "${key}"` }, 501);
     }
@@ -224,11 +424,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
     const method = request.method();
 
     if (method === "GET") {
-      const after = url.searchParams.get('id');
-      const selected = after?.startsWith('gt.') ? rows.filter((row) => row.id > Number(after.slice(3))) : rows;
-      const limit = Number(url.searchParams.get('limit') ?? 1000);
-      const offset = Number(url.searchParams.get('offset') ?? 0);
-      return json(route, [...selected].sort((a, b) => a.id - b.id).slice(offset, offset + limit));
+      return json(route, select(rows, url.searchParams));
     }
 
     // `?id=eq.1041` is the only filter these screens send on a write.
@@ -259,7 +455,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       const expected = url.searchParams.get('revision');
       if (expected && Number(expected.replace('eq.', '')) !== (rows[index].revision ?? 0)) return json(route, [], 200);
       rows[index] = { ...rows[index], ...body };
-      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
+      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
       onWrite?.({ table: key, method, row: rows[index] });
       return json(route, [rows[index]]);
     }

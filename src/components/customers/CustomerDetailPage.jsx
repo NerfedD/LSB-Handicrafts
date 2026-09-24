@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   ArrowLeft,
@@ -20,9 +20,8 @@ import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable, { StatTiles } from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
-import { ORDER_STATUS } from "../../utils/constants";
 import { orderLabel, orderTone } from "../../utils/copy";
-import { customerSummary, ordersByCustomer, ordersFor } from "../../utils/customers";
+import { customerSummary, DEFAULT_LOYALTY } from "../../utils/customers";
 import { formatLongDate, formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
@@ -38,12 +37,14 @@ import { formatLongDate, formatPeso, formatShortDate } from "../../utils/profile
  * details is housekeeping; the reason their screen is open is almost always
  * that they want to buy something.
  *
- * REMOVING ONE IS ADMIN-ONLY AND REFUSED WHILE AN ORDER IS OPEN.
+ * THEIR WHOLE HISTORY, NOT THE LAST FEW MONTHS. The app keeps only open and
+ * recent orders in memory, so this screen asks for this customer's own orders
+ * when it opens (`loadOrders`), and the totals come from the database's
+ * per-customer sums.
  *
- * What deleting a customer does here is narrower than it looks, and the copy
- * says so: `orders` has no foreign key to `customers` — it carries the name as
- * text — so past orders survive, keep their name, and stay in the orders list
- * and the takings. What is actually destroyed is the only record of how to
+ * REMOVING ONE IS ADMIN-ONLY AND REFUSED WHILE AN ORDER IS OPEN -- by the
+ * database as well as here. Past orders survive a removal and keep the name
+ * they were written under; what is destroyed is the only record of how to
  * REACH them: the phone number, the email, the address.
  *
  * Which is exactly why an open order blocks it. Losing the phone number of
@@ -54,7 +55,11 @@ import { formatLongDate, formatPeso, formatShortDate } from "../../utils/profile
  */
 export default function CustomerDetailPage({
   customer,
-  orders = [],
+  customerStats = new Map(),
+  loyalty = DEFAULT_LOYALTY,
+  /** Reads this customer's own orders: (customer) => Promise<{ ok, data }>. */
+  loadOrders,
+  canEdit = false,
   canDelete = false,
   onBack,
   onEdit,
@@ -64,23 +69,30 @@ export default function CustomerDetailPage({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
-  const { summary, theirOrders } = useMemo(() => {
-    if (!customer) return { summary: null, theirOrders: [] };
-    const index = ordersByCustomer(orders);
-    return {
-      summary: customerSummary(customer, index),
-      // The same lookup the summary uses. Reaching into the index with a bare
-      // name key here left this list empty for any customer whose orders were
-      // linked by id, while the chips beside it counted them correctly.
-      theirOrders: [...ordersFor(customer, index)].sort(
-        (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-      ),
-    };
-  }, [customer, orders]);
+  const [history, setHistory] = useState({ key: null, orders: [], failed: false });
+  const summary = useMemo(
+    () => (customer ? customerSummary(customer, customerStats, loyalty) : null),
+    [customer, customerStats, loyalty]
+  );
+
+  // Re-read when the totals move, so an order just written shows up here.
+  const historyKey = customer ? `${customer.id}:${customer.name}:${summary.orderCount}:${summary.openCount}` : null;
+  useEffect(() => {
+    if (!customer || !loadOrders) return undefined;
+    let cancelled = false;
+    loadOrders(customer).then((result) => {
+      if (!cancelled) setHistory({ key: historyKey, orders: result.ok ? result.data : [], failed: !result.ok });
+    });
+    return () => { cancelled = true; };
+    // historyKey covers the customer fields that decide which orders are theirs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [historyKey, loadOrders]);
+  const theirOrders = history.orders;
+  const historyLoaded = history.key === historyKey;
 
   if (!customer) return <NotFoundState noun="customer" onBack={onBack} />;
 
-  const openCount = theirOrders.filter((o) => o.status === ORDER_STATUS.PENDING).length;
+  const openCount = summary.openCount;
   const blocked = openCount > 0;
 
   async function runDelete() {
@@ -130,7 +142,11 @@ export default function CustomerDetailPage({
                 {
                   label: "Orders placed",
                   value: summary.orderCount,
-                  hint: summary.isRegular ? "A regular" : undefined,
+                  hint: summary.rewardEligible
+                    ? `Loyalty reward: ${loyalty.rewardPercent}% off their next order`
+                    : summary.isRegular
+                      ? "A regular"
+                      : undefined,
                 },
                 {
                   label: "Spent with us",
@@ -147,10 +163,12 @@ export default function CustomerDetailPage({
                 <ClipboardList className="h-5 w-5" />
                 Write them an order
               </Button>
-              <Button variant="outline" size="lg" onClick={() => onEdit(customer.id)}>
-                <Pencil className="h-5 w-5" />
-                Edit details
-              </Button>
+              {canEdit && (
+                <Button variant="outline" size="lg" onClick={() => onEdit(customer.id)}>
+                  <Pencil className="h-5 w-5" />
+                  Edit details
+                </Button>
+              )}
             </div>
           </Card>
 
@@ -159,13 +177,19 @@ export default function CustomerDetailPage({
               <CardTitle>What they have ordered</CardTitle>
             </CardHeader>
 
-            {theirOrders.length === 0 ? (
+            {!historyLoaded ? (
+              <EmptySlot className="py-10 text-[15px]">Loading their orders…</EmptySlot>
+            ) : history.failed ? (
+              <EmptySlot className="py-10 text-[15px]">
+                Their orders could not be loaded. Reopen this screen to try again.
+              </EmptySlot>
+            ) : theirOrders.length === 0 ? (
               <EmptySlot className="py-10 text-[15px]">
                 Nothing yet. Orders written for this customer will be listed here.
               </EmptySlot>
             ) : (
               <ul>
-                {theirOrders.slice(0, 8).map((order) => (
+                {theirOrders.map((order) => (
                   <li key={order.id}>
                     <button
                       type="button"

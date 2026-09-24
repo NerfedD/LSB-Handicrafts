@@ -20,6 +20,7 @@ import {
   Field,
   FormBand,
   FormFooter,
+  LockedField,
   PhotoSlot,
   Row,
 } from "../shared/forms";
@@ -50,7 +51,9 @@ import { suggestItemCode, suggestProductName } from "../../utils/productFormat";
  * ONE SCREEN WRITES TWO TABLES. "How many on the shelf now" belongs to the
  * inventory ledger and everything else to the catalogue, but that split is a
  * database fact and not a thing anybody should be asked to care about — so the
- * screen collects both and the save handler in App.jsx writes both.
+ * screen collects both and the save handler in App.jsx writes both. The count
+ * is asked for once, when the product is added; after that it changes only
+ * through recorded stock movements.
  */
 
 const EMPTY = {
@@ -354,16 +357,27 @@ export default function ProductFormPage({
           )}
 
           <Row>
-            <Field
-              label="How many on the shelf now"
-              hint="Count what is actually there today. You can correct it any time."
-            >
-              {number("stock", { step: "1", min: "0", placeholder: "0" })}
-            </Field>
+            {/* The opening count only. After that a count moves through recorded
+                movements -- "Correct the count" and "Record damage" on the
+                product's own screen -- so every change has a reason and a name. */}
+            {isEdit && stock?.tracked ? (
+              <LockedField
+                label="On the shelf now"
+                value={String(stock.onHand)}
+                hint="To change this, use “Correct the count” on the product's screen."
+              />
+            ) : (
+              <Field
+                label="How many on the shelf now"
+                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is actually there today."}
+              >
+                {number("stock", { step: "1", min: "0", placeholder: "0" })}
+              </Field>
+            )}
 
             <Field
-              label="Warn me when it drops below"
-              hint="Below this, it appears on the make list as running low."
+              label="Reorder point"
+              hint="At or below this, it shows as running low and goes on the make list."
             >
               {number("lowStockThreshold", { step: "1", min: "0", placeholder: "15" })}
             </Field>

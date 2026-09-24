@@ -81,11 +81,14 @@ export default function ProductListPage({
   loadError = null,
   onRetry,
   products = [],
+  /** Archived catalogue entries: hidden unless their chip is chosen. */
+  archived = [],
   inventory = [],
   // Not displayed here, but pending orders are what "set aside for orders"
   // means -- and available stock is on-hand minus that. See utils/productStock.
   orders = [],
   onView,
+  /** Absent for a role that cannot change products; the Edit buttons go with it. */
   onEdit,
   onAdd,
   onGoToDashboard,
@@ -106,9 +109,10 @@ export default function ProductListPage({
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);
 
+  const showArchived = group === "archived";
   const rows = useMemo(
-    () => shelfItems(products, inventory, orders),
-    [products, inventory, orders]
+    () => shelfItems(showArchived ? archived : products, inventory, orders),
+    [showArchived, archived, products, inventory, orders]
   );
   const counts = useMemo(
     () => stockCounts(products, inventory, orders),
@@ -129,7 +133,7 @@ export default function ProductListPage({
 
   const filtered = useMemo(() => {
     const list = rows.filter(({ product, stock }) => {
-      if (group !== "all" && stockGroup(stock) !== group) return false;
+      if (!showArchived && group !== "all" && stockGroup(stock) !== group) return false;
       if (kind !== "all" && (product.productType ?? "other") !== kind) return false;
       return matches(query, product.name, product.itemCode, product.size);
     });
@@ -153,7 +157,7 @@ export default function ProductListPage({
       default:
         return [...list].sort(byName);
     }
-  }, [rows, group, kind, query, sort]);
+  }, [rows, group, showArchived, kind, query, sort]);
 
   const paged = usePaged(filtered);
 
@@ -166,6 +170,9 @@ export default function ProductListPage({
     // teaches people to ignore the chip row.
     ...(counts.untracked > 0
       ? [{ value: "untracked", label: "Stock not tracked", count: counts.untracked }]
+      : []),
+    ...(archived.length > 0
+      ? [{ value: "archived", label: "No longer sold", count: archived.length }]
       : []),
   ];
 
@@ -276,10 +283,12 @@ export default function ProductListPage({
                           <Eye className="h-4.5 w-4.5" />
                           View
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => onEdit(product.id)}>
-                          <Pencil className="h-4.5 w-4.5" />
-                          Edit
-                        </Button>
+                        {onEdit && (
+                          <Button variant="outline" size="sm" onClick={() => onEdit(product.id)}>
+                            <Pencil className="h-4.5 w-4.5" />
+                            Edit
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -338,10 +347,12 @@ export default function ProductListPage({
                     <Eye className="h-5 w-5" />
                     View
                   </Button>
-                  <Button variant="outline" className="flex-1" onClick={() => onEdit(product.id)}>
-                    <Pencil className="h-5 w-5" />
-                    Edit
-                  </Button>
+                  {onEdit && (
+                    <Button variant="outline" className="flex-1" onClick={() => onEdit(product.id)}>
+                      <Pencil className="h-5 w-5" />
+                      Edit
+                    </Button>
+                  )}
                 </div>
               </RecordCard>
             ))}

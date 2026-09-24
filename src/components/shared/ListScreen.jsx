@@ -27,8 +27,9 @@ export function StickyCta({ children, className }) {
   return (
     <div
       className={cn(
-        "pb-safe fixed inset-x-0 bottom-14 z-30 border-t border-card bg-surface/95 px-4 py-3 backdrop-blur tab:hidden",
-        
+        // Solid, not blurred: a blur behind a fixed bar is recomputed on every
+        // scroll frame, and at 95% opacity it was barely visible anyway.
+        "pb-safe fixed inset-x-0 bottom-14 z-30 border-t border-card bg-surface px-4 py-3 tab:hidden",
         className
       )}
     >

@@ -248,7 +248,8 @@ export function QuickActions({ actions, title = "Things you do often", className
     <Card className={cn("p-5", className)}>
       <CardTitle>{title}</CardTitle>
       <div className="flex flex-col gap-2.5 pt-4">
-        {actions.map((action, index) => (
+        {/* An action this person cannot take is left out, not shown dead. */}
+        {actions.filter((action) => action.onClick).map((action, index) => (
           <Button
             key={action.label}
             variant={index === 0 ? "cobalt" : "outline"}

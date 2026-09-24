@@ -260,21 +260,17 @@ test.describe("products & stock", () => {
       .getByRole("button", { name: "View" })
       .click();
 
-    await expect(
-      page.getByRole("heading", { name: "Remove this product for good" })
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Remove this product" })).toBeVisible();
     await expect(page.getByText(/promised to an order that has not gone out/)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Remove Styro Ball 4 inch/ })).toHaveCount(0);
 
     expectClean();
   });
 
-  test("removing a product takes its stock record with it", async ({ page }) => {
-    // Nothing is waiting on the 6 inch ball -- its only order is Completed --
-    // so removal is offered. Both tables are watched, because the whole point
-    // of this delete is that a catalogue entry and its shelf count are one
-    // product: leaving the ledger row behind would strand a stock record no
-    // screen can reach.
+  test("removing a product that has been sold keeps it, as no longer sold", async ({ page }) => {
+    // Nothing is waiting on the 6 inch ball, but order #1043 sold 25 of them, so
+    // the database archives it rather than deleting history. Nothing is deleted
+    // from either table; the decision is one call to remove_product.
     const deleted = [];
     page.on("request", (request) => {
       if (request.method() === "DELETE") deleted.push(new URL(request.url()).pathname);
@@ -285,9 +281,7 @@ test.describe("products & stock", () => {
       .getByRole("button", { name: "View" })
       .click();
 
-    await expect(page.getByText(/the stock record against SB-060 goes with it/)).toBeVisible();
-    await expect(page.getByText(/Past orders are NOT changed/)).toBeVisible();
-
+    await expect(page.getByText(/it is kept as .no longer sold. with all of its history/)).toBeVisible();
     await page.getByRole("button", { name: "Remove Styro Ball 6 inch" }).click();
 
     // The confirm names the record and says what survives.
@@ -295,12 +289,29 @@ test.describe("products & stock", () => {
     await expect(page.getByText(/Past orders keep their lines/)).toBeVisible();
     await page.getByRole("button", { name: "Yes, remove it" }).click();
 
+    await expect(page.getByText("Styro Ball 6 inch is no longer sold.")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1, name: "Products & stock" })).toBeVisible();
     await expect(page.getByRole("table").getByText("Styro Ball 6 inch")).toHaveCount(0);
     await expect(page.getByRole("table").getByText("Styro Ball 4 inch")).toBeVisible();
+    expect(deleted).toEqual([]);
 
-    expect(deleted.filter((path) => path.endsWith("/products"))).toHaveLength(1);
-    expect(deleted.filter((path) => path.endsWith("/inventory"))).toHaveLength(1);
+    // Still there, under its own chip, and it can be put back on sale.
+    await page.getByRole("radio", { name: /No longer sold/ }).click();
+    await page.getByRole("row", { name: /Styro Ball 6 inch/ }).getByRole("button", { name: "View" }).click();
+    await page.getByRole("button", { name: "Put it back on sale" }).click();
+    await expect(page.getByText("Styro Ball 6 inch is on sale again.")).toBeVisible();
+
+    expectClean();
+  });
+
+  test("removing a product nothing refers to deletes both halves together", async ({ page }) => {
+    await page.getByRole("row", { name: /Styro Sheet 1 inch/ }).getByRole("button", { name: "View" }).click();
+    await page.getByRole("button", { name: "Remove Styro Sheet 1 inch" }).click();
+    await page.getByRole("button", { name: "Yes, remove it" }).click();
+
+    await expect(page.getByText("Styro Sheet 1 inch was removed.")).toBeVisible();
+    await expect(page.getByRole("table").getByText("Styro Sheet 1 inch", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: /No longer sold/ })).toHaveCount(0);
 
     expectClean();
   });
@@ -518,7 +529,7 @@ test.describe("money going back, and prices put right", () => {
     await page.getByRole("radio", { name: /Refunded/ }).click();
     await page.getByRole("button", { name: "Open" }).first().click();
 
-    await expect(page.getByRole("heading", { name: "Money given back" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Returns" })).toBeVisible();
     await expect(page.getByRole("main").getByText("They changed their mind")).toBeVisible();
     // The disposition is the part that matters, so it is on the screen and not
     // only in the database.
@@ -775,14 +786,15 @@ test.describe("what a role is not offered", () => {
     expectClean();
   });
 
-  test("a non-admin sees the supplier but not the way to remove them", async ({
+  test("a non-manager sees the supplier but not the way to change or remove them", async ({
     page,
     baseURL,
   }) => {
     // Sales Staff reach suppliers -- knowing who to ring for materials is
-    // everyone's job -- but removing one is not theirs. The RLS policy on
-    // public.suppliers is the real gate; this checks the screen agrees with it
-    // rather than offering a button the database would refuse.
+    // everyone's job -- but managing the supplier list is a manager's, as
+    // ordering from them already was. The RLS policies on public.suppliers are
+    // the real gate; this checks the screen agrees with them rather than
+    // offering a button the database would refuse.
     //
     // Re-stubbed as Juan: the route registered here takes precedence over the
     // administrator stub from the top-level beforeEach.
@@ -796,7 +808,7 @@ test.describe("what a role is not offered", () => {
       .click();
 
     await expect(page.getByRole("heading", { name: "Davao Foam Supply" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit details" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Edit details" })).toHaveCount(0);
 
     await expect(
       page.getByRole("heading", { name: "Remove this supplier for good" })

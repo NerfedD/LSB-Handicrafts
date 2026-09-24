@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { ArrowLeft, Boxes, ClipboardList, Hammer, Layers, Package, Plus, Truck } from '../icons';
+import { ArrowLeft, Boxes, ClipboardCheck, ClipboardList, Hammer, Layers, Package, PackageX, Plus, Truck } from '../icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +14,14 @@ import { FilterBar } from '../shared/ListScreen';
 import { FilterChips, SearchField } from '../shared/filters';
 import { EmptyState, ErrorState, LoadingState, NotFoundState } from '../shared/PageStates';
 import { productIcon } from '../shared/productIcons';
+import StockHistory from '../shared/StockHistory';
+import useStockMovements from '../../hooks/useStockMovements';
+import { can } from '../../utils/permissions';
 import {
   BATCH_LABEL, BATCH_TONE, MATERIAL_ORDER_LABEL, MATERIAL_ORDER_TONE, materialKindLabel,
 } from '../../utils/copy';
 import {
-  availableMaterial, freeMaterial, materialShortfall, pluralUnit, productionTotals, units,
+  availableMaterial, freeMaterial, materialShortfall, needsReorder, pluralUnit, productionTotals, units,
 } from '../../utils/production';
 import { formatPeso, formatShortDate } from '../../utils/profileFormat';
 import { makeList } from '../../utils/dashboard';
@@ -27,6 +30,7 @@ import { MaterialDialog, RecipeDialog, SupplierOrderDialog, TransferDialog, Work
 import ReceiveSupplierDeliveryDialog from '../suppliers/ReceiveSupplierDeliveryDialog';
 import CompleteBatchDialog from '../products/CompleteBatchDialog';
 import StartBatchDialog from '../products/StartBatchDialog';
+import StockChangeDialog from '../products/StockChangeDialog';
 
 /**
  * The workshop's four screens: raw materials, what arrived from suppliers,
@@ -150,7 +154,7 @@ function materialStatus(material, batches) {
   if (short > 0) {
     return { free, short, reserved, tone: 'red', mark: 'x', label: `Short by ${units(short, material.unit)}` };
   }
-  if (free <= material.low_stock_threshold) {
+  if (needsReorder(material, batches)) {
     return { free, short, reserved, tone: 'amber', mark: 'clock', label: 'Running low' };
   }
   return { free, short, reserved, tone: 'green', mark: 'check', label: 'Enough material' };
@@ -183,16 +187,24 @@ function MaterialFigures({ material, batches }) {
   );
 }
 
+/** One material's stock history, re-read whenever its count changes. */
+function MaterialHistory({ material }) {
+  const movements = useStockMovements({ rawMaterialId: material.id, balance: material.stock });
+  return <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error} />;
+}
+
 /* -------------------------------------------------------------------------- */
 
-export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onContext, onNavigate, change }) {
+export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onStockCommand, onContext, onNavigate, change, initialFilter }) {
   const { materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff } = data;
   const [dialog, setDialog] = useState(null);
-  const [filter, setFilter] = useState('active');
+  const [filter, setFilter] = useState(initialFilter ?? (section === 'raw-materials' ? 'all' : 'active'));
   const [query, setQuery] = useState('');
 
-  const manager = ['Admin', 'Manager'].includes(profile.role);
-  const canMake = manager || profile.role === 'Production Staff';
+  const manager = can(profile.role, 'manageSuppliers');
+  const canMake = can(profile.role, 'makeBatches');
+  const canRecordDamage = can(profile.role, 'recordDamage');
+  const canCorrectStock = can(profile.role, 'correctStock');
   const production = section === 'production';
   const reports = section === 'production-report';
   const purchasing = section === 'raw-material-orders';
@@ -251,9 +263,12 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
    */
   const justChanged = (kind, id) => Boolean(change && change.kind === kind && change.id === id);
 
-  const displayMaterials = materials.filter((m) => matches(`${m.name} ${m.sku}`));
+  const toReorder = materials.filter((m) => needsReorder(m, batches));
+  const displayMaterials = materials
+    .filter((m) => filter !== 'reorder' || needsReorder(m, batches) || justChanged('material', m.id))
+    .filter((m) => matches(`${m.name} ${m.sku}`));
   const displayOrders = materialOrders
-    .filter((o) => (filter === 'all' ? true : filter === 'claims' ? o.claim_status === 'Needs review' : !['Arrived', 'Cancelled'].includes(o.status)) || justChanged('order', o.id))
+    .filter((o) => (filter === 'all' ? true : filter === 'claims' ? o.claim_status === 'Needs review' : !['Arrived', 'Cancelled'].includes(o.status)) || justChanged('material-order', o.id))
     .filter((o) => matches(`${mat(o.raw_material_id)?.name} ${supplierName(o.supplier_id)} ${o.id}`))
     .slice()
     .reverse();
@@ -314,7 +329,12 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           { value: 'active', label: 'Still waiting', count: unfinished.length },
           { value: 'all', label: 'All records', count: batches.length },
         ]
-      : null;
+      : materialsList
+        ? [
+            { value: 'all', label: 'All materials', count: materials.length },
+            { value: 'reorder', label: 'Needs ordering', count: toReorder.length, tone: toReorder.length ? 'amber' : undefined },
+          ]
+        : null;
 
   /* ------------------------------------------------------------------------ */
 
@@ -360,6 +380,16 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           {manager && (
             <Button variant="outline" onClick={() => setDialog({ kind: 'material', record: m })}>
               <ClipboardList className="h-4.5 w-4.5" />Change details
+            </Button>
+          )}
+          {canRecordDamage && m.stock > 0 && (
+            <Button variant="outline" onClick={() => setDialog({ kind: 'stock', mode: 'damage', material: m })}>
+              <PackageX className="h-4.5 w-4.5" />Record damage
+            </Button>
+          )}
+          {canCorrectStock && (
+            <Button variant="outline" onClick={() => setDialog({ kind: 'stock', mode: 'correct', material: m })}>
+              <ClipboardCheck className="h-4.5 w-4.5" />Correct the count
             </Button>
           )}
           {canTransfer && (
@@ -415,7 +445,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                 chips={filterChips}
                 value={filter}
                 onChange={setFilter}
-                label={purchasing ? 'Which deliveries to show' : 'Which batches to show'}
+                label={purchasing ? 'Which deliveries to show' : production ? 'Which batches to show' : 'Which materials to show'}
               />
             )}
           </FilterBar>
@@ -436,6 +466,8 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
             description="Add the sheets, blocks and supplies the workshop builds with, so the floor and the office are counting the same stock."
             query={query.trim()}
             onClearSearch={clearSearch}
+            filtered={filter !== 'all'}
+            onClearFilters={() => setFilter('all')}
           />
         ) : (
           <div className="grid gap-3.5 lg:grid-cols-2">
@@ -449,6 +481,9 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {detail && material && (
         <div className="flex flex-col gap-3.5">
           {renderMaterialCard(material, { standalone: false })}
+          <SectionCard title="Stock history">
+            <MaterialHistory material={material} />
+          </SectionCard>
           <SectionCard title="Where this material was used">
             {(() => {
               const rows = usage.filter((u) => lots.some((l) => l.id === u.lot_id && l.raw_material_id === materialId));
@@ -513,6 +548,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                         <CardTitle>{mat(o.raw_material_id)?.name}</CardTitle>
                         <p className="pt-0.5 text-[15px] text-muted">
                           {supplierName(o.supplier_id)} · <Mono>Order #{o.id}</Mono>
+                          {o.delivery_reference ? <> · Their reference <Mono>{o.delivery_reference}</Mono></> : null}
                         </p>
                       </div>
                     </div>
@@ -818,6 +854,15 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {dialog?.kind === 'receive' && <ReceiveSupplierDeliveryDialog order={dialog.record} material={mat(dialog.record.raw_material_id)} profile={profile} onSave={save('receive_delivery')} onClose={close} />}
       {dialog?.kind === 'complete' && <CompleteBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} inventory={inventory.find((i) => i.id === dialog.record.inventory_id)} material={mat(dialog.record.raw_material_id)} batches={batches} profile={profile} onSave={save('complete_batch')} onClose={close} />}
       {dialog?.kind === 'start' && <StartBatchDialog {...data} productId={dialog.productId} needed={dialog.needed} profile={profile} onSave={save('start_batch')} onClose={close} />}
+      {dialog?.kind === 'stock' && (
+        <StockChangeDialog
+          mode={dialog.mode}
+          target="material"
+          record={{ id: dialog.material.id, name: dialog.material.name, stock: dialog.material.stock, unit: dialog.material.unit }}
+          onSave={(values, key) => onStockCommand(dialog.mode === 'damage' ? 'record_damage' : 'correct_count', values, key)}
+          onClose={close}
+        />
+      )}
       {dialog?.kind === 'confirm' && <WorkshopConfirmation title={dialog.title} description={dialog.description} initial={dialog.initial} action="Confirm this step" profile={profile} onSave={save(dialog.action)} onClose={close} />}
       {dialog?.kind === 'claim' && <WorkshopConfirmation title="Review supplier claim" description={`Order #${dialog.record.id}. Record the agreed outcome; received stock and damage history are kept.`} initial={{ id: dialog.record.id }} action="Save claim outcome" needsReason profile={profile} onSave={save('review_claim')} onClose={close} />}
       {dialog?.kind === 'lots' && (

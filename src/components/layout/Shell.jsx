@@ -40,7 +40,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar } from "../shared/Chip";
 import { AlertBadge, CountBadge } from "../shared/StatusPill";
-import { isAdminRole } from "../../utils/permissions";
+import { can, isAdminRole } from "../../utils/permissions";
 import { NAV_GROUPS, NAV_TREE, PRIMARY_ACTION, SECTION_OF } from "../../utils/navigation";
 import { DASHBOARD_VIEW } from "../../utils/constants";
 import useTheme from "../../hooks/useTheme";
@@ -149,7 +149,8 @@ export default function Shell({
   // chrome has to grow with it, or a 40px greeting sits under a 23px title.
   const isLarge = dashboardView === DASHBOARD_VIEW.LARGE && view === "dashboard";
 
-  const primary = PRIMARY_ACTION[view];
+  const action = PRIMARY_ACTION[view];
+  const primary = action && (!action.capability || can(profile?.role, action.capability)) ? action : null;
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-paper dark:bg-dk-canvas">
