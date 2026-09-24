@@ -37,14 +37,27 @@ const asUnits = (value) => (/^\d{1,9}$/.test(String(value).trim()) ? Number(valu
  * 'replace'), so the count here is a request, not the arithmetic.
  *
  * HOW MUCH. Only what the customer actually received on a line can come back,
- * so lines with nothing delivered are not offered.
+ * less whatever has already been replaced on it, so lines with nothing left to
+ * replace are not offered. The database works the same sum out from the saved
+ * order and refuses anything above it; this is the courtesy copy, and the two
+ * must agree.
  */
 export default function ReplacementDialog({ open, onOpenChange, order, inventory = [], onSave }) {
   const lines = useMemo(
-    () =>
-      stockLines(order)
-        .map((line, index) => ({ ...line, index, held: committedOf(line) }))
-        .filter((line) => line.held > 0),
+    () => {
+      const replaced = new Map();
+      for (const entry of order?.replacementHistory ?? []) {
+        const at = Number(entry?.lineIndex);
+        if (Number.isInteger(at)) replaced.set(at, (replaced.get(at) ?? 0) + (Number(entry?.quantity) || 0));
+      }
+      return stockLines(order)
+        .map((line, index) => ({
+          ...line,
+          index,
+          held: Math.max(0, committedOf(line) - (replaced.get(index) ?? 0)),
+        }))
+        .filter((line) => line.held > 0);
+    },
     [order]
   );
   const shelf = useMemo(

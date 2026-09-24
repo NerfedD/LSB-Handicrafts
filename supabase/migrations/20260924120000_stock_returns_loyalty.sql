@@ -737,6 +737,7 @@ declare
   ordered numeric;
   voided numeric;
   held numeric;
+  already numeric;
   qty integer;
   replacement_qty integer;
   disposition text := p_data ->> 'disposition';
@@ -759,6 +760,14 @@ begin
   voided := coalesce((line ->> 'voidedUnits')::numeric, 0);
   held := coalesce((line ->> 'committedUnits')::numeric,
     case when ord.stock_committed_at is not null then greatest(0, ordered - voided) else 0 end);
+  -- Take off what has already been replaced on this line. The order's lines and
+  -- money are deliberately left alone by a replacement, so replacement_history
+  -- is the only record that it happened: without this, `held` never shrinks and
+  -- the same line can be replaced over and over, moving stock every time.
+  already := coalesce((select sum(coalesce((e ->> 'quantity')::numeric, 0))
+    from jsonb_array_elements(ord.replacement_history) e
+    where (e ->> 'lineIndex')::integer = line_index), 0);
+  held := greatest(0, held - already);
 
   if coalesce(p_data ->> 'quantity', '') !~ '^[0-9]{1,9}$' then raise exception 'Enter how many came back.'; end if;
   qty := (p_data ->> 'quantity')::integer;

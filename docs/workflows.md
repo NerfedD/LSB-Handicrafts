@@ -64,7 +64,7 @@ Moving selling stock into raw materials is an explicit manager action, refused w
 Both are Admin/Manager actions on the order screen, both are validated by `order_command`, and both appear in one *Returns* history on the order with who handled them and when (stamped by the database).
 
 - **Refund:** how many of each line came back, what happened to them (*Back on the shelf* or *Thrown away*), the amount, how it was paid and why. Only goods that went out can go back on the shelf. The refund must add exactly its amount to the order's refunded total and never exceed what was paid. Giving back everything calls the order off; a partial refund never changes the status.
-- **Replacement:** which line, how many came back (at most what the customer received on it), whether they can be sold again, why, and what goes out instead (normally the same product; another product and quantity can be chosen). Sellable returns go back on the shelf; the replacement comes off it once. No money moves and the order total and status are unchanged. Refused for a called-off order or when the replacement is not on the shelf.
+- **Replacement:** which line, how many came back (at most what the customer received on that line, less anything already replaced on it, so one line cannot be replaced twice over), whether they can be sold again, why, and what goes out instead (normally the same product; another product and quantity can be chosen). Sellable returns go back on the shelf; the replacement comes off it once. No money moves and the order total and status are unchanged. Refused for a called-off order or when the replacement is not on the shelf.
 
 ## Customers and loyalty
 

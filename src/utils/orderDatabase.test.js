@@ -239,6 +239,15 @@ describe('replacements', () => {
     expect(await stocks()).toEqual([63, 20]);
   });
 
+  it('counts what has already gone back, so one line cannot be replaced twice over', async () => {
+    await command('complete', complete(await order()));
+    await command('replace', replace(await order(), { quantity: 4 }));
+    expect(await stocks()).toEqual([56, 20]);
+    await expect(command('replace', replace(await order(), { quantity: 4 })))
+      .rejects.toThrow(/up to 0 on this line/);
+    expect(await stocks()).toEqual([56, 20]);
+  });
+
   it('reads legacy orders that were stamped done before the per-line counters existed', async () => {
     await signIn(db, null);
     await db.exec(`update public.orders set status = 'Completed', stock_committed_at = now() where id = 1`);
