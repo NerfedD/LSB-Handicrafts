@@ -63,10 +63,10 @@ export const BATCH_TONE = {
 
 export const TRANSIT_REASONS = ['Broken edges/corners', 'Crushed by strap/cargo', 'Water/dirt damage', 'Wrong density/thickness'];
 export const DEFECT_REASONS = [
-  { value: 'Broke during hotwire/cutting', label: 'Nabasag habang pinuputol — broke during cutting' },
-  { value: 'Material void / density defect', label: 'May butas / mahina ang styro — material defect' },
-  { value: 'Carving / dimension error', label: 'Maling tabas / sukat — wrong cut or size' },
-  { value: 'Floor / handling damage', label: 'Nadiin / naapakan sa sahig — handling damage' },
+  { value: 'Broke during hotwire/cutting', label: 'Broke while being cut' },
+  { value: 'Material void / density defect', label: 'Holes or weak foam in the material' },
+  { value: 'Carving / dimension error', label: 'Cut to the wrong shape or size' },
+  { value: 'Floor / handling damage', label: 'Dented or stepped on while being handled' },
 ];
 
 // ---- stock -----------------------------------------------------------------
@@ -300,6 +300,7 @@ const MOVEMENT_LABEL = {
   return: "Came back from a customer",
   replacement: "Sent out as a replacement",
   damage: "Written off as damaged",
+  damage_undone: "Damage record undone",
   adjustment: "Count corrected",
   delivery: "Delivered by a supplier",
   production: "Made in the workshop",

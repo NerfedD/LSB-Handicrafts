@@ -11,7 +11,7 @@ export default function ReceiveSupplierDeliveryDialog({ order, material, profile
       const counted = v.arrived !== '' && counts !== null;
       return <>
         <WorkshopField label="Quantity physically unloaded" hint="Count everything unloaded, including damaged sheets. Enter zero if nothing arrived." type="number" min="0" max="2000000000" step="1" required value={v.arrived} onChange={(e) => change('arrived', e.target.value)} />
-        <WorkshopField label="Nasira sa byahe / Damaged on arrival" hint="These cannot be used and will not go into stock." type="number" min="0" max={v.arrived || 0} step="1" required value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
+        <WorkshopField label="Damaged on arrival" hint="These cannot be used and will not go into stock." type="number" min="0" max={v.arrived || 0} step="1" required value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
         {Number(v.damaged) > 0 && <WorkshopField label="What happened on the way?" hint="Choose the main reason for the supplier claim." required options={TRANSIT_REASONS.map((r) => ({ value: r, label: r }))} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
         <WorkshopField label="Their delivery receipt or invoice number" hint="Optional. Printed on the supplier's paperwork, so the delivery can be found again." maxLength={80} value={v.reference} onChange={(e) => change('reference', e.target.value)} />
         {counted ? <>

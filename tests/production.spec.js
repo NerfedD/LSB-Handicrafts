@@ -27,7 +27,7 @@ test('receiving shows usable math and preserves its request key after a network 
   await page.getByRole('button', { name: 'Receive delivery', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Quantity physically unloaded').fill('50');
-  await dialog.getByLabel('Nasira sa byahe').fill('2');
+  await dialog.getByLabel('Damaged on arrival').fill('2');
   await dialog.getByLabel('What happened on the way?').selectOption('Broken edges/corners');
   await expect(dialog).toContainText('50 arrived − 2 damaged = 48 usable sheet');
   await expect(dialog).toContainText('Supplier claim flagged for manager review');
@@ -62,9 +62,9 @@ test('finishing a batch sends one transaction and shows 95 good pieces with 45 s
   await page.getByRole('button', { name: 'Finish batch & quality check' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Total pieces produced').fill('100');
-  await dialog.getByLabel('Ilan ang nasira?').fill('5');
+  await dialog.getByLabel('Damaged pieces').fill('5');
   await dialog.getByLabel('Why were they damaged?').selectOption('Broke during hotwire/cutting');
-  await expect(dialog).toContainText('Processed: 100 − Nasira: 5 = 95 pieces to shelf');
+  await expect(dialog).toContainText('Processed: 100 − damaged: 5 = 95 pieces to shelf');
   await expect(dialog).toContainText('Deduct 45 sheet');
   await expect(dialog).toContainText('Checked and approved by Maria Santos');
   await dialog.getByRole('button', { name: 'Finish batch and update stock' }).click();

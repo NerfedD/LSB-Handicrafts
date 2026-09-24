@@ -17,9 +17,9 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
       const counted = v.produced !== '' && counts !== null;
       return <>
         <WorkshopField label="Total pieces produced" hint="Include good pieces and damaged pieces. Zero records a failed run that still used material." required type="number" min="0" max="2000000000" step="1" value={v.produced} onChange={(e) => change('produced', e.target.value)} />
-        <WorkshopField label="Ilan ang nasira? / Damaged pieces" hint="Count pieces that cannot be sold." required type="number" min="0" max={v.produced || 0} step="1" value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
+        <WorkshopField label="Damaged pieces" hint="Count pieces that cannot be sold." required type="number" min="0" max={v.produced || 0} step="1" value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
         {(Number(v.damaged) > 0 || v.produced === '0') && <WorkshopField label="Why were they damaged?" hint="Choose the main cause so the manager can follow up." required options={DEFECT_REASONS} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
-        {counted && <ReviewBox arrives><strong className="font-extrabold text-ink">Processed: {v.produced} − Nasira: {v.damaged} = {counts.good} pieces to shelf.</strong><p>{counts.yield.toFixed(1)}% good pieces. {size > 1 ? `${counts.shelfUnits} selling packs of ${size} pieces.` : ''}</p></ReviewBox>}
+        {counted && <ReviewBox arrives><strong className="font-extrabold text-ink">Processed: {v.produced} − damaged: {v.damaged} = {counts.good} pieces to shelf.</strong><p>{counts.yield.toFixed(1)}% good pieces. {size > 1 ? `${counts.shelfUnits} selling packs of ${size} pieces.` : ''}</p></ReviewBox>}
         <WorkshopField label="Raw material actually consumed" hint={`${material.name}: ${units(freeMaterial(material, batches, batch.id), material.unit)} available for this batch. Adjust the planned count if needed.`} required type="number" min="1" max={availableMaterial(material, batches, batch.id)} step="1" value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
         {/* Held back until there is a count to state. It used to read "Add —
             good pieces to Styro Ball 4 inch" before anybody had typed, which
