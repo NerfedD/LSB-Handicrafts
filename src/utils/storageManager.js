@@ -629,6 +629,48 @@ export async function removeMaterial(material) {
   return { ok: true, outcome: data?.outcome ?? 'deleted' };
 }
 
+// ---- categories and product photos ----------------------------------------
+
+/**
+ * The category list. Read here; changed only through category_command, which
+ * keeps one spelling per category (see the migration of 2026-09-29).
+ */
+export const categoriesCollection = {
+  table: 'product_categories',
+  fromRow: (r) => ({ id: r.id, name: r.name }),
+  load: () => readRows('product_categories', () => loadAllRows('product_categories'), (r) => ({ id: r.id, name: r.name })),
+};
+
+/**
+ * Adds, renames or removes a category. An add that matches an existing name in
+ * any capitalisation answers with that category rather than a second one.
+ */
+export async function runCategoryCommand(action, data) {
+  const { data: result, error } = await supabase.rpc('category_command', { p_action: action, p_data: data });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't change the category list.") };
+  return { ok: true, data: result };
+}
+
+/** One product's photo as a data URL, or null when it has none. */
+export async function fetchProductImage(productId) {
+  try {
+    const { data, error } = await supabase.from('product_images').select('*').eq('product_id', productId).limit(1);
+    if (error) throw error;
+    const row = data?.[0] ?? null;
+    return { ok: true, data: row ? { dataUrl: row.data_url, updatedAt: row.updated_at, updatedBy: row.updated_by } : null };
+  } catch (error) {
+    console.error('Failed to load the product photo:', error);
+    return { ok: false, data: null, error };
+  }
+}
+
+/** Sets or replaces a product's photo; `dataUrl` null removes it. */
+export async function saveProductImage(productId, dataUrl) {
+  const { data, error } = await supabase.rpc('save_product_image', { p_product_id: productId, p_data_url: dataUrl });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't save the photo.") };
+  return { ok: true, data };
+}
+
 /** Puts an archived raw material back in use. */
 export async function restoreMaterial(material) {
   const { data, error } = await supabase.rpc('restore_material', {

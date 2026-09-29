@@ -5,6 +5,7 @@ import { can, canAccess } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
   activityLogCollection,
+  categoriesCollection,
   customersCollection,
   customerStatsCollection,
   deliveriesCollection,
@@ -18,8 +19,10 @@ import {
   removeProduct,
   removeMaterial,
   restoreMaterial,
+  runCategoryCommand,
   saveOwnDashboardView,
   saveOwnProfile,
+  saveProductImage,
   staffCollection,
   suppliersCollection,
 } from "./utils/storageManager";
@@ -29,7 +32,7 @@ import { formatPeso, nowIso } from "./utils/profileFormat";
 import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
 import { provisionAccount } from "./utils/accounts";
 import { createCommandRunner, runCommand } from "./utils/commands";
-import { CHROMELESS_VIEWS, metaForView, PRIMARY_ACTION } from "./utils/navigation";
+import { CHROMELESS_VIEWS, metaForView } from "./utils/navigation";
 import { collectionsFor, DIALOG_NEEDS } from "./utils/screenData";
 import { DEFAULT_LOYALTY, statsIndex } from "./utils/customers";
 import { DASHBOARD_VIEW, DELIVERY_STAGE, ORDER_STATUS } from "./utils/constants";
@@ -74,6 +77,7 @@ const ProductListPage = lazy(() => import("./components/products/ProductListPage
 const ProductDetailPage = lazy(() => import("./components/products/ProductDetailPage"));
 const ProductFormPage = lazy(() => import("./components/products/ProductFormPage"));
 const StartBatchDialog = lazy(() => import("./components/products/StartBatchDialog"));
+const CategoriesDialog = lazy(() => import("./components/products/CategoriesDialog"));
 const WorkshopPage = lazy(() => import("./components/production/WorkshopPage"));
 
 /**
@@ -86,6 +90,43 @@ const WorkshopPage = lazy(() => import("./components/production/WorkshopPage"));
  * replay of something already acknowledged.
  */
 const LANDING_WINDOW_MS = 6000;
+
+/**
+ * What each workshop command did, in words: what changed, and what it means
+ * for stock. "Workshop records saved." said neither.
+ */
+function workshopMessage(action, payload, saved) {
+  switch (action) {
+    case 'save_material':
+      return payload.id ? [`${saved.name} was updated.`, 'The count on hand did not change.']
+        : [`${saved.name} was added as ${saved.sku}.`, 'It starts at 0 on hand. Order it under Purchasing to add stock.'];
+    case 'save_order':
+      return payload.id ? [`Supplier order #${saved.id} was updated.`, 'Stock is added when the delivery is received.']
+        : [`Supplier order #${saved.id} was placed.`, 'Nothing is added to stock until the delivery is received and counted.'];
+    case 'order_status':
+      return saved.status === 'Cancelled' ? [`Supplier order #${saved.id} was cancelled.`, 'Stock did not change. The order stays in the history.']
+        : [`Supplier order #${saved.id} is on the way.`, 'Receive it when it arrives to add the stock.'];
+    case 'receive_delivery':
+      return [`Order #${saved.id} was received: ${saved.quantity_usable} usable added to stock.`,
+        saved.claim_status === 'Needs review' ? 'It did not match the order, so a supplier claim is waiting for a manager.' : 'It matched the order.'];
+    case 'review_claim':
+      return [`The claim on order #${saved.id} is settled.`, 'Stock did not change.'];
+    case 'save_recipe':
+      return ['The recipe was saved.', 'New batches of this product start from it.'];
+    case 'start_batch':
+      return [`${saved.batch_code} is planned.`, 'Its material is set aside. Nothing is deducted until the batch is finished.'];
+    case 'batch_status':
+      return saved.status === 'Cancelled' ? [`${saved.batch_code} was cancelled.`, 'The material it had set aside is free again. No stock was deducted.']
+        : saved.status === 'In Progress' ? [`${saved.batch_code} is in production.`, 'Its material stays set aside until it is finished.']
+          : [`${saved.batch_code} is ready for quality check.`, 'Finish it after the check to update stock.'];
+    case 'complete_batch':
+      return [`${saved.batch_code} is completed.`, `${saved.good_output_qty} good pieces were added to Products & stock, and ${saved.raw_material_used_qty} units of material were deducted.`];
+    case 'transfer_stock':
+      return ['The stock was moved to raw materials.', 'Both counts and both stock histories show the move.'];
+    default:
+      return ['The change was saved.', undefined];
+  }
+}
 
 /**
  * Which kind of record each workshop command hands back, so the screen knows
@@ -302,6 +343,7 @@ export default function App() {
   const [refundFor, setRefundFor] = useState(null); // orderId | null
   const [replaceFor, setReplaceFor] = useState(null); // orderId | null
   const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
   const [adjustPriceFor, setAdjustPriceFor] = useState(null); // orderId | null
   const [busy, setBusy] = useState(false);
 
@@ -359,6 +401,7 @@ export default function App() {
   const deliveriesState = useSupabaseCollection(deliveriesCollection,
     use(null, { since: historySince, pinned: pinnedDeliveryIds, pinnedOrders: pinnedOrderIds }));
   const activityState = useSupabaseCollection(activityLogCollection, use("activity", { limit: activityLimit }));
+  const categoriesState = useSupabaseCollection(categoriesCollection, use("categories"));
   const rawMaterialsState = useSupabaseCollection(rawMaterialsCollection, use("rawMaterials"));
   const rawMaterialOrdersState = useSupabaseCollection(rawMaterialOrdersCollection, use("materialOrders"));
   const productionBatchesState = useSupabaseCollection(productionBatchesCollection, use("batches"));
@@ -408,6 +451,9 @@ export default function App() {
     if (!row) return undefined;
     return {
       tracked: true,
+      // The row's own revision. Left out, the form sent 0, and every product
+      // whose stock had moved since it was added refused to save as "changed".
+      revision: row.revision ?? 0,
       category: row.category,
       onHand: row.stock,
       threshold: row.lowStockThreshold ?? selectedProduct.lowStockThreshold,
@@ -969,10 +1015,25 @@ export default function App() {
     const retryProduct = productRetryRef.current;
     const editing = Boolean(selectedProduct && selectedProductId !== null) || Boolean(retryProduct);
 
+    // A new category is added to the list first, and the product is filed
+    // under whatever spelling the list holds -- an add that matches an existing
+    // category in any capitalisation answers with that one.
+    let categoryName = values.category?.trim() || "";
+    if (values.categoryIsNew && categoryName) {
+      const added = await runCategoryCommand("add", { name: categoryName });
+      if (!added.ok) {
+        setBusy(false);
+        toast.error(added.message);
+        return added;
+      }
+      categoryName = added.data?.category?.name ?? categoryName;
+      categoriesState.reload();
+    }
+
     const catalogue = {
       itemCode: values.itemCode,
-      name: values.name.trim(),
-      size: values.category?.trim() || null,
+      name: values.name.trim().replace(/\s+/g, " "),
+      size: categoryName || null,
       unitPrice: values.unitPrice === "" ? null : Number(values.unitPrice),
       lowStockThreshold:
         values.lowStockThreshold === "" ? null : Number(values.lowStockThreshold),
@@ -1017,7 +1078,7 @@ export default function App() {
       const ledger = {
         sku: values.itemCode,
         name: catalogue.name,
-        category: values.category?.trim() || "Uncategorised",
+        category: categoryName || "Uncategorised",
         price: catalogue.unitPrice ?? 0,
         // Written only when the row is created: after that the count moves
         // through recorded movements, and the update omits it.
@@ -1055,6 +1116,20 @@ export default function App() {
         toast.error(message);
         return { ok: false, message };
 
+      }
+    }
+
+    // The photo, last: the product exists by now, so a photo that fails to save
+    // leaves a product that is right in every other way. The form stays open
+    // with the photo still chosen, and saving again finishes just that part.
+    if (values.photo?.change && productId !== null) {
+      const photo = await saveProductImage(productId, values.photo.change === "set" ? values.photo.dataUrl : null);
+      if (!photo.ok) {
+        setBusy(false);
+        productRetryRef.current = { id: productId, revision: result.data?.revision ?? 0 };
+        const message = `The product was saved, but its photo was not. ${photo.message} Save again to retry the photo.`;
+        toast.error(message);
+        return { ok: false, message };
       }
     }
 
@@ -1219,7 +1294,8 @@ export default function App() {
     target?.setRows((rows) => [...rows.filter((r) => r.id !== result.data.id), result.data]);
     reloadWorkshop();
     inventoryState.reload(); activityState.reload();
-    toast.success('Workshop records saved.');
+    const [headline, detail] = workshopMessage(action, payload, result.data);
+    toast.success(headline, { description: detail });
     // Which record to point at, so the screen can show the entry landing on it.
     markLanded(WORKSHOP_RECORD_KIND[action], result.data.id);
     return result;
@@ -2137,10 +2213,11 @@ export default function App() {
               setSelectedProductId(id);
               setView("product-form");
             } : undefined}
-            onAdd={() => {
+            onAdd={can(role, "manageCatalogue") ? () => {
               setSelectedProductId(null);
               navigate("product-form");
-            }}
+            } : undefined}
+            onManageCategories={can(role, "manageCatalogue") ? () => setIsCategoriesOpen(true) : undefined}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
             initialFilter={pendingFilter}
@@ -2178,6 +2255,7 @@ export default function App() {
             product={selectedProduct}
             stock={stockForSelectedProduct}
             takenCodes={products.map((product) => product.itemCode)}
+            categories={categoriesState.rows}
             saving={busy}
             onSave={saveProduct}
             onCancel={() => navigate(selectedProductId ? "product-detail" : "products")}
@@ -2582,7 +2660,11 @@ export default function App() {
   const denied = !!sessionEmail && !canAccess(profile?.role, view);
   const chromeless = CHROMELESS_VIEWS.has(view);
 
-  const meta = metaForView(view);
+  const baseMeta = metaForView(view);
+  // One view key serves both adding and editing a product; the heading says which.
+  const meta = view === "product-form" && selectedProductId
+    ? { ...baseMeta, title: "Edit product", help: "Change the details and price. The shelf count changes only through Record damage or Correct the count on the product's screen." }
+    : baseMeta;
   const dialogs = (
     <Suspense fallback={null}>
       {/* Mounted at the root rather than inside a screen, because each is
@@ -2665,6 +2747,22 @@ export default function App() {
         inventory={inventory}
         onSave={(values) => replaceGoods(orders.find((o) => o.id === replaceFor), values)}
       />
+      {isCategoriesOpen && (
+        <CategoriesDialog
+          categories={categoriesState.rows}
+          isLoaded={categoriesState.isLoaded}
+          inventory={inventory}
+          onCommand={async (action, data) => {
+            const result = await runCategoryCommand(action, data);
+            if (result.ok) {
+              categoriesState.reload();
+              if (action === "rename") { inventoryState.reload(); productsState.reload(); }
+            }
+            return result;
+          }}
+          onClose={() => setIsCategoriesOpen(false)}
+        />
+      )}
       {isLoyaltyOpen && (
         <LoyaltyRulesDialog
           rules={loyalty}
@@ -2715,23 +2813,12 @@ export default function App() {
             openFiltered("products", navCounts.products ? "low" : "all")
           }
           onHelp={() =>
-            toast.info(`Ask whoever set this up for you about “${meta.title}.”`, {
-              description:
-                "Every screen also explains itself as you go — the grey text under a field is there to be read.",
+            toast.info(meta.title || "Help", {
+              description: meta.help
+                ?? "The grey text under each field says what it needs. Anything that changes stock says so before you save.",
+              duration: 12000,
             })
           }
-          onPrimaryAction={() => {
-            const primary = PRIMARY_ACTION[view];
-            if (!primary) return;
-            if (primary.view) {
-              if (primary.view === "product-form") setSelectedProductId(null);
-              navigate(primary.view);
-              return;
-            }
-            if (primary.action === "add-customer") openProfileForm("customer");
-            if (primary.action === "add-supplier") openProfileForm("supplier");
-            if (primary.action === "add-staff") setIsCreateStaffOpen(true);
-          }}
         >
           {denied ? <NotAllowedState role={profile?.role} onGoToDashboard={() => navigate("dashboard")} onSignOut={handleSignOut} /> : renderView()}
         </Shell>

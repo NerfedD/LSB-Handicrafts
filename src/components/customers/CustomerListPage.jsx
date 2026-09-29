@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Avatar } from "../shared/Chip";
 import StatusPill from "../shared/StatusPill";
-import { FilterBar, StickyCta } from "../shared/ListScreen";
+import { FilterBar, ListToolbar, StickyCta } from "../shared/ListScreen";
 import { ActiveFilterSummary, FilterChips, FilterSelect, Pager, SearchField } from "../shared/filters";
 import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
 import Landed from "../shared/Landed";
@@ -172,30 +172,39 @@ export default function CustomerListPage({
         {statusMessage}
       </p>
 
-      <FilterBar>
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Search by name, phone or business"
-          id="customer-search"
-        />
-        <FilterSelect
-          label="Area"
-          value={area}
-          onChange={setArea}
-          options={[
-            { value: "any", label: "Anywhere" },
-            ...cities.map((city) => ({ value: city, label: city })),
-          ]}
-        />
-        <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
-        {onEditLoyalty && (
-          <Button variant="outline" onClick={onEditLoyalty}>
-            <Gift className="h-4.5 w-4.5" />
-            Loyalty rules
+      <ListToolbar
+        action={onAdd && (
+          <Button variant="cobalt" size="lg" onClick={onAdd}>
+            <UserPlus className="h-5 w-5" />
+            Add a customer
           </Button>
         )}
-      </FilterBar>
+      >
+        <FilterBar>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search by name, phone or business"
+            id="customer-search"
+          />
+          <FilterSelect
+            label="Area"
+            value={area}
+            onChange={setArea}
+            options={[
+              { value: "any", label: "Anywhere" },
+              ...cities.map((city) => ({ value: city, label: city })),
+            ]}
+          />
+          <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
+          {onEditLoyalty && (
+            <Button variant="outline" onClick={onEditLoyalty}>
+              <Gift className="h-4.5 w-4.5" />
+              Loyalty rules
+            </Button>
+          )}
+        </FilterBar>
+      </ListToolbar>
 
       <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which customers" />
 

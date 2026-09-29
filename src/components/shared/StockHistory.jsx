@@ -26,7 +26,7 @@ import { whenLabel } from "../../utils/activityLog";
  * once a record has been undone -- the database allows exactly one -- and it is
  * only passed in for the roles that may do it.
  */
-export default function StockHistory({ rows = [], isLoaded = true, error = null, onUndoDamage = null, busy = false }) {
+export default function StockHistory({ rows = [], isLoaded = true, error = null, onUndoDamage = null, busy = false, limit = 50 }) {
   if (error) {
     return <EmptySlot className="py-10 text-[15px]">The stock history could not be loaded. Reopen this screen to try again.</EmptySlot>;
   }
@@ -36,7 +36,7 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
   if (rows.length === 0) {
     return (
       <EmptySlot className="py-10 text-[15px]">
-        Nothing has moved yet. Deliveries, sales, returns, damage and corrections show up here.
+        Nothing has moved yet. Every stock in (deliveries received, production, returns) and stock out (sales, production use, damage) shows up here.
       </EmptySlot>
     );
   }
@@ -44,14 +44,18 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
   // again, so it is read off the history rather than asked of the server.
   const undone = new Set(rows.map((row) => row.reversesMovementId).filter(Boolean));
   return (
-    <Table minWidth={640}>
+    <>
+    <Table minWidth={680}>
       <TableCaption>Every change to this stock count, newest first</TableCaption>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
           <TableHead className="w-48">When</TableHead>
           <TableHead>What happened</TableHead>
-          <TableHead className="w-24 text-right">Change</TableHead>
-          <TableHead className="w-24 text-right">Left</TableHead>
+          {/* In and out in their own columns, so "what came in" and "what went
+              out" can each be read straight down, and the balance beside them. */}
+          <TableHead className="w-24 text-right">Stock in</TableHead>
+          <TableHead className="w-24 text-right">Stock out</TableHead>
+          <TableHead className="w-24 text-right">Balance</TableHead>
           {onUndoDamage && <TableHead className="w-36">Entered wrong?</TableHead>}
         </TableRow>
       </TableHeader>
@@ -73,14 +77,11 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
                 </p>
                 {why && <p className="pt-0.5 text-[14.5px] text-muted">{why}</p>}
               </TableCell>
-              <TableCell
-                className={cn(
-                  "text-right text-[17px] font-extrabold tabular-nums",
-                  up ? "text-green dark:text-dk-green" : "text-red dark:text-dk-red"
-                )}
-              >
-                {up ? "+" : "−"}
-                {Math.abs(row.change)}
+              <TableCell className="text-right text-[17px] font-extrabold tabular-nums text-green dark:text-dk-green">
+                {up ? `+${row.change}` : <span className="sr-only">none</span>}
+              </TableCell>
+              <TableCell className={cn("text-right text-[17px] font-extrabold tabular-nums", !up && "text-red dark:text-dk-red")}>
+                {up ? <span className="sr-only">none</span> : `−${Math.abs(row.change)}`}
               </TableCell>
               <TableCell className="text-right text-[16px] tabular-nums">{row.balanceAfter}</TableCell>
               {onUndoDamage && (
@@ -105,5 +106,11 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
         })}
       </TableBody>
     </Table>
+    {rows.length >= limit && (
+      <p className="border-t border-hair px-5.5 py-3 text-[15px] text-muted">
+        Showing the latest {limit} changes. The balance column is always the true count after each one.
+      </p>
+    )}
+    </>
   );
 }

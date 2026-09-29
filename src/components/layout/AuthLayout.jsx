@@ -45,11 +45,10 @@ export default function AuthLayout({ children, width = 420 }) {
                 "repeating-linear-gradient(135deg, rgba(255,255,255,.06) 0 8px, transparent 8px 16px)",
             }}
           >
-            <p className="text-center font-mono text-[12.5px] leading-[1.6] tracking-[0.05em] text-white/[0.72]">
-              workshop / product photo
-              <br />
-              1600 × 1200
-            </p>
+            {/* The logo until a real workshop photograph is supplied. The
+                designer's "workshop / product photo 1600 × 1200" note used to
+                be printed here, on the first screen every user sees. */}
+            <img src={logo} alt="" className="size-32 rounded-card object-cover opacity-90" />
           </div>
         </div>
 

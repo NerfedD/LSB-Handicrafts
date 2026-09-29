@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import IconChip from "../shared/Chip";
-import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import { FilterBar, ListToolbar, RecordCard, StickyCta } from "../shared/ListScreen";
 import Landed from "../shared/Landed";
 import { landedRow } from "../shared/landing";
 import { ActiveFilterSummary, FilterSelect, Pager, SearchField } from "../shared/filters";
@@ -169,24 +169,33 @@ export default function SupplierListPage({
         {statusMessage}
       </p>
 
-      <FilterBar>
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Search by name, contact or phone"
-          id="supplier-search"
-        />
-        <FilterSelect
-          label="Area"
-          value={area}
-          onChange={setArea}
-          options={[
-            { value: "any", label: "Anywhere" },
-            ...cities.map((city) => ({ value: city, label: city })),
-          ]}
-        />
-        <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
-      </FilterBar>
+      <ListToolbar
+        action={onAdd && (
+          <Button variant="clay" size="lg" onClick={onAdd}>
+            <Handshake className="h-5 w-5" />
+            Add a supplier
+          </Button>
+        )}
+      >
+        <FilterBar>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search by name, contact or phone"
+            id="supplier-search"
+          />
+          <FilterSelect
+            label="Area"
+            value={area}
+            onChange={setArea}
+            options={[
+              { value: "any", label: "Anywhere" },
+              ...cities.map((city) => ({ value: city, label: city })),
+            ]}
+          />
+          <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
+        </FilterBar>
+      </ListToolbar>
 
       <ActiveFilterSummary parts={summaryParts} onClear={clearFilters} />
 

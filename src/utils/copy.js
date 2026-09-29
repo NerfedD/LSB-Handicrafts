@@ -42,13 +42,17 @@ export const MATERIAL_KIND = {
 export const materialKindLabel = (value) =>
   MATERIAL_KIND[value] || (value ? `${String(value)[0].toUpperCase()}${String(value).slice(1)}` : '');
 
+// One word per state, the same on every screen: a supplier order is Ordered,
+// then has a delivery date, is On the way, and is Received (or Cancelled); a
+// batch is Planned, In production, in Quality check, then Completed (or
+// Cancelled). Only Received and Completed have moved stock.
 export const MATERIAL_ORDER_LABEL = {
-  Ordered: 'Ordered', 'Delivery Scheduled': 'Delivery scheduled', 'In Transit': 'On the way',
-  Arrived: 'Arrived & verified', Cancelled: 'Cancelled',
+  Ordered: 'Ordered', 'Delivery Scheduled': 'Delivery date set', 'In Transit': 'On the way',
+  Arrived: 'Received', Cancelled: 'Cancelled',
 };
 export const BATCH_LABEL = {
-  Queued: 'Ready to start', 'In Progress': 'Being made', 'Quality Check': 'Check the finished pieces',
-  Completed: 'Finished', Cancelled: 'Cancelled',
+  Queued: 'Planned', 'In Progress': 'In production', 'Quality Check': 'Quality check',
+  Completed: 'Completed', Cancelled: 'Cancelled',
 };
 export const MATERIAL_ORDER_TONE = {
   Ordered: { tone: 'neutral', mark: 'clock' }, 'Delivery Scheduled': { tone: 'cobalt', mark: 'clock' },
@@ -132,7 +136,7 @@ export const ROLE_BLURB = {
   "Sales Staff":
     "Writes orders and looks after customers. Can see products and prices, but cannot change them.",
   "Production Staff":
-    "Works from the make list. Can record what was made and add new products, but does not see customers or suppliers.",
+    "Works from the Production screen: plans, makes and finishes batches, receives supplier deliveries and records damaged stock. Can see products and orders, but cannot change products, prices, customers or suppliers.",
   "Delivery Staff":
     "Moves deliveries along. Can see what is going out and mark it as arrived.",
 };
@@ -302,9 +306,9 @@ const MOVEMENT_LABEL = {
   damage: "Written off as damaged",
   damage_undone: "Damage record undone",
   adjustment: "Count corrected",
-  delivery: "Delivered by a supplier",
-  production: "Made in the workshop",
-  production_use: "Used in the workshop",
+  delivery: "Received from a supplier",
+  production: "Made in production",
+  production_use: "Used in production",
   transfer: "Moved between selling and workshop stock",
 };
 export const movementLabel = (kind) => MOVEMENT_LABEL[kind] ?? "Stock changed";

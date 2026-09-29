@@ -34,8 +34,9 @@ import StartBatchDialog from '../products/StartBatchDialog';
 import StockChangeDialog from '../products/StockChangeDialog';
 
 /**
- * The workshop's four screens: raw materials, what arrived from suppliers,
- * what to make next, and what got damaged.
+ * The workshop's screens: raw materials, purchasing, production and the
+ * production report. Each has its own entry in the sidebar; only production
+ * and its report share a tab strip, because they are one job seen two ways.
  *
  * WHY EVERY REPEATED ACTION HERE IS AN OUTLINE BUTTON. Clay is the workshop's
  * accent, and the make list once spent it on the section tab, the filter chip,
@@ -49,11 +50,48 @@ import StockChangeDialog from '../products/StockChangeDialog';
 /* -------------------------------------------------------------------------- */
 
 const SECTIONS = [
-  { key: 'raw-materials', label: 'Raw materials' },
-  { key: 'raw-material-orders', label: 'Supplier deliveries' },
-  { key: 'production', label: 'Make list' },
-  { key: 'production-report', label: 'Damage & yield', managerOnly: true },
+  { key: 'production', label: 'Batches' },
+  { key: 'production-report', label: 'Production report', managerOnly: true },
 ];
+
+/**
+ * How stock moves on each screen, in three short steps. Reviewers could not
+ * tell which actions add stock, which take it away and which only set it
+ * aside; this states it once, on the screen where it happens, in the order it
+ * happens.
+ */
+const FLOW = {
+  'raw-materials': [
+    ['Stock in', 'Receiving a supplier order adds the usable units it brought. Nothing is added when an order is placed.'],
+    ['Set aside', 'Planning a production batch reserves material so two batches cannot count on the same units. It stays on hand until the batch is finished.'],
+    ['Stock out', 'Finishing a batch deducts the material it actually used. Damage written off is deducted too, with a reason.'],
+  ],
+  'raw-material-orders': [
+    ['1. Order', 'Record the supplier, material, quantity and agreed price. Nothing is added to stock yet.'],
+    ['2. Receive', 'Count what was unloaded and what was damaged. Only the usable units are added to raw materials.'],
+    ['3. Settle', 'A short, extra or damaged delivery is flagged so a manager can record how it was settled.'],
+  ],
+  production: [
+    ['1. Plan', 'Choose the product and the material. The material is set aside, not deducted.'],
+    ['2. Make and check', 'Start production, then send the finished pieces to quality check.'],
+    ['3. Finish', 'Count good and damaged pieces. The material used is deducted and the good pieces are added to Products & stock in one step.'],
+  ],
+};
+
+function FlowGuide({ section }) {
+  const steps = FLOW[section];
+  if (!steps) return null;
+  return (
+    <section aria-label="How stock moves here" className="grid gap-px overflow-hidden rounded-card border border-card bg-hair tab:grid-cols-3">
+      {steps.map(([title, text]) => (
+        <div key={title} className="bg-surface px-4.5 py-3.5">
+          <p className="text-[15.5px] font-extrabold text-ink">{title}</p>
+          <p className="pt-1 text-[15px] leading-[1.45] text-muted">{text}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
 
 /**
  * The sub-navigation across the top.
@@ -76,7 +114,7 @@ function SectionTabs({ section, sections, onNavigate }) {
   }, [section]);
 
   return (
-    <nav aria-label="Workshop sections" className="-mx-4 overflow-x-auto px-4 tab:mx-0 tab:px-0">
+    <nav aria-label="Production sections" className="-mx-4 overflow-x-auto px-4 tab:mx-0 tab:px-0">
       <ul className="flex w-max gap-2.5 tab:w-auto tab:flex-wrap">
         {sections.map(({ key, label }) => {
           const here = section === key;
@@ -152,6 +190,12 @@ function materialStatus(material, batches) {
   const short = materialShortfall(material, batches);
   const reserved = material.stock - availableMaterial(material, batches);
 
+  if (material.status === 'Archived') {
+    return { free, short, reserved, tone: 'neutral', mark: 'x', label: 'No longer in use' };
+  }
+  if (material.stock <= 0) {
+    return { free, short, reserved, tone: 'red', mark: 'x', label: 'Out of stock' };
+  }
   if (short > 0) {
     return { free, short, reserved, tone: 'red', mark: 'x', label: `Short by ${units(short, material.unit)}` };
   }
@@ -211,6 +255,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const [removing, setRemoving] = useState(false);
   const [working, setWorking] = useState(false);
   const [filter, setFilter] = useState(initialFilter ?? (section === 'raw-materials' ? 'all' : 'active'));
+  const [notice, setNotice] = useState(null);
   const [query, setQuery] = useState('');
 
   const manager = can(profile.role, 'manageSuppliers');
@@ -248,7 +293,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       ? `${unfinished.length} unfinished ${unfinished.length === 1 ? 'batch' : 'batches'}`
       : reports
         ? `${defects.length} damage ${defects.length === 1 ? 'record' : 'records'}`
-        : `${materials.length} raw ${materials.length === 1 ? 'material' : 'materials'}`;
+        : `${materials.filter((m) => m.status !== 'Archived').length} raw materials in use`;
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -264,7 +309,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
    * belongs there.
    *
    * MOST WORKSHOP COMMANDS FINISH A RECORD. Receiving a delivery turns it into
-   * "Arrived & verified"; completing a batch turns it into "Finished". Both
+   * "Received"; completing a batch turns it into "Completed". Both
    * fall straight out of the "Still waiting" filter the screen opens on, so the
    * card somebody was reading vanished at the moment it was saved, with no
    * account of where it went. A toast in the corner is not an account.
@@ -278,12 +323,16 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const justChanged = (kind, id) => Boolean(change && change.kind === kind && change.id === id);
 
   // A material taken out of use is still looked up by name from history, so it
-  // stays in `materials` and is only kept out of what is offered from here on:
-  // the list, the reorder count, and the order and recipe pickers.
+  // stays in `materials` and is kept out of what is offered from here on: the
+  // reorder count and the order, batch and recipe pickers. It is still one
+  // filter away on the list, so it can be found and put back.
   const inUse = materials.filter((m) => m.status !== 'Archived');
+  const archivedMaterials = materials.filter((m) => m.status === 'Archived');
   const toReorder = inUse.filter((m) => needsReorder(m, batches));
-  const displayMaterials = inUse
+  const outOfStock = inUse.filter((m) => m.stock <= 0);
+  const displayMaterials = (filter === 'archived' ? archivedMaterials : inUse)
     .filter((m) => filter !== 'reorder' || needsReorder(m, batches) || justChanged('material', m.id))
+    .filter((m) => filter !== 'out' || m.stock <= 0 || justChanged('material', m.id))
     .filter((m) => matches(`${m.name} ${m.sku}`));
   const displayOrders = materialOrders
     .filter((o) => (filter === 'all' ? true : filter === 'claims' ? o.claim_status === 'Needs review' : !['Arrived', 'Cancelled'].includes(o.status)) || justChanged('material-order', o.id))
@@ -311,7 +360,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   if (detail && !mat(materialId)) return <NotFoundState noun="raw material" onBack={() => onNavigate('raw-materials')} />;
 
   const statusMessage = purchasing
-    ? `${displayOrders.length} ${displayOrders.length === 1 ? 'supplier delivery' : 'supplier deliveries'} shown.`
+    ? `${displayOrders.length} ${displayOrders.length === 1 ? 'supplier order' : 'supplier orders'} shown.`
     : production
       ? `${displayBatches.length} ${displayBatches.length === 1 ? 'batch' : 'batches'} shown.`
       : materialsList
@@ -331,26 +380,36 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       <Truck className="h-5 w-5" />Order materials
     </Button>
   ) : materialsList && manager ? (
-    <Button variant="clay" size="lg" className="w-full tab:w-auto" onClick={() => setDialog({ kind: 'material' })}>
-      <Plus className="h-5 w-5" />Add raw material
-    </Button>
+    <div className="flex flex-col gap-2.5 tab:flex-row">
+      <Button variant="outline" size="lg" className="w-full tab:w-auto" onClick={() => setDialog({ kind: 'order' })}>
+        <Truck className="h-5 w-5" />Order materials
+      </Button>
+      <Button variant="clay" size="lg" className="w-full tab:w-auto" onClick={() => setDialog({ kind: 'material' })}>
+        <Plus className="h-5 w-5" />Add raw material
+      </Button>
+    </div>
   ) : null;
 
   const filterChips = purchasing
     ? [
-        { value: 'active', label: 'Still waiting', count: waitingOrders.length },
-        { value: 'all', label: 'All records', count: materialOrders.length },
+        { value: 'active', label: 'Not received yet', count: waitingOrders.length },
+        { value: 'all', label: 'All supplier orders', count: materialOrders.length },
         { value: 'claims', label: 'Supplier claims', count: claims.length, tone: claims.length ? 'amber' : undefined },
       ]
     : production
       ? [
-          { value: 'active', label: 'Still waiting', count: unfinished.length },
-          { value: 'all', label: 'All records', count: batches.length },
+          { value: 'active', label: 'Unfinished', count: unfinished.length },
+          { value: 'all', label: 'All batches', count: batches.length },
         ]
       : materialsList
         ? [
-            { value: 'all', label: 'All materials', count: materials.length },
+            // Counted from the same set the chip shows, so "In use 6" is six cards.
+            { value: 'all', label: 'In use', count: inUse.length },
             { value: 'reorder', label: 'Needs ordering', count: toReorder.length, tone: toReorder.length ? 'amber' : undefined },
+            { value: 'out', label: 'Out of stock', count: outOfStock.length, tone: outOfStock.length ? 'red' : undefined },
+            ...(archivedMaterials.length > 0
+              ? [{ value: 'archived', label: 'No longer in use', count: archivedMaterials.length }]
+              : []),
           ]
         : null;
 
@@ -358,9 +417,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
   function renderMaterialCard(m, { standalone = true } = {}) {
     const status = materialStatus(m, batches);
-    const canTransfer = manager && inventory.some((i) => i.sku.toLowerCase() === m.sku.toLowerCase() && ['sheet', 'block'].includes(i.productType));
+    const archived = m.status === 'Archived';
+    const canTransfer = manager && !archived && inventory.some((i) => i.sku.toLowerCase() === m.sku.toLowerCase() && ['sheet', 'block'].includes(i.productType));
     return (
-      <Card key={m.id} className="relative flex flex-col">
+      <Card key={m.id} role="group" aria-label={m.name} className="relative flex flex-col">
         <Landed change={change} kind="material" id={m.id} />
         <CardHeader className="flex-wrap justify-between gap-3.5">
           <div className="flex min-w-0 items-center gap-3.5">
@@ -378,6 +438,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                 {m.thickness_in ? ` · ${m.thickness_in} in thick` : ''}
                 {m.length_ft && m.width_ft ? ` · ${m.length_ft} × ${m.width_ft} ft` : ''}
                 {m.density ? ` · ${m.density} kg/m³` : ''}
+                {m.weight_kg ? ` · ${m.weight_kg} kg per ${m.unit}` : ''}
               </p>
             </div>
           </div>
@@ -395,17 +456,22 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               <Package className="h-4.5 w-4.5" />View material
             </Button>
           )}
-          {manager && (
-            <Button variant="outline" onClick={() => setDialog({ kind: 'material', record: m })}>
-              <ClipboardList className="h-4.5 w-4.5" />Change details
+          {manager && !archived && (
+            <Button variant="outline" onClick={() => setDialog({ kind: 'order', preset: { raw_material_id: m.id } })}>
+              <Truck className="h-4.5 w-4.5" />Order more
             </Button>
           )}
-          {canRecordDamage && m.stock > 0 && (
+          {manager && !archived && (
+            <Button variant="outline" onClick={() => setDialog({ kind: 'material', record: m })}>
+              <ClipboardList className="h-4.5 w-4.5" />Edit details
+            </Button>
+          )}
+          {canRecordDamage && !archived && m.stock > 0 && (
             <Button variant="outline" onClick={() => setDialog({ kind: 'stock', mode: 'damage', material: m })}>
               <PackageX className="h-4.5 w-4.5" />Record damage
             </Button>
           )}
-          {canCorrectStock && (
+          {canCorrectStock && !archived && (
             <Button variant="outline" onClick={() => setDialog({ kind: 'stock', mode: 'correct', material: m })}>
               <ClipboardCheck className="h-4.5 w-4.5" />Correct the count
             </Button>
@@ -424,7 +490,9 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
     <div className="flex flex-col gap-3.5">
       <p role="status" aria-live="polite" className="sr-only">{statusMessage}</p>
 
-      <SectionTabs section={section} sections={sections} onNavigate={onNavigate} />
+      {(production || reports) && sections.length > 1 && (
+        <SectionTabs section={section} sections={sections} onNavigate={onNavigate} />
+      )}
 
       {/* The tab strip is the thing that stays put; what changes is everything
           under it, so that is what arrives. Keyed by section rather than left to
@@ -433,6 +501,19 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           nobody on a workshop floor should be waiting for four cards to deal
           themselves out before they can read a stock count. */}
       <div key={section} className="lsb-rise flex flex-col gap-3.5">
+      <FlowGuide section={section} />
+      {notice && (
+        <Callout tone="green" title={notice.title} action={(
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => onNavigate('raw-material-orders')}>
+              <Truck className="h-4.5 w-4.5" />Open Purchasing
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setNotice(null)}>Dismiss</Button>
+          </div>
+        )}>
+          {notice.text}
+        </Callout>
+      )}
       {detail && material && (
         <div className="flex flex-col gap-2.5 pt-1">
           <Button
@@ -480,8 +561,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
         displayMaterials.length === 0 ? (
           <EmptyState
             icon={<Layers />}
-            title="No raw materials yet"
-            description="Add the sheets, blocks and supplies the workshop builds with, so the floor and the office are counting the same stock."
+            title={filter === 'archived' ? 'No materials have been taken out of use' : 'No raw materials yet'}
+            description={manager
+              ? 'Add the sheets, blocks and supplies the workshop builds with, then order them from a supplier. Stock is added when an order is received.'
+              : 'A manager adds the sheets, blocks and supplies the workshop builds with. They appear here with their stock once they are added.'}
             query={query.trim()}
             onClearSearch={clearSearch}
             filtered={filter !== 'all'}
@@ -586,8 +669,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
         displayOrders.length === 0 ? (
           <EmptyState
             icon={<Truck />}
-            title="No supplier deliveries yet"
-            description="Order materials from a supplier and the promised delivery will wait here until somebody counts it in."
+            title={filter === 'active' ? 'Nothing is waiting to arrive' : 'No supplier orders yet'}
+            description={manager
+              ? 'Use "Order materials" to record what you ordered from a supplier. It waits here until somebody receives and counts the delivery.'
+              : 'When a manager orders materials from a supplier, the order waits here until somebody receives and counts it.'}
             query={query.trim()}
             onClearSearch={clearSearch}
             filtered={filter !== 'active'}
@@ -666,11 +751,11 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     )}
                     {manager && ['Ordered', 'Delivery Scheduled'].includes(o.status) && (
                       <Button variant="outline" onClick={() => setDialog({ kind: 'order', record: o })}>
-                        <ClipboardList className="h-4.5 w-4.5" />Set delivery details
+                        <ClipboardList className="h-4.5 w-4.5" />Edit order
                       </Button>
                     )}
                     {manager && o.status === 'Delivery Scheduled' && (
-                      <Button variant="outline" onClick={() => showConfirm('order_status', o.id, 'In Transit', 'Mark delivery on the way', `The supplier has sent order #${o.id}. No stock is added yet.`)}>
+                      <Button variant="outline" onClick={() => showConfirm('order_status', o.id, 'In Transit', 'Mark as on the way?', `The supplier has sent order #${o.id}. No stock is added until it is received and counted.`)}>
                         <Truck className="h-4.5 w-4.5" />Mark on the way
                       </Button>
                     )}
@@ -680,7 +765,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                       </Button>
                     )}
                     {manager && ['Ordered', 'Delivery Scheduled'].includes(o.status) && (
-                      <Button variant="danger" onClick={() => showConfirm('order_status', o.id, 'Cancelled', 'Cancel supplier order', `Cancel order #${o.id}. No stock is deducted; the order history is kept.`)}>
+                      <Button variant="danger" onClick={() => showConfirm('order_status', o.id, 'Cancelled', 'Cancel this supplier order?', `Order #${o.id} will be marked as cancelled and can no longer be received. Stock does not change, and the order stays in the history.`)}>
                         Cancel order
                       </Button>
                     )}
@@ -697,7 +782,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {production && (
         <div className="flex flex-col gap-3.5">
           {nextToMake.length > 0 && (
-            <SectionCard title="Make these next — most urgent first">
+            <SectionCard title="Needed next, most urgent first">
               <RowList>
                 {nextToMake.map(({ product, needed, urgency, tone }) => (
                   <Row key={product.id}>
@@ -727,8 +812,8 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           {displayBatches.length === 0 ? (
             <EmptyState
               icon={<Hammer />}
-              title="No batches in this view"
-              description="A batch is one job on the floor: what to make, how much material to set aside, and who is making it. Start one from the make list above."
+              title={filter === 'active' ? 'No unfinished batches' : 'No batches yet'}
+              description="A batch is one job on the floor: what to make, how much material to set aside, and who is making it. Start one with the button above, or from the list of what is needed next."
               filtered={filter !== 'active'}
               onClearFilters={() => setFilter('active')}
             />
@@ -772,17 +857,17 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     <RowActions>
                       {b.status === 'Queued' && (
                         <>
-                          <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'In Progress', 'Begin making this batch', `${b.batch_code} will be marked as being made. Material remains set aside until completion.`)}>
-                            <Hammer className="h-4.5 w-4.5" />Begin making
+                          <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'In Progress', 'Start production?', `${b.batch_code} will be marked as in production. Its material stays set aside and is deducted only when the batch is finished.`)}>
+                            <Hammer className="h-4.5 w-4.5" />Start production
                           </Button>
-                          <Button variant="danger" onClick={() => showConfirm('batch_status', b.id, 'Cancelled', 'Cancel this queued batch', `Release ${units(b.raw_material_used_qty, batchMaterial?.unit)} for other batches. No stock is deducted; batch history is kept.`)}>
-                            Cancel queued batch
+                          <Button variant="danger" onClick={() => showConfirm('batch_status', b.id, 'Cancelled', 'Cancel this batch?', `${units(b.raw_material_used_qty, batchMaterial?.unit)} set aside for ${b.batch_code} becomes free for other batches. No stock is deducted, and the batch stays in the history as cancelled.`)}>
+                            Cancel batch
                           </Button>
                         </>
                       )}
                       {b.status === 'In Progress' && (
-                        <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'Quality Check', 'Send batch to quality check', `The pieces for ${b.batch_code} are ready to count and inspect. Stock will be updated after the check.`)}>
-                          <ClipboardList className="h-4.5 w-4.5" />Ready for quality check
+                        <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'Quality Check', 'Send to quality check?', `The pieces for ${b.batch_code} are ready to count and inspect. Stock changes only when the batch is finished after the check.`)}>
+                          <ClipboardList className="h-4.5 w-4.5" />Send to quality check
                         </Button>
                       )}
                       {b.status === 'Quality Check' && (
@@ -863,7 +948,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               </div>
               <RowActions>
                 <Button variant="outline" onClick={() => onNavigate('raw-material-orders')}>
-                  <Truck className="h-4.5 w-4.5" />Open supplier deliveries
+                  <Truck className="h-4.5 w-4.5" />Open Purchasing
                 </Button>
               </RowActions>
             </SectionCard>
@@ -907,7 +992,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
       {/* -- dialogs ---------------------------------------------------------- */}
 
-      {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} onSave={save('save_material')} onClose={close} />}
+      {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} materials={materials} onSave={save('save_material')} onClose={close} />}
       {detail && material && (
         <ConfirmDialog
           open={removing}
@@ -931,8 +1016,17 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           }}
         />
       )}
-      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} materials={inUse} suppliers={suppliers} profile={profile} onSave={save('save_order')} onClose={close} />}
-      {dialog?.kind === 'recipe' && <RecipeDialog products={products} materials={inUse} onSave={save('save_recipe')} onClose={close} />}
+      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} preset={dialog.preset} materials={inUse} suppliers={suppliers} profile={profile}
+        onSave={async (values, key) => {
+          const result = await onCommand('save_order', values, key);
+          // Ordered from the materials screen: say where the order went, and
+          // offer the way there, rather than leaving it to be guessed.
+          if (result.ok && !purchasing && !dialog.record) {
+            setNotice({ title: `Order #${result.data.id} was saved`, text: 'It is on the Purchasing screen until the delivery is received. Stock is added when it is counted in.' });
+          }
+          return result;
+        }} onClose={close} />}
+      {dialog?.kind === 'recipe' && <RecipeDialog products={products.filter((p) => p.status !== 'Archived')} materials={inUse} onSave={save('save_recipe')} onClose={close} />}
       {dialog?.kind === 'transfer' && <TransferDialog material={dialog.material} inventory={inventory.find((i) => i.sku.toLowerCase() === dialog.material.sku.toLowerCase())} profile={profile} onSave={save('transfer_stock')} onClose={close} />}
       {dialog?.kind === 'receive' && <ReceiveSupplierDeliveryDialog order={dialog.record} material={mat(dialog.record.raw_material_id)} profile={profile} onSave={save('receive_delivery')} onClose={close} />}
       {dialog?.kind === 'complete' && <CompleteBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} inventory={inventory.find((i) => i.id === dialog.record.inventory_id)} material={mat(dialog.record.raw_material_id)} batches={batches} profile={profile} onSave={save('complete_batch')} onClose={close} />}

@@ -201,7 +201,7 @@ export default function DashboardPage({
         <Card className="border-l-[5px] border-l-clay" variant="lift">
           <CardHeader className="bg-tint-clay">
             <IconChip icon={<Hammer />} tone="clay" size="sm" className="bg-white/70 dark:bg-white/[0.08]" />
-            <CardTitle className="text-[19px]">Make list — most urgent first</CardTitle>
+            <CardTitle className="text-[19px]">Needed next, most urgent first</CardTitle>
           </CardHeader>
 
           {list.length === 0 ? (
@@ -391,12 +391,12 @@ export default function DashboardPage({
 
   const actions = isSales
     ? [
-        { label: "Write a new order", icon: <ClipboardList className="h-5 w-5" />, onClick: onWriteOrder },
+        { label: "Create order", icon: <ClipboardList className="h-5 w-5" />, onClick: onWriteOrder },
         { label: "Add a customer", icon: <UserPlus className="h-5 w-5" />, onClick: onAddCustomer },
         { label: "Look up a price", icon: <Boxes className="h-5 w-5" />, onClick: () => onNavigate("products") },
       ]
     : [
-        { label: "Write a new order", icon: <ClipboardList className="h-5 w-5" />, onClick: onWriteOrder },
+        { label: "Create order", icon: <ClipboardList className="h-5 w-5" />, onClick: onWriteOrder },
         { label: "Add a product", icon: <PackagePlus className="h-5 w-5" />, onClick: onAddProduct },
         // Both of these open administrators-only screens. A Manager shares this
         // dashboard, so they are offered only to somebody they will open for.

@@ -39,16 +39,16 @@ export default function LoyaltyRulesDialog({ rules, onSave, onClose }) {
     >
       {(values, change) => (
         <>
-          <WorkshopField label="A customer is a regular after" hint="Finished orders. Shown as a chip on the customers screen."
+          <WorkshopField name="regularAfterOrders" label="A customer is a regular after" hint="Finished orders. Shown as a chip on the customers screen."
             type="number" inputMode="numeric" min="1" max="1000" step="1" required
             value={values.regularAfterOrders} onChange={(event) => change('regularAfterOrders', event.target.value)} />
-          <WorkshopField label="Give the loyalty reward" required
+          <WorkshopField name="enabled" label="Give the loyalty reward" required
             options={[{ value: 'yes', label: 'Yes, offer it on new orders' }, { value: 'no', label: 'No, switched off' }]}
             value={values.enabled} onChange={(event) => change('enabled', event.target.value)} />
-          <WorkshopField label="The reward starts after" hint="Finished orders."
+          <WorkshopField name="rewardAfterOrders" label="The reward starts after" hint="Finished orders."
             type="number" inputMode="numeric" min="1" max="1000" step="1" required
             value={values.rewardAfterOrders} onChange={(event) => change('rewardAfterOrders', event.target.value)} />
-          <WorkshopField label="The reward, as a percentage off the items" hint="Not the delivery charge. 50 at most."
+          <WorkshopField name="rewardPercent" label="The reward, as a percentage off the items" hint="Not the delivery charge. 50 at most."
             type="number" inputMode="decimal" min="0.01" max="50" step="0.01" required
             value={values.rewardPercent} onChange={(event) => change('rewardPercent', event.target.value)} />
           <ReviewBox>

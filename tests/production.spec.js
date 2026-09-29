@@ -65,7 +65,7 @@ test('finishing a batch sends one transaction and shows 95 good pieces with 45 s
   await dialog.getByLabel('Damaged pieces').fill('5');
   await dialog.getByLabel('Why were they damaged?').selectOption('Broke during hotwire/cutting');
   await expect(dialog).toContainText('Processed: 100 − damaged: 5 = 95 pieces to shelf');
-  await expect(dialog).toContainText('Deduct 45 sheet');
+  await expect(dialog).toContainText('deduct 45 sheets');
   await expect(dialog).toContainText('Checked and approved by Maria Santos');
   await dialog.getByRole('button', { name: 'Finish batch and update stock' }).click();
   await expect(dialog).toHaveCount(0);

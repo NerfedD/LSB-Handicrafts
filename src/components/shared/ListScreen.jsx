@@ -16,12 +16,29 @@ export function FilterBar({ children, className }) {
 }
 
 /**
+ * The filters with the screen's primary action at the end of the same row.
+ *
+ * The action used to live in the header, above the title, where people did not
+ * look for it. Here it sits beside the search that starts every task on the
+ * screen. Below 834px it gives way to StickyCta, which is pinned where a thumb
+ * reaches it; `action` is rendered from 834px up only.
+ */
+export function ListToolbar({ children, action, className }) {
+  return (
+    <div className={cn("flex flex-col gap-3 tab:flex-row tab:items-start tab:justify-between", className)}>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">{children}</div>
+      {action && <div className="hidden shrink-0 flex-wrap justify-end gap-2.5 tab:flex">{action}</div>}
+    </div>
+  );
+}
+
+/**
  * The phone's sticky primary action.
  *
- * Below 834px the header's primary button is gone — there is no room beside the
- * title for it — so it comes back as a bar pinned above the tab bar. Pinned
- * rather than at the bottom of the list, because a list of 148 products puts
- * "Add a product" 148 rows away.
+ * Below 834px there is no room beside the filters for the primary button, so
+ * it comes back as a bar pinned above the tab bar. Pinned rather than at the
+ * bottom of the list, because a list of 148 products puts "Add a product" 148
+ * rows away.
  */
 export function StickyCta({ children, className }) {
   return (

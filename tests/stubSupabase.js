@@ -304,6 +304,10 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
   );
   for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] ??= [];
   tables.stock_movements ??= [];
+  // The category list, as the migration builds it from the labels on file.
+  tables.product_categories ??= [...new Set((tables.inventory ?? []).map((row) => row.category).filter(Boolean))]
+    .map((name, index) => ({ id: 3000 + index, name }));
+  tables.product_images ??= [];
   tables.loyalty_rules ??= [{ id: 1, enabled: false, regular_after_orders: 3, reward_after_orders: 5, reward_percent: 5, revision: 0, updated_at: null, updated_by: null }];
   const stockRequests = new Map();
   const orderRequests = new Map();
@@ -432,6 +436,50 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       if (stock) tables.inventory.splice(tables.inventory.indexOf(stock), 1);
       onWrite?.({ table: 'products', method: 'RPC', row: product });
       return json(route, { outcome: 'deleted' });
+    }
+    // As category_command does: one spelling per category, whatever the case.
+    if (url.pathname.endsWith("/rpc/category_command")) {
+      const { p_action: action, p_data: data } = request.postDataJSON();
+      const list = tables.product_categories;
+      const tidy = String(data.name ?? '').replace(/\s+/g, ' ').trim();
+      const same = (name) => list.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (action === 'add') {
+        if (same(tidy)) return json(route, { category: same(tidy), created: false });
+        const category = { id: nextRecordId(), name: tidy };
+        list.push(category);
+        onWrite?.({ table: 'product_categories', method: 'RPC', row: category });
+        return json(route, { category, created: true });
+      }
+      const category = list.find((c) => Number(c.id) === Number(data.id));
+      if (action === 'rename') {
+        const clash = same(tidy);
+        if (clash && clash.id !== category.id) return json(route, { code: 'P0001', message: `There is already a category called "${clash.name}".` }, 400);
+        const previous = category.name;
+        category.name = tidy;
+        for (const row of tables.inventory) if (String(row.category).toLowerCase() === previous.toLowerCase()) row.category = tidy;
+        return json(route, { category, previous });
+      }
+      if (action === 'remove') {
+        const users = tables.inventory.filter((row) => String(row.category).toLowerCase() === category.name.toLowerCase()).length;
+        if (users) return json(route, { code: 'P0001', message: `${users} products are in "${category.name}".` }, 400);
+        list.splice(list.indexOf(category), 1);
+        return json(route, { removed: category.id });
+      }
+    }
+    if (url.pathname.endsWith("/rpc/save_product_image")) {
+      const { p_product_id: productId, p_data_url: dataUrl } = request.postDataJSON();
+      const images = tables.product_images;
+      const index = images.findIndex((row) => Number(row.product_id) === Number(productId));
+      if (dataUrl === null) {
+        if (index !== -1) images.splice(index, 1);
+        onWrite?.({ table: 'product_images', method: 'RPC', row: { product_id: productId, removed: true } });
+        return json(route, { product_id: productId, removed: true });
+      }
+      if (!/^data:image\/(jpeg|png|webp);base64,/.test(dataUrl)) return json(route, { code: 'P0001', message: 'Choose a JPEG, PNG or WebP photo.' }, 400);
+      const row = { product_id: productId, data_url: dataUrl, updated_at: new Date().toISOString(), updated_by: 'Maria Santos' };
+      if (index === -1) images.push(row); else images[index] = row;
+      onWrite?.({ table: 'product_images', method: 'RPC', row });
+      return json(route, { product_id: productId, removed: false });
     }
     if (url.pathname.includes("/rpc/")) return json(route, null);
 

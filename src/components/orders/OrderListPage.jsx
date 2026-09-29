@@ -157,9 +157,19 @@ export default function OrderListPage({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="flex gap-2" role="group" aria-label="Order view">
-        <Button variant="outline" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>Order list</Button>
-        <Button variant="outline" aria-pressed={layout === 'priority'} onClick={() => setLayout('priority')}>Arrange priority</Button>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2" role="group" aria-label="Order view">
+          <Button variant="outline" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>Order list</Button>
+          <Button variant="outline" aria-pressed={layout === 'priority'} onClick={() => setLayout('priority')}>Arrange priority</Button>
+        </div>
+        {/* The screen's primary action, in the page beside the view switch so
+            it is there in both views. Phones get the sticky bar instead. */}
+        {onWriteOrder && (
+          <Button variant="cobalt" size="lg" className="hidden tab:inline-flex" onClick={onWriteOrder}>
+            <ClipboardList className="h-5 w-5" />
+            Create order
+          </Button>
+        )}
       </div>
       {layout === 'priority' && isLoaded ? <OrderPriorityBoard orders={orders} onReorder={onReorder} onOpen={onOpen} /> : <>
       <FilterBar>
@@ -180,10 +190,10 @@ export default function OrderListPage({
         <EmptyState
           icon={<ClipboardList />}
           title="No orders yet"
-          description="Write your first order and it will appear here, along with what still needs making."
+          description="Create your first order and it will appear here. Stock is set aside for it while it waits, and anything short shows on the Production screen."
           query={query.trim()}
           onClearSearch={() => setQuery("")}
-          actionLabel="Write a new order"
+          actionLabel="Create order"
           onAction={onWriteOrder}
         />
       ) : (
@@ -318,7 +328,7 @@ export default function OrderListPage({
           <StickyCta>
             <Button variant="cobalt" size="xl" block onClick={onWriteOrder}>
               <ClipboardList className="h-5.5 w-5.5" />
-              Write a new order
+              Create order
             </Button>
           </StickyCta>
         </>

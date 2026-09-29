@@ -160,7 +160,7 @@ export default function LargeTextDashboard({
         <Card variant="lift" className="border-l-[5px] border-l-clay">
           <CardHeader className="bg-tint-clay">
             <IconChip icon={<Hammer />} tone="clay" size="md" className="bg-white/70 dark:bg-white/[0.08]" />
-            <CardTitle className="text-[19px]">Make list — most urgent first</CardTitle>
+            <CardTitle className="text-[19px]">Needed next, most urgent first</CardTitle>
           </CardHeader>
 
           {topOfList.length === 0 ? (

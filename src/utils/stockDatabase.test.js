@@ -25,7 +25,8 @@ const movementsOf = (id) => all(db,
   'select kind, quantity_change, balance_after, reason, note, order_id, actor_name from public.stock_movements where inventory_id = $1 order by id', [id]);
 
 const MIGRATIONS = ['migrations/20260924120000_stock_returns_loyalty.sql',
-  'migrations/20260924190000_material_crud_and_damage_undo.sql'];
+  'migrations/20260924190000_material_crud_and_damage_undo.sql',
+  'migrations/20260929120000_controlled_inputs_and_photos.sql'];
 
 /**
  * Re-runs a migration to prove it is safe to run twice, then re-applies the
@@ -198,7 +199,7 @@ describe('raw materials', () => {
     const supplier = uid();
     await db.query(`insert into public.suppliers (id, name) values ($1, 'Davao Foam')`, [supplier]);
     const order = await rpc(db, 'workshop_command', 'save_order',
-      { supplier_id: supplier, raw_material_id: id, quantity_ordered: 50, unit_price: 100, expected_delivery_date: '2026-09-30' });
+      { supplier_id: supplier, raw_material_id: id, quantity_ordered: 50, unit_price: 100, expected_delivery_date: new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10) });
     const receipt = { id: order.id, arrived: 50, damaged: 2, reason: 'Broken edges/corners', reference: 'DR-00451' };
     const key = crypto.randomUUID();
     const received = await rpc(db, 'workshop_command', 'receive_delivery', receipt, key);

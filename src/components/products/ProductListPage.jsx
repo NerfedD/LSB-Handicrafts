@@ -1,7 +1,7 @@
 import useUrlState from "../../hooks/useUrlState";
 import { useEffect, useMemo } from "react";
 
-import { Eye, PackagePlus, Pencil } from "../icons";
+import { Eye, Layers, PackagePlus, Pencil } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
 import {
@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import IconChip, { Mono } from "../shared/Chip";
-import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import { FilterBar, ListToolbar, RecordCard, StickyCta } from "../shared/ListScreen";
 import Landed from "../shared/Landed";
 import { landedRow } from "../shared/landing";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
@@ -90,7 +90,10 @@ export default function ProductListPage({
   onView,
   /** Absent for a role that cannot change products; the Edit buttons go with it. */
   onEdit,
+  /** Absent for a role that cannot add products; every "Add a product" goes with it. */
   onAdd,
+  /** Opens the category list. Absent for a role that cannot change it. */
+  onManageCategories,
   onGoToDashboard,
   onContext,
   initialFilter,
@@ -182,23 +185,42 @@ export default function ProductListPage({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <FilterBar>
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Search by name or SKU"
-          id="product-search"
-        />
-        <FilterSelect label="Kind" value={kind} onChange={setKind} options={KIND_OPTIONS} />
-        <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
-      </FilterBar>
+      <ListToolbar
+        action={(onAdd || onManageCategories) && (
+          <>
+            {onManageCategories && (
+              <Button variant="outline" size="lg" onClick={onManageCategories}>
+                <Layers className="h-5 w-5" />
+                Categories
+              </Button>
+            )}
+            {onAdd && (
+              <Button variant="cobalt" size="lg" onClick={onAdd}>
+                <PackagePlus className="h-5 w-5" />
+                Add a product
+              </Button>
+            )}
+          </>
+        )}
+      >
+        <FilterBar>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search by name or code"
+            id="product-search"
+          />
+          <FilterSelect label="Kind" value={kind} onChange={setKind} options={KIND_OPTIONS} />
+          <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
+        </FilterBar>
 
-      <FilterChips
-        chips={chips}
-        value={group}
-        onChange={setGroup}
-        label="Show which products"
-      />
+        <FilterChips
+          chips={chips}
+          value={group}
+          onChange={setGroup}
+          label="Show which products"
+        />
+      </ListToolbar>
 
       {!isLoaded ? (
         <LoadingState noun="products" />
@@ -206,10 +228,10 @@ export default function ProductListPage({
         <EmptyState
           icon={<PackagePlus />}
           title="No products yet"
-          description="Add your first product and its stock level, and it will show up here for everyone."
+          description="Add your first product and its stock level, and it will show up here for everyone. Stock then goes up when a production batch is finished and down when an order is completed."
           query={query.trim()}
           onClearSearch={() => setQuery("")}
-          actionLabel="Add a product"
+          actionLabel={onAdd ? "Add a product" : undefined}
           onAction={onAdd}
         />
       ) : (
@@ -363,12 +385,14 @@ export default function ProductListPage({
           </div>
           )}
 
-          <StickyCta>
-            <Button variant="cobalt" size="xl" block onClick={onAdd}>
-              <PackagePlus className="h-5.5 w-5.5" />
-              Add a product
-            </Button>
-          </StickyCta>
+          {onAdd && (
+            <StickyCta>
+              <Button variant="cobalt" size="xl" block onClick={onAdd}>
+                <PackagePlus className="h-5.5 w-5.5" />
+                Add a product
+              </Button>
+            </StickyCta>
+          )}
         </>
       )}
     </div>

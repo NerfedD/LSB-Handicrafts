@@ -35,7 +35,7 @@ const READABLE = '[&_p]:text-[16px] [&_label]:text-[16px] [&_[data-form-error]]:
  * completion form with no damage ran "1, 2, 4". WorkshopForm numbers whatever
  * actually rendered — see `numbered` below.
  */
-export function WorkshopField({ number, label, hint, options, multiline, ...props }) {
+export function WorkshopField({ number, label, hint, error, options, placeholder = 'Choose one', multiline, ...props }) {
   const title = (
     <>
       {label}
@@ -45,7 +45,7 @@ export function WorkshopField({ number, label, hint, options, multiline, ...prop
 
   return (
     <FormBand step={number} title={title} className="px-0 py-4">
-      <Field label={label} hint={hint} required={props.required} className="[&_label]:sr-only">
+      <Field label={label} hint={hint} error={error} required={props.required} className="[&_label]:sr-only">
         {(a11y) =>
           options ? (
             <div className="relative">
@@ -54,9 +54,9 @@ export function WorkshopField({ number, label, hint, options, multiline, ...prop
                 {...props}
                 className={cn(fieldBase, 'h-13.5 appearance-none py-0 pl-4 pr-12')}
               >
-                <option value="">Choose one</option>
+                <option value="">{placeholder}</option>
                 {options.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
                 ))}
               </select>
               <ChevronDown
@@ -79,34 +79,89 @@ export function WorkshopField({ number, label, hint, options, multiline, ...prop
  * Walks the rendered tree and numbers the WorkshopFields that survived their
  * conditions, in order. Derived from children on every render rather than
  * counted into a ref, so it cannot drift when React re-renders the body.
+ *
+ * It also hands each field its own error, found by the field's `name` -- the
+ * same key the form's values use -- so a problem is stated beside the field it
+ * is about rather than only in a box at the top.
  */
-function numbered(node, counter) {
+function numbered(node, counter, errors) {
   return Children.map(node, (child) => {
     if (!isValidElement(child)) return child;
     if (child.type === Fragment) {
-      return <Fragment key={child.key}>{numbered(child.props.children, counter)}</Fragment>;
+      return <Fragment key={child.key}>{numbered(child.props.children, counter, errors)}</Fragment>;
     }
     if (child.type === WorkshopField) {
       counter.n += 1;
-      return cloneElement(child, { number: counter.n });
+      const error = child.props.error ?? (child.props.name ? errors[child.props.name] : undefined);
+      return cloneElement(child, { number: counter.n, error });
     }
     return child;
   });
 }
 
+/**
+ * The browser's own check on a field (needed, too small, not whole), in the
+ * words the rest of the app uses. Its built-in bubbles were the only error some
+ * of these fields could show, in the browser's language rather than ours.
+ */
+function nativeProblem(el) {
+  const v = el.validity;
+  if (v.valueMissing) return el.tagName === 'SELECT' ? 'Choose one from the list.' : 'This is needed.';
+  if (v.badInput) return 'Enter a number, using digits only.';
+  if (v.rangeUnderflow) return `Enter ${el.min} or more.`;
+  if (v.rangeOverflow) return `Enter ${Number(el.max).toLocaleString('en-PH')} or less.`;
+  if (v.stepMismatch) {
+    const places = String(el.step).split('.')[1]?.length ?? 0;
+    return places === 0 ? 'Enter a whole number, without decimals.' : `Use at most ${places} decimal ${places === 1 ? 'place' : 'places'}.`;
+  }
+  if (v.tooLong) return `Keep this to ${el.maxLength} characters.`;
+  if (v.patternMismatch) return el.title || 'This is not in the expected format.';
+  return el.validationMessage;
+}
+
+/**
+ * `validate(values)` returns null when the form can be sent, a sentence for a
+ * problem with the form as a whole, or `{ fieldName: sentence }` for problems
+ * with particular fields. Field problems are shown beside their fields; the
+ * box at the top only says how many there are.
+ */
 export default function WorkshopForm({ title, description, submitLabel, initial, onSave, onClose, children, validate }) {
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const pending = useRef(false);
   const request = useRef(null);
-  const change = (key, value) => setValues((v) => ({ ...v, [key]: value }));
+  const change = (key, value) => {
+    setValues((v) => ({ ...v, [key]: value }));
+    // Cleared as soon as they start fixing it, rather than on the next submit.
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  };
+  const setAll = (update) => {
+    setValues(update);
+    setFieldErrors({});
+  };
   async function submit(event) {
     event.preventDefault();
     if (pending.current) return;
     const form = event.currentTarget;
     const problem = validate?.(values);
-    if (problem) { setError(problem); reportFormError(form, problem); return; }
+    const found = problem && typeof problem === 'object'
+      ? Object.fromEntries(Object.entries(problem).filter(([, message]) => message))
+      : {};
+    for (const el of form.elements) {
+      if (el.name && el.willValidate && !el.validity.valid && !found[el.name]) found[el.name] = nativeProblem(el);
+    }
+    const count = Object.keys(found).length;
+    if (typeof problem === 'string' || count > 0) {
+      const message = typeof problem === 'string' ? problem
+        : count === 1 ? Object.values(found)[0] : `Check the ${count} fields marked below.`;
+      setFieldErrors(found);
+      setError(message);
+      reportFormError(form, message);
+      return;
+    }
+    setFieldErrors({});
     const payload = JSON.stringify(values);
     if (request.current?.payload !== payload) request.current = { payload, id: crypto.randomUUID() };
     pending.current = true; setSaving(true); setError(null);
@@ -119,12 +174,12 @@ export default function WorkshopForm({ title, description, submitLabel, initial,
   }
   return <Dialog open onOpenChange={(open) => { if (!open && !pending.current) onClose(); }}>
     <DialogContent className={cn('max-w-[620px] text-[16px]', READABLE)} showClose={!saving}>
-      <form onSubmit={submit} className="flex min-h-0 flex-col">
+      <form onSubmit={submit} noValidate className="flex min-h-0 flex-col">
         <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription className="text-[16px]">{description}</DialogDescription></DialogHeader>
         <DialogBody>
           <FormError message={error} />
           <fieldset disabled={saving} className="min-w-0">
-            {numbered(children(values, change, setValues), { n: 0 })}
+            {numbered(children(values, change, setAll), { n: 0 }, fieldErrors)}
           </fieldset>
         </DialogBody>
         <DialogFooter className="justify-between">

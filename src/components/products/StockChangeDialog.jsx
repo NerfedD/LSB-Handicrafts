@@ -21,15 +21,21 @@ export default function StockChangeDialog({ mode, target, record, onSave, onClos
   const damage = mode === 'damage';
   const unit = record.unit || 'unit';
 
+  // Each problem is stated beside its own field. Stock can never go below
+  // zero here: a write-off is capped at what is on the shelf, and the database
+  // refuses one that is not (stock_command).
   function validate(values) {
-    if (!wholeCount(values.quantity)) return 'Enter a whole number, 0 or more.';
     const amount = Number(values.quantity);
-    if (damage && amount < 1) return 'Enter how many were damaged.';
-    if (damage && amount > record.stock) return `Only ${units(record.stock, unit)} on the shelf, so ${amount} cannot be written off.`;
-    if (!damage && amount === record.stock) return 'That is already the count on record.';
-    if (!values.reason) return damage ? 'Choose what happened to it.' : 'Choose why the count is being corrected.';
-    if (values.reason === 'other' && !values.note.trim()) return 'Write a short note when the reason is "Something else".';
-    return null;
+    const quantity = !wholeCount(values.quantity) ? 'Enter a whole number, 0 or more, without decimals.'
+      : damage && amount < 1 ? 'Enter how many were damaged.'
+        : damage && amount > record.stock ? `Only ${units(record.stock, unit)} on the shelf, so ${amount} cannot be written off.`
+          : !damage && amount === record.stock ? 'That is already the count on record.'
+            : null;
+    return {
+      quantity,
+      reason: values.reason ? null : damage ? 'Choose what happened to it.' : 'Choose why the count is being corrected.',
+      note: values.reason === 'other' && !values.note.trim() ? 'Write a short note when the reason is "Something else".' : null,
+    };
   }
 
   return (
@@ -51,6 +57,7 @@ export default function StockChangeDialog({ mode, target, record, onSave, onClos
         return (
           <>
             <WorkshopField
+              name="quantity"
               label={damage ? 'How many are damaged' : 'How many are actually there'}
               hint={damage ? `In ${unit}s, as they are counted on the shelf.` : 'Count what is physically there now.'}
               type="number" inputMode="numeric" min="0" step="1" required
@@ -58,6 +65,7 @@ export default function StockChangeDialog({ mode, target, record, onSave, onClos
               onChange={(event) => change('quantity', event.target.value)}
             />
             <WorkshopField
+              name="reason"
               label={damage ? 'What happened' : 'Why it is being corrected'}
               required
               options={damage ? DAMAGE_REASON_OPTIONS : COUNT_REASON_OPTIONS}
@@ -65,6 +73,7 @@ export default function StockChangeDialog({ mode, target, record, onSave, onClos
               onChange={(event) => change('reason', event.target.value)}
             />
             <WorkshopField
+              name="note"
               label="Note"
               hint={values.reason === 'other' ? 'Needed for "Something else".' : 'Optional: where, or anything worth knowing later.'}
               multiline maxLength={500}

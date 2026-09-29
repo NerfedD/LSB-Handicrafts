@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { can, canAccess, CAPABILITIES } from './permissions';
 import { collectionsFor } from './screenData';
+import { NAV_TREE, SECTION_OF } from './navigation';
 
 const ROLES = ['Admin', 'Manager', 'Sales Staff', 'Production Staff', 'Delivery Staff'];
 const allowed = (capability) => ROLES.filter((role) => can(role, capability));
@@ -45,6 +46,25 @@ describe('screen access', () => {
       expect(canAccess(role, 'order-edit'), role).toBe(manager);
       expect(canAccess(role, 'products'), role).toBe(true);
     }
+  });
+
+  it('keeps the production report with managers, as a tab of Production', () => {
+    for (const role of ROLES) {
+      expect(canAccess(role, 'production-report'), role).toBe(role === 'Admin' || role === 'Manager');
+    }
+    expect(canAccess('Production Staff', 'production')).toBe(true);
+    expect(canAccess('Sales Staff', 'production')).toBe(false);
+    expect(SECTION_OF['production-report']).toBe('production');
+  });
+
+  it('gives purchasing, raw materials, production and products a sidebar entry each', () => {
+    const entry = (view) => NAV_TREE.find((item) => item.views[0] === view);
+    expect(entry('raw-material-orders')?.label).toBe('Purchasing');
+    expect(entry('raw-materials')?.label).toBe('Raw materials');
+    expect(entry('production')?.label).toBe('Production');
+    expect(entry('products')?.label).toBe('Products & stock');
+    // Anyone may receive a supplier delivery, so everyone can open Purchasing.
+    for (const role of ROLES) expect(canAccess(role, 'raw-material-orders'), role).toBe(true);
   });
 
   it('keeps production staff out of the customer screens', () => {

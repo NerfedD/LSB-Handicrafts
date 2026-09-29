@@ -7,13 +7,14 @@ import Callout, { DangerBlock } from "../shared/Callout";
 import IconChip, { Mono } from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
-import { PhotoSlot } from "../shared/forms";
 import { NotFoundState } from "../shared/PageStates";
 import { BarLegend, SegmentedBar } from "../shared/StockBar";
 import StockHistory from "../shared/StockHistory";
 import { productIcon } from "../shared/productIcons";
 import StockChangeDialog from "./StockChangeDialog";
 import useStockMovements from "../../hooks/useStockMovements";
+import useProductImage from "../../hooks/useProductImage";
+import { ProductPhoto } from "./ProductPhoto";
 import { formatDimensions, formatProductType, formatUnit } from "../../utils/productFormat";
 import { formatLongDate, formatPeso } from "../../utils/profileFormat";
 import { stockForProduct } from "../../utils/productStock";
@@ -76,6 +77,8 @@ export default function ProductDetailPage({
     [product, inventory, orders]
   );
   const movements = useStockMovements({ inventoryId: stock.tracked ? stock.rowId : null, balance: stock.onHand });
+  // Re-read when the product is saved, so a photo just replaced is the one shown.
+  const image = useProductImage(product?.id ?? null, product?.updatedAt);
 
   if (!product) return <NotFoundState noun="product" onBack={onBack} />;
 
@@ -121,7 +124,7 @@ export default function ProductDetailPage({
         {/* ---- the facts ---- */}
         <div className="flex flex-col gap-4">
           <Card className="p-4">
-            <PhotoSlot label="Product photo" hint="800 × 800" />
+            <ProductPhoto src={image.photo?.dataUrl} name={product.name} isLoaded={image.isLoaded} />
             <div className="flex items-center gap-2.5 pt-3.5">
               <IconChip icon={productIcon(product.productType)} tone="neutral" size="sm" />
               <Mono className="truncate text-[15px]">{product.itemCode}</Mono>

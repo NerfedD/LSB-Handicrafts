@@ -23,6 +23,8 @@ const BY_VIEW = {
   suppliers: ['suppliers'],
   'supplier-detail': ['suppliers', 'materialOrders', 'rawMaterials'],
   activity: ['activity'],
+  products: ['categories'],
+  'product-form': ['categories'],
   'raw-materials': ['suppliers', ...WORKSHOP],
   'raw-material-detail': ['suppliers', ...WORKSHOP],
   'raw-material-orders': ['suppliers', ...WORKSHOP],

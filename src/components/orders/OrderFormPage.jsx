@@ -1,4 +1,5 @@
 import FormError from "../shared/FormError";
+import { localDateIso, promisedDateProblem } from "../../utils/dates";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
@@ -166,6 +167,7 @@ export default function OrderFormPage({
     isEdit ? delivery?.location ?? "" : customer?.address ?? ""
   );
   const [dueOn, setDueOn] = useState(isEdit ? delivery?.dueOn ?? "" : "");
+  const [dueError, setDueError] = useState(null);
   const [driver, setDriver] = useState(isEdit ? delivery?.driver ?? "" : "");
   const [deliveryCharge, setDeliveryCharge] = useState(
     isEdit && delivery?.amount ? String(delivery.amount) : ""
@@ -291,6 +293,14 @@ export default function OrderFormPage({
     if (saving) return;
     const formElement = event.currentTarget;
     const fail = (message) => { setError(message); reportFormError(formElement, message); };
+    // A date already on the delivery is kept even if it has passed; only a
+    // date typed now has to be today or later. The database checks the same.
+    const dateProblem = address.trim() ? promisedDateProblem(dueOn, isEdit ? delivery?.dueOn ?? null : null) : null;
+    if (dateProblem) {
+      setDueError(dateProblem);
+      fail(dateProblem);
+      return;
+    }
     if (!guardForm(formElement)) return;
     if (filled.length !== lines.length || lines.some((line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) <= 0 || !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0)) {
       fail('Complete every order line with a product, a whole quantity above zero and a price of zero or more.');
@@ -598,7 +608,7 @@ export default function OrderFormPage({
                 </span>
               ))}
               <span className="block pt-1.5">
-                You can still write the order — it will show on the make list.
+                You can still save the order. What is short shows as needed next on the Production screen.
               </span>
             </Callout>
           )}
@@ -628,13 +638,14 @@ export default function OrderFormPage({
           {address.trim() && (
             <>
               <Row>
-                <Field label="Promised for" hint="The day they expect it.">
+                <Field label="Promised for" error={dueError} hint="The day they expect it: today or later.">
                   {(props) => (
                     <Input
                       {...props}
                       type="date"
+                      min={isEdit && delivery?.dueOn && delivery.dueOn < localDateIso() ? undefined : localDateIso()}
                       value={dueOn}
-                      onChange={(event) => setDueOn(event.target.value)}
+                      onChange={(event) => { setDueOn(event.target.value); setDueError(null); }}
                     />
                   )}
                 </Field>
@@ -718,10 +729,10 @@ export default function OrderFormPage({
                 : deliveryDoubt
                   ? isEdit
                     ? "Save it anyway"
-                    : "Write it anyway"
+                    : "Create it anyway"
                   : isEdit
                     ? "Save the changes"
-                    : "Write this order"}
+                    : "Create order"}
             </Button>
           }
         />

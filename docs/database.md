@@ -22,11 +22,13 @@ The app is a static React bundle talking to one Supabase project (Postgres, Auth
 
 ## An existing project
 
-Apply the migrations it has not had, **oldest first**. The hosted project `tvdtzsputfnapswpurlr` had everything up to `20260921213000_staff_revision_guard.sql` when this release was prepared; the two to apply are:
+Apply the migrations it has not had, **oldest first**. The hosted project `tvdtzsputfnapswpurlr` had everything up to `20260921213000_staff_revision_guard.sql` when this release was prepared; the three to apply are:
 
 **`20260924120000_stock_returns_loyalty.sql`** — adds the stock-movement ledger, damage and count corrections (`stock_command`), replacements and server-checked refunds in `order_command`, supplier delivery references, `deliveries.order_id` (back-filled from the "Order #N - " text), the one-row-per-code index on stock, product archiving (`remove_product`), loyalty rules with validated order discounts, per-customer totals (`customer_order_stats`), and the role policies in [workflows.md](workflows.md#roles). It deletes and overwrites nothing except the documented back-fill.
 
 **`20260924190000_material_crud_and_damage_undo.sql`** — adds `status` and `revision` to raw materials, `remove_material` and `restore_material` (archive-or-delete, the same rule as products), a `save_material` that can correct every field rather than only the name and reorder point, and `undo_damage` in `stock_command` with the `reverses_movement_id` link and the unique index that allows exactly one undo per damage record. It adds columns, constraints and functions only.
+
+**`20260929120000_controlled_inputs_and_photos.sql`** — the checks behind the purchasing, production and catalogue forms: `private.shop_today()` and the `guard_promised_date` trigger (no promised date before today on a new or changed date, on `deliveries.due_on` and `raw_material_orders.expected_delivery_date`); `guard_product_measurements` (positive, bounded sizes on products and stock rows, checked only on values being written); the `product_categories` list with its case-insensitive unique index, the `canonical_category` trigger and `category_command`; `product_images` with `save_product_image`; `raw_materials.weight_kg`; a `save_material` that generates a code when none is given and checks the code format, unit and every measurement; and `workshop_precheck`, called by `public.workshop_command` before anything moves, which explains a bad count or price in words and refuses archived or used-up materials and archived products. It rewrites one thing on purpose: category labels that differ only in capitals or spacing are merged into the most-used spelling. Everything else is additive.
 
 Order matters. Each file redefines the functions it touches with `create or replace`, so running an older one after a newer one puts the older definitions back. If that happens, re-run the later files; nothing is lost.
 
@@ -37,7 +39,7 @@ Deployment order:
 3. Deploy the client (`npm run build`; Vercel serves `dist/` with the SPA rewrite in `vercel.json`).
 4. Ask everyone to reload open tabs: an old tab would try to write stock counts directly, which the database now refuses.
 
-Both migrations are safe to re-run. Rolling back the client alone is not safe after step 2 (old clients write stock directly); roll forward instead.
+All three migrations are safe to re-run. Rolling back the client alone is not safe after step 2 (old clients write stock directly); roll forward instead.
 
 ## Edge Functions
 

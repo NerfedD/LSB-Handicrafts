@@ -40,8 +40,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar } from "../shared/Chip";
 import { AlertBadge, CountBadge } from "../shared/StatusPill";
-import { can, isAdminRole } from "../../utils/permissions";
-import { NAV_GROUPS, NAV_TREE, PRIMARY_ACTION, SECTION_OF } from "../../utils/navigation";
+import { isAdminRole } from "../../utils/permissions";
+import { NAV_GROUPS, NAV_TREE, PHONE_FIRST, SECTION_OF } from "../../utils/navigation";
 import { DASHBOARD_VIEW } from "../../utils/constants";
 import useTheme from "../../hooks/useTheme";
 import { roleLabel } from "../../utils/copy";
@@ -118,7 +118,6 @@ export default function Shell({
   onNavigate,
   onSignOut,
   onSetDashboardView,
-  onPrimaryAction,
   onOpenAlerts,
   onHelp,
   children,
@@ -149,9 +148,6 @@ export default function Shell({
   // chrome has to grow with it, or a 40px greeting sits under a 23px title.
   const isLarge = dashboardView === DASHBOARD_VIEW.LARGE && view === "dashboard";
 
-  const action = PRIMARY_ACTION[view];
-  const primary = action && (!action.capability || can(profile?.role, action.capability)) ? action : null;
-
   return (
     <div className="flex h-screen w-full overflow-hidden bg-paper dark:bg-dk-canvas">
       {/* ≥834px: the rail or the full sidebar. */}
@@ -170,14 +166,12 @@ export default function Shell({
           profile={profile}
           alertCount={alertCount}
           isLarge={isLarge}
-          primary={primary}
           dashboardView={dashboardView}
           theme={theme}
           onSetTheme={setTheme}
           onNavigate={onNavigate}
           onSignOut={onSignOut}
           onSetDashboardView={onSetDashboardView}
-          onPrimaryAction={onPrimaryAction}
           onOpenAlerts={onOpenAlerts}
           onHelp={onHelp}
         />
@@ -207,7 +201,7 @@ export default function Shell({
       </div>
 
       {/* <834px: the bottom tab bar. */}
-      <BottomTabs items={items} section={section} onNavigate={onNavigate} />
+      <BottomTabs items={items} role={profile?.role} section={section} onNavigate={onNavigate} />
     </div>
   );
 }
@@ -342,19 +336,15 @@ function Header({
   profile,
   alertCount,
   isLarge,
-  primary,
   dashboardView,
   theme,
   onSetTheme,
   onNavigate,
   onSignOut,
   onSetDashboardView,
-  onPrimaryAction,
   onOpenAlerts,
   onHelp,
 }) {
-  const PrimaryIcon = primary ? ICONS[primary.icon] : null;
-
   return (
     <header
       className={cn(
@@ -392,16 +382,9 @@ function Header({
           Help
         </Button>
 
-        {primary && (
-          <Button
-            variant={primary.tone === "clay" ? "clay" : "cobalt"}
-            onClick={onPrimaryAction}
-            className="hidden md:inline-flex"
-          >
-            {PrimaryIcon && <PrimaryIcon className="h-5 w-5" />}
-            {primary.label}
-          </Button>
-        )}
+        {/* No primary action here any more: each screen draws its own beside
+            its search and filters (see PRIMARY_ACTION in utils/navigation),
+            which is where people looked for it. */}
 
         {/* Alerts lands on the products that need making, NOT on the activity
             log: the log is administrators-only, and a button in permanent
@@ -611,7 +594,12 @@ function ViewMark({ selected, icon }) {
  * "More", a menu over everything past those four — Suppliers and Staff &
  * accounts included, never silently dropped.
  */
-function BottomTabs({ items, section, onNavigate }) {
+function BottomTabs({ items: allowed, role, section, onNavigate }) {
+  // A role's own sections first (utils/navigation PHONE_FIRST), then the rest
+  // in sidebar order, so the four direct tabs are the four that job uses most.
+  const first = PHONE_FIRST[role] ?? PHONE_FIRST.default;
+  const rank = (item) => (first.includes(item.key) ? first.indexOf(item.key) : first.length);
+  const items = [...allowed].sort((a, b) => rank(a) - rank(b));
   const overflowing = items.length > 5;
   const tabs = overflowing ? items.slice(0, 4) : items;
   const moreItems = overflowing ? items.slice(4) : [];

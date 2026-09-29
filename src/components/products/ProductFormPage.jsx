@@ -21,12 +21,17 @@ import {
   FormBand,
   FormFooter,
   LockedField,
-  PhotoSlot,
   Row,
 } from "../shared/forms";
 import { productChoiceIcon } from "../shared/productIcons";
 import { PRODUCT_TYPE, PRODUCT_TYPE_OPTIONS, SELL_UNIT_OPTIONS } from "../../utils/constants";
 import { suggestItemCode, suggestProductName } from "../../utils/productFormat";
+import { countProblem, measureProblem, moneyProblem, nameProblem, tidyLabel } from "../../utils/validation";
+import useProductImage from "../../hooks/useProductImage";
+import { ProductPhotoField } from "./ProductPhoto";
+
+/** The value of the category select that opens the "new category" box. */
+const NEW_CATEGORY = "__new";
 
 /**
  * Add a product — screen 2g.
@@ -64,6 +69,7 @@ const EMPTY = {
   lengthFt: "",
   widthFt: "",
   category: "",
+  categoryNew: "",
   unitPrice: "",
   unit: "piece",
   packSize: "1",
@@ -83,6 +89,7 @@ const seed = (product, stock) => {
     lengthFt: product.lengthFt ?? "",
     widthFt: product.widthFt ?? "",
     category: stock?.category ?? "",
+    categoryNew: "",
     unitPrice: product.unitPrice ?? "",
     unit: product.unit || "piece",
     packSize: String(product.packSize ?? 1),
@@ -91,24 +98,90 @@ const seed = (product, stock) => {
   };
 };
 
-function validate(values) {
+/**
+ * Every rule the database checks, said beside the field it is about. Sizes are
+ * positive and within reason, counts are whole numbers, money has two decimal
+ * places at most -- and "12" is a perfectly good price without ".00".
+ */
+function validate(values, { isEdit, stockTracked, categories }) {
   const errors = {};
-  if (!values.name.trim()) {
-    errors.name = "Give it a name, so staff can find it.";
+  const put = (field, message) => { if (message) errors[field] = message; };
+  put("name", values.name.trim() ? nameProblem(values.name, { label: "The name" }) : "Give it a name, so staff can find it.");
+  put("unitPrice", values.unitPrice === ""
+    ? "Put in the price you sell it for. Use 0 if it is not for sale."
+    : moneyProblem(values.unitPrice, { label: "The price" }));
+  const isBall = values.productType === PRODUCT_TYPE.BALL;
+  const isFlat = values.productType === PRODUCT_TYPE.SHEET || values.productType === PRODUCT_TYPE.BLOCK;
+  if (isBall) {
+    put("diameterIn", values.diameterIn === "" ? "How wide across is it?"
+      : measureProblem(values.diameterIn, { label: "The width across", max: 240, unit: "inches" }));
   }
-  if (values.unitPrice === "" || Number(values.unitPrice) < 0) {
-    errors.unitPrice = "Put in the price you sell it for. Use 0 if it is not for sale.";
+  if (isFlat) {
+    put("thicknessIn", values.thicknessIn === "" ? "How thick is it?"
+      : measureProblem(values.thicknessIn, { label: "The thickness", max: 240, unit: "inches" }));
+    put("lengthFt", measureProblem(values.lengthFt, { label: "The length", max: 200, unit: "feet" }));
+    put("widthFt", measureProblem(values.widthFt, { label: "The width", max: 200, unit: "feet" }));
   }
-  if (values.productType === PRODUCT_TYPE.BALL && !values.diameterIn) {
-    errors.diameterIn = "How wide across is it?";
+  if (values.unit !== "piece") {
+    put("packSize", countProblem(values.packSize, { min: 1, max: 100000, label: "The number in each" }));
   }
-  if (
-    (values.productType === PRODUCT_TYPE.SHEET || values.productType === PRODUCT_TYPE.BLOCK) &&
-    !values.thicknessIn
-  ) {
-    errors.thicknessIn = "How thick is it?";
+  if (!(isEdit && stockTracked) && values.stock !== "") {
+    put("stock", countProblem(values.stock, { label: "The count" }));
+  }
+  if (values.lowStockThreshold !== "") {
+    put("lowStockThreshold", countProblem(values.lowStockThreshold, { label: "The reorder point" }));
+  }
+  if (values.category === NEW_CATEGORY) {
+    const name = tidyLabel(values.categoryNew);
+    const clash = categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+    if (!name) put("categoryNew", "Write the name of the new category, or choose one from the list.");
+    else if (name.length > 60) put("categoryNew", "Keep the category name to 60 characters.");
+    else if (clash) put("categoryNew", `There is already a category called "${clash.name}". Choose it from the list instead.`);
   }
   return errors;
+}
+
+/**
+ * The category, as a choice from the managed list. A new one is typed only
+ * after choosing "Add a new category…", and a name that matches an existing one
+ * in any capitalisation is pointed back to the list, so the catalogue does not
+ * end up with "Styro Balls" and "styro balls".
+ */
+function CategoryField({ values, errors, categories, setField, placeholder }) {
+  const known = categories.map((c) => c.name);
+  // A label on an old stock row that is not in the list yet is still offered,
+  // so editing that product does not silently drop its category.
+  const current = values.category && values.category !== NEW_CATEGORY
+    && !known.some((n) => n.toLowerCase() === values.category.toLowerCase())
+    ? [values.category] : [];
+  const options = [...known, ...current].sort((a, b) => a.localeCompare(b));
+  return (
+    <div className="flex flex-col gap-3">
+      <Field label="Category" error={errors.category} hint="How it is grouped on the shelf and in the list.">
+        {(props) => (
+          <Select value={values.category || "__none"} onValueChange={(next) => setField("category", next === "__none" ? "" : next)}>
+            <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]}>
+              <SelectValue placeholder={placeholder} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none">No category</SelectItem>
+              {options.map((name) => (
+                <SelectItem key={name} value={name}>{name}</SelectItem>
+              ))}
+              <SelectItem value={NEW_CATEGORY}>Add a new category…</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </Field>
+      {values.category === NEW_CATEGORY && (
+        <Field label="New category name" required error={errors.categoryNew} hint="It is added to the list when you save, and offered for every product after that.">
+          {(props) => (
+            <Input {...props} maxLength={60} value={values.categoryNew} onChange={(event) => setField("categoryNew", event.target.value)} placeholder={placeholder} />
+          )}
+        </Field>
+      )}
+    </div>
+  );
 }
 
 export default function ProductFormPage({
@@ -117,6 +190,8 @@ export default function ProductFormPage({
   stock,
   /** Every item code already in use, so a generated one cannot collide. */
   takenCodes = [],
+  /** The managed category list: [{ id, name }]. */
+  categories = [],
   saving = false,
   onSave,
   onCancel,
@@ -126,6 +201,8 @@ export default function ProductFormPage({
   const [errors, setErrors] = useState({});
   const [saveError, setSaveError] = useState(null);
   const [submittedCode, setSubmittedCode] = useState(null);
+  const [photo, setPhoto] = useState({ change: null, dataUrl: null });
+  const saved = useProductImage(isEdit ? product?.id ?? null : null);
 
   function setField(field, value) {
     setValues((previous) => ({ ...previous, [field]: value }));
@@ -168,16 +245,24 @@ export default function ProductFormPage({
     if (saving) return;
     const formElement = event.currentTarget;
     setSaveError(null);
-    const found = validate(values);
+    const found = validate(values, { isEdit, stockTracked: Boolean(stock?.tracked), categories });
     if (Object.keys(found).length > 0) {
       setErrors(found);
-      reportFormError(event.currentTarget, Object.values(found)[0]);
+      const count = Object.keys(found).length;
+      reportFormError(event.currentTarget, count === 1 ? Object.values(found)[0] : `Check the ${count} fields marked below.`);
       return;
     }
     if (!guardForm(formElement)) return;
     setSubmittedCode(itemCode);
     try {
-      const result = await onSave({ ...values, itemCode });
+      const creating = values.category === NEW_CATEGORY;
+      const result = await onSave({
+        ...values,
+        itemCode,
+        category: creating ? tidyLabel(values.categoryNew) : values.category,
+        categoryIsNew: creating,
+        photo,
+      });
       if (!result?.ok) {
         const message = result?.message || 'The product was not saved. Check your entries and retry.';
         setSaveError(message); reportFormError(formElement, message);
@@ -243,18 +328,9 @@ export default function ProductFormPage({
           {isBall && (
             <Row>
               <Field label="How wide across" required error={errors.diameterIn} hint="In inches.">
-                {number("diameterIn", { step: "0.25", min: "0.25", placeholder: "4" })}
+                {number("diameterIn", { step: "any", min: "0", placeholder: "4" })}
               </Field>
-              <Field label="Category" hint="How it is grouped on the shelf.">
-                {(props) => (
-                  <Input
-                    {...props}
-                    value={values.category}
-                    onChange={(event) => setField("category", event.target.value)}
-                    placeholder="Styro Balls"
-                  />
-                )}
-              </Field>
+              <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Balls" />
             </Row>
           )}
 
@@ -262,41 +338,23 @@ export default function ProductFormPage({
             <>
               <Row>
                 <Field label="How thick" required error={errors.thicknessIn} hint="In inches.">
-                  {number("thicknessIn", { step: "0.25", min: "0.25", placeholder: "1" })}
+                  {number("thicknessIn", { step: "any", min: "0", placeholder: "1" })}
                 </Field>
-                <Field label="Category" hint="How it is grouped on the shelf.">
-                  {(props) => (
-                    <Input
-                      {...props}
-                      value={values.category}
-                      onChange={(event) => setField("category", event.target.value)}
-                      placeholder="Styro Sheets"
-                    />
-                  )}
-                </Field>
+                <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Sheets" />
               </Row>
               <Row>
-                <Field label="How long" hint="In feet.">
-                  {number("lengthFt", { step: "0.5", min: "0.25", placeholder: "4" })}
+                <Field label="How long" error={errors.lengthFt} hint="In feet.">
+                  {number("lengthFt", { step: "any", min: "0", placeholder: "4" })}
                 </Field>
-                <Field label="How wide" hint="In feet.">
-                  {number("widthFt", { step: "0.5", min: "0", placeholder: "2" })}
+                <Field label="How wide" error={errors.widthFt} hint="In feet.">
+                  {number("widthFt", { step: "any", min: "0", placeholder: "2" })}
                 </Field>
               </Row>
             </>
           )}
 
           {!isBall && !isFlat && (
-            <Field label="Category" hint="How it is grouped on the shelf.">
-              {(props) => (
-                <Input
-                  {...props}
-                  value={values.category}
-                  onChange={(event) => setField("category", event.target.value)}
-                  placeholder="Custom shapes"
-                />
-              )}
-            </Field>
+            <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Custom shapes" />
           )}
         </FormBand>
 
@@ -315,7 +373,7 @@ export default function ProductFormPage({
                     {...props}
                     type="number"
                     inputMode="decimal"
-                    step="0.01"
+                    step="any"
                     min="0"
                     className="pl-10"
                     value={values.unitPrice}
@@ -350,7 +408,8 @@ export default function ProductFormPage({
           {values.unit !== "piece" && (
             <Field
               label={`How many pieces in one ${values.unit}`}
-              hint="So we can tell how many actual pieces are on the shelf."
+              error={errors.packSize}
+              hint="So we can tell how many actual pieces are on the shelf. A whole number."
             >
               {number("packSize", { step: "1", min: "1", placeholder: "25" })}
             </Field>
@@ -369,7 +428,8 @@ export default function ProductFormPage({
             ) : (
               <Field
                 label="How many on the shelf now"
-                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is actually there today."}
+                error={errors.stock}
+                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is actually there today. A whole number, 0 or more."}
               >
                 {number("stock", { step: "1", min: "0", placeholder: "0" })}
               </Field>
@@ -377,7 +437,8 @@ export default function ProductFormPage({
 
             <Field
               label="Reorder point"
-              hint="At or below this, it shows as running low and goes on the make list."
+              error={errors.lowStockThreshold}
+              hint="At or below this, it shows as running low and is listed as needed next under Production."
             >
               {number("lowStockThreshold", { step: "1", min: "0", placeholder: "15" })}
             </Field>
@@ -401,7 +462,13 @@ export default function ProductFormPage({
 
       <div className="flex flex-col gap-4">
         <Card className="p-4">
-          <PhotoSlot label="Product photo" hint="800 × 800" />
+          <ProductPhotoField
+            value={photo}
+            current={saved.photo?.dataUrl ?? null}
+            onChange={setPhoto}
+            disabled={saving}
+            name={values.name}
+          />
         </Card>
 
         <InfoNote icon={<Info className="h-5 w-5" />} title="The code is made for you">

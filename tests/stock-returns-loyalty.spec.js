@@ -187,9 +187,9 @@ test('a manager switches the loyalty reward on, and a new order for a regular ap
   await form.getByLabel('Where to').fill('3 Torres St, Poblacion, Davao City');
   // 10 × ₱120 = ₱1,200, less 10%.
   await expect(page.getByText('−₱120.00 on this order.')).toBeVisible();
-  await page.getByRole('button', { name: 'Write this order' }).click();
+  await page.getByRole('button', { name: 'Create order', exact: true }).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: 'One order' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Order details' })).toBeVisible();
   expect(posted[0]).toMatchObject({ customer_id: 204, discount_amount: 120, total_amount: 1080, promotion: { kind: 'loyalty' } });
   await expect(page.getByRole('main').getByText('Loyalty reward').first()).toBeVisible();
 });

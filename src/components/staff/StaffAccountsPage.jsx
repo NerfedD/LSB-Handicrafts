@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar } from "../shared/Chip";
-import { FilterBar, RecordCard, StickyCta } from "../shared/ListScreen";
+import { FilterBar, ListToolbar, RecordCard, StickyCta } from "../shared/ListScreen";
 import Landed from "../shared/Landed";
 import { landedRow } from "../shared/landing";
 import { FilterChips, Pager, SearchField } from "../shared/filters";
@@ -122,25 +122,34 @@ export default function StaffAccountsPage({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <FilterBar>
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Search by name or email"
-          id="staff-search"
-        />
-        {/* The directory and the activity log have no nav entry of their own —
-            they belong to this section, and this is where somebody looking for
-            "who do I call" or "who changed that price" would come first. */}
-        <Button variant="outline" size="field" onClick={onOpenDirectory}>
-          <BookUser className="h-4.5 w-4.5" />
-          Who to call for what
-        </Button>
-        <Button variant="outline" size="field" onClick={onOpenActivity}>
-          <History className="h-4.5 w-4.5" />
-          What happened recently
-        </Button>
-      </FilterBar>
+      <ListToolbar
+        action={onAdd && (
+          <Button variant="cobalt" size="lg" onClick={onAdd}>
+            <UserPlus className="h-5 w-5" />
+            Add a staff account
+          </Button>
+        )}
+      >
+        <FilterBar>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            placeholder="Search by name or email"
+            id="staff-search"
+          />
+          {/* The directory and the activity log have no nav entry of their own —
+              they belong to this section, and this is where somebody looking for
+              "who do I call" or "who changed that price" would come first. */}
+          <Button variant="outline" size="field" onClick={onOpenDirectory}>
+            <BookUser className="h-4.5 w-4.5" />
+            Who to call for what
+          </Button>
+          <Button variant="outline" size="field" onClick={onOpenActivity}>
+            <History className="h-4.5 w-4.5" />
+            What happened recently
+          </Button>
+        </FilterBar>
+      </ListToolbar>
 
       <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which accounts" />
 

@@ -387,7 +387,7 @@ test.describe("orders and deliveries", () => {
     });
 
     await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("button", { name: "Write a new order" }).click();
+    await page.getByRole("button", { name: "Create order" }).click();
 
     // Scoped to <main>: the sidebar's "Customers" nav button carries that as
     // its aria-label, and an unscoped getByLabel finds it first.
@@ -400,13 +400,13 @@ test.describe("orders and deliveries", () => {
     // No address, so the form asks once whether this is a shop collection
     // before it writes an order with no delivery behind it. It asks, it does
     // not refuse — the second press goes through.
-    await page.getByRole("button", { name: "Write this order" }).click();
+    await page.getByRole("button", { name: "Create order", exact: true }).click();
     await expect(page.getByText(/no delivery is raised for this order/)).toBeVisible();
     expect(saved).toHaveLength(0);
 
-    await page.getByRole("button", { name: "Write it anyway" }).click();
+    await page.getByRole("button", { name: "Create it anyway" }).click();
     // A written order opens on its own screen, not back on the list.
-    await expect(page.getByRole("heading", { level: 1, name: "One order" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Order details" })).toBeVisible();
 
     expect(saved).toHaveLength(1);
     const line = saved[0].items[0];
@@ -742,7 +742,7 @@ test.describe("people", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: /What does this person do/ })).toBeVisible();
     await expect(page.getByText(/Writes orders and looks after customers/)).toBeVisible();
-    await expect(page.getByText(/Works from the make list/)).toBeVisible();
+    await expect(page.getByText(/Works from the Production screen/)).toBeVisible();
 
     expectClean();
   });
@@ -827,6 +827,9 @@ test.describe("the six rules, spot-checked", () => {
   test("nothing readable is under 16px and no control is under 44px", async ({ page }) => {
     await page.getByRole("button", { name: navName("Products & stock") }).click();
     await page.getByRole("row").last().waitFor();
+    // Measured once the screen has finished arriving: mid-way through its
+    // 200ms slide a 44px button can report 43.99998px.
+    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
 
     const findings = await page.evaluate(() => {
       // The two documented exceptions: tracked uppercase signposts (column

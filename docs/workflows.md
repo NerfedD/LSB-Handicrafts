@@ -39,24 +39,46 @@ The browser cannot write `inventory.stock` directly (a trigger refuses it) and c
 
 Damage found at other moments is handled where it happens: on a supplier delivery (not added to stock, flags a claim), in production quality check (defect log), or on a customer return (*Thrown away* — not put back on the shelf). None of these deducts stock that was never counted, so nothing is deducted twice.
 
+## Where each job lives
+
+The sidebar's *Stock & production* group has one entry per job, in the order stock moves: **Purchasing** (order from a supplier, receive the delivery), **Raw materials** (what the workshop holds), **Production** (batches, with the *Production report* as a second tab for managers) and **Products & stock** (what is sold). Each screen's main action — *Add a product*, *Create order*, *Order materials*, *Start batch*, *Add raw material* — sits in the page beside its search and filters, and moves to a bar above the tab bar on a phone. Each workshop screen opens with three short steps saying what adds stock, what sets it aside and what takes it away; the header's *Help* explains the screen it is opened on.
+
 ## Raw materials
 
-A manager adds a material with its code, kind, unit, measurements and reorder point, and can **correct any of them afterwards** — a code, a unit or a measurement typed wrong when it was added is not permanent. A save carries the revision the form was opened on, so one that somebody else changed in the meantime is refused rather than overwritten. Changing the details never moves stock.
+A manager adds a material with its name, code, kind, counting unit, measurements (density, weight of one unit, thickness, length, width) and warning level, and can **correct any of them afterwards** — a code, a unit or a measurement typed wrong when it was added is not permanent. A save carries the revision the form was opened on, so one that somebody else changed in the meantime is refused rather than overwritten. Changing the details never moves stock.
 
-Removing one is an administrator's job and follows the same rule as a product: see [Removing records safely](#removing-records-safely). A material taken out of use keeps its history and stays readable in the stock movements and batches that name it; it is only kept out of the materials list, new supplier orders and new recipes.
+- **Code.** Optional when adding: left blank, one is generated (`RM-SHT-001`, `RM-ADH-002`, …, never reused). A typed code must be 2–40 letters, digits and single hyphens (`SS-100-4X8`) and unique in any capitalisation; it is stored upper-case. A code saved before this rule existed is left alone until somebody changes it. Use the same code as a product to be able to move selling stock into raw materials.
+- **Unit.** Chosen from a list (sheet, block, piece, roll, bottle, can, bag, box, kg, liter, meter, plus any unit already in use). *Another unit…* adds a new one: letters and single spaces, at most 24, stored lower-case.
+- **Names** accept any punctuation (`1/2"`, `A&B`, brackets); runs of spaces are folded into one.
+
+The list shows materials in use, with filters for *Needs ordering*, *Out of stock* and *No longer in use*, so an archived material can still be found and put back. Each card offers *Order more*, which opens the supplier order with the material already chosen.
+
+Removing one is an administrator's job and follows the same rule as a product: see [Removing records safely](#removing-records-safely). A material taken out of use keeps its history and stays readable in the stock movements and batches that name it; it is not offered for new supplier orders, batches or recipes.
 
 ## Suppliers and deliveries
 
-1. A manager orders a material from a supplier (quantity, price, promised date, courier notes).
-2. *Receive delivery* (any active staff) records what was unloaded, what was damaged and why, and the supplier's delivery-receipt or invoice number. Usable = arrived − damaged is added to stock as one new lot.
+1. A manager orders a material from a supplier under *Purchasing* (or *Order more* on the material): quantity (a whole number, in the material's unit), price per unit (0 to 100,000,000, two decimals at most), an optional promised date and courier notes. Nothing is added to stock. An archived material cannot be ordered.
+2. *Receive delivery* (any active staff) records what was unloaded, what was damaged and why, and the supplier's delivery-receipt or invoice number. Usable = arrived − damaged is added to stock as one new lot, and the order shows as *Received*.
 3. Each supplier order can be received once: a second submission is refused, and a retried one replays. A short, excess or damaged delivery flags a claim; a manager records how it was settled, which never rewrites the receipt or adds stock.
 4. A supplier's screen lists what they have supplied, derived from their orders. A supplier with purchase history cannot be removed (foreign key).
 
+Supplier order states: *Ordered* → *Delivery date set* → *On the way* → *Received*, or *Cancelled* before it leaves the supplier. Only *Received* adds stock.
+
+## Promised dates
+
+A promised date — on a supplier order, a customer delivery, or the follow-up delivery for goods left behind — cannot be before today (the shop's date, Asia/Manila). The rule applies to a date being typed: a record whose date has already passed keeps it, and can still have its driver, notes or address corrected. Enforced by the `guard_promised_date` trigger on both tables; the forms say so beside the field before anything is sent.
+
 ## Production
 
-The make list puts goods owed to customers first, then products at or below their reorder point. *Start batch* reserves material against other batches (a saved recipe fills in the usual amount). A batch moves Queued → In progress → Quality check → Completed; completing it, in one transaction, adds the good pieces (in whole selling packs), deducts the material actually used (oldest lots first), and logs damaged pieces with a reason. A queued batch can be cancelled, releasing its material. *Damage & yield* (managers) reports weighted yield and every defect with its material lots.
+*Production* lists what is needed next — goods owed to customers first, then products at or below their reorder point — and every batch. *Start batch* sets material aside against other batches (a saved recipe fills in the usual amount). Only materials in use are offered, and one with nothing free (used up, or all set aside) is shown but cannot be chosen; products no longer sold are not offered. A batch moves *Planned* → *In production* → *Quality check* → *Completed*; completing it, in one transaction, adds the good pieces (in whole selling packs), deducts the material actually used (oldest lots first), and logs damaged pieces with a reason. A planned batch can be cancelled, releasing its material. The *Production report* tab (managers) shows weighted yield and every defect with its material lots.
 
 Moving selling stock into raw materials is an explicit manager action, refused while a waiting order needs that stock.
+
+## Products, categories and photos
+
+- **Categories** are one managed list (*Categories* on *Products & stock*, managers). The product form offers the list and *Add a new category…*; a name that matches an existing category in any capitalisation or spacing is pointed back to it. The database keeps one spelling per category with a case-insensitive unique index, files any stock row under the listed spelling, and the migration merged labels that differed only in capitals or spaces. A category can be renamed (its products move with it) and removed only when no product is in it.
+- **Photos.** A manager can add, replace or remove a product's photo on the product form. It is resized in the browser (800 px on the longer side, JPEG) and saved with the product; Cancel leaves the old photo. If the product saves and the photo does not, the form stays open with the photo still chosen and says so; saving again finishes just the photo. Stored in `product_images`, removed with its product.
+- **Checks.** Sizes are above 0 (at most 240 inches or 200 feet), prices have two decimals at most, counts and pack sizes are whole numbers. Whole numbers are typed without decimals. Each problem is shown beside its field and what was typed is kept.
 
 ## Orders and deliveries
 
@@ -106,7 +128,7 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | See customer contact details | ✓ | ✓ | ✓ | | ✓ |
 | Add/edit customers | ✓ | ✓ | ✓ | | |
 | Add/edit suppliers, order materials, settle claims | ✓ | ✓ | | | |
-| Loyalty rules, damage & yield report | ✓ | ✓ | | | |
+| Loyalty rules, production report, product categories and photos | ✓ | ✓ | | | |
 | Production batches | ✓ | ✓ | | ✓ | |
 | Remove customers, suppliers, products, raw materials | ✓ | | | | |
 | Staff accounts, activity log | ✓ | | | | |

@@ -26,7 +26,7 @@ begin
 
   result:=public.workshop_command('save_material',jsonb_build_object('sku','RAW-'||suffix,'name','Verification 2 inch sheet','material_type','sheet','unit','sheet','low_stock_threshold',20),gen_random_uuid());
   material_id:=(result->>'id')::bigint;
-  result:=public.workshop_command('save_order',jsonb_build_object('supplier_id',supplier_id,'raw_material_id',material_id,'quantity_ordered',50,'unit_price',100,'expected_delivery_date','2026-09-19'),gen_random_uuid());
+  result:=public.workshop_command('save_order',jsonb_build_object('supplier_id',supplier_id,'raw_material_id',material_id,'quantity_ordered',50,'unit_price',100,'expected_delivery_date',(private.shop_today() + 7)::text),gen_random_uuid());
   order_id:=(result->>'id')::bigint;
   assert result->>'status'='Delivery Scheduled','ETA should set scheduled status';
   assert (result->>'total_cost')::numeric=5000,'server computes total cost';

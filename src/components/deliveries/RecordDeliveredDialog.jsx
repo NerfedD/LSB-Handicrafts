@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { localDateIso, promisedDateProblem } from "../../utils/dates";
 
 import { PackageOpen, Truck } from "../icons";
 import { Button } from "@/components/ui/button";
@@ -116,6 +117,9 @@ export default function RecordDeliveredDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    // Checked before anything moves: a past date would be refused only when the
+    // second delivery is raised, after the goods had already come off the shelf.
+    if (isShort && promisedDateProblem(dueOn)) return;
     setSaving(true);
     const ok = await onSave({
       toStage,
@@ -249,12 +253,14 @@ export default function RecordDeliveredDialog({
 
                 <Field
                   label="When it should get there"
-                  hint="A promised day. Without one it never shows under Late or Due today."
+                  error={promisedDateProblem(dueOn)}
+                  hint="A promised day, today or later. Without one it never shows under Late or Due today."
                 >
                   {(props) => (
                     <Input
                       {...props}
                       type="date"
+                      min={localDateIso()}
                       value={dueOn}
                       onChange={(event) => setDueOn(event.target.value)}
                     />

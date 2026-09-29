@@ -181,7 +181,7 @@ export default function SupplierDetailPage({
             ))}
           </ul>
         )}
-        <Button variant="outline" size="lg" onClick={onOpenPurchases}>Open supplier deliveries</Button>
+        <Button variant="outline" size="lg" onClick={onOpenPurchases}>Open Purchasing</Button>
       </Card>
       {/* THE HEADING HAS TO AGREE WITH THE BUTTON UNDER IT.
           This block used to be headed "Remove this supplier for good" in both

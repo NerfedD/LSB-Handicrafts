@@ -131,17 +131,17 @@ test('BUG-01: a second retry after a twice-failed delivery still saves the order
   await form.getByLabel('How many').fill('3');
   await form.getByLabel('Where to').fill('12 Retry Street');
 
-  await page.getByRole('button', { name: 'Write this order' }).click();
+  await page.getByRole('button', { name: 'Create order', exact: true }).click();
   await expect(page.getByText(/the delivery was not/i).first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Write this order' }).click();
+  await page.getByRole('button', { name: 'Create order', exact: true }).click();
   await expect(page.getByText(/the delivery was not/i).first()).toBeVisible();
   // The staleness message belongs to somebody else's edit, not to a retry of
   // this form's own write.
   await expect(page.getByText(/record changed or is no longer available/)).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Write this order' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'One order' })).toBeVisible();
+  await page.getByRole('button', { name: 'Create order', exact: true }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Order details' })).toBeVisible();
 
   const written = tables.orders.filter((row) => row.customer_name === 'Retry Regression');
   expect(written).toHaveLength(1);

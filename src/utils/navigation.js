@@ -40,10 +40,20 @@
  */
 
 export const NAV_GROUPS = [
-  { key: "main", label: "Main" },
+  { key: "main", label: "Sales" },
+  { key: "stock", label: "Stock & production" },
   { key: "people", label: "People" },
 ];
 
+/**
+ * THE WORKSHOP IS THREE DESTINATIONS, NOT ONE WITH TABS. Raw materials,
+ * purchasing and production used to sit behind a row of tabs inside "Raw
+ * materials", so ordering material meant Raw materials -> Supplier deliveries
+ * -> Order materials, and production was a tab called "Make list" that people
+ * went looking for under Deliveries (whose board has a "Being made" column).
+ * Each is its own entry now, under one caption, in the order stock moves:
+ * bought in, held, made into products, sold.
+ */
 export const NAV_TREE = [
   {
     key: "dashboard",
@@ -51,23 +61,6 @@ export const NAV_TREE = [
     icon: "LayoutDashboard",
     group: "main",
     views: ["dashboard"],
-  },
-  {
-    key: "products",
-    label: "Products & stock",
-    // The word the icon rail and phone tab bar lead with when there is only
-    // room for one -- a DELIBERATE choice, not `label.split(" ")[0]` picked
-    // for you. Falls back to that split when omitted (see Shell's
-    // `shortLabel`), which happens to agree here, but a label edit can no
-    // longer silently change what the compact nav says.
-    shortLabel: "Products",
-    icon: "Package",
-    group: "main",
-    // `count` names the nav count this entry shows. "products" is an ATTENTION
-    // count (how many are running low), so it paints clay rather than white --
-    // see Shell's NavItem.
-    count: "products",
-    views: ["products", "product-detail", "product-form"],
   },
   {
     key: "orders",
@@ -85,7 +78,38 @@ export const NAV_TREE = [
     count: "deliveries",
     views: ["deliveries", "delivery-detail"],
   },
-
+  {
+    key: "raw-material-orders", label: "Purchasing", icon: "ClipboardList", group: "stock",
+    views: ["raw-material-orders"],
+  },
+  {
+    key: "raw-materials", label: "Raw materials", icon: "Layers", group: "stock",
+    views: ["raw-materials", "raw-material-detail"],
+  },
+  {
+    // "Damage & yield" is the production report, so it lives here as a tab
+    // rather than as its own entry. VIEW_CAPABILITY below keeps it to
+    // managers, which hideFrom on its old entry used to do.
+    key: "production", label: "Production", icon: "Hammer", group: "stock",
+    hideFrom: ["Sales Staff", "Delivery Staff"], views: ["production", "production-report"],
+  },
+  {
+    key: "products",
+    label: "Products & stock",
+    // The word the icon rail and phone tab bar lead with when there is only
+    // room for one -- a DELIBERATE choice, not `label.split(" ")[0]` picked
+    // for you. Falls back to that split when omitted (see Shell's
+    // `shortLabel`), which happens to agree here, but a label edit can no
+    // longer silently change what the compact nav says.
+    shortLabel: "Products",
+    icon: "Package",
+    group: "stock",
+    // `count` names the nav count this entry shows. "products" is an ATTENTION
+    // count (how many are running low), so it paints clay rather than white --
+    // see Shell's NavItem.
+    count: "products",
+    views: ["products", "product-detail", "product-form"],
+  },
   {
     key: "customers",
     label: "Customers",
@@ -93,18 +117,6 @@ export const NAV_TREE = [
     group: "people",
     hideFrom: ["Production Staff"],
     views: ["customers", "customer-detail"],
-  },
-  {
-    key: "raw-materials", label: "Raw materials", icon: "Layers", group: "main",
-    views: ["raw-materials", "raw-material-orders", "raw-material-detail"],
-  },
-  {
-    key: "production", label: "Make list", icon: "Hammer", group: "main",
-    hideFrom: ["Sales Staff", "Delivery Staff"], views: ["production"],
-  },
-  {
-    key: "production-report", label: "Damage & yield", icon: "ClipboardList", group: "main",
-    hideFrom: ["Sales Staff", "Delivery Staff", "Production Staff"], views: ["production-report"],
   },
   {
     key: "suppliers",
@@ -127,6 +139,18 @@ export const NAV_TREE = [
     views: ["staff", "manage-account", "assign-role", "directory", "activity"],
   },
 ];
+
+/**
+ * Which sections a role's phone tab bar leads with. The bar has room for four
+ * before "More", and the right four depend on the job: a production worker
+ * should not have to open "More" to reach production.
+ */
+export const PHONE_FIRST = {
+  default: ["dashboard", "orders", "products", "deliveries"],
+  "Sales Staff": ["dashboard", "orders", "customers", "products"],
+  "Production Staff": ["dashboard", "production", "raw-materials", "products"],
+  "Delivery Staff": ["dashboard", "deliveries", "orders", "raw-material-orders"],
+};
 
 /**
  * Screens with no nav entry, listed so the route gate and SECTION_OF still
@@ -171,6 +195,7 @@ export const DENIED_BY_ROLE = (() => {
 export const VIEW_CAPABILITY = {
   "product-form": "manageCatalogue",
   "order-edit": "handleMoney",
+  "production-report": "viewReports",
 };
 
 /** Screens that render without the shell — pre-auth, and the boot state. */
@@ -197,33 +222,33 @@ export const CHROMELESS_VIEWS = new Set([
  * left to the screen, which passes it up via `contextLine`.
  */
 const VIEW_META = {
-  "raw-materials": { title: "Raw materials" },
-  "raw-material-detail": { title: "One raw material" },
-  "raw-material-orders": { title: "Supplier deliveries" },
-  production: { title: "Make list" },
-  "production-report": { title: "Damage & yield" },
-  dashboard: { title: "Dashboard" },
+  "raw-materials": { title: "Raw materials", help: "Everything the workshop builds with. Stock comes in when a supplier order is received and goes out when a production batch is finished. Open a material to see every movement." },
+  "raw-material-detail": { title: "Raw material details", help: "The count on hand, what batches have set aside, and every stock movement for this material with who made it and why." },
+  "raw-material-orders": { title: "Purchasing", help: "Order raw materials from a supplier, then receive the delivery when it arrives. Only the usable units counted at receiving are added to stock." },
+  production: { title: "Production", help: "Plan a batch, make it, check it and finish it. Material is set aside when a batch is planned and deducted only when it is finished; the good pieces are added to Products & stock at the same moment." },
+  "production-report": { title: "Production report", help: "Good pieces, damaged pieces and yield across every finished batch, and damage found on supplier deliveries." },
+  dashboard: { title: "Dashboard", help: "What needs attention today. Each line opens the screen where it can be dealt with." },
 
-  products: { title: "Products & stock" },
-  "product-detail": { title: "One product" },
-  "product-form": { title: "Add a product" },
+  products: { title: "Products & stock", help: "What is sold, its price and how many are on the shelf. Stock goes up when a production batch is finished and down when an order is completed or sent out." },
+  "product-detail": { title: "Product details", help: "The shelf count, what waiting orders have set aside, and every stock movement for this product." },
+  "product-form": { title: "Add a product", help: "Choose the kind first: it decides which measurements are asked for. The item code is made for you." },
 
-  orders: { title: "Orders" },
-  "order-detail": { title: "One order" },
-  "order-form": { title: "Write a new order" },
+  orders: { title: "Orders", help: "Customer orders. Stock is set aside while an order is waiting and taken off the shelf when it is completed or sent out." },
+  "order-detail": { title: "Order details" },
+  "order-form": { title: "Create an order" },
   // Its own key rather than a flag on order-form, so the heading is not lying
   // about what the screen is doing. Same tree, same permission as the rest of
   // orders -- see NAV_TREE above.
   "order-edit": { title: "Change this order" },
 
-  deliveries: { title: "Deliveries" },
-  "delivery-detail": { title: "One delivery" },
+  deliveries: { title: "Deliveries", help: "Every delivery by stage. Goods leave the shelf when a delivery is marked as on the way. Production work is planned under Production." },
+  "delivery-detail": { title: "Delivery details" },
 
   customers: { title: "Customers" },
-  "customer-detail": { title: "One customer" },
+  "customer-detail": { title: "Customer details" },
 
   suppliers: { title: "Suppliers" },
-  "supplier-detail": { title: "One supplier" },
+  "supplier-detail": { title: "Supplier details" },
 
   staff: { title: "Staff & accounts" },
   "manage-account": { title: "Manage one account" },
@@ -241,19 +266,19 @@ export function metaForView(view) {
 }
 
 /**
- * Which screen a header's primary action belongs to, and what it says.
+ * Each list screen's primary action: what it says and who may see it.
  *
- * One primary per screen, its label a verb, and NO primary at all on the
- * screens where the main action lives in the content (a detail screen's own
- * buttons, a form's footer). An always-present header button would be a second
- * primary competing with those.
+ * It is drawn IN THE PAGE, beside the search and filters, not in the header.
+ * Reviewers looked for "Add a product" and "Create order" on the screen they
+ * were working on and did not find the header copy; the workshop screens
+ * already put theirs in the page, so every screen now does it one way.
  *
  * `capability` hides it from a role the database would refuse (see
  * utils/permissions.js).
  */
 export const PRIMARY_ACTION = {
   products: { label: "Add a product", icon: "PackagePlus", view: "product-form", capability: "manageCatalogue" },
-  orders: { label: "Write a new order", icon: "ClipboardList", view: "order-form" },
+  orders: { label: "Create order", icon: "ClipboardList", view: "order-form" },
   customers: { label: "Add a customer", icon: "UserPlus", action: "add-customer", capability: "editCustomers" },
   suppliers: { label: "Add a supplier", icon: "Handshake", action: "add-supplier", tone: "clay", capability: "manageSuppliers" },
   staff: { label: "Add a staff account", icon: "UserPlus", action: "add-staff", capability: "manageStaff" },
