@@ -37,6 +37,10 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/**/*.test.js'],
+    // Several files boot an in-memory Postgres (PGlite) and install the schema
+    // in beforeAll. Run side by side they share the CPU, and the default 10s
+    // was not enough for the slowest to finish starting.
+    hookTimeout: 60_000,
   },
 
   server: {

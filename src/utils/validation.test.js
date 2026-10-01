@@ -69,16 +69,22 @@ describe('codes, units and names', () => {
 describe('promised dates', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('uses the local calendar day, not the UTC one', () => {
+  it('uses the shop calendar day (Manila), not the UTC one', () => {
     vi.useFakeTimers();
     // 7am on 30 September in Manila is still 29 September in UTC.
-    vi.setSystemTime(new Date(2026, 8, 30, 7, 0, 0));
+    vi.setSystemTime(new Date('2026-09-29T23:00:00Z'));
     expect(localDateIso()).toBe('2026-09-30');
+  });
+
+  it('is not moved by the device time zone', () => {
+    // 00:30 on 1 October in Manila, whichever day it is where the device is.
+    expect(localDateIso(new Date('2026-09-30T16:30:00Z'))).toBe('2026-10-01');
+    expect(localDateIso(new Date('2026-09-30T12:30:00Z'))).toBe('2026-09-30');
   });
 
   it('refuses a date before today, but leaves a date already on the record alone', () => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 30, 12, 0, 0));
+    vi.setSystemTime(new Date('2026-09-30T04:00:00Z'));
     expect(promisedDateProblem('2026-09-30')).toBeNull();
     expect(promisedDateProblem('2026-10-02')).toBeNull();
     expect(promisedDateProblem('')).toBeNull();

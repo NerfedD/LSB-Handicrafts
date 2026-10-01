@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useRef } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 import { X } from "@/components/icons";
@@ -47,14 +47,34 @@ const DialogOverlay = forwardRef(function DialogOverlay({ className, ...props },
 });
 
 const DialogContent = forwardRef(function DialogContent(
-  { className, children, showClose = true, closeLabel = "Close", ...props },
+  { className, children, showClose = true, closeLabel = "Close", onOpenAutoFocus, onCloseAutoFocus, ...props },
   ref
 ) {
+  // Radix returns focus only to a <DialogTrigger>. Most dialogs here are opened
+  // from state by an ordinary button, so without this focus is dropped onto the
+  // page body on close and a keyboard user loses their place. The opener is
+  // noted when focus is about to move into the dialog. (Not at render: several
+  // dialogs render this component while closed.)
+  const opener = useRef(null);
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         ref={ref}
+        onOpenAutoFocus={(event) => {
+          opener.current = document.activeElement;
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          onCloseAutoFocus?.(event);
+          const target = opener.current;
+          opener.current = null;
+          if (event.defaultPrevented) return;
+          if (target && target !== document.body && target.isConnected) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-32px)] max-w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col",
           "overflow-hidden rounded-modal2 border border-card bg-surface text-left shadow-modal",

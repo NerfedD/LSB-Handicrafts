@@ -214,7 +214,9 @@ const HISTORY_DAYS = 120;
 const ACTIVITY_PAGE = 200;
 
 /** yyyy-mm-dd, `days` before today. */
-const daysAgo = (days) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+/** What a product form says apart from its photo, to tell whether it changed between two saves. */
+const productSignature = (values) => JSON.stringify({ ...values, photo: null });
+const daysAgo =(days) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
 
 /** Shown while a route chunk is still downloading, outside the shell. */
 function RouteFallback() {
@@ -1013,6 +1015,11 @@ export default function App() {
     try {
     const now = nowIso();
     const retryProduct = productRetryRef.current;
+    // Everything but the photo already saved, and nothing has been changed
+    // since: retry the photo alone.
+    if (retryProduct?.photoOnly && retryProduct.signature === productSignature(values)) {
+      return await savePhotoAndFinish(values, retryProduct.id, values.name.trim().replace(/\s+/g, " "), retryProduct.revision);
+    }
     const editing = Boolean(selectedProduct && selectedProductId !== null) || Boolean(retryProduct);
 
     // A new category is added to the list first, and the product is filed
@@ -1119,14 +1126,24 @@ export default function App() {
       }
     }
 
-    // The photo, last: the product exists by now, so a photo that fails to save
-    // leaves a product that is right in every other way. The form stays open
-    // with the photo still chosen, and saving again finishes just that part.
+    return await savePhotoAndFinish(values, productId, catalogue.name, result.data?.revision ?? 0);
+    } finally { setBusy(false); }
+  }
+
+  /**
+   * The photo, last: the product exists by now, so a photo that fails to save
+   * leaves a product that is right in every other way. The form stays open
+   * with the photo still chosen, and saving again finishes just that part --
+   * the catalogue and stock rows are NOT written a second time, because a
+   * second write moves their revisions and the next attempt then collides with
+   * its own earlier one.
+   */
+  async function savePhotoAndFinish(values, productId, name, revision) {
     if (values.photo?.change && productId !== null) {
       const photo = await saveProductImage(productId, values.photo.change === "set" ? values.photo.dataUrl : null);
       if (!photo.ok) {
         setBusy(false);
-        productRetryRef.current = { id: productId, revision: result.data?.revision ?? 0 };
+        productRetryRef.current = { id: productId, revision, photoOnly: true, signature: productSignature(values) };
         const message = `The product was saved, but its photo was not. ${photo.message} Save again to retry the photo.`;
         toast.error(message);
         return { ok: false, message };
@@ -1143,18 +1160,17 @@ export default function App() {
     // would show an empty page for a product that saved perfectly well. The
     // activity entry is unaffected: it is filed under the item code, not the id.
     if (productId === null) {
-      toast.success(`${catalogue.name} was saved.`);
+      toast.success(`${name} was saved.`);
       return { ok: true };
     }
 
     setSelectedProductId(productId);
     setView("product-detail");
-    toast.success(`${catalogue.name} was saved.`, {
+    toast.success(`${name} was saved.`, {
       action: { label: "View", onClick: () => setView("product-detail") },
     });
     markLanded("product", productId);
     return { ok: true };
-    } finally { setBusy(false); }
   }
 
   /**
