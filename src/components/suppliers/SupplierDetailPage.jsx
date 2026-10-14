@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { ArrowLeft, AtSign, Calendar, Handshake, MapPin, Pencil, Phone, UserRound } from "../icons";
+import { ArrowLeft, AtSign, Calendar, Handshake, MapPin, Pencil, Phone, Truck, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Callout, { DangerBlock } from "../shared/Callout";
@@ -100,41 +100,78 @@ export default function SupplierDetailPage({
         All suppliers
       </Button>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="p-5.5">
-          <div className="flex flex-wrap items-center gap-4">
-            <IconChip icon={<Handshake />} tone="clay" size="2xl" />
-            <div className="min-w-0 flex-1">
-              <h2 className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-ink">
-                {supplier.name}
-              </h2>
-              <p className="pt-1 text-[15.5px] text-muted">
-                {supplier.contactPerson
-                  ? `Ask for ${supplier.contactPerson}`
-                  : "Nobody named as the contact yet"}
-                {" · "}
-                on record since {formatLongDate(supplier.createdAt)}
-              </p>
+      {/* The purchases card sits UNDER the identity card, in the same column,
+          rather than full-width below the grid: on its own the identity card
+          was stretched to the height of the contact facts beside it and left a
+          tall empty white block under two buttons. Same shape as one customer:
+          who they are, then what we have done with them. */}
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="flex min-w-0 flex-col gap-4">
+          <Card className="p-5.5">
+            <div className="flex flex-wrap items-center gap-4">
+              <IconChip icon={<Handshake />} tone="clay" size="2xl" />
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-ink">
+                  {supplier.name}
+                </h2>
+                <p className="pt-1 text-[15.5px] text-muted">
+                  {supplier.contactPerson
+                    ? `Ask for ${supplier.contactPerson}`
+                    : "Nobody named as the contact yet"}
+                  {" · "}
+                  on record since {formatLongDate(supplier.createdAt)}
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-wrap gap-3 pt-5">
-            {dialable && (
-              <Button variant="clay" size="lg" asChild>
-                <a href={`tel:${dialable}`}>
-                  <Phone className="h-5 w-5" />
-                  Call {supplier.contactPerson || supplier.name}
-                </a>
+            <div className="flex flex-wrap gap-3 pt-5">
+              {dialable && (
+                <Button variant="clay" size="lg" asChild>
+                  <a href={`tel:${dialable}`}>
+                    <Phone className="h-5 w-5" />
+                    Call {supplier.contactPerson || supplier.name}
+                  </a>
+                </Button>
+              )}
+              {canEdit && (
+                <Button variant="outline" size="lg" onClick={() => onEdit(supplier.id)}>
+                  <Pencil className="h-5 w-5" />
+                  Edit details
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Raw material purchases</CardTitle>
+            </CardHeader>
+            <div className="p-5.5 text-[16px]">
+              <p className="pb-3">
+                {purchaseOrders.length} supplier {purchaseOrders.length === 1 ? 'order' : 'orders'}
+                {' · '}
+                {claimsNeedingReview} {claimsNeedingReview === 1 ? 'claim needs' : 'claims need'} review.
+              </p>
+              {supplied.length > 0 && (
+                <ul className="mb-4 divide-y divide-hair rounded-field border border-hair">
+                  {supplied.map(({ material, ordered, usable, lastArrived }) => (
+                    <li key={material.id} className="flex flex-wrap items-baseline justify-between gap-3 px-4 py-3">
+                      <span className="font-bold text-ink">{material.name}</span>
+                      <span className="text-[15px] text-muted">
+                        {units(ordered, material.unit)} ordered · {units(usable, material.unit)} received usable
+                        {lastArrived ? ` · last arrived ${formatShortDate(lastArrived)}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button variant="outline" size="lg" onClick={onOpenPurchases}>
+                <Truck className="h-5 w-5" />
+                Open Purchasing
               </Button>
-            )}
-            {canEdit && (
-              <Button variant="outline" size="lg" onClick={() => onEdit(supplier.id)}>
-                <Pencil className="h-5 w-5" />
-                Edit details
-              </Button>
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader>
@@ -173,28 +210,6 @@ export default function SupplierDetailPage({
       </div>
 
       {/* ---- the only place a supplier can be removed ---- */}
-      <Card className="p-6 text-[16px]">
-        <h2 className="text-[18px] font-extrabold">Raw material purchases</h2>
-        <p className="py-3">
-          {purchaseOrders.length} supplier {purchaseOrders.length === 1 ? 'order' : 'orders'}
-          {' · '}
-          {claimsNeedingReview} {claimsNeedingReview === 1 ? 'claim needs' : 'claims need'} review.
-        </p>
-        {supplied.length > 0 && (
-          <ul className="mb-4 divide-y divide-hair rounded-field border border-hair">
-            {supplied.map(({ material, ordered, usable, lastArrived }) => (
-              <li key={material.id} className="flex flex-wrap items-baseline justify-between gap-3 px-4 py-3">
-                <span className="font-bold text-ink">{material.name}</span>
-                <span className="text-[15px] text-muted">
-                  {units(ordered, material.unit)} ordered · {units(usable, material.unit)} received usable
-                  {lastArrived ? ` · last arrived ${formatShortDate(lastArrived)}` : ''}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Button variant="outline" size="lg" onClick={onOpenPurchases}>Open Purchasing</Button>
-      </Card>
       {/* THE HEADING HAS TO AGREE WITH THE BUTTON UNDER IT.
           This block used to be headed "Remove this supplier for good" in both
           cases — including the one where the body says the supplier cannot be

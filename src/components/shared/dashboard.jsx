@@ -64,7 +64,10 @@ export function AttentionCard({ title, updatedAt, items, emptyMessage, className
               <Button
                 variant="cobalt"
                 onClick={item.onAction}
-                className="w-full sm:w-auto"
+                // One width for every row's button, so the three right edges
+                // AND left edges line up down the card as in the handoff (1b),
+                // instead of each button sizing to its own label.
+                className="w-full sm:w-auto sm:min-w-[13.5rem]"
               >
                 {item.actionIcon}
                 {item.actionLabel}

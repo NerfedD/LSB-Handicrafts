@@ -5,6 +5,7 @@ import { useEffect, useMemo } from "react";
 import { ArrowRight, ClipboardList } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardFooter } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -159,8 +160,25 @@ export default function OrderListPage({
     <div className="flex flex-col gap-3.5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2" role="group" aria-label="Order view">
-          <Button variant="outline" aria-pressed={layout === 'list'} onClick={() => setLayout('list')}>Order list</Button>
-          <Button variant="outline" aria-pressed={layout === 'priority'} onClick={() => setLayout('priority')}>Arrange priority</Button>
+          {/* The same ink-filled pill as Production's section switch. These
+              were two identical outline buttons: `aria-pressed` told a screen
+              reader which view was showing, and nothing told anyone else. */}
+          {[['list', 'Order list'], ['priority', 'Arrange priority']].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={layout === key}
+              onClick={() => setLayout(key)}
+              className={cn(
+                'inline-flex h-11 items-center whitespace-nowrap rounded-full border-[1.5px] px-4.5 text-[15.5px] font-bold transition duration-150',
+                layout === key
+                  ? 'border-ink bg-ink text-surface'
+                  : 'border-chip bg-surface text-ink hover:bg-wash'
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         {/* The screen's primary action, in the page beside the view switch so
             it is there in both views. Phones get the sticky bar instead. */}

@@ -259,6 +259,9 @@ const VIEW_META = {
   profile: { title: "My profile" },
   "profile-edit": { title: "Edit my details" },
   "change-password": { title: "Change password" },
+  // Without a title the header sat empty above the not-found card, which read
+  // as a screen that had failed to load rather than one that answered.
+  "not-found": { title: "Page not found" },
 };
 
 export function metaForView(view) {

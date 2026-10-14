@@ -114,7 +114,7 @@ export default function ManageAccountPage({
             </h2>
             <p className="pt-1 text-[15.5px] text-muted">{account.email}</p>
           </div>
-          <StatusPill label={signIn.label} tone={signIn.tone} mark={signIn.icon} />
+          <StatusPill label={signIn.standalone} tone={signIn.tone} mark={signIn.icon} />
         </div>
       </Card>
 
@@ -195,7 +195,10 @@ export default function ManageAccountPage({
             </Field>
 
             <Field label="What they do" hint="This decides which screens they can open.">
-              <div className="flex flex-wrap items-center gap-3">
+              {/* A bordered row, as in the handoff (2p): the role reads as the
+                  field's current value with its one way to change it at the
+                  far end, not as a loose word beside a small button. */}
+              <div className="flex min-h-15.5 flex-wrap items-center justify-between gap-3 rounded-field border-[1.5px] border-field px-4 py-2.5">
                 <span className="text-[16.5px] font-bold text-ink">
                   {account.role ? roleLabel(account.role) : "Nothing set yet"}
                 </span>

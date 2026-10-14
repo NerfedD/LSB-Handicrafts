@@ -280,7 +280,12 @@ export function EmptySlot({ children, className }) {
   return (
     <p
       className={cn(
-        "px-4 py-6 text-center text-[14px] text-muted-2",
+        // Muted, not muted-2: muted-2 is the placeholder/disabled grey (~3:1
+        // on white), and this is a sentence somebody has to read -- often the
+        // only thing in the panel. 15px is the floor for supporting copy;
+        // callers that need more pass a size. Balanced and capped so a wide
+        // panel does not stretch it into one 120-character line.
+        "mx-auto max-w-[68ch] text-balance px-4 py-6 text-center text-[15px] text-muted",
         className
       )}
     >

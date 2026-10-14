@@ -8,6 +8,7 @@ import {
   Inbox,
   PackageCheck,
   Truck,
+  UserX,
 } from "../icons";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -286,11 +287,18 @@ export default function DeliveryBoardPage({
                         )}
                       >
                         <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        {dueLabel(delivery)}
-                        {hasNoDriver(delivery) && column.value !== DELIVERY_STAGE.ARRIVED && (
-                          <span className="truncate"> · nobody assigned</span>
-                        )}
+                        <span className="min-w-0">{dueLabel(delivery)}</span>
                       </p>
+                      {/* Its own line, not a " · nobody assigned" tail on the due
+                          date: five columns leave ~180px per card at 1440, and
+                          the tail was cut to "nobody a…" while squeezing the
+                          date onto two lines beside it. */}
+                      {hasNoDriver(delivery) && column.value !== DELIVERY_STAGE.ARRIVED && (
+                        <p className="flex items-center gap-1.5 pt-1 text-[14px] font-bold text-amber-text">
+                          <UserX className="h-4 w-4 shrink-0" aria-hidden="true" />
+                          Nobody assigned
+                        </p>
+                      )}
                     </button>
                   ))
                 )}

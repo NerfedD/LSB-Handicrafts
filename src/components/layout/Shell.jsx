@@ -256,11 +256,18 @@ function Sidebar({ items, section, navCounts, isLarge, onNavigate }) {
           if (groupItems.length === 0) return null;
 
           return (
-            <div key={group.key} className="flex flex-col gap-0.5 desk:gap-1">
+            <div
+              key={group.key}
+              // The space BETWEEN groups lives on the group, not on its caption:
+              // `first:pt-0` on the caption matched every caption (each is the
+              // first child of its own group), so every group after the first
+              // sat flush against the one above it.
+              className="flex flex-col gap-0.5 desk:gap-1 [&:not(:first-child)]:mt-3 desk:[&:not(:first-child)]:mt-5"
+            >
               {/* 10.5px uppercase at 0.14em. One of the two places type is
                   allowed below the 16px floor: a tracked uppercase caption is
                   read once as a signpost, not as a sentence. */}
-              <p className="hidden px-2.5 pb-2 pt-5 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-white/50 first:pt-0 desk:block">
+              <p className="hidden px-2.5 pb-2 text-[10.5px] font-extrabold uppercase tracking-[0.14em] text-white/50 desk:block">
                 {group.label}
               </p>
               {groupItems.map((item) => (

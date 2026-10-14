@@ -79,7 +79,9 @@ const TableHead = forwardRef(function TableHead({ className, ...props }, ref) {
       ref={ref}
       scope="col"
       className={cn(
-        "px-5.5 py-3.5 align-middle text-[13px] font-extrabold uppercase tracking-[0.07em] text-muted",
+        // nowrap: a two-word signpost ("How many") broken over two lines
+        // makes the header band taller than every other one in the app.
+        "whitespace-nowrap px-5.5 py-3.5 align-middle text-[13px] font-extrabold uppercase tracking-[0.07em] text-muted",
         className
       )}
       {...props}

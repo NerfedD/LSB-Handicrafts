@@ -46,7 +46,9 @@ const buttonVariants = cva(
     // same on a cobalt fill, a white outline and a red confirm without eight
     // variant-specific overrides to keep in step with eight hover colours.
     "active:scale-[0.97] active:brightness-95",
-    "disabled:pointer-events-none disabled:opacity-50",
+    // shadow-none: a half-faded cobalt button still casting its cobalt glow
+    // read as "pressable, just pale" rather than "not yet".
+    "disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none",
     // The global :focus-visible ring in index.css covers this; the offset is
     // set here so a ring on a filled button sits clear of its own fill.
     "focus-visible:outline-offset-2",

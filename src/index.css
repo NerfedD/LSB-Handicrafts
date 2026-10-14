@@ -266,6 +266,55 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
 
 .lsb-rise { animation: lsb-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 
+/* THE SIGN-IN SCREEN'S ONE AUTHORED MOMENT (layout/AuthLayout.jsx).
+ *
+ * The single exception to "nothing loops": the workshop photographs on the
+ * sign-in panel cross-fade and drift. It is earned there and nowhere else --
+ * it is the one screen with nothing to get on with until somebody types, it
+ * is shown only at 1024px and up, and it is still transform and opacity only.
+ * The rotation stops when the tab is hidden, when somebody picks a
+ * photograph, and never starts under reduced motion.
+ *
+ *   lsb-drift        a photograph's slow settle, longer than its turn on
+ *                    screen so it is still moving while it fades out.
+ *   lsb-photos-in    the panel's photographs arriving on first paint.
+ *   lsb-photo-timer  the fill in the bar under the current photograph.
+ *   lsb-auth-enter   the form's parts arriving one after another, once.
+ *   lsb-auth-late    the panel's name and tagline, after the photograph.
+ *
+ * The entrance is 520ms with a 55ms step, about 0.8s end to end: long
+ * enough to read as one arrival, short enough that nobody waits on it.
+ */
+@keyframes lsb-drift {
+  from { transform: scale(1.09); }
+  to   { transform: scale(1); }
+}
+.lsb-drift { animation: lsb-drift 9s cubic-bezier(0.25, 0.1, 0.25, 1) forwards; }
+
+.lsb-photos-in { animation: lsb-fade 900ms ease-out both; }
+
+@keyframes lsb-photo-timer {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.lsb-photo-timer { animation: lsb-photo-timer linear forwards; }
+
+@keyframes lsb-auth-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lsb-auth-enter > *,
+.lsb-auth-late {
+  animation: lsb-auth-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.lsb-auth-enter > :nth-child(2) { animation-delay: 55ms; }
+.lsb-auth-enter > :nth-child(3) { animation-delay: 110ms; }
+.lsb-auth-enter > :nth-child(4) { animation-delay: 165ms; }
+.lsb-auth-enter > :nth-child(5) { animation-delay: 220ms; }
+.lsb-auth-enter > :nth-child(n + 6) { animation-delay: 275ms; }
+.lsb-auth-late { animation-delay: 200ms; }
+.lsb-auth-late + .lsb-auth-late { animation-delay: 340ms; }
+
 /* THE ENTRY LANDING.
  *
  * This system exists because a paper ledger never told anybody their entry
@@ -387,6 +436,10 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
  */
 @media (prefers-reduced-motion: reduce) {
   .lsb-rise { animation-name: lsb-fade; }
+  /* The sign-in arrival keeps its fade and loses its travel; the photograph
+     does not drift (its rotation never starts either -- see AuthLayout). */
+  .lsb-auth-enter > *, .lsb-auth-late { animation-name: lsb-fade; }
+  .lsb-drift { animation: none; }
   /* The one genuine loop in the app: the loading skeleton's pulse. It rests. */
   .animate-pulse { animation: none !important; }
 

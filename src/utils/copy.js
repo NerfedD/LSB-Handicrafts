@@ -107,10 +107,16 @@ export const stockTone = (status) => STOCK_TONE[status] ?? "neutral";
  * resolved by signInLabel() below rather than by a fourth status value,
  * because the database's status check constraint allows exactly two.
  */
+/**
+ * `label` answers the question a column header has already asked ("Can sign
+ * in" / "Yes"). `standalone` carries the question with it, for a pill with no
+ * header above it -- the account screen's identity card and the phone card -- where
+ * a lone "Yes" answered nothing.
+ */
 export const SIGN_IN = {
-  yes: { label: "Yes", tone: "green", icon: "check" },
-  blocked: { label: "Blocked", tone: "red", icon: "x" },
-  notSetUp: { label: "Not set up", tone: "amber", icon: "clock" },
+  yes: { label: "Yes", standalone: "Can sign in: Yes", tone: "green", icon: "check" },
+  blocked: { label: "Blocked", standalone: "Can sign in: No, blocked", tone: "red", icon: "x" },
+  notSetUp: { label: "Not set up", standalone: "Can sign in: Not set up", tone: "amber", icon: "clock" },
 };
 
 /** Which of the three a staff row is in. */

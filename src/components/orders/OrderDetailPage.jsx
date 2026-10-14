@@ -277,43 +277,69 @@ export default function OrderDetailPage({
               </EmptySlot>
             ) : (
               <>
-                <Table minWidth={560}>
-                  <TableCaption>The things on this order and what they cost</TableCaption>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead>Item</TableHead>
-                      <TableHead className="w-24 text-right">How many</TableHead>
-                      <TableHead className="w-32 text-right">Each</TableHead>
-                      <TableHead className="w-36 text-right">Line total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {items.map((item, index) => (
-                      <TableRow key={`${item.name}-${index}`}>
-                        <TableCell>
-                          <p className="text-[16.5px] font-bold">{item.name}</p>
-                          {/* A cut-to-size or custom line is priced by hand, so
-                              the note explaining it is the only record of why
-                              the number is what it is. */}
-                          {(item.notes || item.description || item.reason) && (
-                            <p className="pt-0.5 text-[14px] text-muted">
-                              {item.notes || item.description || item.reason}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-[16px] tabular-nums">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right text-[16px] tabular-nums">
-                          {formatPeso(item.unitPrice)}
-                        </TableCell>
-                        <TableCell className="text-right text-[16.5px] font-bold tabular-nums">
-                          {formatPeso(item.lineTotal)}
-                        </TableCell>
+                {/* ≥834px: the table. Below it the same lines as stacked rows,
+                    because nothing here scrolls sideways on a phone and four
+                    columns at 390px pushed the line total off the card. */}
+                <div className="hidden tab:block">
+                  <Table minWidth={560}>
+                    <TableCaption>The things on this order and what they cost</TableCaption>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead>Item</TableHead>
+                        <TableHead className="w-24 text-right">How many</TableHead>
+                        <TableHead className="w-32 text-right">Each</TableHead>
+                        <TableHead className="w-36 text-right">Line total</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {items.map((item, index) => (
+                        <TableRow key={`${item.name}-${index}`}>
+                          <TableCell>
+                            <p className="text-[16.5px] font-bold">{item.name}</p>
+                            {/* A cut-to-size or custom line is priced by hand, so
+                                the note explaining it is the only record of why
+                                the number is what it is. */}
+                            {(item.notes || item.description || item.reason) && (
+                              <p className="pt-0.5 text-[14px] text-muted">
+                                {item.notes || item.description || item.reason}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right text-[16px] tabular-nums">
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className="text-right text-[16px] tabular-nums">
+                            {formatPeso(item.unitPrice)}
+                          </TableCell>
+                          <TableCell className="text-right text-[16.5px] font-bold tabular-nums">
+                            {formatPeso(item.lineTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <ul className="divide-y divide-hair tab:hidden">
+                  {items.map((item, index) => (
+                    <li key={`${item.name}-${index}`} className="px-5.5 py-4">
+                      <p className="text-[16.5px] font-bold">{item.name}</p>
+                      {(item.notes || item.description || item.reason) && (
+                        <p className="pt-0.5 text-[14px] text-muted">
+                          {item.notes || item.description || item.reason}
+                        </p>
+                      )}
+                      <div className="flex items-baseline justify-between gap-4 pt-2">
+                        <span className="text-[16px] tabular-nums text-muted">
+                          {item.quantity} × {formatPeso(item.unitPrice)}
+                        </span>
+                        <span className="text-[16.5px] font-bold tabular-nums">
+                          {formatPeso(item.lineTotal)}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
 
                 {/* The footer band, and the one number on the screen set at
                     28px: what the customer actually pays. */}

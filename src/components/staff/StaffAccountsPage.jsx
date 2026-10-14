@@ -252,7 +252,7 @@ export default function StaffAccountsPage({
                 <p className="pt-3 text-[15.5px]">{roleLabel(user.role)}</p>
                 <div className="flex items-center justify-between gap-3 pt-3.5">
                   <StatusPill
-                    label={signIn.label}
+                    label={signIn.standalone}
                     tone={signIn.tone}
                     mark={signIn.icon}
                     size="sm"

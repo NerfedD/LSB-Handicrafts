@@ -345,7 +345,15 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
     .filter((b) => filter === 'all' || !['Completed', 'Cancelled'].includes(b.status) || justChanged('batch', b.id))
     .slice()
     .reverse();
-  const nextToMake = makeList({ products, inventory, orders });
+  // Products still in use only. `products` here carries the removed (archived)
+  // ones too, because a past batch still needs its product's name; the make
+  // list must not, or a product somebody removed keeps asking to be made. The
+  // dashboard's copy of this list already gets active products from App.
+  const nextToMake = makeList({
+    products: products.filter((p) => p.status !== 'Archived'),
+    inventory,
+    orders,
+  });
 
   const clearSearch = () => {
     setQuery('');

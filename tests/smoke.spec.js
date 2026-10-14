@@ -116,7 +116,9 @@ test.describe("signing in", () => {
     await page.goto(baseURL);
 
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    await expect(page.getByText("Staff access only")).toBeVisible();
+    // Said twice in the page -- the navy panel at desktop width, the compact
+    // brand row on a phone -- and only one of them is shown at a time.
+    await expect(page.getByText("Staff access only").filter({ visible: true })).toBeVisible();
 
     // Rule 3: the password reveal is a word, not a bare eye.
     await page.getByLabel("Password", { exact: true }).fill("something");

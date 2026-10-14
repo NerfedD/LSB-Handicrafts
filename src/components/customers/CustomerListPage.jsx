@@ -184,7 +184,10 @@ export default function CustomerListPage({
           <SearchField
             value={query}
             onChange={setQuery}
-            placeholder="Search by name, phone or business"
+            // Short enough to fit the box beside four controls -- the longer
+            // "…or business" was cut to "busines" at 1440. A business's
+            // name IS its name; the search never matched anything else.
+            placeholder="Search by name or phone"
             id="customer-search"
           />
           <FilterSelect

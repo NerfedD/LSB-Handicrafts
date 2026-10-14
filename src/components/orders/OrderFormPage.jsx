@@ -545,9 +545,13 @@ export default function OrderFormPage({
                     <span className="text-[15px] text-muted">
                       {line.custom
                         ? "Made by hand — nothing drawn from stock"
-                        : match?.stock.tracked
-                          ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
-                          : "Stock not tracked for this one"}
+                        : !match
+                          // Nothing picked yet: "not tracked" here stated a
+                          // fact about a product nobody had chosen.
+                          ? "Pick a product to see how many are on the shelf"
+                          : match.stock.tracked
+                            ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
+                            : "Stock not tracked for this one"}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-[16.5px] font-bold tabular-nums">
