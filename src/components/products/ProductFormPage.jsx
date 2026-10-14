@@ -411,7 +411,7 @@ export default function ProductFormPage({
               error={errors.packSize}
               hint="So we can tell how many actual pieces are on the shelf. A whole number."
             >
-              {number("packSize", { step: "1", min: "1", placeholder: "25" })}
+              {number("packSize", { step: "1", inputMode: "numeric", min: "1", placeholder: "25" })}
             </Field>
           )}
 
@@ -431,7 +431,7 @@ export default function ProductFormPage({
                 error={errors.stock}
                 hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is actually there today. A whole number, 0 or more."}
               >
-                {number("stock", { step: "1", min: "0", placeholder: "0" })}
+                {number("stock", { step: "1", inputMode: "numeric", min: "0", placeholder: "0" })}
               </Field>
             )}
 
@@ -440,7 +440,7 @@ export default function ProductFormPage({
               error={errors.lowStockThreshold}
               hint="At or below this, it shows as running low and is listed as needed next under Production."
             >
-              {number("lowStockThreshold", { step: "1", min: "0", placeholder: "15" })}
+              {number("lowStockThreshold", { step: "1", inputMode: "numeric", min: "0", placeholder: "15" })}
             </Field>
           </Row>
         </FormBand>

@@ -7,6 +7,7 @@ import {
   PHONE_SHAPE_PATTERN,
   PHONE_TITLE,
 } from "@/utils/phone";
+import { refusedNumberText } from "@/utils/validation";
 
 /**
  * Text input.
@@ -42,7 +43,20 @@ const Input = forwardRef(function Input(
   // therefore not declaring a phone field, which is why that spelling is still
   // read but nothing relies on it.
   const phone = type === 'tel' || props.inputMode === 'tel';
-  const { onChange, ...rest } = props;
+  const { onChange, onKeyDown, onPaste, ...rest } = props;
+
+  /**
+   * A NUMBER FIELD TAKES ONLY WHAT ITS RULE ACCEPTS, for the same reason the
+   * phone field does. Left alone, the browser lets `e`, `+` and `-` in — `1e3`
+   * and `-4` are numbers to it — and the form then refuses them on submit. A
+   * count (step 1, or the numeric keypad) refuses the decimal point too.
+   * Shortcuts and editing keys pass: only a single printable character is
+   * judged, and a paste is refused whole rather than quietly turned into a
+   * different number (`-5` is not 5).
+   */
+  const numberRule = type === 'number'
+    ? { whole: props.inputMode === 'numeric' || String(props.step) === '1' }
+    : null;
 
   /**
    * THE PHONE FIELD DEFERS TO utils/phone. It does not carry its own rule.
@@ -88,6 +102,17 @@ const Input = forwardRef(function Input(
       aria-describedby={[props['aria-describedby'], validationError ? errorId : null].filter(Boolean).join(' ') || undefined}
       aria-invalid={validationError ? true : props['aria-invalid']}
       onInvalid={(event) => setValidationError(event.currentTarget.validationMessage)}
+      onKeyDown={(event) => {
+        if (numberRule && event.key.length === 1 && !event.ctrlKey && !event.metaKey
+          && refusedNumberText(event.key, numberRule)) event.preventDefault();
+        onKeyDown?.(event);
+      }}
+      onPaste={(event) => {
+        if (numberRule && refusedNumberText(event.clipboardData.getData('text').trim(), numberRule)) {
+          event.preventDefault();
+        }
+        onPaste?.(event);
+      }}
       onChange={(event) => {
         // A letter never lands in the box at all, rather than landing and being
         // complained about later — see cleanPhoneInput for the argument. Doing

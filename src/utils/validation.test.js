@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { codeProblem, countProblem, measureProblem, moneyProblem, nameProblem, tidyLabel, unitProblem, wholeNumber } from './validation';
+import { codeProblem, countProblem, measureProblem, moneyProblem, nameProblem, refusedNumberText, tidyLabel, unitProblem, wholeNumber } from './validation';
 import { localDateIso, promisedDateProblem } from './dates';
 
 describe('counts', () => {
@@ -17,6 +17,22 @@ describe('counts', () => {
     expect(countProblem('0', { min: 1, label: 'The quantity' })).toBe('The quantity must be at least 1.');
     expect(countProblem('11', { max: 10, label: 'The number' })).toMatch(/10 or less/);
     expect(wholeNumber('2.0')).toBeNull();
+  });
+});
+
+describe('what a number box lets in', () => {
+  it('keeps exponents and signs out of every number field', () => {
+    for (const bad of ['e', 'E', '+', '-', '1e3', '-4', '+5']) {
+      expect(refusedNumberText(bad)).toBe(true);
+      expect(refusedNumberText(bad, { whole: true })).toBe(true);
+    }
+  });
+
+  it('lets a decimal point into a measurement or price but not into a count', () => {
+    expect(refusedNumberText('12.50')).toBe(false);
+    expect(refusedNumberText('.')).toBe(false);
+    expect(refusedNumberText('.', { whole: true })).toBe(true);
+    expect(refusedNumberText('40', { whole: true })).toBe(false);
   });
 });
 

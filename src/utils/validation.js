@@ -26,6 +26,18 @@ export function countProblem(value, { min = 0, max = MAX_COUNT, label = 'This' }
 }
 
 /**
+ * Whether typed or pasted text has no place in a number box.
+ *
+ * A browser's number field takes `e`, `+` and `-` because `1e3` and `-4` are
+ * numbers to it. None is a count, a size or a price here: every rule in this
+ * file refuses them on submit, so letting them in only means being told off
+ * later. A whole-number field (a count) refuses the decimal point as well.
+ */
+export function refusedNumberText(text, { whole = false } = {}) {
+  return (whole ? /[^\d]/ : /[^\d.]/).test(String(text ?? ''));
+}
+
+/**
  * An optional measurement: blank is "not recorded"; otherwise a number above
  * zero, within `max`, with at most three decimal places.
  */
