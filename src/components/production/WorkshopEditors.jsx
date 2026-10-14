@@ -155,7 +155,7 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
           {suppliers.length === 0 && (
             <ReviewBox warning>There are no suppliers yet. Add the supplier under Suppliers first, then come back to order from them.</ReviewBox>
           )}
-          <WorkshopField name="supplier_id" label="Supplier" hint="Who you are ordering from." required options={suppliers.map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
+          <WorkshopField name="supplier_id" label="Supplier" hint="Who you are ordering from. Suppliers no longer used are not listed." required options={suppliers.filter((s) => s.status !== 'Archived').map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
           <WorkshopField name="raw_material_id" label="Material to order" hint="The material's code fixes the size and density being ordered." required
             options={materials.map((m) => ({ value: m.id, label: `${m.name} (${m.sku}) · ${units(m.stock, m.unit)} on hand` }))}
             value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)} />
@@ -216,11 +216,25 @@ export function TransferDialog({ material, inventory, profile, onSave, onClose }
   </WorkshopForm>;
 }
 
-export function WorkshopConfirmation({ title, description, action, initial, needsReason = false, profile, onSave, onClose }) {
-  const validate = needsReason ? (v) => ({ reason: String(v.reason ?? '').trim() ? null : 'Write how the issue was settled.' }) : undefined;
-  return <WorkshopForm title={title} description={description} submitLabel={action} initial={{ ...initial, reason: '' }} validate={validate} onSave={onSave} onClose={onClose}>
+/**
+ * A one-step confirmation, optionally asking why.
+ *
+ * The reason defaults to the supplier-claim wording it was written for; a
+ * correction (cancelling, deleting, re-opening) passes its own question,
+ * because the activity log is the only place that reason survives. `danger`
+ * puts the verb on a red button, for steps that remove or reverse something.
+ */
+export function WorkshopConfirmation({
+  title, description, action, initial, needsReason = false, danger = false,
+  reasonLabel = 'How was the supplier issue settled?',
+  reasonHint = 'The replacement, refund or other outcome agreed. A replacement delivery is ordered and received as a new order.',
+  reasonMissing = 'Write how the issue was settled.', reasonMax = 1000,
+  profile, onSave, onClose,
+}) {
+  const validate = needsReason ? (v) => ({ reason: String(v.reason ?? '').trim() ? null : reasonMissing }) : undefined;
+  return <WorkshopForm title={title} description={description} submitLabel={action} submitVariant={danger ? 'danger' : 'clay'} initial={{ ...initial, reason: '' }} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => <>
-      {needsReason && <WorkshopField name="reason" label="How was the supplier issue settled?" hint="The replacement, refund or other outcome agreed. A replacement delivery is ordered and received as a new order." required multiline maxLength={1000} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
+      {needsReason && <WorkshopField name="reason" label={reasonLabel} hint={reasonHint} required multiline maxLength={reasonMax} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
       <ReviewBox>Confirmed by {profile.name}. This is saved in the activity log.</ReviewBox>
     </>}
   </WorkshopForm>;

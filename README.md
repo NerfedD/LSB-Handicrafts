@@ -41,7 +41,7 @@ Set up the database from **[docs/database.md](docs/database.md)**: a fresh proje
 
 ## Deploying a change
 
-1. Apply any new migrations first, oldest first (see [docs/database.md](docs/database.md#an-existing-project) — this release adds `20260924120000_stock_returns_loyalty.sql` and `20260924190000_material_crud_and_damage_undo.sql`).
+1. Apply any new migrations first, oldest first (see [docs/database.md](docs/database.md#an-existing-project) — this release adds `20261014120000_role_corrections.sql`, after `20260924120000_stock_returns_loyalty.sql`, `20260924190000_material_crud_and_damage_undo.sql` and `20260929120000_controlled_inputs_and_photos.sql` if the project does not have them yet).
 2. Deploy any changed Edge Function.
 3. `npm run build` and deploy `dist/` (Vercel; `vercel.json` rewrites every path to the app).
 4. Ask staff to reload open tabs.

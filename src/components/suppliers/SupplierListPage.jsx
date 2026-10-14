@@ -84,11 +84,16 @@ export default function SupplierListPage({
   const [query, setQuery] = useUrlState("query", "", "suppliers");
   const [area, setArea] = useUrlState("area", "any", "suppliers");
   const [sort, setSort] = useUrlState("sort", "name", "suppliers");
+  // Suppliers no longer used stay on file for their history, one choice away,
+  // the way archived raw materials do -- not mixed in with the ones to ring.
+  const [show, setShow] = useUrlState("show", "in-use", "suppliers");
   // Which layout to mount. Only one of the table/card renders below ever
   // reaches the DOM -- see useMediaQuery for why that used to not be true.
   const isDesktop = useMediaQuery(TAB_QUERY);
 
   const cities = useMemo(() => citiesOf(suppliers), [suppliers]);
+  const archivedCount = suppliers.filter((supplier) => supplier.status === "Archived").length;
+  const showingArchived = show === "archived" && archivedCount > 0;
 
   useEffect(() => {
     if (!isLoaded) return;
@@ -97,6 +102,7 @@ export default function SupplierListPage({
 
   const filtered = useMemo(() => {
     const list = suppliers.filter((supplier) => {
+      if ((supplier.status === "Archived") !== showingArchived) return false;
       if (area !== "any" && cityOf(supplier) !== area) return false;
       return matches(
         query,
@@ -117,7 +123,7 @@ export default function SupplierListPage({
       default:
         return [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)));
     }
-  }, [suppliers, area, query, sort]);
+  }, [suppliers, area, query, sort, showingArchived]);
 
   // The header's count is deliberately the UNFILTERED total, like every list
   // screen's chip counts -- nobody should apply a filter to discover the
@@ -125,6 +131,7 @@ export default function SupplierListPage({
   // narrowing the list, which is what this names instead: only the filters
   // actually doing something, same convention as the deliveries board.
   const summaryParts = [
+    showingArchived ? "no longer used" : null,
     area !== "any" ? area : null,
     query.trim() ? `matching “${query.trim()}”` : null,
   ].filter(Boolean);
@@ -132,6 +139,7 @@ export default function SupplierListPage({
   const clearFilters = () => {
     setArea("any");
     setQuery("");
+    setShow("in-use");
   };
 
   const paged = usePaged(filtered);
@@ -194,6 +202,17 @@ export default function SupplierListPage({
             ]}
           />
           <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
+          {archivedCount > 0 && (
+            <FilterSelect
+              label="Show"
+              value={showingArchived ? "archived" : "in-use"}
+              onChange={setShow}
+              options={[
+                { value: "in-use", label: "In use" },
+                { value: "archived", label: `No longer used (${archivedCount})` },
+              ]}
+            />
+          )}
         </FilterBar>
       </ListToolbar>
 
@@ -208,7 +227,7 @@ export default function SupplierListPage({
           description="Add the people you buy materials from, so anyone can find their number without asking."
           query={query.trim()}
           onClearSearch={clearSearch}
-          filtered={hasActiveFilters(area !== "any")}
+          filtered={hasActiveFilters(area !== "any", showingArchived)}
           onClearFilters={clearFilters}
           actionLabel={onAdd ? "Add a supplier" : undefined}
           onAction={onAdd}

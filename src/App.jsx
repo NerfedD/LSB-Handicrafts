@@ -18,7 +18,9 @@ import {
   productsCollection,
   removeProduct,
   removeMaterial,
+  removeSupplier,
   restoreMaterial,
+  restoreSupplier,
   runCategoryCommand,
   saveOwnDashboardView,
   saveOwnProfile,
@@ -123,6 +125,22 @@ function workshopMessage(action, payload, saved) {
       return [`${saved.batch_code} is completed.`, `${saved.good_output_qty} good pieces were added to Products & stock, and ${saved.raw_material_used_qty} units of material were deducted.`];
     case 'transfer_stock':
       return ['The stock was moved to raw materials.', 'Both counts and both stock histories show the move.'];
+    case 'batch_step_back':
+      return [`${saved.batch_code} went back a step.`, 'No stock changed.'];
+    case 'cancel_batch':
+      return [`${saved.batch_code} was cancelled.`, 'The material it had set aside is free again. No stock was deducted.'];
+    case 'edit_batch':
+      return [`${saved.batch_code} was changed.`, 'Nothing is deducted until it is finished.'];
+    case 'delete_batch':
+      return [`${saved.batch_code} was deleted.`, 'No stock had moved, so none changed. The activity log keeps the reason.'];
+    case 'reopen_batch':
+      return [`${saved.batch_code} is back at quality check.`, 'Its pieces came off the shelf and its material went back. Finish it again with the right counts.'];
+    case 'cancel_supplier_order':
+      return [`Supplier order #${saved.id} was cancelled.`, 'Stock did not change. The order stays in the history.'];
+    case 'delete_supplier_order':
+      return [`Supplier order #${saved.id} was deleted.`, 'Nothing had been received, so no stock changed.'];
+    case 'delete_recipe':
+      return ['The recipe was removed.', 'Batches already planned or finished keep their own counts.'];
     default:
       return ['The change was saved.', undefined];
   }
@@ -146,6 +164,8 @@ const WORKSHOP_RECORD_KIND = {
   receive_delivery: "material-order", review_claim: "material-order",
   start_batch: "batch", batch_status: "batch",
   complete_batch: "batch", save_recipe: "recipe",
+  batch_step_back: "batch", cancel_batch: "batch", edit_batch: "batch", reopen_batch: "batch",
+  cancel_supplier_order: "material-order",
 };
 
 const OrderListPage = lazy(() => import("./components/orders/OrderListPage"));
@@ -871,22 +891,36 @@ export default function App() {
       return;
     }
 
-    if (rawMaterialOrdersState.rows.some((order) => order.supplier_id === supplier.id)) {
-      toast.error('Keep this supplier: their purchasing history is still on file.');
-      return;
-    }
-
-    const result = await suppliersState.remove(supplier.id);
+    const result = await removeSupplier(supplier);
     if (!result.ok) {
       toast.error(result.message || "That supplier was not removed.");
       return;
     }
 
+    suppliersState.reload();
+    activityState.reload();
+    if (result.outcome === "archived") {
+      toast.success(`${supplier.name} is no longer used.`, {
+        description: "They have purchase history, so it was kept. They are not offered for new supplier orders.",
+      });
+      return;
+    }
     if (selectedSupplierId === supplier.id) setSelectedSupplierId(null);
     toast.success(`${supplier.name} was removed.`, {
-      description: "Orders and stock records are untouched.",
+      description: "Nothing had ever been ordered from them, so there was no history to keep.",
     });
     navigate("suppliers");
+  }
+
+  /** Puts a supplier who is no longer used back on the list for new orders. */
+  async function putSupplierBack(supplier) {
+    const result = await restoreSupplier(supplier);
+    if (!result.ok) {
+      toast.error(result.message || "That supplier was not put back.");
+      return;
+    }
+    suppliersState.reload();
+    toast.success(`${supplier.name} is in use again.`);
   }
 
   /**
@@ -1306,14 +1340,21 @@ export default function App() {
       receive_delivery: rawMaterialOrdersState, review_claim: rawMaterialOrdersState,
       start_batch: productionBatchesState, batch_status: productionBatchesState,
       complete_batch: productionBatchesState, save_recipe: productionRecipesState,
+      batch_step_back: productionBatchesState, cancel_batch: productionBatchesState,
+      edit_batch: productionBatchesState, delete_batch: productionBatchesState,
+      reopen_batch: productionBatchesState, cancel_supplier_order: rawMaterialOrdersState,
+      delete_supplier_order: rawMaterialOrdersState, delete_recipe: productionRecipesState,
     }[action];
-    target?.setRows((rows) => [...rows.filter((r) => r.id !== result.data.id), result.data]);
+    // A deletion answers with { id, deleted: true } rather than the row, so the
+    // row leaves the list instead of coming back as that stub.
+    const gone = result.data.deleted === true;
+    target?.setRows((rows) => [...rows.filter((r) => r.id !== result.data.id), ...(gone ? [] : [result.data])]);
     reloadWorkshop();
     inventoryState.reload(); activityState.reload();
     const [headline, detail] = workshopMessage(action, payload, result.data);
     toast.success(headline, { description: detail });
     // Which record to point at, so the screen can show the entry landing on it.
-    markLanded(WORKSHOP_RECORD_KIND[action], result.data.id);
+    if (!gone) markLanded(WORKSHOP_RECORD_KIND[action], result.data.id);
     return result;
   }
 
@@ -2509,6 +2550,7 @@ export default function App() {
             onBack={() => navigate("suppliers")}
             onEdit={(id) => openProfileForm("supplier", id)}
             onDelete={deleteSupplier}
+            onRestore={putSupplierBack}
           />
         );
 

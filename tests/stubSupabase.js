@@ -437,6 +437,31 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       onWrite?.({ table: 'products', method: 'RPC', row: product });
       return json(route, { outcome: 'deleted' });
     }
+    // As remove_supplier does: refused while an order is still coming, archived
+    // with purchase history, deleted without it.
+    if (url.pathname.endsWith("/rpc/remove_supplier") || url.pathname.endsWith("/rpc/restore_supplier")) {
+      const { p_supplier_id: id } = request.postDataJSON();
+      const supplier = tables.suppliers.find((row) => Number(row.id) === Number(id));
+      if (!supplier) return json(route, { code: 'P0001', message: 'That supplier no longer exists.' }, 400);
+      if (url.pathname.endsWith("/rpc/restore_supplier")) {
+        supplier.status = 'Active';
+        supplier.revision = (supplier.revision ?? 0) + 1;
+        onWrite?.({ table: 'suppliers', method: 'RPC', row: supplier });
+        return json(route, { outcome: 'restored' });
+      }
+      const orders = tables.raw_material_orders.filter((order) => Number(order.supplier_id) === Number(id));
+      if (orders.some((order) => ['Ordered', 'Delivery Scheduled', 'In Transit'].includes(order.status))) {
+        return json(route, { code: 'P0001', message: 'An order from this supplier has not arrived yet. Receive or cancel it first.' }, 400);
+      }
+      onWrite?.({ table: 'suppliers', method: 'RPC', row: supplier });
+      if (orders.length) {
+        supplier.status = 'Archived';
+        supplier.revision = (supplier.revision ?? 0) + 1;
+        return json(route, { outcome: 'archived' });
+      }
+      tables.suppliers.splice(tables.suppliers.indexOf(supplier), 1);
+      return json(route, { outcome: 'deleted' });
+    }
     // As category_command does: one spelling per category, whatever the case.
     if (url.pathname.endsWith("/rpc/category_command")) {
       const { p_action: action, p_data: data } = request.postDataJSON();

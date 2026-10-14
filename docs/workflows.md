@@ -62,7 +62,7 @@ Removing one is an administrator's job and follows the same rule as a product: s
 3. Each supplier order can be received once: a second submission is refused, and a retried one replays. A short, excess or damaged delivery flags a claim; a manager records how it was settled, which never rewrites the receipt or adds stock.
 4. A supplier's screen lists what they have supplied, derived from their orders. A supplier with purchase history cannot be removed (foreign key).
 
-Supplier order states: *Ordered* → *Delivery date set* → *On the way* → *Received*, or *Cancelled* before it leaves the supplier. Only *Received* adds stock.
+Supplier order states: *Ordered* → *Delivery date set* → *On the way* → *Received*, or *Cancelled* at any point before it is received (a manager, with a reason). Only *Received* adds stock. An order entered by mistake that never received anything can be deleted by an administrator, with a reason; a received one cannot.
 
 ## Promised dates
 
@@ -70,7 +70,17 @@ A promised date — on a supplier order, a customer delivery, or the follow-up d
 
 ## Production
 
-*Production* lists what is needed next — goods owed to customers first, then products at or below their reorder point — and every batch. *Start batch* sets material aside against other batches (a saved recipe fills in the usual amount). Only materials in use are offered, and one with nothing free (used up, or all set aside) is shown but cannot be chosen; products no longer sold are not offered. A batch moves *Planned* → *In production* → *Quality check* → *Completed*; completing it, in one transaction, adds the good pieces (in whole selling packs), deducts the material actually used (oldest lots first), and logs damaged pieces with a reason. A planned batch can be cancelled, releasing its material. The *Production report* tab (managers) shows weighted yield and every defect with its material lots.
+*Production* lists what is needed next — goods owed to customers first, then products at or below their reorder point — and every batch. *Start batch* sets material aside against other batches (a saved recipe fills in the usual amount). Only materials in use are offered, and one with nothing free (used up, or all set aside) is shown but cannot be chosen; products no longer sold are not offered. A batch moves *Planned* → *In production* → *Quality check* → *Completed*; completing it, in one transaction, adds the good pieces (in whole selling packs), deducts the material actually used (oldest lots first), and logs damaged pieces with a reason. A batch with a reason in the activity log can be corrected:
+
+- **Back a step** (production staff, managers, admins): *In production* → *Planned*, or *Quality check* → *In production*, for a step pressed by mistake. No stock changes.
+- **Cancel** with a reason: production staff while it is *Planned*; managers and admins at any stage before *Completed*. Its material is no longer set aside. Nothing was deducted, so nothing comes back; material already cut is recorded as damage on the material.
+- **Change details** (managers, admins), while unfinished: target pieces, material set aside (checked against what other batches leave free), worker, customer order and notes. A different product or material is a different batch: cancel and start again.
+- **Delete** (admins), with a reason: only a *Planned* or *Cancelled* batch that never moved stock.
+- **Re-open** (admins), with a reason: a *Completed* batch goes back to *Quality check* in one transaction. The pieces it put on the shelf come off (refused if waiting orders hold them), the material it used goes back to the lots it came from, and its damage record is removed. Both stock histories show a *Batch re-opened* entry. It is then finished again with the right counts.
+
+Removing a recipe (managers) only stops it filling in new batches.
+
+The *Production report* tab (managers) shows weighted yield and every defect with its material lots.
 
 Moving selling stock into raw materials is an explicit manager action, refused while a waiting order needs that stock.
 
@@ -109,7 +119,10 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | Order | Never deleted. Called off instead. |
 | Product | Archived (hidden from lists and the order form, all history kept, can be put back on sale) if anything refers to it; deleted, both halves in one transaction, only if nothing does. Refused while an order is waiting for it. Admin only. |
 | Customer | Admin only, refused while an order is waiting; past orders keep the name. |
-| Supplier | Admin only, refused once they have purchase history. |
+| Supplier | Archived (kept off new supplier orders, contact details and every order kept, can be put back in use) if they have purchase history; deleted only if nobody ever ordered from them. Refused while an order from them has not arrived. Admin only. |
+| Supplier order | Cancelled by a manager or admin until it is received. Deleted by an admin only if nothing was ever received. |
+| Production batch | Cancelled (production staff while planned; managers and admins until finished). Deleted by an admin only if planned or cancelled and it never moved stock. A finished one is re-opened, not deleted. |
+| Recipe | Removed by a manager or admin; batches keep their own counts. |
 | Raw material | Archived (kept off the materials list, supplier orders and recipes, all history kept, can be put back in use) if anything refers to it or it still has stock; deleted only if nothing does. Refused while a delivery is on its way or a batch is using it. Admin only. |
 | Delivery | Only one that never left, by a manager or admin (or automatically when its order is called off). |
 | Staff account | Admin only; never the owner or yourself. Stock history keeps the person's name. |
@@ -129,7 +142,9 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | Add/edit customers | ✓ | ✓ | ✓ | | |
 | Add/edit suppliers, order materials, settle claims | ✓ | ✓ | | | |
 | Loyalty rules, production report, product categories and photos | ✓ | ✓ | | | |
-| Production batches | ✓ | ✓ | | ✓ | |
+| Production batches: start, move on, finish, step back, cancel a planned one | ✓ | ✓ | | ✓ | |
+| Batches: cancel one in production, change its details; cancel a supplier order on the way; remove a recipe | ✓ | ✓ | | | |
+| Delete a batch or supplier order entered by mistake; re-open a finished batch | ✓ | | | | |
 | Remove customers, suppliers, products, raw materials | ✓ | | | | |
 | Staff accounts, activity log | ✓ | | | | |
 

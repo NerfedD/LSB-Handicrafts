@@ -309,6 +309,7 @@ const MOVEMENT_LABEL = {
   delivery: "Received from a supplier",
   production: "Made in production",
   production_use: "Used in production",
+  production_undone: "Batch re-opened",
   transfer: "Moved between selling and workshop stock",
 };
 export const movementLabel = (kind) => MOVEMENT_LABEL[kind] ?? "Stock changed";

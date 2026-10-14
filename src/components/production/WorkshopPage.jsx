@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { ArrowLeft, Boxes, ClipboardCheck, ClipboardList, Hammer, Layers, Package, PackageX, Plus, Truck } from '../icons';
+import { ArrowLeft, Boxes, ClipboardCheck, ClipboardList, Hammer, Layers, Package, PackageX, Pencil, Plus, Truck, Undo2 } from '../icons';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ import WorkshopForm, { ReviewBox } from './WorkshopForm';
 import { MaterialDialog, RecipeDialog, SupplierOrderDialog, TransferDialog, WorkshopConfirmation } from './WorkshopEditors';
 import ReceiveSupplierDeliveryDialog from '../suppliers/ReceiveSupplierDeliveryDialog';
 import CompleteBatchDialog from '../products/CompleteBatchDialog';
+import EditBatchDialog from '../products/EditBatchDialog';
 import StartBatchDialog from '../products/StartBatchDialog';
 import StockChangeDialog from '../products/StockChangeDialog';
 
@@ -263,7 +264,8 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const canRecordDamage = can(profile.role, 'recordDamage');
   const canCorrectStock = can(profile.role, 'correctStock');
   const canUndoDamage = can(profile.role, 'undoDamage');
-  const canRemoveMaterial = can(profile.role, 'removeRecords');
+  const canRemoveRecords = can(profile.role, 'removeRecords');
+  const canCorrect = can(profile.role, 'correctBatches');
   const production = section === 'production';
   const reports = section === 'production-report';
   const purchasing = section === 'raw-material-orders';
@@ -352,6 +354,13 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
   const showConfirm = (action, id, status, title, description) =>
     setDialog({ kind: 'confirm', action, initial: { id, status }, title, description });
+
+  /**
+   * A correction that removes or reverses something, and so has to say why:
+   * the reason is the activity log's only account of it.
+   */
+  const askWhy = (action, id, { title, description, verb, question }) =>
+    setDialog({ kind: 'correct', action, id, title, description, verb, question });
 
   /* -- whole-screen states ------------------------------------------------- */
 
@@ -629,7 +638,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
             <Callout
               tone="amber"
               title="No longer in use"
-              action={canRemoveMaterial && (
+              action={canRemoveRecords && (
                 <Button variant="outline" size="sm" disabled={working} onClick={async () => {
                   setWorking(true);
                   await onRestoreMaterial?.(material);
@@ -643,7 +652,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               batches and recipes. Everything it has been part of is unchanged.
             </Callout>
           )}
-          {canRemoveMaterial && material.status !== 'Archived' && (
+          {canRemoveRecords && material.status !== 'Archived' && (
             <DangerBlock
               title="Remove this raw material"
               action={(
@@ -764,9 +773,20 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                         <ClipboardList className="h-4.5 w-4.5" />Review supplier claim
                       </Button>
                     )}
-                    {manager && ['Ordered', 'Delivery Scheduled'].includes(o.status) && (
-                      <Button variant="danger" onClick={() => showConfirm('order_status', o.id, 'Cancelled', 'Cancel this supplier order?', `Order #${o.id} will be marked as cancelled and can no longer be received. Stock does not change, and the order stays in the history.`)}>
+                    {manager && ['Ordered', 'Delivery Scheduled', 'In Transit'].includes(o.status) && (
+                      <Button variant="danger" onClick={() => askWhy('cancel_supplier_order', o.id, {
+                        title: 'Cancel this supplier order?',
+                        description: `Order #${o.id} will be marked as cancelled and can no longer be received. Stock does not change, and the order stays in the history.`,
+                        verb: 'Cancel order', question: 'Why is it being cancelled?' })}>
                         Cancel order
+                      </Button>
+                    )}
+                    {canRemoveRecords && o.status !== 'Arrived' && (
+                      <Button variant="danger" onClick={() => askWhy('delete_supplier_order', o.id, {
+                        title: `Delete supplier order #${o.id}?`,
+                        description: 'For an order entered by mistake. Nothing was received, so no stock changes. It is removed from Purchasing for good; the activity log keeps a line saying who deleted it and why.',
+                        verb: 'Delete order', question: 'Why is it being deleted?' })}>
+                        Delete order
                       </Button>
                     )}
                   </RowActions>
@@ -821,6 +841,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
             displayBatches.map((b) => {
               const status = BATCH_TONE[b.status] ?? { tone: 'neutral', mark: 'dot' };
               const batchMaterial = mat(b.raw_material_id);
+              const open = ['Queued', 'In Progress', 'Quality Check'].includes(b.status);
               return (
                 <Card key={b.id} className="relative">
                   <Landed change={change} kind="batch" id={b.id} />
@@ -853,26 +874,57 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     )}
                   </div>
 
-                  {canMake && ['Queued', 'In Progress', 'Quality Check'].includes(b.status) && (
+                  {((canMake && open) || (canRemoveRecords && ['Completed', 'Cancelled'].includes(b.status))) && (
                     <RowActions>
-                      {b.status === 'Queued' && (
-                        <>
-                          <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'In Progress', 'Start production?', `${b.batch_code} will be marked as in production. Its material stays set aside and is deducted only when the batch is finished.`)}>
-                            <Hammer className="h-4.5 w-4.5" />Start production
-                          </Button>
-                          <Button variant="danger" onClick={() => showConfirm('batch_status', b.id, 'Cancelled', 'Cancel this batch?', `${units(b.raw_material_used_qty, batchMaterial?.unit)} set aside for ${b.batch_code} becomes free for other batches. No stock is deducted, and the batch stays in the history as cancelled.`)}>
-                            Cancel batch
-                          </Button>
-                        </>
+                      {b.status === 'Queued' && canMake && (
+                        <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'In Progress', 'Start production?', `${b.batch_code} will be marked as in production. Its material stays set aside and is deducted only when the batch is finished.`)}>
+                          <Hammer className="h-4.5 w-4.5" />Start production
+                        </Button>
                       )}
-                      {b.status === 'In Progress' && (
+                      {b.status === 'In Progress' && canMake && (
                         <Button variant="outline" onClick={() => showConfirm('batch_status', b.id, 'Quality Check', 'Send to quality check?', `The pieces for ${b.batch_code} are ready to count and inspect. Stock changes only when the batch is finished after the check.`)}>
                           <ClipboardList className="h-4.5 w-4.5" />Send to quality check
                         </Button>
                       )}
-                      {b.status === 'Quality Check' && (
+                      {b.status === 'Quality Check' && canMake && (
                         <Button variant="outline" onClick={() => setDialog({ kind: 'complete', record: b })}>
                           <ClipboardList className="h-4.5 w-4.5" />Finish batch &amp; quality check
+                        </Button>
+                      )}
+                      {['In Progress', 'Quality Check'].includes(b.status) && canMake && (
+                        <Button variant="outline" onClick={() => showConfirm('batch_step_back', b.id, undefined,
+                          b.status === 'In Progress' ? 'Move back to planned?' : 'Move back to in production?',
+                          `${b.batch_code} goes back one step, for a step pressed by mistake. Its material stays set aside, and no stock changes.`)}>
+                          <Undo2 className="h-4.5 w-4.5" />{b.status === 'In Progress' ? 'Back to planned' : 'Back to in production'}
+                        </Button>
+                      )}
+                      {open && canCorrect && (
+                        <Button variant="outline" onClick={() => setDialog({ kind: 'edit-batch', record: b })}>
+                          <Pencil className="h-4.5 w-4.5" />Change details
+                        </Button>
+                      )}
+                      {open && (b.status === 'Queued' ? canMake : canCorrect) && (
+                        <Button variant="danger" onClick={() => askWhy('cancel_batch', b.id, {
+                          title: `Cancel ${b.batch_code}?`,
+                          description: `${units(b.raw_material_used_qty, batchMaterial?.unit)} set aside for it becomes free for other batches. No stock is deducted, and the batch stays in the history as cancelled. If material was already cut, record it as damage on the material.`,
+                          verb: 'Cancel batch', question: 'Why is this batch being cancelled?' })}>
+                          Cancel batch
+                        </Button>
+                      )}
+                      {b.status === 'Completed' && canRemoveRecords && (
+                        <Button variant="outline" onClick={() => askWhy('reopen_batch', b.id, {
+                          title: `Re-open ${b.batch_code}?`,
+                          description: `For a batch finished with the wrong counts. The ${b.good_output_qty} good pieces come back off Products & stock, the ${units(b.raw_material_used_qty, batchMaterial?.unit)} used go back to the material, and the damage record is removed. It returns to quality check to be finished again. Refused if those pieces are already sold or set aside for orders.`,
+                          verb: 'Re-open batch', question: 'What was recorded wrong?' })}>
+                          <Undo2 className="h-4.5 w-4.5" />Re-open batch
+                        </Button>
+                      )}
+                      {['Queued', 'Cancelled'].includes(b.status) && canRemoveRecords && (
+                        <Button variant="danger" onClick={() => askWhy('delete_batch', b.id, {
+                          title: `Delete ${b.batch_code}?`,
+                          description: 'For a batch entered by mistake. It is removed from the list for good; no stock moved, so none changes. The activity log keeps a line saying who deleted it and why.',
+                          verb: 'Delete batch', question: 'Why is it being deleted?' })}>
+                          Delete batch
                         </Button>
                       )}
                     </RowActions>
@@ -908,8 +960,17 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                         </span>
                       </span>
                     </span>
-                    <span className="text-[15.5px] text-muted">
-                      makes about <strong className="font-bold tabular-nums text-ink">{r.output_qty} pieces</strong>
+                    <span className="flex w-full flex-wrap items-center justify-between gap-2.5 tab:w-auto tab:justify-end">
+                      <span className="text-[15.5px] text-muted">
+                        makes about <strong className="font-bold tabular-nums text-ink">{r.output_qty} pieces</strong>
+                      </span>
+                      {manager && (
+                        <Button variant="outline" onClick={() => setDialog({ kind: 'confirm', action: 'delete_recipe', initial: { id: r.id },
+                          title: `Remove the recipe for ${prod(r.product_id)?.name ?? 'this product'}?`,
+                          description: 'New batches stop filling in this material count. Batches already planned or finished keep their own counts.' })}>
+                          Remove
+                        </Button>
+                      )}
                     </span>
                   </Row>
                 ))}
@@ -1041,6 +1102,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
         />
       )}
       {dialog?.kind === 'confirm' && <WorkshopConfirmation title={dialog.title} description={dialog.description} initial={dialog.initial} action="Confirm this step" profile={profile} onSave={save(dialog.action)} onClose={close} />}
+      {dialog?.kind === 'correct' && <WorkshopConfirmation title={dialog.title} description={dialog.description} initial={{ id: dialog.id }} action={dialog.verb} danger needsReason
+        reasonLabel={dialog.question} reasonHint="A sentence is enough. It is saved in the activity log with your name." reasonMissing="Write why, so the activity log explains it." reasonMax={500}
+        profile={profile} onSave={save(dialog.action)} onClose={close} />}
+      {dialog?.kind === 'edit-batch' && <EditBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} material={mat(dialog.record.raw_material_id)} batches={batches} staff={staff} orders={orders} profile={profile} onSave={save('edit_batch')} onClose={close} />}
       {dialog?.kind === 'claim' && <WorkshopConfirmation title="Review supplier claim" description={`Order #${dialog.record.id}. Record the agreed outcome; received stock and damage history are kept.`} initial={{ id: dialog.record.id }} action="Save claim outcome" needsReason profile={profile} onSave={save('review_claim')} onClose={close} />}
       {dialog?.kind === 'lots' && (
         <WorkshopForm

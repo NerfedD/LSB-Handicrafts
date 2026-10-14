@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ArrowLeft, AtSign, Calendar, Handshake, MapPin, Pencil, Phone, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { DangerBlock } from "../shared/Callout";
+import Callout, { DangerBlock } from "../shared/Callout";
 import IconChip from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
 import FactTable from "../shared/FactTable";
@@ -31,9 +31,11 @@ import { units } from "../../utils/production";
  * almost every "we don't use them any more" is better served by leaving the
  * record alone than by destroying the only copy of their phone number.
  *
- * `canDelete` is the UI half of the rule. The other half is the RLS policy on
- * public.suppliers, where DELETE asks for is_admin() — a hidden button is a
- * courtesy, not a permission.
+ * `canDelete` is the UI half of the rule. The other half is remove_supplier in
+ * the database, which only an administrator may call — a hidden button is a
+ * courtesy, not a permission. It follows the products' and materials' rule: a
+ * supplier with purchase history is kept on file as no longer used (and can be
+ * put back), and only one nobody ever ordered from is deleted.
  */
 export default function SupplierDetailPage({
   supplier,
@@ -46,15 +48,19 @@ export default function SupplierDetailPage({
   onBack,
   onEdit,
   onDelete,
+  onRestore,
 }) {
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
 
   const claimsNeedingReview = purchaseOrders.filter((o) => o.claim_status === 'Needs review').length;
-  // Purchasing history is what keeps a supplier on file: the foreign key on
-  // raw_material_orders.supplier_id refuses the delete, and this is the client
-  // telling somebody that before they reach for the button.
-  const blocked = purchaseOrders.length > 0;
+  // An order still coming is the one thing that stops a removal outright: the
+  // delivery has to be received or cancelled first. Purchase history alone only
+  // decides what removing means -- kept on file as no longer used, or deleted.
+  const stillComing = purchaseOrders.filter((o) => ['Ordered', 'Delivery Scheduled', 'In Transit'].includes(o.status)).length;
+  const blocked = stillComing > 0;
+  const hasHistory = purchaseOrders.length > 0;
+  const archived = supplier?.status === 'Archived';
 
   // What they supply, as their own purchase orders show it: each material with
   // how much has been ordered and when it last arrived. Derived rather than
@@ -79,6 +85,12 @@ export default function SupplierDetailPage({
     await onDelete?.(supplier);
     setWorking(false);
     setConfirming(false);
+  }
+
+  async function runRestore() {
+    setWorking(true);
+    await onRestore?.(supplier);
+    setWorking(false);
   }
 
   return (
@@ -195,9 +207,23 @@ export default function SupplierDetailPage({
           and its shape either way, because somebody looking for "where do I
           remove a supplier" should find the same block in the same place and
           be told why they cannot, rather than find nothing at all. */}
-      {canDelete && (
+      {archived && (
+        <Callout
+          tone="amber"
+          title="No longer used"
+          action={canDelete && (
+            <Button variant="outline" size="sm" disabled={working} onClick={runRestore}>
+              Put them back in use
+            </Button>
+          )}
+        >
+          {supplier.name} is not offered for new supplier orders. Their contact details and
+          every past order, delivery and claim are unchanged.
+        </Callout>
+      )}
+      {canDelete && !archived && (
         <DangerBlock
-          title={blocked ? 'This supplier stays on file' : 'Remove this supplier for good'}
+          title={blocked ? 'This supplier stays on file' : hasHistory ? 'Stop using this supplier' : 'Remove this supplier for good'}
           action={
             <Button variant="danger" size="lg" disabled={blocked} onClick={() => setConfirming(true)}>
               Remove {supplier.name}
@@ -206,35 +232,28 @@ export default function SupplierDetailPage({
         >
           {blocked ? (
             <>
-              {supplier.name} has purchasing history, so they cannot be removed. Keep the
-              contact record: it is what makes their past deliveries and claims traceable
-              back to somebody you can ring.
+              {supplier.name} has {stillComing} {stillComing === 1 ? 'order' : 'orders'} not received
+              yet, so they cannot be removed. Receive or cancel {stillComing === 1 ? 'it' : 'them'} under
+              Purchasing first.
+            </>
+          ) : hasHistory ? (
+            <>
+              {supplier.name} has purchasing history, so they are kept on file rather than
+              deleted: they stop being offered for new supplier orders, and every past order,
+              delivery and claim still names them. You can put them back in use at any time.
             </>
           ) : (
             <>
-              {/* RULE 6 WANTS BOTH HALVES: what goes, and what survives. The
-                  "what survives" half went missing when purchasing history was
-                  added here, which is what tests/smoke.spec.js caught — and the
-                  ConfirmDialog below had gone on saying it, so the two screens
-                  of the same decision disagreed.
-
-                  It is still true, and now guaranteed twice: this branch only
-                  renders when the supplier has no purchase orders, and
-                  raw_material_orders.supplier_id is the only reference to
-                  suppliers in the schema — a plain `not null references` with
-                  no cascade, so the database refuses the delete rather than
-                  taking anything with it. The claim is scoped to THIS supplier
-                  for that reason; "nothing references suppliers" is no longer
-                  true in general. */}
+              {/* RULE 6 WANTS BOTH HALVES: what goes, and what survives. This
+                  branch only renders when the supplier has no purchase orders,
+                  and raw_material_orders.supplier_id is the only reference to
+                  suppliers in the schema, so nothing else points at them. */}
               {supplier.name} disappears from the suppliers list, along with their contact
               person, phone number and address. Orders and stock records are not touched:
               this supplier has no purchasing history, so nothing else in the system points
               at them. This cannot be undone.
               <br />
               <br />
-              {/* Only offered where it is actually a choice. Advising somebody to
-                  leave the record alone, under a heading that already says it is
-                  staying, is advice about a decision they do not have. */}
               If you have simply stopped buying from them, leaving the record alone costs
               nothing and keeps their number to hand if you go back.
             </>
@@ -246,13 +265,19 @@ export default function SupplierDetailPage({
         open={confirming}
         onOpenChange={(next) => !next && setConfirming(false)}
         title={`Remove ${supplier.name}?`}
-        consequences={
+        consequences={hasHistory ? (
+          <>
+            They stop being offered for new supplier orders. Their contact details and every
+            past order, delivery and claim stay exactly as they are, and they can be put back
+            in use.
+          </>
+        ) : (
           <>
             Their contact person, phone number, email and address are deleted with them.
             Orders and stock records stay exactly as they are. This cannot be undone.
           </>
-        }
-        confirmLabel="Yes, remove them"
+        )}
+        confirmLabel={hasHistory ? "Yes, stop using them" : "Yes, remove them"}
         busy={working}
         onConfirm={runDelete}
       />

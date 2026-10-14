@@ -125,7 +125,7 @@ function nativeProblem(el) {
  * with particular fields. Field problems are shown beside their fields; the
  * box at the top only says how many there are.
  */
-export default function WorkshopForm({ title, description, submitLabel, initial, onSave, onClose, children, validate }) {
+export default function WorkshopForm({ title, description, submitLabel, submitVariant = 'clay', initial, onSave, onClose, children, validate }) {
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -184,7 +184,7 @@ export default function WorkshopForm({ title, description, submitLabel, initial,
         </DialogBody>
         <DialogFooter className="justify-between">
           <Button variant="outline" size="lg" disabled={saving} onClick={onClose}>Go back</Button>
-          <Button type="submit" size="lg" variant="clay" disabled={saving}>{saving ? 'Saving…' : submitLabel}</Button>
+          <Button type="submit" size="lg" variant={submitVariant} disabled={saving}>{saving ? 'Saving…' : submitLabel}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

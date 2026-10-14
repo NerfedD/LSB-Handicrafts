@@ -23,6 +23,11 @@ describe('who may do what', () => {
     expect(allowed('recordDamage')).toEqual(['Admin', 'Manager', 'Production Staff']);
   });
 
+  it('lets the workshop fix its own batch slips, and leaves deeper corrections to managers', () => {
+    expect(allowed('makeBatches')).toEqual(['Admin', 'Manager', 'Production Staff']);
+    expect(allowed('correctBatches')).toEqual(['Admin', 'Manager']);
+  });
+
   it('shows customer contact details only to the roles that sell and deliver', () => {
     expect(allowed('viewCustomers')).toEqual(['Admin', 'Manager', 'Sales Staff', 'Delivery Staff']);
     expect(allowed('editCustomers')).toEqual(['Admin', 'Manager', 'Sales Staff']);

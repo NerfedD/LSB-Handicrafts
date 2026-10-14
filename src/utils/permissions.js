@@ -40,9 +40,19 @@ export const CAPABILITIES = {
   manageLoyalty: MANAGERS,
   /** Start, move and finish production batches. */
   makeBatches: [...MANAGERS, "Production Staff"],
+  /**
+   * Undo a batch's mistakes past the planning stage: cancel one already on the
+   * floor, or change its counts, worker, order or notes. Stepping a batch back
+   * one stage and cancelling a planned one stay with makeBatches; deleting one
+   * or re-opening a finished one is removeRecords.
+   */
+  correctBatches: MANAGERS,
   /** The damage & yield report. */
   viewReports: MANAGERS,
-  /** Remove a customer, supplier, product or raw material for good. */
+  /**
+   * Remove a customer, supplier, product or raw material; delete a batch or
+   * supplier order entered by mistake; re-open a finished batch.
+   */
   removeRecords: ["Admin"],
   /** Staff accounts and the activity log. */
   manageStaff: ["Admin"],

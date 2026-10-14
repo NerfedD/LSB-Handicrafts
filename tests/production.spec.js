@@ -138,11 +138,11 @@ test('raw material detail survives a reload with the same record', async ({ page
   await expect(page.getByRole('main')).toContainText('Where this material was used');
 });
 
-test('a supplier with purchasing history cannot be removed', async ({ page, baseURL }) => {
+test('a supplier with an order still on the way cannot be removed', async ({ page, baseURL }) => {
   const tables = await setup(page, baseURL);
   await page.goto(`${baseURL}/suppliers/${tables.suppliers[0].id}`);
   await expect(page.getByRole('button', { name: `Remove ${tables.suppliers[0].name}`, exact: true })).toBeDisabled();
-  await expect(page.getByText(/purchasing history, so they cannot be removed/)).toBeVisible();
+  await expect(page.getByText(/1 order not received yet, so they cannot be removed/)).toBeVisible();
   // The heading has to agree with the disabled button under it, rather than
   // going on offering an action the rest of the block refuses.
   await expect(page.getByRole('heading', { name: 'This supplier stays on file' })).toBeVisible();

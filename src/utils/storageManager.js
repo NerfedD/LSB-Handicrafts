@@ -278,6 +278,9 @@ const supplierFromRow = (r) => ({
   revision: r.revision ?? 0,
   id: r.id,
   name: r.name,
+  // Read, never written by the form: only remove_supplier and restore_supplier
+  // change it (a trigger refuses anything else).
+  status: r.status || 'Active',
   contactPerson: r.contact_person,
   contactNumber: r.contact_number,
   email: r.email,
@@ -678,6 +681,31 @@ export async function restoreMaterial(material) {
     p_expected_revision: material.revision ?? 0,
   });
   if (error) return { ok: false, message: humanizeError(error, "Couldn't put that raw material back in use.") };
+  return { ok: true, outcome: data?.outcome ?? 'restored' };
+}
+
+/**
+ * Removes a supplier the way a material is removed: remove_supplier archives
+ * one with purchase history and deletes one nobody ever ordered from. It
+ * refuses while an order from them is still coming, and for anyone but an
+ * administrator.
+ */
+export async function removeSupplier(supplier) {
+  const { data, error } = await supabase.rpc('remove_supplier', {
+    p_supplier_id: supplier.id,
+    p_expected_revision: supplier.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't remove that supplier.") };
+  return { ok: true, outcome: data?.outcome ?? 'deleted' };
+}
+
+/** Puts a supplier who is no longer used back in use. */
+export async function restoreSupplier(supplier) {
+  const { data, error } = await supabase.rpc('restore_supplier', {
+    p_supplier_id: supplier.id,
+    p_expected_revision: supplier.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't put that supplier back in use.") };
   return { ok: true, outcome: data?.outcome ?? 'restored' };
 }
 
