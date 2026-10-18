@@ -98,6 +98,9 @@ export default function OrderDetailPage({
   customer,
   deliveries = [],
   canHandleMoney = false,
+  // Production Staff are not shown customer contact details, so a missing
+  // customer record means "not for you", not "never saved".
+  canViewCustomers = true,
   onBack,
   onMarkDone,
   onAssignDriver,
@@ -272,7 +275,7 @@ export default function OrderDetailPage({
             </CardHeader>
 
             {items.length === 0 ? (
-              <EmptySlot className="py-10 text-[15px]">
+              <EmptySlot className="py-10 text-[16px]">
                 Nothing has been added to this order yet.
               </EmptySlot>
             ) : (
@@ -300,7 +303,7 @@ export default function OrderDetailPage({
                                 the note explaining it is the only record of why
                                 the number is what it is. */}
                             {(item.notes || item.description || item.reason) && (
-                              <p className="pt-0.5 text-[14px] text-muted">
+                              <p className="pt-0.5 text-[16px] text-muted">
                                 {item.notes || item.description || item.reason}
                               </p>
                             )}
@@ -325,7 +328,7 @@ export default function OrderDetailPage({
                     <li key={`${item.name}-${index}`} className="px-5.5 py-4">
                       <p className="text-[16.5px] font-bold">{item.name}</p>
                       {(item.notes || item.description || item.reason) && (
-                        <p className="pt-0.5 text-[14px] text-muted">
+                        <p className="pt-0.5 text-[16px] text-muted">
                           {item.notes || item.description || item.reason}
                         </p>
                       )}
@@ -346,7 +349,7 @@ export default function OrderDetailPage({
                 <div className="bg-paper-2 px-5.5 py-4.5">
                   <dl className="ml-auto flex max-w-[320px] flex-col gap-2.5">
                     <div className="flex items-baseline justify-between gap-6">
-                      <dt className="text-[15.5px] text-muted">
+                      <dt className="text-[16px] text-muted">
                         Items total
                       </dt>
                       <dd className="text-[16.5px] font-bold tabular-nums">
@@ -354,14 +357,14 @@ export default function OrderDetailPage({
                       </dd>
                     </div>
                     <div className="flex items-baseline justify-between gap-6">
-                      <dt className="text-[15.5px] text-muted">Delivery</dt>
+                      <dt className="text-[16px] text-muted">Delivery</dt>
                       <dd className="text-[16.5px] font-bold tabular-nums">
                         {totals.delivery > 0 ? formatPeso(totals.delivery) : "Free"}
                       </dd>
                     </div>
                     {totals.discount > 0 && (
                       <div className="flex items-baseline justify-between gap-6">
-                        <dt className="text-[15.5px] text-muted">
+                        <dt className="text-[16px] text-muted">
                           {order.promotion?.label || "Loyalty reward"}
                           {order.promotion?.percent ? ` (${order.promotion.percent}%)` : ""}
                         </dt>
@@ -391,7 +394,7 @@ export default function OrderDetailPage({
                     {totals.refunded > 0 && (
                       <>
                         <div className="flex items-baseline justify-between gap-6">
-                          <dt className="text-[15.5px] text-muted">Given back</dt>
+                          <dt className="text-[16px] text-muted">Given back</dt>
                           <dd className="text-[16.5px] font-bold tabular-nums text-red-text">
                             −{formatPeso(totals.refunded)}
                           </dd>
@@ -431,12 +434,12 @@ export default function OrderDetailPage({
                           ? `${formatPeso(entry.amount)} given back · ${refundMethodLabel(entry.method)}`
                           : `Replaced: ${entry.replacementQuantity} × ${entry.replacementName} sent out`}
                       </p>
-                      <p className="text-[14.5px] text-muted">
+                      <p className="text-[16px] text-muted">
                         {formatShortDate(entry.at)}
                         {entry.handledBy ? ` · ${entry.handledBy}` : ""}
                       </p>
                     </div>
-                    <p className="pt-1 text-[15px] leading-[1.5] text-ink-2">
+                    <p className="pt-1 text-[16px] leading-[1.5] text-ink-2">
                       {entry.resolution === "refund"
                         ? refundReasonLabel(entry.reason)
                         : replacementReasonLabel(entry.reason)}
@@ -445,12 +448,12 @@ export default function OrderDetailPage({
                     <ul className="pt-1.5">
                       {entry.resolution === "refund"
                         ? (entry.restockedItems || []).map((line, lineIndex) => (
-                            <li key={lineIndex} className="text-[14.5px] text-muted">
+                            <li key={lineIndex} className="text-[16px] text-muted">
                               {line.quantity} × {line.name} — {dispositionLabel(line.disposition).toLowerCase()}
                             </li>
                           ))
                         : (
-                            <li className="text-[14.5px] text-muted">
+                            <li className="text-[16px] text-muted">
                               {entry.quantity} × {entry.name} came back — {dispositionLabel(entry.disposition).toLowerCase()}
                             </li>
                           )}
@@ -572,13 +575,17 @@ export default function OrderDetailPage({
                 <p className="truncate text-[17px] font-extrabold text-ink">
                   {order.customerName}
                 </p>
-                <p className="pt-0.5 text-[14.5px] text-muted">
+                <p className="pt-0.5 text-[16px] text-muted">
                   Ordered {formatShortDate(order.createdAt)}
                 </p>
               </div>
             </div>
 
-            {customer ? (
+            {!canViewCustomers ? (
+              <EmptySlot className="border-t border-hair py-6">
+                Customer contact details are kept to the office.
+              </EmptySlot>
+            ) : customer ? (
               <FactTable
                 className="border-t border-hair"
                 rows={[

@@ -1,4 +1,6 @@
 import { guardForm } from "../../utils/formErrors";
+import { sameEmail } from "../../utils/email";
+import { nameProblem } from "../../utils/validation";
 import { useState } from "react";
 
 import { ArrowLeft, Save, UserCheck, UserCog, UserX } from "../icons";
@@ -56,6 +58,7 @@ export default function ManageAccountPage({
   const [contactNumber, setContactNumber] = useState(seededPhone);
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState(null);
+  const [nameError, setNameError] = useState(null);
   const [confirm, setConfirm] = useState(null); // "block" | "unblock" | "delete" | null
   const [working, setWorking] = useState(false);
 
@@ -65,7 +68,7 @@ export default function ManageAccountPage({
   const isBlocked = account.status === "Blocked";
   // Blocking is enforced at sign-in, so blocking your own account would lock
   // you out on the next visit with no way back unless somebody else has access.
-  const isSelf = Boolean(account.email) && account.email === currentUserEmail;
+  const isSelf = sameEmail(account.email, currentUserEmail);
   const first = String(account.name || "This person").split(" ")[0];
 
   const changed = name !== account.name || contactNumber !== seededPhone;
@@ -81,7 +84,10 @@ export default function ManageAccountPage({
     // the other four phone fields already ask for it.
     const problem = phoneProblem(contactNumber);
     setPhoneError(problem);
-    if (problem) return;
+    // 120 is the longest a staff name can be in the database (staff_name_len).
+    const nameIssue = nameProblem(name, { label: "Their name", max: 120 });
+    setNameError(nameIssue);
+    if (problem || nameIssue) return;
 
     if (!changed || saving) return;
     setSaving(true);
@@ -159,12 +165,15 @@ export default function ManageAccountPage({
       <Card>
         <form noValidate onSubmit={handleSaveDetails}>
           <FormBand title="Their details">
-            <Field label="Full name">
+            <Field label="Full name" error={nameError}>
               {(props) => (
                 <Input
                   {...props}
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setNameError(null);
+                  }}
                 />
               )}
             </Field>
@@ -202,10 +211,12 @@ export default function ManageAccountPage({
                 <span className="text-[16.5px] font-bold text-ink">
                   {account.role ? roleLabel(account.role) : "Nothing set yet"}
                 </span>
-                <Button variant="outline" size="sm" onClick={onChangeRole}>
-                  <UserCog className="h-4.5 w-4.5" />
-                  Change this
-                </Button>
+                {!isSelf && !account.isSuperAdmin && (
+                  <Button variant="outline" size="sm" onClick={onChangeRole}>
+                    <UserCog className="h-4.5 w-4.5" />
+                    Change this
+                  </Button>
+                )}
               </div>
             </Field>
           </FormBand>

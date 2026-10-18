@@ -198,7 +198,7 @@ export default function CreateAccountDialog({
               {(props) => (
                 <Input
                   {...props}
-                  maxLength={200}
+                  maxLength={120}
                   value={form.name}
                   onChange={(event) => setField("name")(event.target.value)}
                   placeholder="Ana Reyes"

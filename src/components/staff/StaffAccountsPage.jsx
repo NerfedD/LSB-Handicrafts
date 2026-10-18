@@ -23,6 +23,7 @@ import StatusPill, { InlineBadge } from "../shared/StatusPill";
 import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
 import usePaged from "../../hooks/usePaged";
 import { matches } from "../../utils/search";
+import { sameEmail } from "../../utils/email";
 import { roleLabel, signInState } from "../../utils/copy";
 
 /**
@@ -191,7 +192,7 @@ export default function StaffAccountsPage({
                           <p className="flex min-w-0 items-center gap-2">
                             <span className="truncate text-[16.5px] font-bold">{user.name}</span>
                             {user.isSuperAdmin && <InlineBadge label="Owner" tone="cobalt" />}
-                            {user.email === currentUserEmail && (
+                            {sameEmail(user.email, currentUserEmail) && (
                               <InlineBadge label="You" tone="purple" />
                             )}
                           </p>

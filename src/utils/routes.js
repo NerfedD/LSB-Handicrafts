@@ -14,6 +14,8 @@ export const RECORD_KEYS = {
   // nothing.
   'order-edit': 'Order',
 };
+// Screens that exist only as part of a section's record routes.
+const INTERNAL_VIEWS = new Set([...Object.keys(RECORD_KEYS), 'order-form']);
 const sections = { products: 'product', orders: 'order', customers: 'customer',
   suppliers: 'supplier', deliveries: 'delivery', staff: 'account', 'raw-materials': 'raw-material' };
 
@@ -36,8 +38,11 @@ export function readRoute(location) {
         || (section === 'staff' && parts[2] === 'role');
       if (!id || parts.length > 3 || (parts[2] && !validAction)) view = 'not-found';
     }
-  } else if (parts[1]) {
-    id = /^\d+$/.test(parts[1]) ? Number(parts[1]) : null;
+  } else if (parts.length > 1 || INTERNAL_VIEWS.has(view)) {
+    // A top-level screen is exactly one segment, and the detail and form
+    // screens are reached through their section (/orders/12), never by their
+    // internal name (/order-detail). Anything else is a path nobody wrote.
+    view = 'not-found';
   }
   if (!views.has(view)) view = 'not-found';
   return { view, id, record: RECORD_KEYS[view] };

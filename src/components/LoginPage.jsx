@@ -230,7 +230,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
           <button
             type="button"
             onClick={onForgotPassword}
-            className="text-[15.5px] font-bold text-cobalt dark:text-dk-cobalt underline underline-offset-[3px] transition duration-150 hover:text-cobalt-deep"
+            className="text-[16px] font-bold text-cobalt dark:text-dk-cobalt underline underline-offset-[3px] transition duration-150 hover:text-cobalt-deep"
           >
             Forgot password?
           </button>
@@ -247,7 +247,7 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
         cannot be helped by anything else on this screen, and the alternative
         to a phone number here is them giving up.
       */}
-      <p className="pt-6 text-[14.5px] leading-[1.6] text-muted">
+      <p className="pt-6 text-[16px] leading-[1.6] text-muted">
         Accounts are created by your administrator. If you cannot get in, call the office
         on <strong className="font-bold text-ink">{OFFICE_PHONE}</strong>.
       </p>

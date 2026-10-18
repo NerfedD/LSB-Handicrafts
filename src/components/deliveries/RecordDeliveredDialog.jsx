@@ -17,6 +17,7 @@ import Callout from "../shared/Callout";
 import { Field } from "../shared/forms";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import { deliveryStage } from "../../utils/copy";
+import { countProblem } from "../../utils/validation";
 import { committedOf, orderedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
 
 /**
@@ -46,7 +47,13 @@ import { committedOf, orderedOf, outstandingOf, stockLines } from "../../utils/s
  * that does not exist.
  */
 
-const asUnits = (value) => Math.max(0, Math.trunc(Number(value) || 0));
+/**
+ * What was typed, as a count -- or null when it is not a whole number. A bad
+ * entry is refused beside its box (see countProblem); it used to be clamped
+ * into range, so 999 quietly became "everything", a blank or -5 became 0 and
+ * raised a back-order nobody asked for, and 1.5 became 1.
+ */
+const asUnits = (value) => (/^\d{1,10}$/.test(String(value ?? "").trim()) ? Number(value) : null);
 
 /** Every line, with what is still owed on it and what it may be asked for. */
 function manifestFor(order) {
@@ -90,10 +97,29 @@ export default function RecordDeliveredDialog({
 
   const stage = deliveryStage(toStage);
 
+  // Each counted line's problem with what was typed, if it has one.
+  const problems = Object.fromEntries(
+    lines
+      .filter((line) => line.tracked)
+      .map((line) => [
+        line.index,
+        countProblem(went[line.index], { min: 0, max: line.owed, label: "The count" }),
+      ])
+      .filter(([, problem]) => problem)
+  );
+  const hasProblem = Object.keys(problems).length > 0;
+
+  // How many of a line go on this trip. A line with a bad entry counts as all of
+  // it for the preview, so the "left behind" notice never reacts to a typo.
+  const goingOf = (line) => {
+    const typed = asUnits(went[line.index]);
+    return typed === null || typed > line.owed ? line.owed : typed;
+  };
+
   const shortfall = lines
     .map((line) => ({
       ...line,
-      going: Math.min(asUnits(went[line.index]), line.owed),
+      going: goingOf(line),
     }))
     .filter((line) => line.tracked && line.going < line.owed);
 
@@ -117,6 +143,7 @@ export default function RecordDeliveredDialog({
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (hasProblem) return;
     // Checked before anything moves: a past date would be refused only when the
     // second delivery is raised, after the goods had already come off the shelf.
     if (isShort && promisedDateProblem(dueOn)) return;
@@ -130,11 +157,11 @@ export default function RecordDeliveredDialog({
         .filter((line) => line.tracked)
         .map((line) => ({
           lineIndex: line.index,
-          units: line.committed + Math.min(asUnits(went[line.index]), line.owed),
+          units: line.committed + goingOf(line),
         })),
       // Manifests retain only what this vehicle carried.
       manifest: lines.map((line) => {
-        const going = Math.min(asUnits(went[line.index]), line.owed);
+        const going = goingOf(line);
         return {
           productId: line.productId ?? null,
           name: line.name,
@@ -172,6 +199,7 @@ export default function RecordDeliveredDialog({
                   <Field
                     key={line.index}
                     label={line.name}
+                    error={problems[line.index]}
                     hint={
                       line.quantity !== line.ordered
                         ? `${line.ordered} off the shelf, cut into ${line.quantity} pieces. Count what left the shelf.`

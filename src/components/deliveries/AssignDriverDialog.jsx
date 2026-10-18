@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Field } from "../shared/forms";
+import { nameProblem } from "../../utils/validation";
 
 /**
  * Assign someone to a delivery.
@@ -36,15 +37,23 @@ export default function AssignDriverDialog({
 }) {
   const [driver, setDriver] = useState(delivery?.driver ?? "");
   const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState(null);
 
   function handleOpenChange(next) {
     if (saving) return;
-    if (!next) setDriver(delivery?.driver ?? "");
+    if (!next) {
+      setDriver(delivery?.driver ?? "");
+      setProblem(null);
+    }
     onOpenChange?.(next);
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
+    // Empty is a real answer ("nobody yet"); anything typed must fit a name.
+    const tooLong = driver.trim() ? nameProblem(driver, { label: "The name", max: 120 }) : null;
+    setProblem(tooLong);
+    if (tooLong) return;
     setSaving(true);
     const ok = await onSave(driver.trim());
     setSaving(false);
@@ -65,6 +74,7 @@ export default function AssignDriverDialog({
           <DialogBody>
             <Field
               label="Their name"
+              error={problem}
               hint="Anyone can be named here — they do not need an account in the system."
             >
               {(props) => (
@@ -73,7 +83,10 @@ export default function AssignDriverDialog({
                     {...props}
                     list="delivery-drivers"
                     value={driver}
-                    onChange={(event) => setDriver(event.target.value)}
+                    onChange={(event) => {
+                      setDriver(event.target.value);
+                      setProblem(null);
+                    }}
                     placeholder="Leave empty for nobody yet"
                   />
                   <datalist id="delivery-drivers">

@@ -196,8 +196,9 @@ create table if not exists public.customers (
 --
 -- Carries the same styro dimension/unit columns as `inventory` so a catalog
 -- entry can describe a real product, but no `stock`/`reserved` — this table has
--- no stock concept. `size` is no longer typed by hand; it holds a label derived
--- from the dimensions, kept as a column so existing readers keep working.
+-- no stock concept. `size` is no longer typed by hand; it holds the product's
+-- category name (saveProduct writes it, and renaming a category rewrites it),
+-- kept as a column so existing readers keep working.
 create table if not exists public.products (
   id bigint primary key,
   item_code text not null unique,
@@ -5437,3 +5438,83 @@ end;
 $fn$;
 revoke all on function public.workshop_command(text, jsonb, uuid) from public, anon;
 grant execute on function public.workshop_command(text, jsonb, uuid) to authenticated;
+
+-- ============================================================
+-- QA run QA-BUG-20261018-01: who may read deliveries, and own-account changes
+-- ============================================================
+-- Kept at the end of the file, after the migrations mirrored above, so those
+-- stay byte-for-byte copies of their files. Safe to re-run.
+
+-- A delivery row carries the customer's street address in `location`, so it is
+-- customer contact information and is readable by the same roles as customers.
+-- Production Staff never see it. The order_command functions that move
+-- deliveries are security definer and are not affected.
+drop policy if exists "Active staff read deliveries" on public.deliveries;
+drop policy if exists "Customer roles read deliveries" on public.deliveries;
+create policy "Customer roles read deliveries" on public.deliveries for select
+  using ((select private.caller_role()) in ('Admin', 'Manager', 'Sales Staff', 'Delivery Staff'));
+
+-- An administrator cannot block or demote their own account. The row-level
+-- policies let an admin update any staff row, so without this the only thing
+-- stopping an installation losing its last administrator was the buttons being
+-- hidden -- and a mixed-case email got round that check. The function body is
+-- the one above, with the own-account rule added before the admin early return.
+create or replace function public.staff_guard_self_update()
+returns trigger language plpgsql security definer set search_path = public as $fn$
+begin
+  -- No JWT at all means the table owner or the service role: SQL editor,
+  -- migrations, seeds. Those bypass RLS already, so guarding them here only
+  -- blocks legitimate maintenance - including running this very file.
+  if (select auth.jwt()) is null then return new; end if;
+
+  -- A superadmin may change anything, including another superadmin.
+  if private.caller_is_super_admin() then return new; end if;
+
+  -- Nobody else may touch a superadmin's row at all: not the role, not the
+  -- status, not the name. This is what stops a lower admin from blocking or
+  -- demoting the owner account instead of deleting it.
+  if old.is_super_admin then
+    raise exception 'Only a super administrator can modify the super administrator account';
+  end if;
+
+  -- Nobody else may promote anyone, themselves included, to superadmin.
+  if new.is_super_admin and not old.is_super_admin then
+    raise exception 'Only a super administrator can grant super administrator access';
+  end if;
+
+  -- Nobody but a superadmin may change their OWN role or status: an ordinary
+  -- administrator blocking or demoting themselves is how an installation ends
+  -- up with no administrator, and the screens hide those buttons for the same
+  -- reason (a mixed-case email once got round the screen check). Their own name
+  -- and contact number stay editable.
+  if lower(old.email) = lower((select auth.jwt()) ->> 'email')
+     and (new.role is distinct from old.role or new.status is distinct from old.status) then
+    raise exception 'You cannot change your own role or stop your own account signing in';
+  end if;
+
+  -- Ordinary admins keep their existing powers over ordinary staff.
+  if private.is_admin() then return new; end if;
+
+  -- Everyone else may edit only their own name and contact number.
+  --
+  -- USERNAME IS IN THIS LIST, and was not. A username is an identity, not a
+  -- display preference: the sign-in Edge Function resolves one to an email
+  -- before the password is checked, so it is half of how somebody signs in.
+  -- (That resolution used to be email_for_username() here; see the note above
+  -- the drop for why it moved off the browser entirely.) Without
+  -- this line any non-admin could rename themselves to any name not yet taken
+  -- -- including the one an administrator had just told a new hire to expect.
+  -- The unique index stops two accounts HOLDING the same username; it has
+  -- nothing to say about who may change one.
+  if new.role        is distinct from old.role
+     or new.status   is distinct from old.status
+     or new.email    is distinct from old.email
+     or new.username is distinct from old.username
+     or new.id       is distinct from old.id then
+    raise exception 'Only an administrator can change a staff role, status, email, username or id';
+  end if;
+
+  return new;
+end;
+$fn$;
+revoke all on function public.staff_guard_self_update() from public, anon, authenticated;

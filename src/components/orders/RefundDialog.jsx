@@ -21,6 +21,8 @@ import {
   REFUND_REASON_OPTIONS,
 } from "../../utils/copy";
 import { orderNetTotal } from "../../utils/orders";
+import { roundMoney } from "../../utils/money";
+import { countProblem, moneyProblem } from "../../utils/validation";
 import { committedOf, orderedOf, stockLines, voidedOf } from "../../utils/stockLedger";
 import { formatPeso } from "../../utils/profileFormat";
 
@@ -81,6 +83,20 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // What is wrong with a count or the amount as typed. These used to be clamped
+  // into range (999 became "all of it", -5 and 1.5 became 0 and 1), so the form
+  // accepted something other than what was written. Now they are refused.
+  const unitProblems = Object.fromEntries(
+    lines
+      .filter((line) => String(units[line.index] ?? "").trim() !== "")
+      .map((line) => [
+        line.index,
+        countProblem(units[line.index], { min: 0, max: line.refundable, label: "The count" }),
+      ])
+      .filter(([, problem]) => problem)
+  );
+  const amountProblem = amount === "" ? null : moneyProblem(amount, { label: "The amount" });
+
   const chosen = lines
     .map((line) => ({ ...line, units: Math.min(asUnits(units[line.index]), line.refundable) }))
     .filter((line) => line.units > 0);
@@ -88,8 +104,8 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
   // What those lines are worth, offered as the starting figure so nobody has to
   // do the multiplication — but editable, because a goodwill refund is a real
   // thing and so is keeping a delivery charge.
-  const suggested = chosen.reduce((sum, line) => sum + line.units * line.unitPrice, 0);
-  const givingBack = amount === "" ? suggested : asMoney(amount);
+  const suggested = roundMoney(chosen.reduce((sum, line) => sum + line.units * line.unitPrice, 0));
+  const givingBack = amount === "" ? suggested : roundMoney(asMoney(amount));
   const isFull = givingBack >= outstanding && outstanding > 0;
   const needsDisposition = chosen.filter(
     (line) => line.tracked && line.committed > 0 && !disposition[line.index]
@@ -117,10 +133,12 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
 
   function validate() {
     const found = {};
-    if (givingBack <= 0) {
+    if (amountProblem) {
+      found.amount = amountProblem;
+    } else if (givingBack <= 0) {
       found.amount = "Put in how much is going back. It has to be more than nothing.";
     }
-    if (givingBack > outstanding) {
+    if (!amountProblem && givingBack > outstanding) {
       found.amount = `That is more than the ${formatPeso(outstanding)} still on this order.`;
     }
     if (!reason) {
@@ -137,7 +155,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
   async function handleSubmit(event) {
     event.preventDefault();
     const found = validate();
-    if (Object.keys(found).length > 0) {
+    if (Object.keys(unitProblems).length > 0 || Object.keys(found).length > 0) {
       setErrors(found);
       return;
     }
@@ -179,6 +197,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
                 <div key={line.index} className="flex flex-col gap-3.5">
                   <Field
                     label={line.name}
+                    error={unitProblems[line.index]}
                     hint={
                       line.refundable === 0
                         ? "Everything on this line has already been given back."
@@ -235,7 +254,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
             <Field
               label="How much is going back"
               required
-              error={errors.amount}
+              error={errors.amount ?? amountProblem ?? undefined}
               hint={
                 suggested > 0
                   ? `What came back is worth ${formatPeso(suggested)}. Change this if a different amount was agreed.`
@@ -249,7 +268,10 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
                   inputMode="decimal"
                   min={0}
                   value={amount === "" ? (suggested > 0 ? String(suggested) : "") : amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={(event) => {
+                    setAmount(event.target.value);
+                    setErrors((previous) => ({ ...previous, amount: undefined }));
+                  }}
                   placeholder="0"
                 />
               )}
@@ -306,7 +328,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
               // A button that is always pressable reads as ready even at
               // ₱0.00 — the one figure that is guaranteed to fail on submit.
               // Disabled here is the honest default; enabled is the promise.
-              disabled={saving || givingBack <= 0}
+              disabled={saving || givingBack <= 0 || Boolean(amountProblem)}
             >
               <Banknote className="h-5 w-5" />
               {saving ? "Working…" : `Give back ${formatPeso(givingBack)}`}

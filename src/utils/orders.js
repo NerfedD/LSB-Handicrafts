@@ -45,6 +45,7 @@ import { deliveryStageIndex } from "./copy";
 import { normalizeItems, orderTotal } from "./orderItems";
 import { committedOf, outstandingOf } from "./stockLedger";
 import { formatShortDate } from "./profileFormat";
+import { roundMoney } from "./money";
 
 export const ORDER_STAGES = ["Written", "Being made", "Ready to go", "Delivered"];
 
@@ -157,11 +158,11 @@ export function backorderDemand(orders = []) {
 // ---- money -----------------------------------------------------------------
 
 /** What was given back across every refund on this order. */
-export const orderRefunded = (order) => Number(order?.refundedAmount) || 0;
+export const orderRefunded = (order) => roundMoney(order?.refundedAmount);
 
 /** What the customer is actually out of pocket: the total, less what came back. */
 export const orderNetTotal = (order) =>
-  Math.max(0, (Number(order?.totalAmount) || 0) - orderRefunded(order));
+  Math.max(0, roundMoney((Number(order?.totalAmount) || 0) - orderRefunded(order)));
 
 /** Has any money gone back on this order? */
 export const hasRefund = (order) => orderRefunded(order) > 0;

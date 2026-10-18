@@ -20,6 +20,7 @@
  */
 
 import { LINE_KIND } from './constants';
+import { roundMoney } from './money';
 
 /**
  * Fills in the fields a line is missing so every reader can treat all lines
@@ -37,7 +38,7 @@ export function normalizeItem(item) {
   const unitPrice = Number(item.unitPrice ?? item.price) || 0;
   const lineTotal =
     item.lineTotal === undefined || item.lineTotal === null
-      ? unitPrice * quantity
+      ? roundMoney(unitPrice * quantity)
       : Number(item.lineTotal) || 0;
 
   // A custom shape consumes no catalog stock. Everything else defaults to one
@@ -58,5 +59,5 @@ export function normalizeItems(items) {
 
 /** Order total. Identical arithmetic for every kind. */
 export function orderTotal(items) {
-  return normalizeItems(items).reduce((sum, item) => sum + item.lineTotal, 0);
+  return roundMoney(normalizeItems(items).reduce((sum, item) => sum + item.lineTotal, 0));
 }

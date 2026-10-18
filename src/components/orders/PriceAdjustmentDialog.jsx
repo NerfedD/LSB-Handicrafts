@@ -16,6 +16,8 @@ import Callout from "../shared/Callout";
 import { Field, RadioCards } from "../shared/forms";
 import { PRICE_REASON_OPTIONS } from "../../utils/copy";
 import { orderRefunded } from "../../utils/orders";
+import { roundMoney } from "../../utils/money";
+import { moneyProblem } from "../../utils/validation";
 import { formatPeso } from "../../utils/profileFormat";
 
 /**
@@ -38,7 +40,10 @@ import { formatPeso } from "../../utils/profileFormat";
  * stated under it.
  */
 
-const asMoney = (value) => Math.max(0, Number(value) || 0);
+// What was typed, as pesos -- but only when it is a valid amount. A negative,
+// a third decimal or an exponent used to be clamped or rounded into a different
+// number and saved; now they are refused by moneyProblem and `next` stays put.
+const typedProblem = (text) => moneyProblem(text, { label: "The new price" });
 
 export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSave }) {
   const oldTotal = Number(order?.totalAmount) || 0;
@@ -48,7 +53,7 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
-  const next = asMoney(newTotal);
+  const next = typedProblem(newTotal) ? oldTotal : roundMoney(Number(newTotal));
   const difference = next - oldTotal;
   const undercharged = difference > 0;
   const overcharged = difference < 0;
@@ -68,8 +73,11 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
 
   function validate() {
     const found = {};
+    const problem = typedProblem(newTotal);
     if (newTotal.trim() === "") {
       found.newTotal = "Put in what the order should cost.";
+    } else if (problem) {
+      found.newTotal = problem;
     } else if (difference === 0) {
       found.newTotal = "That is the same as the price now, so there is nothing to change.";
     } else if (next < alreadyBack) {
@@ -129,7 +137,9 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
             <Field
               label="What it should be"
               required
-              error={errors.newTotal}
+              // Shown as soon as it is typed: a bad figure leaves the save button
+              // disabled (nothing to change), which would otherwise say nothing.
+              error={errors.newTotal ?? (newTotal.trim() === "" ? undefined : typedProblem(newTotal) ?? undefined)}
               hint="The whole order, in pesos — not the difference."
             >
               {(props) => (

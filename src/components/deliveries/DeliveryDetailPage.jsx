@@ -128,13 +128,13 @@ export default function DeliveryDetailPage({
             <div className="flex items-center gap-4">
               <IconChip icon={STAGE_ICONS[stage.icon]} tone={stage.tone} size="xl" />
               <div className="min-w-0">
-                <p className="text-[15px] font-bold text-muted">
+                <p className="text-[16px] font-bold text-muted">
                   Where it is now
                 </p>
                 <p className="text-[24px] font-extrabold leading-tight tracking-[-0.01em] text-ink">
                   {stage.label}
                 </p>
-                <p className="pt-0.5 text-[15px] text-muted">
+                <p className="pt-0.5 text-[16px] text-muted">
                   {dueLabel(delivery)}
                 </p>
               </div>
@@ -186,7 +186,7 @@ export default function DeliveryDetailPage({
             </CardHeader>
 
             {history.length === 0 ? (
-              <EmptySlot className="py-10 text-[15px]">
+              <EmptySlot className="py-10 text-[16px]">
                 Nothing yet. Every time this delivery moves, a line appears here saying what
                 changed, when, and who did it.
               </EmptySlot>
@@ -199,10 +199,10 @@ export default function DeliveryDetailPage({
                   >
                     <IconChip icon={activityIcon(entry.icon)} tone={entry.tone} size="sm" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15.5px] leading-[1.45] text-ink">
+                      <p className="text-[16px] leading-[1.45] text-ink">
                         <strong className="font-extrabold">{entry.who}</strong> {entry.what}
                       </p>
-                      <p className="pt-0.5 text-[13.5px] text-muted">
+                      <p className="pt-0.5 text-[16px] text-muted">
                         {whenLabel(entry.at)}
                       </p>
                     </div>
@@ -250,7 +250,7 @@ export default function DeliveryDetailPage({
                   {delivery.driver}
                 </p>
               ) : (
-                <p className="text-[15.5px] leading-[1.5] text-muted">
+                <p className="text-[16px] leading-[1.5] text-muted">
                   Nobody has been given this one yet, so it will not leave until somebody is.
                 </p>
               )}

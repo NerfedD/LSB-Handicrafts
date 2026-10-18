@@ -31,6 +31,8 @@ import {
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection, { STALE_MS, subscribe as subscribeToRefresh } from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
+import { roundMoney } from "./utils/money";
+import { sameEmail } from "./utils/email";
 import { readRoute, routePath, RECORD_KEYS } from "./utils/routes";
 import { provisionAccount } from "./utils/accounts";
 import { createCommandRunner, runCommand } from "./utils/commands";
@@ -202,18 +204,6 @@ const CreateAccountDialog = lazy(() => import("./components/staff/CreateAccountD
 const MyProfilePage = lazy(() => import("./components/account/MyProfilePage"));
 const EditProfilePage = lazy(() => import("./components/account/EditProfilePage"));
 const ChangePasswordPage = lazy(() => import("./components/account/ChangePasswordPage"));
-
-/**
- * Compare two email addresses.
- *
- * Case-insensitively, always. Supabase Auth lowercases what it stores and
- * returns, but a `staff` row could have been written with different casing --
- * and when that happened, the row never matched its own session and the account
- * was locked out of the whole app with no error to explain it. The database
- * predicates match on lower(email) for the same reason.
- */
-const sameEmail = (a, b) =>
-  !!a && !!b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
 /** Which list screen each record dialog belongs to — used for its route gate. */
 const LIST_VIEW_OF = { customer: "customers", supplier: "suppliers" };
@@ -1132,7 +1122,10 @@ export default function App() {
         widthFt: catalogue.widthFt,
         unit: values.unit,
         packSize: catalogue.packSize,
-        lowStockThreshold: catalogue.lowStockThreshold ?? 0,
+        // A blank reorder point keeps the one already on the shelf row, or the
+        // shop-wide default of 50. It must not become 0: that switches the
+        // low-stock warning off for the product.
+        lowStockThreshold: catalogue.lowStockThreshold ?? existingStock?.lowStockThreshold ?? 50,
         isCuttable: existingStock?.isCuttable ?? false,
       };
 
@@ -1809,11 +1802,12 @@ export default function App() {
    * aside for it: reserved is derived from Pending orders, so a cancelled one
    * reserves nothing without a single number being decremented anywhere.
    */
-  async function issueRefund(order, { amount, method, reason, full, lines }) {
+  async function issueRefund(order, { amount: rawAmount, method, reason, full, lines }) {
     if (!can(role, "handleMoney")) {
       toast.error("Only an administrator or a manager can give money back.");
       return false;
     }
+    const amount = roundMoney(rawAmount);
 
     setBusy(true);
     const { items, deltas } = handleRefundStock(inventory, order, lines);
@@ -1835,7 +1829,10 @@ export default function App() {
       })),
     };
 
-    const refunded = { ...order, items, refundedAmount: orderRefunded(order) + amount };
+    // Whole centavos, so the database's exact comparison of this entry with the
+    // change in the running total cannot trip on a stray fraction.
+    const refundedTotal = roundMoney(orderRefunded(order) + amount);
+    const refunded = { ...order, items, refundedAmount: refundedTotal };
     // The money, the goods and the order's state settle together or not at all.
     // They used to be a stock loop followed by a separate order write, so a
     // refused order write left the goods already back on the shelf with no
@@ -1846,7 +1843,7 @@ export default function App() {
       order: {
         items,
         status: full ? ORDER_STATUS.CANCELLED : order.status,
-        refundedAmount: orderRefunded(order) + amount,
+        refundedAmount: refundedTotal,
         refundHistory: [...(order.refundHistory || []), entry],
         backorderStatus: backorderStatusOf(refunded),
       },
@@ -2369,9 +2366,13 @@ export default function App() {
                   )
                 : undefined)
             }
-            deliveries={deliveries}
+            // A delivery carries the customer's address, which Production Staff do
+            // not see (the database refuses them the rows; this keeps the screen
+            // the same when a stale list is still in memory).
+            deliveries={can(role, "viewCustomers") ? deliveries : []}
             busy={busy}
             canHandleMoney={can(role, "handleMoney")}
+            canViewCustomers={can(role, "viewCustomers")}
             onBack={() => navigate("orders")}
             onMarkDone={() => markOrderDone(selectedOrder)}
             onPrint={() => window.print()}
@@ -2616,6 +2617,11 @@ export default function App() {
 
       case "assign-role":
         if (!selectedAccount) return renderMissingAccount();
+        // Nobody changes their own role, and only an owner touches an owner's:
+        // the database refuses both, so the screen is not offered.
+        if (sameEmail(selectedAccount.email, sessionEmail) || selectedAccount.isSuperAdmin) {
+          return renderMissingAccount();
+        }
         return (
           <ChangeRolePage
             account={selectedAccount}

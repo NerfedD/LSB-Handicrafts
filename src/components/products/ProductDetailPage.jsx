@@ -199,14 +199,14 @@ export default function ProductDetailPage({
                     >
                       {stock.onHand}
                     </p>
-                    <p className="pt-2 text-[15.5px] text-muted">
+                    <p className="pt-2 text-[16px] text-muted">
                       {stockLabel(stock.status)} — we warn you below {stock.threshold}.
                     </p>
                   </div>
 
                   <div className="flex items-stretch gap-6">
                     <div className="text-right">
-                      <p className="text-[14.5px] text-muted">
+                      <p className="text-[16px] text-muted">
                         Set aside for orders
                       </p>
                       <p className="pt-1 text-[26px] font-extrabold tabular-nums text-ink">
@@ -218,7 +218,7 @@ export default function ProductDetailPage({
                       aria-hidden="true"
                     />
                     <div className="text-right">
-                      <p className="text-[14.5px] text-muted">Free to sell</p>
+                      <p className="text-[16px] text-muted">Free to sell</p>
                       <p className="pt-1 text-[26px] font-extrabold tabular-nums text-green dark:text-dk-green">
                         {Math.max(0, stock.available)}
                       </p>
@@ -251,7 +251,7 @@ export default function ProductDetailPage({
                 <p className="text-[18px] font-extrabold text-ink">
                   Nobody is counting this one yet
                 </p>
-                <p className="pt-2 max-w-[46ch] text-[15.5px] leading-[1.55] text-muted">
+                <p className="pt-2 max-w-[46ch] text-[16px] leading-[1.55] text-muted">
                   There is no stock record against{" "}
                   <Mono className="text-[15px]">{product.itemCode}</Mono>, so we cannot say how
                   many there are. That is different from having none — until somebody counts

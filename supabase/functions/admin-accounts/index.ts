@@ -33,13 +33,17 @@ Deno.serve(async (request: Request) => {
     // untouched, so a correctly-filled field was refused here with a complaint
     // about its formatting. The client normalises now too; this makes an older
     // or cached bundle behave rather than fail.
-    const contactNumber = String(body.contactNumber ?? '').replace(/\D/g, '');
+    // "+63 9…" and "63 9…" are the same mobile number as "09…", and the database
+    // stores only that form (staff_contact_number_valid), so convert as the app
+    // does (localPhoneDigits) rather than passing 12 digits through to be refused.
+    const digits = String(body.contactNumber ?? '').replace(/\D/g, '');
+    const contactNumber = digits.startsWith('63') && digits[2] === '9' ? `0${digits.slice(2)}` : digits;
     const username = String(body.username ?? '').trim();
     const password = typeof body.password === 'string' ? body.password : '';
-    if (!name || name.length > 200) return reply({ message: 'Enter a name of at most 200 characters.' }, 400);
+    if (!name || name.length > 120) return reply({ message: 'Enter a name of at most 120 characters.' }, 400);
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return reply({ message: 'Enter a valid email address.' }, 400);
     if (!roles.has(body.role)) return reply({ message: 'Choose a valid staff role.' }, 400);
-    if (contactNumber && !/^[0-9]{7,15}$/.test(contactNumber)) return reply({ message: 'The phone number must contain 7 to 15 digits.' }, 400);
+    if (contactNumber && !/^09\d{9}$/.test(contactNumber)) return reply({ message: 'Use an 11-digit mobile number starting with 09.' }, 400);
     if (username && !/^[a-zA-Z0-9._-]{3,50}$/.test(username)) return reply({ message: 'Use 3 to 50 letters, numbers, dots, underscores or hyphens for the username.' }, 400);
     if (password.length < 8 || password.length > 128 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
       return reply({ message: 'Use 8 to 128 password characters, including a capital letter and a number.' }, 400);

@@ -28,6 +28,8 @@ export default function AuthField({
   invalid = false,
   disabled = false,
   hint,
+  // A sentence about this field alone, shown under it in place of the hint.
+  error,
 }) {
   const id = useId();
   const [revealed, setRevealed] = useState(false);
@@ -60,7 +62,8 @@ export default function AuthField({
           placeholder={placeholder}
           autoComplete={autoComplete}
           disabled={disabled}
-          aria-invalid={invalid || undefined}
+          aria-invalid={invalid || Boolean(error) || undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
           className="min-w-0 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-2 disabled:cursor-not-allowed"
         />
         {isPassword && (
@@ -80,7 +83,13 @@ export default function AuthField({
           </button>
         )}
       </div>
-      {hint && <p className="pt-2 text-[14.5px] leading-[1.45] text-muted">{hint}</p>}
+      {error ? (
+        <p id={`${id}-error`} className="pt-2 text-[16px] font-bold leading-[1.45] text-red-text">
+          {error}
+        </p>
+      ) : (
+        hint && <p className="pt-2 text-[14.5px] leading-[1.45] text-muted">{hint}</p>
+      )}
     </div>
   );
 }

@@ -375,12 +375,23 @@ export const loadAllRows = async (table, refine = identity) => {
   return rows;
 };
 
+// Set once the page starts going away (a reload or a navigation). The browser
+// aborts every request still in flight at that moment, and each one used to be
+// logged as a failed load -- noise that looked like a real outage.
+let pageIsLeaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { pageIsLeaving = true; });
+  window.addEventListener('pageshow', () => { pageIsLeaving = false; });
+}
+
 /** Reads that fail say so, rather than looking like an empty table. */
 async function readRows(table, read, fromRow) {
   try {
     return { ok: true, data: (await read()).map(fromRow) };
   } catch (error) {
-    console.error(`Failed to load ${table}:`, error);
+    // Still reported to the caller as a failed read; only the console is quiet
+    // for a request the page itself cancelled.
+    if (!pageIsLeaving && error?.name !== 'AbortError') console.error(`Failed to load ${table}:`, error);
     return { ok: false, data: [], error };
   }
 }

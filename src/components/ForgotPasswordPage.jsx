@@ -29,15 +29,26 @@ import { OFFICE_PHONE } from "../utils/office";
 export default function ForgotPasswordPage({ onBack }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
+  const [emailError, setEmailError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
 
   async function handleSubmit(event) {
     event.preventDefault();
     setError(null);
+    const typed = email.trim();
+    // Checked here, beside the box, so a blank or half-typed address does not
+    // spend a request (and a rate-limit slot) on something that cannot arrive.
+    const problem = typed === ""
+      ? "Put in your email address."
+      : typed.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(typed)
+        ? "That does not look like an email address. Check for a missing @ or dot."
+        : null;
+    setEmailError(problem);
+    if (problem) return;
     setIsSubmitting(true);
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(typed, {
         redirectTo: window.location.origin,
       });
       if (resetError) {
@@ -113,10 +124,14 @@ export default function ForgotPasswordPage({ onBack }) {
           icon={<Mail />}
           type="email"
           value={email}
-          onChange={setEmail}
+          onChange={(next) => {
+            setEmail(next);
+            setEmailError(null);
+          }}
           placeholder="you@example.com"
           autoComplete="email"
-          invalid={Boolean(error)}
+          invalid={Boolean(error) || Boolean(emailError)}
+          error={emailError}
         />
 
         <div className="flex flex-wrap gap-3 pt-6">

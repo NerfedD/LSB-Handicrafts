@@ -1,4 +1,5 @@
 import { guardForm } from "../../utils/formErrors";
+import { nameProblem } from "../../utils/validation";
 import { useState } from "react";
 
 import { ArrowLeft, Save } from "../icons";
@@ -30,6 +31,7 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
   const seededPhone = localPhoneDigits(profile?.contactNumber ?? "");
   const [contactNumber, setContactNumber] = useState(seededPhone);
   const [phoneError, setPhoneError] = useState(null);
+  const [nameError, setNameError] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const changed =
@@ -44,6 +46,11 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
     event.preventDefault();
     if (!guardForm(event.currentTarget)) return;
     if (!changed || saving) return;
+
+    // 120 is the longest a staff name can be in the database (staff_name_len).
+    const nameIssue = nameProblem(name, { label: "Your name", max: 120 });
+    setNameError(nameIssue);
+    if (nameIssue) return;
 
     const problem = phoneProblem(contactNumber);
     if (problem) {
@@ -65,12 +72,19 @@ export default function EditProfilePage({ profile, onBack, onSave }) {
       <Card>
         <form noValidate onSubmit={handleSubmit}>
           <FormBand title="Your details">
-            <Field label="Your name" hint="How you appear to colleagues throughout the system.">
+            <Field
+              label="Your name"
+              error={nameError}
+              hint="How you appear to colleagues throughout the system."
+            >
               {(props) => (
                 <Input
                   {...props}
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setNameError(null);
+                  }}
                 />
               )}
             </Field>

@@ -1,5 +1,6 @@
 import FormError from "../shared/FormError";
 import { guardForm, reportFormError } from "../../utils/formErrors";
+import { nameProblem } from "../../utils/validation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,14 @@ function validate(values) {
   if (values.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
     errors.email = "That does not look like an email address. Check for a missing @ or dot.";
   }
+  // Length limits are enforced here only -- the database has no limit on these
+  // columns -- so a pasted wall of text is stopped beside its field instead of
+  // being stored. 200 for a name, 254 is the longest an email address can be.
+  if (values.name.trim() && nameProblem(values.name, { label: "The supplier's name" })) {
+    errors.name = nameProblem(values.name, { label: "The supplier's name" });
+  }
+  if (values.email.trim().length > 254) errors.email = "An email address can be at most 254 characters.";
+  if (values.address.trim().length > 500) errors.address = "Keep the address to 500 characters.";
   return errors;
 }
 
@@ -249,6 +258,7 @@ export default function SupplierFormDialog({
 
             <Field
               label="Where they are"
+              error={errors.address}
               hint="Put the district or city last — it is what the area filter reads."
             >
               {(props) => (

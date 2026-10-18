@@ -86,8 +86,8 @@ function FlowGuide({ section }) {
     <section aria-label="How stock moves here" className="grid gap-px overflow-hidden rounded-card border border-card bg-hair tab:grid-cols-3">
       {steps.map(([title, text]) => (
         <div key={title} className="bg-surface px-4.5 py-3.5">
-          <p className="text-[15.5px] font-extrabold text-ink">{title}</p>
-          <p className="pt-1 text-[15px] leading-[1.45] text-muted">{text}</p>
+          <p className="text-[16px] font-extrabold text-ink">{title}</p>
+          <p className="pt-1 text-[16px] leading-[1.45] text-muted">{text}</p>
         </div>
       ))}
     </section>
@@ -127,7 +127,7 @@ function SectionTabs({ section, sections, onNavigate }) {
                 aria-current={here ? 'page' : undefined}
                 onClick={() => onNavigate(key)}
                 className={cn(
-                  'inline-flex h-11 items-center whitespace-nowrap rounded-full border-[1.5px] px-4.5 text-[15.5px] font-bold transition duration-150',
+                  'inline-flex h-11 items-center whitespace-nowrap rounded-full border-[1.5px] px-4.5 text-[16px] font-bold transition duration-150',
                   here
                     ? 'border-ink bg-ink text-surface'
                     : 'border-chip bg-surface text-ink hover:bg-wash'
@@ -219,13 +219,13 @@ function MaterialFigures({ material, batches }) {
           no batch queued against it, so a material that is nearly out drew a
           full bar next to its own "Running low" pill. */}
       <StockBar value={free} max={Math.max(material.stock, material.low_stock_threshold)} tone={tone} className="mt-2.5 max-w-none" />
-      <p className="pt-2.5 text-[15px] text-muted">
+      <p className="pt-2.5 text-[16px] text-muted">
         <strong className="font-bold tabular-nums text-ink">{free}</strong> free to use
         {' · '}
         <strong className="font-bold tabular-nums text-ink">{reserved}</strong> set aside for unfinished batches
       </p>
       {short > 0 && (
-        <p className="pt-1.5 text-[15px] font-bold text-red-text">
+        <p className="pt-1.5 text-[16px] font-bold text-red-text">
           The batches already queued need {units(short, material.unit)} more than is on the shelf.
         </p>
       )}
@@ -448,7 +448,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               ) : (
                 <CardTitle>On the shelf right now</CardTitle>
               )}
-              <p className="pt-0.5 text-[15px] text-muted">
+              <p className="pt-0.5 text-[16px] text-muted">
                 <Mono>{m.sku}</Mono>
                 {' · '}
                 {materialKindLabel(m.material_type)}
@@ -612,7 +612,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
               const rows = usage.filter((u) => lots.some((l) => l.id === u.lot_id && l.raw_material_id === materialId));
               if (rows.length === 0) {
                 return (
-                  <p className="px-5.5 py-6 text-[15.5px] text-muted">
+                  <p className="px-5.5 py-6 text-[16px] text-muted">
                     Nothing has been made from this material yet. Each finished batch records the lots it used.
                   </p>
                 );
@@ -626,14 +626,14 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                           <IconChip icon={<Hammer className="h-4.5 w-4.5" />} tone="clay" size="sm" />
                           <span className="min-w-0">
                             <span className="block font-bold text-ink">{batches.find((b) => b.id === u.batch_id)?.batch_code}</span>
-                            <span className="block text-[15px] text-muted">From lot #{u.lot_id}</span>
+                            <span className="block text-[16px] text-muted">From lot #{u.lot_id}</span>
                           </span>
                         </span>
                         <span className="font-bold tabular-nums text-ink">{units(u.quantity, material.unit)}</span>
                       </Row>
                     ))}
                   </RowList>
-                  <p className="border-t border-hair bg-paper-2 px-5.5 py-3.5 text-[15px] text-muted">
+                  <p className="border-t border-hair bg-paper-2 px-5.5 py-3.5 text-[16px] text-muted">
                     Each completed batch records the received lots it used, oldest first.
                   </p>
                 </>
@@ -708,7 +708,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                       <IconChip icon={<Truck className="h-5 w-5" />} tone={status.tone} size="md" />
                       <div className="min-w-0">
                         <CardTitle>{mat(o.raw_material_id)?.name}</CardTitle>
-                        <p className="pt-0.5 text-[15px] text-muted">
+                        <p className="pt-0.5 text-[16px] text-muted">
                           {supplierName(o.supplier_id)} · <Mono>Order #{o.id}</Mono>
                           {o.delivery_reference ? <> · Their reference <Mono>{o.delivery_reference}</Mono></> : null}
                         </p>
@@ -717,7 +717,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     <StatusPill label={MATERIAL_ORDER_LABEL[o.status]} tone={status.tone} mark={status.mark} size="sm" />
                   </CardHeader>
 
-                  <div className="flex flex-col gap-1.5 px-5.5 py-4.5 text-[15.5px]">
+                  <div className="flex flex-col gap-1.5 px-5.5 py-4.5 text-[16px]">
                     <p>
                       <strong className="font-bold tabular-nums text-ink">{units(o.quantity_ordered, unit)}</strong> ordered
                       {' · '}{formatPeso(o.unit_price)} each
@@ -818,7 +818,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                       <IconChip icon={productIcon(product.productType, 'h-5 w-5')} tone={tone} size="md" />
                       <span className="min-w-0">
                         <span className="block font-bold text-ink">{product.name}</span>
-                        <span className="block text-[15px] text-muted">
+                        <span className="block text-[16px] text-muted">
                           Need {needed} selling {needed === 1 ? 'unit' : 'units'}
                         </span>
                       </span>
@@ -864,7 +864,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                     <StatusPill label={BATCH_LABEL[b.status]} tone={status.tone} mark={status.mark} size="sm" />
                   </CardHeader>
 
-                  <div className="flex flex-col gap-1.5 px-5.5 py-4.5 text-[15.5px]">
+                  <div className="flex flex-col gap-1.5 px-5.5 py-4.5 text-[16px]">
                     <p>
                       Target <strong className="font-bold tabular-nums text-ink">{b.target_output_qty} pieces</strong>
                       {batchMaterial ? <> · {units(b.raw_material_used_qty, batchMaterial.unit)} of {batchMaterial.name}</> : null}
@@ -951,7 +951,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
             )}
           >
             {recipes.length === 0 ? (
-              <p className="px-5.5 py-6 text-[15.5px] text-muted">
+              <p className="px-5.5 py-6 text-[16px] text-muted">
                 No recipes yet. A recipe fills in the usual material count when a batch is started; without one, a batch still takes a custom count.
               </p>
             ) : (
@@ -963,13 +963,13 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                       <IconChip icon={<ClipboardList className="h-4.5 w-4.5" />} tone="neutral" size="sm" />
                       <span className="min-w-0">
                         <span className="block font-bold text-ink">{prod(r.product_id)?.name}</span>
-                        <span className="block text-[15px] text-muted">
+                        <span className="block text-[16px] text-muted">
                           {units(r.material_qty, mat(r.raw_material_id)?.unit)} of {mat(r.raw_material_id)?.name}
                         </span>
                       </span>
                     </span>
                     <span className="flex w-full flex-wrap items-center justify-between gap-2.5 tab:w-auto tab:justify-end">
-                      <span className="text-[15.5px] text-muted">
+                      <span className="text-[16px] text-muted">
                         makes about <strong className="font-bold tabular-nums text-ink">{r.output_qty} pieces</strong>
                       </span>
                       {manager && (
@@ -1009,7 +1009,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
             <SectionCard title="Supplier transit issues">
               <div className="px-5.5 py-4.5">
-                <p className="text-[15.5px]">
+                <p className="text-[16px]">
                   <strong className="font-bold tabular-nums text-ink">{units(damagedInTransit, 'material unit')}</strong> damaged on the way
                   {' · '}
                   <strong className="font-bold tabular-nums text-ink">{claims.length}</strong> {claims.length === 1 ? 'claim needs' : 'claims need'} review
@@ -1024,7 +1024,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
             <SectionCard title="Production damage log">
               {defects.length === 0 ? (
-                <p className="px-5.5 py-6 text-[15.5px] text-muted">
+                <p className="px-5.5 py-6 text-[16px] text-muted">
                   No production damage has been recorded. Damaged pieces are counted when a batch goes through its quality check.
                 </p>
               ) : (
@@ -1039,10 +1039,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
                           <p className="font-bold text-ink">
                             <span className="tabular-nums">{d.damaged_quantity}</span> damaged · {prod(d.product_id)?.name}
                           </p>
-                          <p className="pt-0.5 text-[15px] text-muted">
+                          <p className="pt-0.5 text-[16px] text-muted">
                             {d.reason} · {b?.batch_code} · {worker(d.logged_by_staff_id)}
                           </p>
-                          <p className="pt-0.5 text-[15px] text-muted">
+                          <p className="pt-0.5 text-[16px] text-muted">
                             {formatShortDate(d.logged_at)} · Material lots:{' '}
                             {lotsUsed.length ? lotsUsed.map((u) => `#${u.lot_id} (${u.quantity} used)`).join(', ') : 'none recorded'}
                           </p>

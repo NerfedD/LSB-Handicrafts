@@ -21,6 +21,8 @@ import { Checkbox } from "../shared/AuthField";
 import { LINE_KIND } from "../../utils/constants";
 import { customerSummary, DEFAULT_LOYALTY, loyaltyDiscount } from "../../utils/customers";
 import { normalizeItems, orderTotal } from "../../utils/orderItems";
+import { roundMoney } from "../../utils/money";
+import { moneyProblem, nameProblem } from "../../utils/validation";
 import { formatPeso } from "../../utils/profileFormat";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
@@ -173,6 +175,10 @@ export default function OrderFormPage({
     isEdit && delivery?.amount ? String(delivery.amount) : ""
   );
   const [error, setError] = useState(null);
+  // Problems shown beside the field they belong to: the customer, and each
+  // line's price by line key.
+  const [customerProblem, setCustomerProblem] = useState(null);
+  const [priceProblems, setPriceProblems] = useState({});
   // Asked once, then it goes through — the same shape as the duplicate-name and
   // phone-number questions on the record dialogs.
   const [deliveryDoubt, setDeliveryDoubt] = useState(null);
@@ -220,7 +226,7 @@ export default function OrderFormPage({
   // the rules have moved since; the database re-checks only a changed amount.
   const keptDiscount = isEdit && !offerReward ? Number(order?.discountAmount) || 0 : 0;
   const discount = offerReward && useReward ? loyaltyDiscount(itemsTotal, loyalty) : keptDiscount;
-  const total = Math.max(0, itemsTotal + (Number(deliveryCharge) || 0) - discount);
+  const total = Math.max(0, roundMoney(itemsTotal + (Number(deliveryCharge) || 0) - discount));
 
   function setLine(key, changes) {
     setLines((previous) =>
@@ -302,6 +308,20 @@ export default function OrderFormPage({
       return;
     }
     if (!guardForm(formElement)) return;
+    // A blank price used to be read as 0 and saved as a free line. The price is
+    // checked as typed, beside its own field, before anything else is judged.
+    const nextPriceProblems = {};
+    for (const line of lines) {
+      const problem = moneyProblem(line.unitPrice, { label: "The price" });
+      if (problem) nextPriceProblems[line.key] = problem;
+    }
+    const nextCustomerProblem = customerName.trim() ? nameProblem(customerName, { label: "The customer's name" }) : null;
+    setPriceProblems(nextPriceProblems);
+    setCustomerProblem(nextCustomerProblem);
+    if (nextCustomerProblem || Object.keys(nextPriceProblems).length > 0) {
+      reportFormError(formElement, nextCustomerProblem || Object.values(nextPriceProblems)[0]);
+      return;
+    }
     if (filled.length !== lines.length || lines.some((line) => !Number.isInteger(Number(line.quantity)) || Number(line.quantity) <= 0 || !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0)) {
       fail('Complete every order line with a product, a whole quantity above zero and a price of zero or more.');
       return;
@@ -376,7 +396,7 @@ export default function OrderFormPage({
         quantity,
         unitPrice: Number(line.unitPrice),
         listPrice: Number(line.listPrice),
-        lineTotal: Number(line.unitPrice) * quantity,
+        lineTotal: roundMoney(Number(line.unitPrice) * quantity),
         // A custom shape consumes no catalog stock — see normalizeItem.
         stockUnits: wasCut ? cutDraw() : line.custom ? 0 : quantity,
         };
@@ -408,6 +428,7 @@ export default function OrderFormPage({
           <Field
             label="Customer"
             required
+            error={customerProblem}
             hint="Start typing to find someone already on the books, or write a new name."
           >
             {(props) => (
@@ -416,7 +437,10 @@ export default function OrderFormPage({
                   {...props}
                   list="order-customers"
                   value={customerName}
-                  onChange={(event) => setCustomerName(event.target.value)}
+                  onChange={(event) => {
+                    setCustomerName(event.target.value);
+                    setCustomerProblem(null);
+                  }}
                   placeholder="Ana Reyes"
                 />
                 {/* A datalist rather than a select: most orders are for somebody
@@ -517,6 +541,7 @@ export default function OrderFormPage({
 
                     <Field
                       label="Price each"
+                      error={priceProblems[line.key]}
                       hint={
                         match && Number(line.unitPrice) !== Number(line.listPrice)
                           ? `List price is ${formatPeso(line.listPrice)}`
@@ -533,9 +558,10 @@ export default function OrderFormPage({
                           step="0.01"
                           min="0"
                           value={line.unitPrice}
-                          onChange={(event) =>
-                            setLine(line.key, { unitPrice: event.target.value })
-                          }
+                          onChange={(event) => {
+                            setLine(line.key, { unitPrice: event.target.value });
+                            setPriceProblems((previous) => ({ ...previous, [line.key]: undefined }));
+                          }}
                         />
                       )}
                     </Field>
@@ -555,7 +581,7 @@ export default function OrderFormPage({
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-[16.5px] font-bold tabular-nums">
-                        {formatPeso(Number(line.unitPrice) * Number(line.quantity || 0))}
+                        {formatPeso(roundMoney(Number(line.unitPrice) * Number(line.quantity || 0)))}
                       </span>
                       {lines.length > 1 && (
                         <Button
