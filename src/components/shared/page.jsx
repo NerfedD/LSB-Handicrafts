@@ -26,7 +26,7 @@ export function Page({ className, ...props }) {
  * description, with the actions on the right. `back` draws the detail
  * screens' "Back to …" link above it.
  */
-export function PageHeader({ icon: Icon, title, description, actions, back, children, className }) {
+export function PageHeader({ icon: Icon, leading, title, titleBadge, description, actions, back, children, className }) {
   return (
     <header className={cn("flex flex-col gap-3", className)}>
       {back ? (
@@ -41,13 +41,17 @@ export function PageHeader({ icon: Icon, title, description, actions, back, chil
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          {Icon ? (
+          {leading}
+          {Icon && !leading ? (
             <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border text-fg-2 shadow-xs">
               <Icon className="size-5" aria-hidden="true" />
             </span>
           ) : null}
           <div className="min-w-0">
-            <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">{title}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="m-0 text-xl font-semibold tracking-[-0.01em]">{title}</h1>
+              {titleBadge}
+            </div>
             {description ? <p className="m-0 text-13 text-muted-fg">{description}</p> : null}
             {children}
           </div>

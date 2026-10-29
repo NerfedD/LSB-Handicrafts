@@ -1,47 +1,18 @@
 import { useState } from "react";
 
-import {
-  ArrowLeft,
-  ClipboardList,
-  Hammer,
-  Save,
-  Shield,
-  Truck,
-  UserCog,
-} from "../icons";
+import { FloppyDisk, UserGear } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { FormBand, FormFooter, RadioCards } from "../shared/forms";
 import { NotFoundState } from "../shared/PageStates";
-import { ROLE_BLURB } from "../../utils/copy";
-import { ROLES } from "../../utils/staffData";
+import { Page, PageHeader } from "../shared/page";
+import { RoleChoices } from "./RoleChoices";
 
 /**
- * What does this person do? — screen 2q.
- *
- * NOT "ASSIGN STAFF ROLE". The screen used to be titled that and offered a list
- * of five words, which is a quiz: nothing about "Manager" tells you whether it
- * can delete a staff account, and an administrator picking one was guessing at
- * what they were granting.
- *
- * Each option now SPELLS OUT WHAT IT UNLOCKS in a sentence. That is the whole
- * screen: the words are the same five, the sentences are the design.
- *
- * Radio cards rather than a dropdown, because all five have to be readable at
- * once to be compared — and comparing them is the decision being made.
+ * Change one person's role, on its own: the Role section of the Account
+ * details board as a screen, reached from a User Management row's "Change
+ * role". Saving goes through the same handler as the account screen.
  */
-
-const ROLE_ICONS = {
-  Admin: { icon: <Shield className="h-5 w-5" />, tone: "cobalt" },
-  Manager: { icon: <UserCog className="h-5 w-5" />, tone: "purple" },
-  "Sales Staff": { icon: <ClipboardList className="h-5 w-5" />, tone: "green" },
-  "Production Staff": { icon: <Hammer className="h-5 w-5" />, tone: "clay" },
-  "Delivery Staff": { icon: <Truck className="h-5 w-5" />, tone: "amber" },
-};
-
 export default function ChangeRolePage({ account, onBack, onSave }) {
   const [role, setRole] = useState(account?.role ?? "");
-  // Captured on mount, for the reason spelled out in ManageAccountPage.
   const [revision] = useState(account?.revision ?? 0);
   const [saving, setSaving] = useState(false);
 
@@ -58,51 +29,29 @@ export default function ChangeRolePage({ account, onBack, onSave }) {
     setSaving(false);
   }
 
-  const options = ROLES.map((value) => ({
-    value,
-    label: value === "Admin" ? "Administrator" : value,
-    description: ROLE_BLURB[value],
-    ...ROLE_ICONS[value],
-  }));
-
   return (
-    <div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
-      <Button variant="ghost" size="sm" className="self-start px-2" onClick={onBack}>
-        <ArrowLeft className="h-5 w-5" />
-        Back to {first}&rsquo;s account
-      </Button>
-
-      <Card>
-        <form onSubmit={handleSubmit}>
-          <FormBand title={`What does ${first} do?`}>
-            <p className="-mt-1 text-[16px] leading-[1.5] text-muted">
-              This decides which screens {first} can open. It can be changed at any time,
-              and changing it does not affect anything they have already made.
-            </p>
-
-            <RadioCards
-              label={`What ${first} does`}
-              options={options}
-              value={role}
-              onChange={setRole}
-            />
-          </FormBand>
-
-          <FormFooter
-            left={
-              <Button variant="outline" size="lg" onClick={onBack}>
-                Cancel
-              </Button>
-            }
-            right={
-              <Button type="submit" variant="cobalt" size="lg" disabled={!changed || saving}>
-                <Save className="h-5 w-5" />
-                {saving ? "Saving…" : "Save what they do"}
-              </Button>
-            }
-          />
-        </form>
-      </Card>
-    </div>
+    <Page>
+      <PageHeader
+        back={{ label: `Back to ${first}'s account`, onClick: onBack }}
+        icon={UserGear}
+        title={`Change ${first}'s role`}
+        description={`It decides which screens ${first} can open. Nothing they have already recorded changes.`}
+      />
+      <form onSubmit={handleSubmit} className="max-w-[720px] rounded-lg border border-border bg-card shadow-xs">
+        <div className="border-b border-border px-4 py-3.5">
+          <h2 className="m-0 text-sm font-semibold">Role</h2>
+        </div>
+        <div className="px-4 py-3">
+          <RoleChoices label={`What ${first} does`} value={role} onChange={setRole} />
+        </div>
+        <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+          <Button variant="outline" onClick={onBack}>Cancel</Button>
+          <Button type="submit" disabled={!changed || saving}>
+            <FloppyDisk aria-hidden="true" />
+            {saving ? "Saving…" : "Save role"}
+          </Button>
+        </div>
+      </form>
+    </Page>
   );
 }

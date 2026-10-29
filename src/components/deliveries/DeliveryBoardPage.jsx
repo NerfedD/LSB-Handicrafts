@@ -1,29 +1,19 @@
-import useUrlState from "../../hooks/useUrlState";
-import { useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import {
-  CalendarClock,
-  CircleCheck,
-  Hammer,
-  Inbox,
-  PackageCheck,
-  Truck,
-  UserX,
-} from "../icons";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import IconChip, { Mono } from "../shared/Chip";
-import { FilterBar } from "../shared/ListScreen";
-import {
-  ActiveFilterSummary,
-  FilterChips,
-  FilterSelect,
-  SearchField,
-} from "../shared/filters";
-import { EmptySlot, ErrorState, LoadingState } from "../shared/PageStates";
+import useUrlState from "../../hooks/useUrlState";
+import { ArrowRight, Kanban, List, Printer, Truck, UserPlus } from "../icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ToggleGroup } from "@/components/ui/toggle-group";
+import { Avatar } from "../shared/Chip";
 import Landed from "../shared/Landed";
-import { InlineBadge } from "../shared/StatusPill";
-import { tone as toneOf } from "../shared/tones";
+import { landedRow } from "../shared/landing";
+import { EmptyState, FilterSelect, Page, PageHeader, SearchField, StatCard, StatCards } from "../shared/page";
+import { ErrorState, LoadingState } from "../shared/PageStates";
+import { cn } from "@/lib/utils";
+import StageBadge from "./StageBadge";
+import { STAGE_LOOK } from "./stageLook";
 import { isBackorderDelivery } from "../../utils/orders";
 import { matches } from "../../utils/search";
 import { DELIVERY_STAGE } from "../../utils/constants";
@@ -32,84 +22,74 @@ import {
   areasOf,
   board,
   customerFrom,
-  deliveryChips,
   dueLabel,
+  dueTime,
   hasNoDriver,
   isDueThisWeek,
   isDueToday,
   isLate,
   matchesChip,
+  nextStage,
 } from "../../utils/deliveries";
 
 /**
- * Deliveries — screen 2k.
+ * Deliveries, drawn to the "6 · Deliveries" board:
  *
- * A BOARD, NOT A TABLE, and the reason is the work rather than the fashion: a
- * delivery is always in exactly one of five places, and the job is moving it to
- * the next one. A table sorted by status shows the same information and hides
- * the thing that matters — how much is piled up at each step.
+ *   PageHeader (Print run sheet, Assign drivers) → four compact StatCards →
+ *   FilterBar (search, Due, Driver, count, Table / Board) → the table, or the
+ *   kanban board with one column per stage.
  *
- * ALL FIVE COLUMNS, ALWAYS. An empty column says "nothing is waiting to be
- * made", which is worth knowing; hiding it changes the board's shape day to
- * day, and the shape is how somebody finds "Ready to go" without reading the
- * headings. Empty columns say so in words rather than sitting blank, because a
- * blank column reads as a page that failed to load.
- *
- * THE SUMMARY BAR EARNS ITS PLACE HERE more than anywhere else in the app.
- * Three dropdowns and a chip can silently combine into an empty board, and an
- * empty board looks exactly like a quiet day. The bar states the combination in
- * a sentence and offers one control that undoes all of it.
+ * Each row and card carries the next step ("Start making", "Mark ready",
+ * "Send out", "Mark delivered"), which moves the delivery the way the detail
+ * screen does: sending out opens the manifest dialog first.
  */
-
-const STAGE_ICONS = {
-  inbox: <Inbox />,
-  hammer: <Hammer />,
-  "package-check": <PackageCheck />,
-  truck: <Truck />,
-  "circle-check": <CircleCheck />,
-};
-
 const DUE_OPTIONS = [
   { value: "any", label: "Any day" },
   { value: "today", label: "Today" },
   { value: "week", label: "This week" },
-  { value: "late", label: "Overdue" },
+  { value: "late", label: "Late" },
 ];
+
+const shortDue = (delivery) => {
+  const due = dueTime(delivery);
+  if (due === null) return "No date";
+  if (isDueToday(delivery)) return "Today";
+  return new Date(due).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+};
+
+const lateDays = (delivery) => {
+  const due = dueTime(delivery);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const days = Math.round((start.getTime() - due) / 86400000);
+  return days;
+};
 
 export default function DeliveryBoardPage({
   isLoaded = true,
   loadError = null,
   onRetry,
   deliveries = [],
+  orders = [],
   staff = [],
   onOpen,
+  onMoveForward,
+  onAssignDrivers,
   onGoToDashboard,
-  onContext,
   initialFilter,
-  /** The last record a write changed — see shared/Landed.jsx. */
   change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "deliveries");
-  // Seeded from the dashboard. An attention row's button names a verb and
-  // lands here with the matching chip already on, so the sentence somebody
-  // read and the list they arrive at agree. It stays an ordinary chip
-  // afterwards -- clearable, and not a mode.
-  const [chip, setChip] = useUrlState("tab", initialFilter ?? "all", "deliveries");
+  const [chip] = useUrlState("tab", initialFilter ?? "all", "deliveries");
   const [due, setDue] = useUrlState("due", "any", "deliveries");
   const [driver, setDriver] = useUrlState("driver", "any", "deliveries");
   const [area, setArea] = useUrlState("area", "any", "deliveries");
+  const [view, setView] = useState("table");
 
-  const chips = useMemo(() => deliveryChips(deliveries), [deliveries]);
   const areas = useMemo(() => areasOf(deliveries), [deliveries]);
-
-  // Drivers come from the deliveries themselves as well as the staff list: a
-  // delivery can be taken by somebody without a system account, and a filter
-  // that cannot select the name written on the delivery is not a filter.
   const drivers = useMemo(() => {
     const seen = new Map();
-    for (const person of staff) {
-      if (person.name) seen.set(person.name.toLowerCase(), person.name);
-    }
+    for (const person of staff) if (person.name) seen.set(person.name.toLowerCase(), person.name);
     for (const delivery of deliveries) {
       const name = String(delivery.driver || "").trim();
       if (name) seen.set(name.toLowerCase(), name);
@@ -117,196 +97,268 @@ export default function DeliveryBoardPage({
     return [...seen.values()].sort((a, b) => a.localeCompare(b));
   }, [staff, deliveries]);
 
-  const lateCount = chips.find((c) => c.value === "late")?.count ?? 0;
+  const itemsOf = useMemo(() => {
+    const byId = new Map(orders.map((order) => [order.id, order]));
+    return (delivery) => {
+      const manifest = delivery.itemsManifest ?? [];
+      if (manifest.length) return manifest.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+      const order = byId.get(delivery.orderId);
+      return order?.items?.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0) ?? null;
+    };
+  }, [orders]);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    onContext?.(
-      lateCount > 0
-        ? `${deliveries.length} deliveries · ${lateCount} late`
-        : `${deliveries.length} deliveries · none late`
-    );
-  }, [deliveries.length, lateCount, isLoaded, onContext]);
+  const open = deliveries.filter((d) => d.status !== DELIVERY_STAGE.ARRIVED);
+  const stats = useMemo(() => {
+    const today = open.filter(isDueToday);
+    const week = open.filter(isDueThisWeek);
+    const late = open.filter(isLate);
+    const noDriver = open.filter(hasNoDriver);
+    return {
+      today: today.length,
+      onRoad: today.filter((d) => d.status === DELIVERY_STAGE.ON_THE_WAY).length,
+      week: week.length,
+      weekAreas: new Set(week.map(areaOf).filter(Boolean)).size,
+      late: late.length,
+      oldest: late.reduce((max, d) => Math.max(max, lateDays(d)), 0),
+      noDriver: noDriver.length,
+      readyNoDriver: noDriver.filter((d) => d.status === DELIVERY_STAGE.READY).length,
+    };
+  }, [open]);
 
   const filtered = useMemo(
     () =>
       deliveries.filter((delivery) => {
         if (!matchesChip(delivery, chip)) return false;
-
-        // The predicates, never the display string: dueLabel() answers
-        // "Arrived" for a finished delivery whatever day it was promised, and
-        // filtering on that text would quietly drop rows for the wrong reason.
         if (due === "today" && !isDueToday(delivery)) return false;
         if (due === "late" && !isLate(delivery)) return false;
         if (due === "week" && !isDueThisWeek(delivery)) return false;
-
         if (driver === "none" && !hasNoDriver(delivery)) return false;
         if (driver !== "any" && driver !== "none" && delivery.driver !== driver) return false;
-
         if (area !== "any" && areaOf(delivery) !== area) return false;
-
         return matches(query, delivery.product, delivery.location, `#${delivery.id}`, delivery.driver);
       }),
     [deliveries, chip, due, driver, area, query]
   );
-
   const columns = useMemo(() => board(filtered), [filtered]);
 
-  // Only the filters that are actually narrowing anything are named in the
-  // summary. Listing "any driver" and "all areas" every time would make the
-  // sentence noise, and noise is what people stop reading.
-  const summaryParts = [
-    chip !== "all" ? chips.find((c) => c.value === chip)?.label.toLowerCase() : null,
-    due !== "any" ? DUE_OPTIONS.find((o) => o.value === due)?.label.toLowerCase() : null,
-    driver === "none" ? "with nobody assigned" : driver !== "any" ? driver : null,
-    area !== "any" ? area : null,
-    query.trim() ? `matching “${query.trim()}”` : null,
-  ].filter(Boolean);
-
   const clearAll = () => {
-    setChip("all");
     setDue("any");
     setDriver("any");
     setArea("any");
     setQuery("");
   };
 
+  const nextButton = (delivery, compact = false) => {
+    const next = nextStage(delivery);
+    const verb = STAGE_LOOK[delivery.status]?.verb;
+    if (!next || !verb || !onMoveForward) return null;
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label={compact ? `${verb}, delivery ${delivery.id}` : undefined}
+        onClick={(event) => {
+          event.stopPropagation();
+          onMoveForward(delivery.id, next.value);
+        }}
+        className={compact ? "h-6 gap-1 px-2 text-xs" : undefined}
+      >
+        {verb}
+        {compact ? <ArrowRight className="size-3" aria-hidden="true" /> : null}
+      </Button>
+    );
+  };
+
   if (loadError) {
-    return <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="deliveries" />;
+    return (
+      <Page>
+        <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="deliveries" />
+      </Page>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <FilterBar>
-        <SearchField
-          value={query}
-          onChange={setQuery}
-          placeholder="Search by delivery number or customer"
-          id="delivery-search"
-        />
+    <Page>
+      <PageHeader
+        icon={Truck}
+        title="Deliveries"
+        description="Every order on its way out, from the workshop to the customer's door."
+        actions={
+          <>
+            <Button variant="outline" disabled title="The run sheet is not printable yet">
+              <Printer aria-hidden="true" />
+              Print run sheet
+            </Button>
+            {onAssignDrivers ? (
+              <Button onClick={onAssignDrivers} aria-haspopup="dialog">
+                <UserPlus aria-hidden="true" />
+                Assign drivers
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+
+      <StatCards label="Delivery totals" min={180}>
+        <StatCard compact label="Due today" value={stats.today} caption={`${stats.onRoad} already on the road`} onClick={() => setDue("today")} />
+        <StatCard compact label="Due this week" value={stats.week} caption={`across ${stats.weekAreas} ${stats.weekAreas === 1 ? "area" : "areas"}`} onClick={() => setDue("week")} />
+        <StatCard compact label="Late" value={stats.late} caption={stats.late ? `oldest ${stats.oldest} ${stats.oldest === 1 ? "day" : "days"}` : "none late"} onClick={() => setDue("late")} />
+        <StatCard compact label="No driver yet" value={stats.noDriver} caption={`${stats.readyNoDriver} ${stats.readyNoDriver === 1 ? "is" : "are"} ready to go`} onClick={() => setDriver("none")} />
+      </StatCards>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchField label="Search deliveries" value={query} onChange={setQuery} placeholder="Search number, customer or area" />
         <FilterSelect label="Due" value={due} onChange={setDue} options={DUE_OPTIONS} />
         <FilterSelect
           label="Driver"
           value={driver}
           onChange={setDriver}
+          options={[{ value: "any", label: "Anyone" }, { value: "none", label: "Nobody yet" }, ...drivers.map((name) => ({ value: name, label: name }))]}
+        />
+        {areas.length > 1 ? (
+          <FilterSelect label="Area" value={area} onChange={setArea} options={[{ value: "any", label: "Everywhere" }, ...areas.map((name) => ({ value: name, label: name }))]} />
+        ) : null}
+        <span className="flex-[1_1_0] whitespace-nowrap text-13 text-muted-fg">
+          {filtered.length} of {deliveries.length} deliveries
+        </span>
+        <ToggleGroup
+          label="View"
+          value={view}
+          onValueChange={setView}
           options={[
-            { value: "any", label: "Anyone" },
-            { value: "none", label: "Nobody yet" },
-            ...drivers.map((name) => ({ value: name, label: name })),
+            { value: "table", label: "Table", icon: <List aria-hidden="true" /> },
+            { value: "board", label: "Board", icon: <Kanban aria-hidden="true" /> },
           ]}
         />
-        <FilterSelect
-          label="Area"
-          value={area}
-          onChange={setArea}
-          options={[
-            { value: "any", label: "Everywhere" },
-            ...areas.map((name) => ({ value: name, label: name })),
-          ]}
-        />
-      </FilterBar>
-
-      <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which deliveries" />
-
-      <ActiveFilterSummary parts={summaryParts} onClear={clearAll} />
+      </div>
 
       {!isLoaded ? (
         <LoadingState noun="deliveries" />
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 desk:grid-cols-5">
-          {columns.map((column) => (
-            <Card
-              key={column.value}
-              className="flex flex-col border-t-4"
-              // The 4px tone stripe is the column's identity, and a colour per
-              // stage cannot be a class -- Tailwind would need one per tone and
-              // the tone comes from data.
-              style={{ borderTopColor: toneOf(column.tone).hex }}
-            >
-              <div className="flex items-center gap-2.5 px-4 pb-2 pt-3.5">
-                <IconChip
-                  icon={STAGE_ICONS[column.icon]}
-                  tone={column.tone}
-                  size="sm"
-                  className="size-8 text-[16px]"
-                />
-                <h3 className="min-w-0 flex-1 truncate text-[15px] font-extrabold text-ink">
-                  {column.label}
-                </h3>
-                <span className="text-[24px] font-extrabold leading-none tabular-nums text-ink">
-                  {column.items.length}
-                </span>
-              </div>
-
-              <div className="flex flex-1 flex-col gap-2 bg-paper-2 p-3">
-                {column.items.length === 0 ? (
-                  <EmptySlot className="py-6">
-                    {summaryParts.length > 0 ? "Nothing here right now" : "Nothing waiting"}
-                  </EmptySlot>
-                ) : (
-                  column.items.map((delivery) => (
-                    <button
-                      key={delivery.id}
-                      type="button"
-                      onClick={() => onOpen(delivery.id)}
-                      className={cn(
-                        "relative rounded-tile border border-card bg-surface p-3 text-left transition duration-150",
-                        "hover:border-cobalt/40 hover:shadow-card",
-                      )}
-                    >
-                      {/* The board's strongest case for this mark. Advancing a
-                          delivery does not change a card, it MOVES one: the tile
-                          leaves the column somebody was looking at and reappears
-                          in a different one, possibly below the fold. The toast
-                          names the delivery and the stage; only this says which
-                          of the tiles now in that column is the one that just
-                          arrived. */}
-                      <Landed change={change} kind="delivery" id={delivery.id} />
-                      <Mono className="text-[13px]">#{delivery.id}</Mono>
-                      <p className="truncate pt-0.5 text-[16px] font-bold text-ink">
+      ) : view === "table" ? (
+        <section aria-label="Deliveries table" className="rounded-lg border border-border bg-card shadow-xs">
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={Truck}
+              title="No deliveries match these filters"
+              description="An empty list here is the filters, not a quiet day."
+              action={<Button variant="outline" onClick={clearAll}>Clear filters</Button>}
+            />
+          ) : (
+            <Table minWidth={980} aria-label="Deliveries">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Delivery</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead className="w-[170px]">Due</TableHead>
+                  <TableHead className="w-[160px]">Driver</TableHead>
+                  <TableHead className="w-[70px] text-right">Items</TableHead>
+                  <TableHead className="w-[130px]">Stage</TableHead>
+                  <TableHead className="w-[140px]"><span className="sr-only">Next step</span></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((delivery) => {
+                  const landed = landedRow(change, "delivery", delivery.id);
+                  const late = isLate(delivery);
+                  const items = itemsOf(delivery);
+                  return (
+                    <TableRow key={landed.key} className={landed.className}>
+                      <TableCell>
+                        <button type="button" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
+                          #{delivery.id}
+                        </button>
+                      </TableCell>
+                      <TableCell className="max-w-[260px] truncate">
                         {customerFrom(delivery) || "No customer named"}
-                      </p>
-                      {/* Said in words on the card, not only by the chip above
-                          it. Somebody scanning the board for what is owed
-                          should not have to apply a filter to find out which
-                          of these is a second trip. */}
-                      {isBackorderDelivery(delivery) && (
-                        <p className="pt-1">
-                          <InlineBadge label="The rest of an order" tone="amber" />
-                        </p>
-                      )}
-                      <p className="truncate pt-0.5 text-[14.5px] text-muted">
-                        {delivery.location || "No address"}
-                      </p>
-                      <p
-                        className={cn(
-                          "flex items-center gap-1.5 pt-2 text-[14px]",
-                          isLate(delivery)
-                            ? "font-bold text-red-text"
-                            : "text-muted"
+                        {isBackorderDelivery(delivery) ? <Badge variant="outline" className="ml-2">Rest of an order</Badge> : null}
+                      </TableCell>
+                      <TableCell className="text-fg-2">{areaOf(delivery) || "—"}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1.5">
+                          <span className={late ? "text-danger-fg" : undefined}>{shortDue(delivery)}</span>
+                          {late ? <Badge variant="destructive">{dueLabel(delivery).replace(/^(\d+) (days?) late$/, "Late $1 $2")}</Badge> : null}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {hasNoDriver(delivery) ? (
+                          <span className="text-muted-fg">Nobody yet</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2">
+                            <Avatar name={delivery.driver} />
+                            {delivery.driver}
+                          </span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-right">{items ?? "—"}</TableCell>
+                      <TableCell><StageBadge status={delivery.status} /></TableCell>
+                      <TableCell className="text-right">{nextButton(delivery)}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </section>
+      ) : (
+        <section aria-label="Deliveries board" className="overflow-x-auto pb-1">
+          <div className="grid min-w-[1060px] grid-cols-5 gap-3">
+            {columns.map((column) => {
+              const look = STAGE_LOOK[column.value];
+              return (
+                <div
+                  key={column.value}
+                  role="region"
+                  aria-label={`${look.label}, ${column.items.length}`}
+                  className="flex min-h-[420px] flex-col gap-2 rounded-lg border border-border bg-column p-2"
+                >
+                  <div className="flex items-center gap-2 px-1 py-1">
+                    <span aria-hidden="true" className={cn("size-2 rounded-full", look.dot)} />
+                    <h2 className="m-0 flex-1 text-13 font-semibold">{look.label}</h2>
+                    <span className="text-xs text-muted-fg">{column.items.length}</span>
+                  </div>
+                  {column.items.map((delivery) => {
+                    const late = isLate(delivery);
+                    const items = itemsOf(delivery);
+                    return (
+                      <article
+                        key={delivery.id}
+                        className="lsb-card-in relative flex flex-col gap-2 rounded-md border border-border bg-card px-3 py-2.5 text-13 shadow-xs"
                       >
-                        <CalendarClock className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        <span className="min-w-0">{dueLabel(delivery)}</span>
-                      </p>
-                      {/* Its own line, not a " · nobody assigned" tail on the due
-                          date: five columns leave ~180px per card at 1440, and
-                          the tail was cut to "nobody a…" while squeezing the
-                          date onto two lines beside it. */}
-                      {hasNoDriver(delivery) && column.value !== DELIVERY_STAGE.ARRIVED && (
-                        <p className="flex items-center gap-1.5 pt-1 text-[14px] font-bold text-amber-text">
-                          <UserX className="h-4 w-4 shrink-0" aria-hidden="true" />
-                          Nobody assigned
-                        </p>
-                      )}
-                    </button>
-                  ))
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
+                        <Landed change={change} kind="delivery" id={delivery.id} />
+                        <div className="flex items-center justify-between gap-2">
+                          <button type="button" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
+                            #{delivery.id}
+                          </button>
+                          {late ? <Badge variant="destructive">{dueLabel(delivery).replace(/^(\d+) (days?) late$/, "Late $1 $2")}</Badge> : null}
+                        </div>
+                        <div>
+                          <h3 className="m-0 truncate text-13 font-medium">{customerFrom(delivery) || "No customer named"}</h3>
+                          <p className="m-0 text-xs text-muted-fg">
+                            {[areaOf(delivery), shortDue(delivery), items !== null ? `${items} items` : null].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between gap-2">
+                          {hasNoDriver(delivery) ? (
+                            <span className="text-xs text-muted-fg">No driver yet</span>
+                          ) : (
+                            <span className="inline-flex min-w-0 items-center gap-1.5 text-xs">
+                              <Avatar name={delivery.driver} className="size-5 text-[9px]" />
+                              <span className="truncate">{delivery.driver}</span>
+                            </span>
+                          )}
+                          {nextButton(delivery, true)}
+                        </div>
+                      </article>
+                    );
+                  })}
+                  {column.items.length === 0 ? <p className="m-0 py-6 text-center text-xs text-muted-fg">Nothing here right now</p> : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
-    </div>
+    </Page>
   );
 }

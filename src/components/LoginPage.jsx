@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { AtSign, CircleAlert, Info, LogIn, Lock, Phone, UserX } from "./icons";
-import AuthLayout from "./layout/AuthLayout";
+import { Info, Phone, UserMinus, Warning, WarningCircle } from "./icons";
+import AuthLayout, { AuthCard } from "./layout/AuthLayout";
 import AuthField, { Checkbox } from "./shared/AuthField";
 import Callout from "./shared/Callout";
 import { Button } from "@/components/ui/button";
@@ -130,127 +130,75 @@ export default function LoginPage({ onLoginAttempt, onForgotPassword }) {
   }
 
   const callTheOffice = (
-    <Button variant="outline" size="sm" asChild>
-      <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`}>
-        <Phone className="h-4.5 w-4.5" />
-        Call the office
-      </a>
+    <Button variant="outline" size="sm" render={<a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`} />}>
+      <Phone />
+      Call the office
     </Button>
   );
 
   return (
     <AuthLayout>
-      <h1 className="text-[34px] font-extrabold leading-tight tracking-[-0.03em] text-ink">
-        Sign in
-      </h1>
-      <p className="pt-2 text-[16.5px] leading-[1.45] text-muted">
-        Use the username or email your administrator gave you.
-      </p>
-
-      <div aria-live="assertive" aria-atomic="true">
-      {status === "rate-limited" && <Callout tone="amber" title="Too many sign-in attempts.">Please wait a few minutes before trying again.</Callout>}
-
-      {status === "wrong" && (
-        <Callout
-          tone="red"
-          icon={<CircleAlert />}
-          title="That username or password did not match."
-          className="mt-6"
-        >
-          Check for capital letters and extra spaces, then try again.
-        </Callout>
-      )}
-
-      {status === "blocked" && (
-        <Callout
-          tone="amber"
-          icon={<UserX />}
-          title="An administrator has blocked this account."
-          className="mt-6"
-          action={callTheOffice}
-        >
-          This account has been suspended/blocked. Please contact an administrator.
-        </Callout>
-      )}
-
-      {status === "not-set-up" && (
-        <Callout
-          tone="cobalt"
-          icon={<Info />}
-          title="This account is not set up in the system yet."
-          className="mt-6"
-          action={callTheOffice}
-        >
-          Your password was correct, but nobody has given the account a job to do. An
-          administrator needs to do that once.
-        </Callout>
-      )}
-
-      {status === "offline" && (
-        <Callout
-          tone="amber"
-          icon={<CircleAlert />}
-          title="We could not reach the system."
-          className="mt-6"
-        >
-          Your details were not checked, so nothing is wrong with your account. Check the
-          internet connection and try again.
-        </Callout>
-      )}
-
-      </div>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pt-7" noValidate>
-        <AuthField
-          label="Username or email"
-          icon={<AtSign />}
-          value={identifier}
-          onChange={setIdentifier}
-          placeholder="maria.santos"
-          autoComplete="username"
-          invalid={status === "wrong"}
-        />
-
-        <AuthField
-          label="Password"
-          type="password"
-          icon={<Lock />}
-          value={password}
-          onChange={setPassword}
-          placeholder="Your password"
-          autoComplete="current-password"
-          invalid={status === "wrong"}
-        />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Checkbox
-            checked={keepSignedIn}
-            onChange={setKeepSignedInChoice}
-            label="Keep me signed in"
-          />
-          <button
-            type="button"
-            onClick={onForgotPassword}
-            className="text-[16px] font-bold text-cobalt dark:text-dk-cobalt underline underline-offset-[3px] transition duration-150 hover:text-cobalt-deep"
-          >
-            Forgot password?
-          </button>
+      <AuthCard
+        title="Sign in"
+        description="Use the username or email address your admin set up for you."
+        footer="Locked out? Ask an admin to reset your account. Nothing is lost while you wait."
+      >
+        <div aria-live="assertive" aria-atomic="true" className="empty:hidden">
+          {status === "rate-limited" && (
+            <Callout tone="amber" icon={<Warning />} title="Too many sign-in attempts.">
+              Please wait a few minutes before trying again.
+            </Callout>
+          )}
+          {status === "wrong" && (
+            <Callout tone="red" icon={<WarningCircle />} title="That username or password did not match.">
+              Check for capital letters and extra spaces, then try again.
+            </Callout>
+          )}
+          {status === "blocked" && (
+            <Callout tone="amber" icon={<UserMinus />} title="An administrator has blocked this account." action={callTheOffice}>
+              This account has been suspended/blocked. Please contact an administrator.
+            </Callout>
+          )}
+          {status === "not-set-up" && (
+            <Callout tone="neutral" icon={<Info />} title="This account is not set up in the system yet." action={callTheOffice}>
+              Your password was correct, but nobody has given the account a job to do. An administrator needs to do that once.
+            </Callout>
+          )}
+          {status === "offline" && (
+            <Callout tone="amber" icon={<WarningCircle />} title="We could not reach the system.">
+              Your details were not checked, so nothing is wrong with your account. Check the internet connection and try again.
+            </Callout>
+          )}
         </div>
 
-        <Button type="submit" variant="cobalt" size="xl" block disabled={isSubmitting}>
-          <LogIn className="h-5.5 w-5.5" />
-          {isSubmitting ? "Signing in…" : "Sign in"}
-        </Button>
-      </form>
-
-      {/*
-        A real escape hatch, not a legal footer. Somebody who cannot get in
-        cannot be helped by anything else on this screen, and the alternative
-        to a phone number here is them giving up.
-      */}
-      <p className="pt-6 text-[16px] leading-[1.6] text-muted">
-        Accounts are created by your administrator. If you cannot get in, call the office
-        on <strong className="font-bold text-ink">{OFFICE_PHONE}</strong>.
-      </p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <AuthField
+            label="Username or email"
+            value={identifier}
+            onChange={setIdentifier}
+            placeholder="name@lsbhandicrafts.ph"
+            autoComplete="username"
+            invalid={status === "wrong"}
+          />
+          <AuthField
+            label="Password"
+            labelAction={
+              <button type="button" data-slot="text-link" onClick={onForgotPassword} className="text-13 text-primary-text hover:text-primary-hover">
+                Forgot password?
+              </button>
+            }
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="current-password"
+            invalid={status === "wrong"}
+          />
+          <Checkbox checked={keepSignedIn} onChange={setKeepSignedInChoice} label="Keep me signed in on this computer" />
+          <Button type="submit" block disabled={isSubmitting}>
+            {isSubmitting ? "Signing in…" : "Sign in"}
+          </Button>
+        </form>
+      </AuthCard>
     </AuthLayout>
   );
 }

@@ -201,6 +201,9 @@ const ManageAccountPage = lazy(() => import("./components/staff/ManageAccountPag
 const ChangeRolePage = lazy(() => import("./components/staff/ChangeRolePage"));
 const StaffDirectoryPage = lazy(() => import("./components/staff/StaffDirectoryPage"));
 const ActivityLogPage = lazy(() => import("./components/staff/ActivityLogPage"));
+const SettingsGeneralPage = lazy(() => import("./components/settings/SettingsGeneralPage"));
+const SettingsRolesPage = lazy(() => import("./components/settings/SettingsRolesPage"));
+const SettingsNotificationsPage = lazy(() => import("./components/settings/SettingsNotificationsPage"));
 const CreateAccountDialog = lazy(() => import("./components/staff/CreateAccountDialog"));
 
 const MyProfilePage = lazy(() => import("./components/account/MyProfilePage"));
@@ -2322,6 +2325,15 @@ export default function App() {
             onDelete={deleteProduct}
             onRestore={restoreProduct}
             onStockCommand={handleStockCommand}
+            deliveries={deliveries}
+            batches={productionBatchesState.rows}
+            recipes={productionRecipesState.rows}
+            materials={rawMaterialsState.rows}
+            staff={staff}
+            onPlanBatch={can(role, "makeBatches") ? (productId) => setRecordMadeFor({ productId }) : undefined}
+            onOpenOrder={openOrder}
+            onOpenMaterial={(id) => { setSelectedRawMaterialId(id); navigate("raw-material-detail"); }}
+            onOpenBatches={can(role, "manageSuppliers") ? () => navigate("production") : undefined}
             onBack={() => navigate("products")}
             onEdit={(id) => {
               setSelectedProductId(id);
@@ -2354,6 +2366,7 @@ export default function App() {
             loadError={ordersState.error}
             onRetry={ordersState.reload}
             orders={orders}
+            deliveries={deliveries}
             historyNote={allOrders ? null : `Showing every open order, and the rest from the last ${HISTORY_DAYS} days.`}
             onShowOlder={() => setAllOrders(true)}
             onReorder={async (ids) => {
@@ -2414,6 +2427,10 @@ export default function App() {
             onEdit={() => navigate("order-edit")}
             onCancelOrder={() => cancelOrder(selectedOrder)}
             onOpenDelivery={openDelivery}
+            onOpenCustomer={can(role, "viewCustomers") ? (id) => {
+              setSelectedCustomerId(id);
+              setView("customer-detail");
+            } : undefined}
             onAssignDriver={() => {
               const delivery = deliveryForOrder(selectedOrder, deliveries);
               if (delivery) setAssignDriverFor(delivery.id);
@@ -2474,11 +2491,13 @@ export default function App() {
             loadError={deliveriesState.error}
             onRetry={deliveriesState.reload}
             deliveries={deliveries}
+            orders={orders}
             staff={staff}
             onOpen={(id) => {
               setSelectedDeliveryId(id);
               setView("delivery-detail");
             }}
+            onMoveForward={(id, next) => advanceDelivery(deliveries.find((d) => d.id === id), next)}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
             initialFilter={pendingFilter}
@@ -2521,6 +2540,13 @@ export default function App() {
               setView("customer-detail");
             }}
             onAdd={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
+            onEdit={can(role, "editCustomers") ? (id) => openProfileForm("customer", id) : undefined}
+            onWriteOrder={(one) => {
+              setOrderDraftFor(one);
+              setView("order-form");
+            }}
+            onOpenOrder={openOrder}
+            loadOrders={loadCustomerOrders}
             onEditLoyalty={can(role, "manageLoyalty") ? () => setIsLoyaltyOpen(true) : undefined}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
@@ -2563,6 +2589,10 @@ export default function App() {
               setView("supplier-detail");
             }}
             onAdd={can(role, "manageSuppliers") ? () => openProfileForm("supplier") : undefined}
+            onEdit={can(role, "manageSuppliers") ? (id) => openProfileForm("supplier", id) : undefined}
+            materialOrders={rawMaterialOrdersState.rows}
+            materials={rawMaterialsState.rows}
+            onOpenPurchasing={() => navigate("raw-material-orders")}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
           />
@@ -2621,8 +2651,15 @@ export default function App() {
             key={selectedAccount.id}
             account={selectedAccount}
             currentUserEmail={sessionEmail}
+            activity={activity}
             onBack={() => navigate("staff")}
-            onChangeRole={() => setView("assign-role")}
+            onSaveRole={async (role, revision) => {
+              if (await updateSelectedAccount({ role, revision })) {
+                toast.success(`${selectedAccount.name} is now ${role}.`);
+              }
+            }}
+            onOpenActivity={() => navigate("activity")}
+            onCompareRoles={() => navigate("settings-roles")}
             onStatusChange={async (status, revision) => {
               if (await updateSelectedAccount({ status, revision })) {
                 toast.success(
@@ -2696,14 +2733,27 @@ export default function App() {
           />
         );
 
+      // ---- settings ----
+      // General and Notifications have no backend yet; Roles is shown
+      // read-only from utils/permissions. See components/settings.
+      case "settings-general":
+        return <SettingsGeneralPage />;
+
+      case "settings-roles":
+        return <SettingsRolesPage staff={staff} />;
+
+      case "settings-notifications":
+        return <SettingsNotificationsPage profile={profile} />;
+
       // ---- my own account ----
       case "profile":
         return (
           <MyProfilePage
             profile={profile}
             dashboardView={dashboardView}
-            onEdit={() => setView("profile-edit")}
-            onChangePassword={() => setView("change-password")}
+            onSaveDetails={async (changes) => {
+              if (await updateProfile(changes)) toast.success("Your details were saved.");
+            }}
             onSetDashboardView={setDashboardView}
           />
         );

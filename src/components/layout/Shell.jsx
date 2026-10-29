@@ -156,7 +156,10 @@ export default function Shell({
 /** The page area. A new view starts at the top, and its sections rise in once. */
 // TRANSITIONAL: screens rebuilt to their board draw their own PageHeader
 // (and h1). Until every screen is, the rest get their title here.
-const REBUILT_VIEWS = new Set(["dashboard", "staff", "directory", "products"]);
+const REBUILT_VIEWS = new Set(["dashboard", "staff", "directory", "products", "deliveries",
+  "production", "raw-materials", "raw-material-detail", "raw-material-orders", "production-report", "customers", "suppliers", "orders", "order-detail", "delivery-detail", "product-detail",
+  "manage-account", "assign-role", "profile", "profile-edit", "change-password",
+  "activity", "settings-general", "settings-roles", "settings-notifications"]);
 
 function Content({ view, title, children }) {
   const ref = useRef(null);

@@ -1,381 +1,293 @@
-import useUrlState from "../../hooks/useUrlState";
-import { useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import { ArrowRight, Handshake, MapPin, Phone } from "../icons";
+import useUrlState from "../../hooks/useUrlState";
+import { ArrowRight, CaretRight, ClipboardText, Factory, Plus, X } from "../icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardFooter } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import IconChip from "../shared/Chip";
-import { FilterBar, ListToolbar, RecordCard, StickyCta } from "../shared/ListScreen";
-import Landed from "../shared/Landed";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { landedRow } from "../shared/landing";
-import { ActiveFilterSummary, FilterSelect, Pager, SearchField } from "../shared/filters";
-import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
-import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
-import usePaged from "../../hooks/usePaged";
-import { hasActiveFilters, matches } from "../../utils/search";
-import { citiesOf, cityOf } from "../../utils/customers";
+import { EmptyState, Page, PageHeader, SearchField, StatCard, StatCards, TextLink } from "../shared/page";
+import { ErrorState, LoadingState } from "../shared/PageStates";
+import { ToggleChips } from "../production/parts";
+import { matches } from "../../utils/search";
+import { MATERIAL_ORDER_LABEL } from "../../utils/copy";
+import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
- * Suppliers — the right half of screen 2n.
+ * Suppliers, drawn to the "15 · Suppliers" board:
  *
- * THE SAME VOCABULARY AS EVERY OTHER LIST, deliberately: a search field, an
- * area filter, a sort, then rows with a leading chip, a name, a couple of
- * facts and an "Open" on the right. Learning the customers screen should teach
- * you this one, and that only holds if the pieces are in the same places doing
- * the same things.
+ *   PageHeader (Supplier orders, Add supplier) → four compact StatCards →
+ *   search → the suppliers table (Supplier, Supplies, Lead time, On time,
+ *   Last order) beside a details panel: three figures, contact facts, New
+ *   supplier order / Edit details, what they supply and their orders.
  *
- * CLAY, NOT COBALT, for the add button and the row chips. Suppliers sit on the
- * making side of the business alongside production, and the third accent is
- * what keeps that side from reading as the same thing as sales.
- *
- * A TABLE ABOVE 834px AND CARDS BELOW, exactly like products, orders and
- * staff — and unlike customers, which is the one list that stays cards at
- * every width because you read it with the person standing in front of you.
- * A supplier list is scanned to find one name and its phone number, which is
- * what a table is for.
- *
- * This screen used to CLAIM that shared vocabulary while implementing its own:
- * a `<ul>` of `<button>` rows that a screen reader saw as neither table nor
- * list of records, a footer band hand-built out of `bg-paper-2` instead of
- * `CardFooter`, and an "Open" that was a `<span>` painted to look like a
- * button INSIDE the row button — so the row had a fake control in it and no
- * card layout below 834px at all. Same vocabulary now means the same
- * components.
- *
- * WHAT THE SECOND LINE SHOWS. The design calls for "what they supply", and
- * there is no column for it — `suppliers` holds a contact person, a number, an
- * email and an address. The contact person is shown instead, which is the other
- * thing a supplier row is opened for. Adding a "what they supply" field would
- * be worth doing; inventing one out of the address would not.
+ * Lead time, on-time rate, damage and spend are worked out from the supplier
+ * orders the app already records. "View supplier" opens the app's full
+ * supplier screen, where a supplier can also be removed.
  */
+const DAY = 86_400_000;
 
-const SORTS = [
-  { value: "name", label: "Name A–Z" },
-  { value: "name-desc", label: "Name Z–A" },
-  { value: "newest", label: "Newest first" },
-];
+function supplierFacts(supplier, materialOrders, materials, year) {
+  const orders = materialOrders.filter((o) => o.supplier_id === supplier.id);
+  const arrived = orders.filter((o) => o.status === "Arrived" && o.actual_delivery_date);
+  const timed = arrived.filter((o) => o.expected_delivery_date);
+  const onTime = timed.length ? Math.round((timed.filter((o) => o.actual_delivery_date <= o.expected_delivery_date).length / timed.length) * 100) : null;
+  const leads = arrived.filter((o) => o.order_date).map((o) => (new Date(o.actual_delivery_date) - new Date(o.order_date)) / DAY);
+  const lead = leads.length ? Math.round(leads.reduce((a, b) => a + b, 0) / leads.length) : null;
+  const supplies = [...new Map(orders.map((o) => [o.raw_material_id, o])).values()].map((o) => ({
+    id: o.raw_material_id,
+    name: materials.find((m) => m.id === o.raw_material_id)?.name ?? "Material",
+    price: [...orders].reverse().find((x) => x.raw_material_id === o.raw_material_id)?.unit_price,
+  }));
+  const last = orders.map((o) => o.order_date).filter(Boolean).sort().pop() ?? null;
+  return {
+    orders,
+    onTime,
+    lead,
+    supplies,
+    last,
+    onTheWay: orders.filter((o) => !["Arrived", "Cancelled"].includes(o.status)).length,
+    claim: orders.some((o) => o.claim_status === "Needs review"),
+    damaged: arrived.filter((o) => o.quantity_lost_transit > 0).length,
+    spent: orders.filter((o) => o.status !== "Cancelled" && String(o.order_date).startsWith(String(year))).reduce((s, o) => s + (Number(o.total_cost) || 0), 0),
+  };
+}
 
-// Same strip SupplierDetailPage's `tel:` link uses -- a `tel:` href chokes on
-// spaces and punctuation, not on the digits and leading `+` a phone number
-// actually needs.
-const dialableNumber = (number) => String(number || "").replace(/[^\d+]/g, "");
+const leadLabel = (days) => (days === null ? "—" : days < 1 ? "Same day" : `${days} ${days === 1 ? "day" : "days"}`);
+
+function DetailPanel({ supplier, facts, year, onClose, onEdit, onView, onOrder }) {
+  return (
+    <aside aria-labelledby="su-detail" className="flex w-full flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-xs lg:w-[340px] lg:shrink-0">
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 id="su-detail" className="m-0 truncate text-sm font-semibold">{supplier.name}</h2>
+          <div className="text-13 text-muted-fg">{supplier.address || "No address"} · supplier since {formatShortDate(supplier.createdAt) || "—"}</div>
+        </div>
+        <Button variant="ghost" size="icon-sm" aria-label="Close details" onClick={onClose}>
+          <X aria-hidden="true" />
+        </Button>
+      </div>
+      <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
+        {[
+          ["On time", facts.onTime === null ? "—" : `${facts.onTime}%`],
+          ["Arrived damaged", facts.damaged],
+          [`Spent in ${year}`, formatPeso(facts.spent)],
+        ].map(([label, value]) => (
+          <div key={label} className="bg-card px-3 py-2">
+            <div className="text-xs text-muted-fg">{label}</div>
+            <div className="text-sm font-semibold">{value}</div>
+          </div>
+        ))}
+      </div>
+      <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-13">
+        <dt className="text-muted-fg">Contact</dt><dd className="m-0">{supplier.contactPerson || "—"}</dd>
+        <dt className="text-muted-fg">Phone</dt>
+        <dd className="m-0">{supplier.contactNumber ? <a href={`tel:${String(supplier.contactNumber).replace(/[^\d+]/g, "")}`}>{supplier.contactNumber}</a> : "—"}</dd>
+        <dt className="text-muted-fg">Email</dt><dd className="m-0 truncate">{supplier.email ? <a href={`mailto:${supplier.email}`}>{supplier.email}</a> : "—"}</dd>
+        <dt className="text-muted-fg">Usually takes</dt><dd className="m-0">{leadLabel(facts.lead)}</dd>
+      </dl>
+      <div className="flex flex-wrap gap-2">
+        {onOrder ? <Button variant="outline" size="sm" onClick={onOrder}>New supplier order</Button> : null}
+        {onEdit ? <Button variant="outline" size="sm" onClick={() => onEdit(supplier.id)}>Edit details</Button> : null}
+      </div>
+      <div>
+        <h3 className="m-0 mb-1 text-13 font-semibold">What they supply</h3>
+        <ul className="m-0 list-none p-0">
+          {facts.supplies.length === 0 ? <li className="py-1 text-13 text-muted-fg">Nothing ordered from them yet.</li> : null}
+          {facts.supplies.map((item) => (
+            <li key={item.id} className="flex justify-between gap-2 border-t border-row-divider py-1.5 text-13 first:border-t-0">
+              <span className="truncate">{item.name}</span>
+              <span className="text-muted-fg">{formatPeso(item.price)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className="mb-1 flex items-center justify-between">
+          <h3 className="m-0 text-13 font-semibold">Orders</h3>
+          <TextLink className="text-xs" onClick={() => onView(supplier.id)}>
+            View supplier
+            <ArrowRight className="size-3.5" aria-hidden="true" />
+          </TextLink>
+        </div>
+        <ul className="m-0 list-none p-0">
+          {facts.orders.length === 0 ? <li className="py-1 text-13 text-muted-fg">No orders yet.</li> : null}
+          {facts.orders.slice(-4).reverse().map((o) => (
+            <li key={o.id} className="flex items-center gap-2 border-t border-row-divider py-1.5 text-13 first:border-t-0">
+              <span className="font-mono text-xs text-fg-2">#{o.id}</span>
+              <span className="flex-1 text-muted-fg">{formatShortDate(o.order_date)}</span>
+              <Badge variant={o.status === "Arrived" ? "success" : "secondary"} dot>{MATERIAL_ORDER_LABEL[o.status]}</Badge>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </aside>
+  );
+}
 
 export default function SupplierListPage({
   isLoaded = true,
   loadError = null,
   onRetry,
   suppliers = [],
+  materialOrders = [],
+  materials = [],
   onView,
   onAdd,
+  onEdit,
+  onOpenPurchasing,
   onGoToDashboard,
-  onContext,
-  /** The last record a write changed — see shared/Landed.jsx. */
   change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "suppliers");
-  const [area, setArea] = useUrlState("area", "any", "suppliers");
-  const [sort, setSort] = useUrlState("sort", "name", "suppliers");
-  // Suppliers no longer used stay on file for their history, one choice away,
-  // the way archived raw materials do -- not mixed in with the ones to ring.
   const [show, setShow] = useUrlState("show", "in-use", "suppliers");
-  // Which layout to mount. Only one of the table/card renders below ever
-  // reaches the DOM -- see useMediaQuery for why that used to not be true.
-  const isDesktop = useMediaQuery(TAB_QUERY);
+  const [selectedId, setSelectedId] = useState(null);
+  const [now] = useState(() => Date.now());
+  const year = new Date(now).getFullYear();
 
-  const cities = useMemo(() => citiesOf(suppliers), [suppliers]);
-  const archivedCount = suppliers.filter((supplier) => supplier.status === "Archived").length;
-  const showingArchived = show === "archived" && archivedCount > 0;
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    onContext?.(`${suppliers.length} ${suppliers.length === 1 ? "supplier" : "suppliers"}`);
-  }, [suppliers.length, isLoaded, onContext]);
-
-  const filtered = useMemo(() => {
-    const list = suppliers.filter((supplier) => {
-      if ((supplier.status === "Archived") !== showingArchived) return false;
-      if (area !== "any" && cityOf(supplier) !== area) return false;
-      return matches(
-        query,
-        supplier.name,
-        supplier.contactPerson,
-        supplier.contactNumber,
-        supplier.address
-      );
-    });
-
-    switch (sort) {
-      case "name-desc":
-        return [...list].sort((a, b) => String(b.name).localeCompare(String(a.name)));
-      case "newest":
-        return [...list].sort(
-          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-        );
-      default:
-        return [...list].sort((a, b) => String(a.name).localeCompare(String(b.name)));
-    }
-  }, [suppliers, area, query, sort, showingArchived]);
-
-  // The header's count is deliberately the UNFILTERED total, like every list
-  // screen's chip counts -- nobody should apply a filter to discover the
-  // system was empty. That leaves nothing on screen saying a filter IS
-  // narrowing the list, which is what this names instead: only the filters
-  // actually doing something, same convention as the deliveries board.
-  const summaryParts = [
-    showingArchived ? "no longer used" : null,
-    area !== "any" ? area : null,
-    query.trim() ? `matching “${query.trim()}”` : null,
-  ].filter(Boolean);
-
-  const clearFilters = () => {
-    setArea("any");
-    setQuery("");
-    setShow("in-use");
-  };
-
-  const paged = usePaged(filtered);
-
-  // The X in the search box and the "Clear the search box" button below both
-  // unmount the moment they are pressed -- the second one takes its whole
-  // empty-state panel with it -- which would otherwise drop focus to <body>.
-  // Sending it back to the search box keeps a keyboard or screen-reader user
-  // exactly where they were, ready to type the next search.
-  function clearSearch() {
-    setQuery("");
-    document.getElementById("supplier-search")?.focus();
-  }
-
-  // A visible list swaps its whole subtree between loading, empty and
-  // populated -- states a screen reader has no other way to notice, since
-  // nothing about the swap itself is announced. This is the one stable
-  // element that stays mounted throughout, so changing its text is what
-  // actually reaches assistive tech.
-  const statusMessage = !isLoaded
-    ? ""
-    : filtered.length === 0
-      ? query.trim()
-        ? `No suppliers match “${query.trim()}”.`
-        : "No suppliers yet."
-      : `${filtered.length} ${filtered.length === 1 ? "supplier" : "suppliers"} shown.`;
+  const archivedCount = suppliers.filter((s) => s.status === "Archived").length;
+  const rows = useMemo(
+    () =>
+      suppliers
+        .filter((s) => (s.status === "Archived") === (show === "archived"))
+        .map((supplier) => ({ supplier, facts: supplierFacts(supplier, materialOrders, materials, year) }))
+        .filter(({ supplier, facts }) => matches(query, supplier.name, supplier.contactPerson, supplier.contactNumber, supplier.address, ...facts.supplies.map((s) => s.name)))
+        .sort((a, b) => String(a.supplier.name).localeCompare(String(b.supplier.name))),
+    [suppliers, materialOrders, materials, year, query, show]
+  );
+  const all = useMemo(() => suppliers.map((s) => supplierFacts(s, materialOrders, materials, year)), [suppliers, materialOrders, materials, year]);
+  const selected = rows.find(({ supplier }) => supplier.id === selectedId) ?? null;
 
   if (loadError) {
-    return <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="suppliers" />;
+    return (
+      <Page>
+        <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="suppliers" />
+      </Page>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <p role="status" aria-live="polite" className="sr-only">
-        {statusMessage}
-      </p>
+    <Page>
+      <PageHeader
+        icon={Factory}
+        title="Suppliers"
+        description="Where the workshop buys foam, paint and supplies, and how reliably they deliver."
+        actions={
+          <>
+            {onOpenPurchasing ? (
+              <Button variant="outline" onClick={onOpenPurchasing}>
+                <ClipboardText aria-hidden="true" />
+                Supplier orders
+              </Button>
+            ) : null}
+            {onAdd ? (
+              <Button onClick={onAdd} aria-haspopup="dialog">
+                <Plus aria-hidden="true" />
+                Add supplier
+              </Button>
+            ) : null}
+          </>
+        }
+      />
 
-      <ListToolbar
-        action={onAdd && (
-          <Button variant="clay" size="lg" onClick={onAdd}>
-            <Handshake className="h-5 w-5" />
-            Add a supplier
-          </Button>
-        )}
-      >
-        <FilterBar>
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="Search by name, contact or phone"
-            id="supplier-search"
-          />
-          <FilterSelect
-            label="Area"
-            value={area}
-            onChange={setArea}
-            options={[
-              { value: "any", label: "Anywhere" },
-              ...cities.map((city) => ({ value: city, label: city })),
+      <StatCards label="Supplier totals" min={180}>
+        <StatCard compact label="Suppliers" value={suppliers.length - archivedCount} caption={archivedCount ? `${archivedCount} no longer used` : "in use"} />
+        <StatCard compact label="Orders on the way" value={all.reduce((s, f) => s + f.onTheWay, 0)} caption="not received yet" />
+        <StatCard compact label={`Spent in ${year}`} value={formatPeso(all.reduce((s, f) => s + f.spent, 0))} caption="agreed totals" />
+        <StatCard compact label="Open claims" value={all.filter((f) => f.claim).length} caption="waiting to be settled" />
+      </StatCards>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <SearchField label="Search suppliers" value={query} onChange={setQuery} placeholder="Search supplier or material" />
+        {archivedCount > 0 ? (
+          <ToggleChips
+            label="Show"
+            value={show}
+            onChange={setShow}
+            chips={[
+              { value: "in-use", label: "In use", count: suppliers.length - archivedCount },
+              { value: "archived", label: "No longer used", count: archivedCount },
             ]}
           />
-          <FilterSelect label="Sort" value={sort} onChange={setSort} options={SORTS} />
-          {archivedCount > 0 && (
-            <FilterSelect
-              label="Show"
-              value={showingArchived ? "archived" : "in-use"}
-              onChange={setShow}
-              options={[
-                { value: "in-use", label: "In use" },
-                { value: "archived", label: `No longer used (${archivedCount})` },
-              ]}
+        ) : null}
+      </div>
+
+      <div className="flex flex-col items-start gap-4 lg:flex-row">
+        <section aria-label="Suppliers" className="w-full min-w-0 flex-1 rounded-lg border border-border bg-card shadow-xs">
+          {!isLoaded ? (
+            <LoadingState noun="suppliers" bare />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              icon={Factory}
+              title={suppliers.length === 0 ? "No suppliers yet" : "No suppliers match that"}
+              description={suppliers.length === 0 ? "Add the businesses the workshop buys materials from." : "Try another name or material."}
+              action={query ? <Button variant="outline" onClick={() => setQuery("")}>Clear the search</Button> : null}
             />
-          )}
-        </FilterBar>
-      </ListToolbar>
-
-      <ActiveFilterSummary parts={summaryParts} onClear={clearFilters} />
-
-      {!isLoaded ? (
-        <LoadingState noun="suppliers" />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Handshake />}
-          title="No suppliers yet"
-          description="Add the people you buy materials from, so anyone can find their number without asking."
-          query={query.trim()}
-          onClearSearch={clearSearch}
-          filtered={hasActiveFilters(area !== "any", showingArchived)}
-          onClearFilters={clearFilters}
-          actionLabel={onAdd ? "Add a supplier" : undefined}
-          onAction={onAdd}
-        />
-      ) : (
-        <>
-          {/* ≥834px: the table. */}
-          {isDesktop && (
-          <Card>
-            <Table minWidth={820}>
-              <TableCaption>Suppliers, who to ask for and how to reach them</TableCaption>
+          ) : (
+            <Table minWidth={720} aria-label="Suppliers">
               <TableHeader>
-                <TableRow className="hover:bg-transparent">
+                <TableRow>
                   <TableHead>Supplier</TableHead>
-                  <TableHead className="w-56">Phone</TableHead>
-                  <TableHead className="w-48">Area</TableHead>
-                  <TableHead className="w-32 text-right">Open</TableHead>
+                  <TableHead>Supplies</TableHead>
+                  <TableHead className="w-[100px]">Lead time</TableHead>
+                  <TableHead className="w-[130px]">On time</TableHead>
+                  <TableHead className="w-[140px]">Last order</TableHead>
+                  <TableHead className="w-10"><span className="sr-only">Open</span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paged.visible.map((supplier) => {
+                {rows.map(({ supplier, facts }) => {
                   const landed = landedRow(change, "supplier", supplier.id);
                   return (
-                  <TableRow key={landed.key} className={landed.className}>
-                    <TableCell>
-                      <div className="flex min-w-0 items-center gap-3.5">
-                        <IconChip icon={<Handshake />} tone="clay" size="md" />
-                        <div className="min-w-0">
-                          <p className="truncate text-[16.5px] font-bold">{supplier.name}</p>
-                          <p className="truncate pt-0.5 text-[14.5px] text-muted">
-                            {supplier.contactPerson
-                              ? `Ask for ${supplier.contactPerson}`
-                              : "No contact person on file"}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="text-[15.5px] text-ink-2">
-                      {supplier.contactNumber ? (
-                        <a
-                          href={`tel:${dialableNumber(supplier.contactNumber)}`}
-                          className="flex items-center gap-2 font-bold text-clay hover:underline dark:text-dk-clay"
-                        >
-                          <Phone className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-                          {supplier.contactNumber}
-                        </a>
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                          —
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell className="text-[15.5px] text-ink-2">
-                      <span className="flex items-center gap-2">
-                        <MapPin className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                        {cityOf(supplier) || "—"}
-                      </span>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex justify-end">
-                        <Button variant="outline" size="sm" onClick={() => onView(supplier.id)}>
-                          Open
-                          <ArrowRight className="h-4.5 w-4.5" />
+                    <TableRow key={landed.key} data-state={supplier.id === selectedId ? "selected" : undefined} className={`h-10 ${landed.className ?? ""}`}>
+                      <TableCell>
+                        <button type="button" onClick={() => setSelectedId(supplier.id)} className="block max-w-[240px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
+                          {supplier.name}
+                        </button>
+                        <span className="block text-2xs leading-[14px] text-muted-fg">{supplier.contactPerson || supplier.address || "—"}</span>
+                      </TableCell>
+                      <TableCell className="max-w-[240px] truncate text-fg-2">{facts.supplies.map((s) => s.name).join(", ") || "—"}</TableCell>
+                      <TableCell className="text-fg-2">{leadLabel(facts.lead)}</TableCell>
+                      <TableCell>
+                        {facts.onTime === null ? (
+                          <span className="text-muted-fg">—</span>
+                        ) : (
+                          <span className="flex items-center gap-2">
+                            <span aria-hidden="true" className="relative h-1 w-12 overflow-hidden rounded-sm bg-muted">
+                              <span className="absolute inset-y-0 left-0 bg-muted-fg" style={{ width: `${facts.onTime}%` }} />
+                            </span>
+                            <span>{facts.onTime}%</span>
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-fg">
+                        {facts.last ? formatShortDate(facts.last) : "Never"}
+                        {facts.claim ? <Badge variant="warning" className="ml-2">Claim</Badge> : null}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Button variant="ghost" size="icon-sm" aria-label={`Open ${supplier.name}`} onClick={() => setSelectedId(supplier.id)}>
+                          <CaretRight aria-hidden="true" />
                         </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
+                      </TableCell>
+                    </TableRow>
+                  );
                 })}
               </TableBody>
             </Table>
-
-            <CardFooter>
-              <Pager {...paged} noun="suppliers" className="w-full" />
-            </CardFooter>
-          </Card>
           )}
-
-          {/* <834px: cards. */}
-          {!isDesktop && (
-          <div className="flex flex-col gap-3">
-            {paged.visible.map((supplier) => (
-              <RecordCard key={supplier.id}>
-                <Landed change={change} kind="supplier" id={supplier.id} />
-                <div className="flex min-w-0 items-center gap-3">
-                  <IconChip icon={<Handshake />} tone="clay" size="md" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[16.5px] font-bold">{supplier.name}</p>
-                    <p className="truncate pt-0.5 text-[14.5px] text-muted">
-                      {supplier.contactPerson
-                        ? `Ask for ${supplier.contactPerson}`
-                        : "No contact person on file"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 pt-3.5">
-                  {supplier.contactNumber ? (
-                    <a
-                      href={`tel:${dialableNumber(supplier.contactNumber)}`}
-                      className="flex items-center gap-2.5 text-[15.5px] font-bold text-clay dark:text-dk-clay"
-                    >
-                      <Phone className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-                      <span className="truncate underline">{supplier.contactNumber}</span>
-                    </a>
-                  ) : (
-                    <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
-                      <Phone className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                      <span className="truncate text-muted">No phone number</span>
-                    </p>
-                  )}
-                  <p className="flex items-center gap-2.5 text-[15.5px] text-ink-2">
-                    <MapPin className="h-4.5 w-4.5 shrink-0 text-muted" aria-hidden="true" />
-                    <span className="truncate">
-                      {cityOf(supplier) || <span className="text-muted">No address</span>}
-                    </span>
-                  </p>
-                </div>
-
-                <div className="pt-4">
-                  <Button variant="outline" block onClick={() => onView(supplier.id)}>
-                    Open
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </div>
-              </RecordCard>
-            ))}
-
-            <Card className="p-4">
-              <Pager {...paged} noun="suppliers" />
-            </Card>
-          </div>
-          )}
-
-          {onAdd && (
-            <StickyCta>
-              <Button variant="clay" size="xl" block onClick={onAdd}>
-                <Handshake className="h-5.5 w-5.5" />
-                Add a supplier
-              </Button>
-            </StickyCta>
-          )}
-        </>
-      )}
-    </div>
+        </section>
+        {selected ? (
+          <DetailPanel
+            supplier={selected.supplier}
+            facts={selected.facts}
+            year={year}
+            onClose={() => setSelectedId(null)}
+            onEdit={onEdit}
+            onView={onView}
+            onOrder={onOpenPurchasing}
+          />
+        ) : null}
+      </div>
+    </Page>
   );
 }
