@@ -96,8 +96,6 @@ export default {
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       width: { sidebar: '15rem', 'sidebar-icon': '3rem' },
-      // LEGACY-BREAKPOINTS: still read by screens not yet rebuilt; removed in the last phase.
-      screens: { tab: '834px', desk: '1280px' },
     },
   },
   plugins: [tailwindcssAnimate],

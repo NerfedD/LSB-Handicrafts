@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Pencil, Plus, Trash2 } from '../icons';
+import { PencilSimple, Plus, Trash } from '../icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -119,12 +119,12 @@ export default function CategoriesDialog({ categories = [], isLoaded = true, inv
                         </span>
                         <span className="flex gap-1.5">
                           <Button variant="ghost" size="sm" disabled={working} onClick={() => { setEditing({ id: category.id, name: category.name }); setError(null); setMessage(null); }}>
-                            <Pencil />Rename
+                            <PencilSimple />Rename
                           </Button>
                           <Button variant="ghost" size="sm" disabled={working || count > 0}
                             title={count > 0 ? 'Move its products to another category first.' : undefined}
                             onClick={() => run('remove', { id: category.id }, () => setMessage(`"${category.name}" was removed.`))}>
-                            <Trash2 />Remove
+                            <Trash />Remove
                           </Button>
                         </span>
                       </>

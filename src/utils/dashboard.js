@@ -126,7 +126,7 @@ export function attentionFor({ role, products, inventory, orders, deliveries, st
   if (role === "Admin" && lockedOut.length > 0) {
     items.push({
       key: "accounts",
-      tone: "cobalt",
+      tone: "info",
       icon: "UserX",
       title:
         lockedOut.length === 1
@@ -143,7 +143,7 @@ export function attentionFor({ role, products, inventory, orders, deliveries, st
   if (waiting.length > 0 && stale.length === 0 && items.length < 3) {
     items.push({
       key: "waiting",
-      tone: "cobalt",
+      tone: "info",
       icon: "ClipboardList",
       title: `${plural(waiting.length, "order is", "orders are")} still waiting`,
       body: "Nothing is overdue. This is simply what is in the queue today.",
@@ -181,7 +181,7 @@ export function followUpsFor({ orders, customerRows }) {
   if (lapsed.length > 0) {
     items.push({
       key: "lapsed",
-      tone: "clay",
+      tone: "progress",
       icon: "Phone",
       title: `${plural(lapsed.length, "customer has", "customers have")} not ordered in a year`,
       body: "They bought from us once and have not come back. This is a call list, not a filter.",
@@ -194,7 +194,7 @@ export function followUpsFor({ orders, customerRows }) {
   if (waiting.length > 0 && stale.length === 0) {
     items.push({
       key: "waiting",
-      tone: "cobalt",
+      tone: "info",
       icon: "ClipboardList",
       title: `${plural(waiting.length, "order is", "orders are")} in the queue`,
       body: "Nothing is overdue. This is what is being worked on today.",

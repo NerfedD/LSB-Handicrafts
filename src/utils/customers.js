@@ -117,7 +117,7 @@ export function customerChips(rows, rules = DEFAULT_LOYALTY) {
       : []),
     { value: 'open', label: 'Has an open order', count: count((s) => s.hasOpenOrder), tone: 'amber' },
     { value: 'new', label: 'New this month', count: count((s) => s.isNewThisMonth) },
-    { value: 'lapsed', label: 'Not ordered in a year', count: count((s) => s.isLapsed), tone: 'clay' },
+    { value: 'lapsed', label: 'Not ordered in a year', count: count((s) => s.isLapsed), tone: 'progress' },
   ];
 }
 

@@ -324,7 +324,7 @@ export function orderCounts(orders = []) {
  *
  * THE WINDOW IS "NOTHING HAS HAPPENED YET". An order that is still Waiting,
  * whose goods have not been taken off the shelf, that nobody has been refunded
- * for and whose price has never been corrected, is a piece of paper somebody
+ * for and whose price has never been corrected, is a printed sheet somebody
  * typed a few minutes ago. Rewriting it costs nothing and destroys no record.
  *
  * Every one of those conditions is the boundary of a record that WOULD be

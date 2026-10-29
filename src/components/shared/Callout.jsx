@@ -19,7 +19,7 @@ const TONES = {
 };
 
 const toneKey = (tone) =>
-  ({ red: "danger", danger: "danger", amber: "warning", warning: "warning", clay: "warning", green: "success", success: "success" }[tone] ?? "neutral");
+  ({ red: "danger", danger: "danger", amber: "warning", warning: "warning", green: "success", success: "success" }[tone] ?? "neutral");
 
 export default function Callout({ tone = "neutral", icon, title, children, action, className, role }) {
   const key = toneKey(tone);

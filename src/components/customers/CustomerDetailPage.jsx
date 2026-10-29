@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { CaretRight, Pencil, Receipt } from "../icons";
+import { CaretRight, PencilSimple, Receipt } from "../icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DangerBlock } from "../shared/Callout";
@@ -107,7 +107,7 @@ export default function CustomerDetailPage({
           <>
             {canEdit && (
               <Button variant="outline" onClick={() => onEdit(customer.id)}>
-                <Pencil aria-hidden="true" />
+                <PencilSimple aria-hidden="true" />
                 Edit details
               </Button>
             )}
@@ -177,7 +177,7 @@ export default function CustomerDetailPage({
         </SectionCard>
 
         <SectionCard title="How to reach them">
-          <dl className="m-0 flex flex-col gap-3">
+          <dl className="m-0 flex flex-col gap-3 px-4 pb-4">
             <Fact label="Phone">{customer.contactNumber || "Not given"}</Fact>
             <Fact label="Email">{customer.email || "Not given"}</Fact>
             <Fact label="Delivery address">{customer.address || "Not given"}</Fact>

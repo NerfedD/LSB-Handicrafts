@@ -153,8 +153,8 @@ function CategoryField({ values, errors, categories, setField, placeholder }) {
     <div className="flex flex-col gap-3">
       <Field label="Category" error={errors.category} hint="How it is grouped on the shelf and in the list.">
         {(props) => (
-          <Select value={values.category || "__none"} onValueChange={(next) => setField("category", next === "__none" ? "" : next)}>
-            <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]}>
+          <Select items={[{ value: "__none", label: "No category" }, ...options.map((name) => ({ value: name, label: name })), { value: NEW_CATEGORY, label: "Add a new category…" }]} value={values.category || "__none"} onValueChange={(next) => setField("category", next === "__none" ? "" : next)}>
+            <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]} className="w-full">
               <SelectValue placeholder={placeholder} />
             </SelectTrigger>
             <SelectContent>
@@ -300,7 +300,7 @@ export default function ProductFormPage({
               </Button>
             </div>
           }
-          bodyClassName="flex flex-col gap-3.5"
+          bodyClassName="flex flex-col gap-3.5 px-4 pb-4"
         >
           <FormError message={saveError} />
 
@@ -309,7 +309,7 @@ export default function ProductFormPage({
               label="Kind"
               value={values.productType}
               onChange={(next) => setField("productType", next)}
-              options={PRODUCT_TYPE_OPTIONS}
+              options={PRODUCT_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))}
             />
           </Field>
 

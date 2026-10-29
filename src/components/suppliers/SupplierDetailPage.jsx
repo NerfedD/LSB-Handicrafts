@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Factory, Pencil, Phone, Truck } from "../icons";
+import { Factory, PencilSimple, Phone, Truck } from "../icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Callout, { DangerBlock } from "../shared/Callout";
@@ -110,7 +110,7 @@ export default function SupplierDetailPage({
           <>
             {canEdit && (
               <Button variant="outline" onClick={() => onEdit(supplier.id)}>
-                <Pencil aria-hidden="true" />
+                <PencilSimple aria-hidden="true" />
                 Edit details
               </Button>
             )}
@@ -164,7 +164,7 @@ export default function SupplierDetailPage({
         </SectionCard>
 
         <SectionCard title="How to reach them">
-          <dl className="m-0 flex flex-col gap-3">
+          <dl className="m-0 flex flex-col gap-3 px-4 pb-4">
             <Fact label="Contact person">{supplier.contactPerson || "Not given"}</Fact>
             <Fact label="Phone">{supplier.contactNumber || "Not given"}</Fact>
             <Fact label="Email">{supplier.email || "Not given"}</Fact>

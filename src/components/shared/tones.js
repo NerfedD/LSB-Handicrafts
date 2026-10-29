@@ -55,6 +55,10 @@ const KIND = {
   red: "danger",
   danger: "danger",
   destructive: "danger",
+  // "info" and "progress" (a stage under way) are neutral on purpose: the
+  // design keeps blue for the one primary action, never for a status.
+  info: "neutral",
+  progress: "neutral",
 };
 
 export const statusKind = (name) => KIND[name] ?? "neutral";

@@ -11,7 +11,7 @@ import { ORDER_STATUS } from "../../utils/constants";
  * The printed order slip.
  *
  * THE ONLY THING A CUSTOMER EVER SEES. Every other screen in this system is
- * internal — staff, stock, margins, who owes what. This one piece of paper
+ * internal — staff, stock, margins, who owes what. This one printed sheet
  * leaves the building, so it is the business's face rather than a view of the
  * app, and it is designed as a document rather than as the order screen with
  * its furniture hidden.
@@ -227,7 +227,7 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
       <footer className="slip-foot">
         <p>
           <strong>This is not an official receipt.</strong> It is a record of what
-          was ordered, so both sides are working from the same paper.
+          was ordered, so both sides are working from the same sheet.
         </p>
         <p>Printed {formatLongDate(new Date().toISOString())}</p>
       </footer>

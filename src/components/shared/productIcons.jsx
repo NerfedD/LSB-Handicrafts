@@ -1,4 +1,4 @@
-import { Box, Circle, Shapes, Square } from "../icons";
+import { Circle, Cube, Shapes, Square } from "../icons";
 import { PRODUCT_TYPE } from "../../utils/constants";
 
 /**
@@ -16,7 +16,7 @@ import { PRODUCT_TYPE } from "../../utils/constants";
 const BY_TYPE = {
   [PRODUCT_TYPE.BALL]: Circle,
   [PRODUCT_TYPE.SHEET]: Square,
-  [PRODUCT_TYPE.BLOCK]: Box,
+  [PRODUCT_TYPE.BLOCK]: Cube,
   [PRODUCT_TYPE.OTHER]: Shapes,
 };
 

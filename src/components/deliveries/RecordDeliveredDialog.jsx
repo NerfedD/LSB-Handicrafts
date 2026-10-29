@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { localDateIso, promisedDateProblem } from "../../utils/dates";
 
-import { PackageOpen } from "../icons";
+import { Package } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -270,7 +270,7 @@ export default function RecordDeliveredDialog({
             )}
 
             {isShort && (
-              <Callout tone="amber" icon={<PackageOpen />} title="Some of this is being left behind">
+              <Callout tone="amber" icon={<Package />} title="Some of this is being left behind">
                 {shortfall.map((line) => (
                   <span key={line.index} className="block">
                     <strong>{line.owed - line.going} × {line.name}</strong> still owed.

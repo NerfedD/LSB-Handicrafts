@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 
-import { ImagePlus, Trash2 } from '../icons';
+import { ImageSquare, Trash } from '../icons';
 import { Button } from '@/components/ui/button';
 import { PhotoSlot } from '../shared/forms';
 import { preparePhoto } from '../../utils/photos';
@@ -67,12 +67,12 @@ export function ProductPhotoField({ value, current, onChange, disabled = false, 
       />
       <div className="flex flex-wrap gap-1.5">
         <Button variant="outline" size="sm" disabled={disabled || working} onClick={() => input.current?.click()}>
-          <ImagePlus />
+          <ImageSquare />
           {working ? 'Preparing…' : shown ? 'Replace photo' : 'Add a photo'}
         </Button>
         {shown && (
           <Button variant="ghost" size="sm" disabled={disabled || working} onClick={() => onChange({ change: current ? 'remove' : null, dataUrl: null })}>
-            <Trash2 />
+            <Trash />
             Remove photo
           </Button>
         )}

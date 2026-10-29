@@ -3,7 +3,7 @@ import { localDateIso, promisedDateProblem } from "../../utils/dates";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
-import { Gift, Plus, Trash2, TriangleAlert } from "../icons";
+import { Gift, Plus, Trash, Warning } from "../icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -432,7 +432,7 @@ export default function OrderFormPage({
       <form onSubmit={handleSubmit} noValidate className="w-full max-w-[720px]">
         <SectionCard
           title={isEdit ? "Order details" : "Order"}
-          bodyClassName="flex flex-col gap-3.5"
+          bodyClassName="flex flex-col gap-3.5 px-4 pb-4"
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={onCancel} disabled={saving}>
@@ -612,7 +612,7 @@ export default function OrderFormPage({
                               aria-label="Remove"
                               onClick={() => setLines((previous) => previous.filter((l) => l.key !== line.key))}
                             >
-                              <Trash2 />
+                              <Trash />
                             </Button>
                           )}
                         </td>
@@ -632,7 +632,7 @@ export default function OrderFormPage({
           </div>
 
           {shortages.length > 0 && (
-            <Callout tone="amber" icon={<TriangleAlert />} title="More than we have on the shelf">
+            <Callout tone="amber" icon={<Warning />} title="More than we have on the shelf">
               {shortages.map((shortage) => (
                 <span key={shortage.name} className="block">
                   {shortage.name}: only {shortage.have} free to sell, so {shortage.short} would

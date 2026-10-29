@@ -55,12 +55,12 @@ export const BATCH_LABEL = {
   Completed: 'Completed', Cancelled: 'Cancelled',
 };
 export const MATERIAL_ORDER_TONE = {
-  Ordered: { tone: 'neutral', mark: 'clock' }, 'Delivery Scheduled': { tone: 'cobalt', mark: 'clock' },
-  'In Transit': { tone: 'cobalt', mark: 'clock' }, Arrived: { tone: 'green', mark: 'check' },
+  Ordered: { tone: 'neutral', mark: 'clock' }, 'Delivery Scheduled': { tone: 'info', mark: 'clock' },
+  'In Transit': { tone: 'info', mark: 'clock' }, Arrived: { tone: 'green', mark: 'check' },
   Cancelled: { tone: 'neutral', mark: 'x' },
 };
 export const BATCH_TONE = {
-  Queued: { tone: 'neutral', mark: 'clock' }, 'In Progress': { tone: 'clay', mark: 'dot' },
+  Queued: { tone: 'neutral', mark: 'clock' }, 'In Progress': { tone: 'progress', mark: 'dot' },
   'Quality Check': { tone: 'amber', mark: 'clock' }, Completed: { tone: 'green', mark: 'check' },
   Cancelled: { tone: 'neutral', mark: 'x' },
 };
@@ -368,8 +368,8 @@ export const priceReasonLabel = (value) => PRICE_REASON_LABEL[value] ?? "—";
  */
 export const DELIVERY_STAGES = [
   { value: DELIVERY_STAGE.NOT_SENT, label: "Not sent yet", tone: "neutral", icon: "inbox" },
-  { value: DELIVERY_STAGE.BEING_MADE, label: "Being made", tone: "clay", icon: "hammer" },
-  { value: DELIVERY_STAGE.READY, label: "Ready to go", tone: "cobalt", icon: "package-check" },
+  { value: DELIVERY_STAGE.BEING_MADE, label: "Being made", tone: "progress", icon: "hammer" },
+  { value: DELIVERY_STAGE.READY, label: "Ready to go", tone: "info", icon: "package-check" },
   { value: DELIVERY_STAGE.ON_THE_WAY, label: "On the way", tone: "amber", icon: "truck" },
   { value: DELIVERY_STAGE.ARRIVED, label: "Arrived", tone: "green", icon: "circle-check" },
 ];

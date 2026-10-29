@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from "react";
  * way to reach it is dead CSS, so this is the switch: three states, in the
  * account menu beside the dashboard-view preference.
  *
- *   light    always the paper canvas
+ *   light    always the light canvas
  *   dark     always the warm-neutral darks
  *   system   whatever the device is set to, and it follows changes live
  *

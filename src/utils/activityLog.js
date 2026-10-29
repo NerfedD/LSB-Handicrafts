@@ -23,15 +23,15 @@ export const ACTIVITY_KIND = {
 
 /** icon name + tone per kind. Names resolve in shared/activityIcons.jsx. */
 export const KIND_STYLE = {
-  [ACTIVITY_KIND.SIGN_IN]:  { icon: "LogIn", tone: "cobalt" },
-  [ACTIVITY_KIND.STOCK]:    { icon: "Boxes", tone: "clay" },
+  [ACTIVITY_KIND.SIGN_IN]:  { icon: "LogIn", tone: "info" },
+  [ACTIVITY_KIND.STOCK]:    { icon: "Boxes", tone: "progress" },
   [ACTIVITY_KIND.PRICE]:    { icon: "Tag", tone: "green" },
   [ACTIVITY_KIND.ACCOUNT]:  { icon: "UserCog", tone: "purple" },
-  [ACTIVITY_KIND.ORDER]:    { icon: "ClipboardList", tone: "cobalt" },
+  [ACTIVITY_KIND.ORDER]:    { icon: "ClipboardList", tone: "info" },
   [ACTIVITY_KIND.DELIVERY]: { icon: "Truck", tone: "amber" },
   [ACTIVITY_KIND.PRODUCT]:  { icon: "Package", tone: "neutral" },
   [ACTIVITY_KIND.CUSTOMER]: { icon: "UserRound", tone: "purple" },
-  [ACTIVITY_KIND.SUPPLIER]: { icon: "Handshake", tone: "clay" },
+  [ACTIVITY_KIND.SUPPLIER]: { icon: "Handshake", tone: "progress" },
 };
 
 /** The activity screen's filter chips, in order. */

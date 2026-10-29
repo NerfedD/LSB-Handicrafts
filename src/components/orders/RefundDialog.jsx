@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { Banknote, TriangleAlert, Undo2 } from "../icons";
+import { ArrowUUpLeft, Money, Warning } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -247,7 +247,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
             })}
 
             <Button variant="outline" onClick={takeAll} disabled={saving}>
-              <Undo2 />
+              <ArrowUUpLeft />
               Give all of it back
             </Button>
 
@@ -301,7 +301,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
             {isFull && (
               <Callout
                 tone="red"
-                icon={<TriangleAlert />}
+                icon={<Warning />}
                 title="This gives back everything, so the order is cancelled"
               >
                 Nothing more will be made or sent for it, and any stock still set aside
@@ -328,7 +328,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
               // Disabled here is the honest default; enabled is the promise.
               disabled={saving || givingBack <= 0 || Boolean(amountProblem)}
             >
-              <Banknote />
+              <Money />
               {saving ? "Working…" : `Give back ${formatPeso(givingBack)}`}
             </Button>
           </DialogFooter>
