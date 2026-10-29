@@ -594,3 +594,20 @@ export async function signIn(page, baseURL, as = SIGNED_IN_EMAIL) {
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.getByRole("heading", { level: 1, name: "Dashboard" }).waitFor();
 }
+
+/**
+ * Clicks a sidebar destination by the start of its label. Scoped to the
+ * sidebar's "Main" navigation, because page controls can share a word with a
+ * nav entry (the Orders screen's "Order list" toggle). Entries under a parent
+ * (Production, Settings) open the parent first.
+ */
+export async function openNav(page, label) {
+  const nav = page.getByRole("navigation", { name: "Main" });
+  const target = nav.getByRole("button", { name: new RegExp(`^${label}`) });
+  for (const name of ["Production", "Settings"]) {
+    if ((await target.count()) > 0) break;
+    const parent = nav.getByRole("button", { name: new RegExp(`^${name}`), expanded: false });
+    if ((await parent.count()) > 0) await parent.click();
+  }
+  await target.first().click();
+}

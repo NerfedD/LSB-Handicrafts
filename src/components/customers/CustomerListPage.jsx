@@ -51,7 +51,7 @@ function RecentOrders({ customer, loadOrders, onOpenOrder }) {
     <ul className="m-0 list-none p-0">
       {rows.map((order) => (
         <li key={order.id} className="flex items-center gap-2 border-t border-row-divider py-1.5 text-13 first:border-t-0">
-          <button type="button" onClick={() => onOpenOrder?.(order.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">#{order.id}</button>
+          <button type="button" data-slot="text-link" onClick={() => onOpenOrder?.(order.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">#{order.id}</button>
           <span className="flex flex-1 items-center gap-2 text-muted-fg">
             {formatShortDate(order.createdAt)}
             <StatusPill label={orderLabel(order.status)} tone={orderTone(order.status)} />
@@ -257,7 +257,7 @@ export default function CustomerListPage({
                         <span className="flex min-w-0 items-center gap-2">
                           <Avatar name={customer.name} className="rounded-md" />
                           <span className="min-w-0">
-                            <button type="button" onClick={() => setSelectedId(customer.id)} className="block max-w-[220px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
+                            <button type="button" data-slot="text-link" onClick={() => setSelectedId(customer.id)} className="block max-w-[220px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
                               {customer.name}
                             </button>
                             <span className="block text-2xs leading-[14px] text-muted-fg">{kindLabel(customer)}</span>

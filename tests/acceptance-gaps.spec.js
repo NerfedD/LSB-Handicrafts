@@ -11,7 +11,7 @@ test('UI-04/06: keyboard dialog focus stays contained, Escape cancels without a 
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
   const before = structuredClone(tables.customers);
-  const opener = page.getByRole('button', { name: 'Add a customer', exact: true }).first();
+  const opener = page.getByRole('button', { name: 'Add customer', exact: true }).first();
   await opener.focus(); await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -45,10 +45,10 @@ test('VAL-security: script-like customer names remain text after saving and relo
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   const name = run + ' <img src=x onerror="window.qaExecuted=true">';
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole('button', { name: 'Add a customer', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add customer', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/name/i).fill(name); await dialog.locator('input[type="tel"]').fill('09171234567');
-  await dialog.getByRole('button', { name: 'Add this customer' }).click();
+  await dialog.getByRole('button', { name: 'Add customer' }).click();
   await expect(dialog).toHaveCount(0);
   expect(tables.customers.filter((row) => row.name === name)).toHaveLength(1);
   await page.reload();
@@ -66,26 +66,27 @@ test('CRUD-03/RACE-05: failed photo save retries only the photo and retains one 
   });
   const name = run + ' photo';
   await page.goto(`${baseURL}/products/new`);
-  await page.getByLabel('Product name').fill(name);
-  await page.getByLabel('How wide across').fill('4'); await page.getByLabel('Price', { exact: false }).fill('100');
-  await page.getByLabel('How many on the shelf now').fill('20');
-  await page.getByLabel('Product photo').setInputFiles({ name: run + '.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByLabel(/^Name /).fill(name);
+  await page.getByLabel('How wide across').fill('4'); await page.getByLabel(/^Price/).fill('100');
+  await page.getByLabel('On the shelf').fill('20');
+  await page.getByLabel('Photo', { exact: true }).setInputFiles({ name: run + '.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('img', { name: 'Photo of ' + name })).toBeVisible();
-  await page.getByRole('button', { name: 'Save this product' }).click();
+  await page.getByRole('button', { name: 'Add product' }).click();
   await expect(page.locator('[data-form-error]')).toContainText(/photo/i);
   const productsBefore = structuredClone(tables.products);
   const inventoryBefore = structuredClone(tables.inventory);
   const historyBefore = structuredClone(tables.stock_movements);
   expect(tables.product_images).toHaveLength(0);
   fail = false;
-  await page.getByRole('button', { name: 'Save this product' }).click();
+  await page.getByRole('button', { name: 'Add product' }).click();
   await expect(page).toHaveURL(/\/products\/\d+$/);
   expect.soft(tables.products).toEqual(productsBefore);
   expect.soft(tables.inventory).toEqual(inventoryBefore);
   expect(tables.stock_movements).toEqual(historyBefore);
   expect(tables.products.filter((row) => row.name === name)).toHaveLength(1);
   expect(tables.product_images).toHaveLength(1);
-  await page.reload(); await expect(page.getByRole('img', { name: 'Photo of ' + name })).toBeVisible();
+  // On the product screen the photo is the design's 64px photo tile.
+  await page.reload(); await expect(page.getByRole('button', { name: 'Photo of ' + name })).toBeVisible();
 });
 
 test('RACE-05: after two failed photo saves a third attempt succeeds without a stale stock conflict', async ({ page, baseURL }, info) => {
@@ -98,17 +99,17 @@ test('RACE-05: after two failed photo saves a third attempt succeeds without a s
   });
   const name = run + ' repeated photo';
   await page.goto(`${baseURL}/products/new`);
-  await page.getByLabel('Product name').fill(name);
-  await page.getByLabel('How wide across').fill('4'); await page.getByLabel('Price', { exact: false }).fill('100');
-  await page.getByLabel('How many on the shelf now').fill('20');
-  await page.getByLabel('Product photo').setInputFiles({ name: run + '.png', mimeType: 'image/png', buffer: PNG });
+  await page.getByLabel(/^Name /).fill(name);
+  await page.getByLabel('How wide across').fill('4'); await page.getByLabel(/^Price/).fill('100');
+  await page.getByLabel('On the shelf').fill('20');
+  await page.getByLabel('Photo', { exact: true }).setInputFiles({ name: run + '.png', mimeType: 'image/png', buffer: PNG });
   await expect(page.getByRole('img', { name: 'Photo of ' + name })).toBeVisible();
   for (let attempt = 1; attempt <= 2; attempt++) {
-    await page.getByRole('button', { name: 'Save this product' }).click();
+    await page.getByRole('button', { name: 'Add product' }).click();
     await expect.poll(() => photoAttempts).toBe(attempt);
     await expect(page.locator('[data-form-error]')).toContainText('photo');
   }
-  await page.getByRole('button', { name: 'Save this product' }).click();
+  await page.getByRole('button', { name: 'Add product' }).click();
   // The third attempt is meant to succeed, which leaves this screen -- so wait
   // for that, not for a Save button that is no longer there.
   await expect(page).toHaveURL(/\/products\/\d+$/);
@@ -118,7 +119,8 @@ test('RACE-05: after two failed photo saves a third attempt succeeds without a s
   expect.soft(evidence.inventory[0].stock).toBe(20);
   await expect(page).toHaveURL(/\/products\/\d+$/);
   expect(photoAttempts).toBe(3);
-  await page.reload(); await expect(page.getByRole('img', { name: 'Photo of ' + name })).toBeVisible();
+  // On the product screen the photo is the design's 64px photo tile.
+  await page.reload(); await expect(page.getByRole('button', { name: 'Photo of ' + name })).toBeVisible();
 });
 
 for (const role of ['Admin', 'Manager', 'Sales Staff', 'Production Staff', 'Delivery Staff']) {
@@ -129,10 +131,10 @@ for (const role of ['Admin', 'Manager', 'Sales Staff', 'Production Staff', 'Deli
     await signIn(page, baseURL, as);
     const manager = ['Admin', 'Manager'].includes(role);
     for (const [path, allowed, heading] of [
-      ['products/new', manager, 'Add a product'],
-      ['orders/1041/edit', manager, 'Change this order'],
+      ['products/new', manager, 'Add product'],
+      ['orders/1041/edit', manager, 'Edit order #1041'],
       ['production-report', manager, 'Production report'],
-      ['staff', role === 'Admin', 'Staff & accounts'],
+      ['staff', role === 'Admin', 'User Management'],
       ['customers', role !== 'Production Staff', 'Customers'],
     ]) {
       await page.goto(`${baseURL}/${path}`);
@@ -174,14 +176,16 @@ for (const boundary of [
         await route.fulfill({ contentType: 'application/json', body: JSON.stringify(row) });
       });
       await page.goto(`${baseURL}/raw-materials`);
-      await expect(page.getByRole('group', { name: run + ' sheet' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Open ' + run + ' sheet' })).toBeVisible();
       await page.clock.setFixedTime(new Date(boundary.instant));
-      await page.getByRole('group', { name: run + ' sheet' }).getByRole('button', { name: 'Order more' }).click();
+      // The material's side panel carries "Order more".
+      await page.getByRole('button', { name: 'Open ' + run + ' sheet' }).click();
+      await page.getByRole('complementary', { name: run + ' sheet' }).getByRole('button', { name: 'Order more' }).click();
       const dialog = page.getByRole('dialog');
-      await dialog.getByLabel('Supplier').selectOption({ index: 1 });
-      await dialog.getByLabel('How many sheets').fill('2');
-      await dialog.getByLabel('Agreed price per unit (₱)').fill('50');
-      const date = dialog.getByLabel('Promised delivery date');
+      await dialog.getByLabel(/^Supplier/).selectOption({ index: 1 });
+      await dialog.getByLabel(/^How much/).fill('2');
+      await dialog.getByLabel(/^Agreed price/).fill('50');
+      const date = dialog.getByLabel('Expected');
       const min = await date.getAttribute('min');
       await date.fill(boundary.chosen);
       await dialog.getByRole('button', { name: 'Place order' }).click();

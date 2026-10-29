@@ -59,8 +59,8 @@ function withErrors(node, errors) {
       const error = child.props.error ?? (child.props.name ? errors[child.props.name] : undefined);
       return cloneElement(child, { error });
     }
-    // Into layout wrappers too (a Row pairing two fields), so their fields get their errors.
-    if (typeof child.type !== 'string' && child.props.children) {
+    // Into layout wrappers too (a Row pairing two fields, a grid of sizes), so their fields get their errors.
+    if (child.props.children && typeof child.props.children !== 'function') {
       return cloneElement(child, undefined, withErrors(child.props.children, errors));
     }
     return child;

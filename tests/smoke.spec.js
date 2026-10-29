@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { SIGNED_IN_EMAIL } from "./fixtures.js";
-import { signIn, stubSupabase } from "./stubSupabase.js";
+import { openNav, signIn, stubSupabase } from "./stubSupabase.js";
 
 /**
  * Every screen, opened, with the console watched.
@@ -85,20 +85,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 /**
- * A sidebar nav button, by label.
- *
- * Not an exact name match: the entries with a count ("Products & stock",
- * "Orders", "Deliveries") render a badge inside the button, so their
- * accessible name is the label followed by the number. Anchoring at the start
- * matches both the counted and the uncounted entries.
- */
-function navName(label) {
-  // Every nav label is words, spaces and an ampersand — nothing the regex
-  // engine treats specially — so this needs no escaping.
-  return new RegExp(`^${label}`);
-}
-
-/**
  * Fails with the collected messages rather than a bare count.
  *
  * `allow` is for a test that provokes a network failure ON PURPOSE: the browser
@@ -158,42 +144,48 @@ test.describe("the shell", () => {
   });
 
   test("every nav destination opens", async ({ page }) => {
+    // The design's nav labels: "Inventory" and "User Management".
     const destinations = [
-      ["Products & stock", "Products & stock"],
+      ["Inventory", "Inventory"],
       ["Orders", "Orders"],
       ["Deliveries", "Deliveries"],
       ["Customers", "Customers"],
       ["Suppliers", "Suppliers"],
-      ["Staff & accounts", "Staff & accounts"],
+      ["User Management", "User Management"],
+      ["Staff Directory", "Staff Directory"],
+      ["Batches", "Batches"],
       ["Dashboard", "Dashboard"],
     ];
 
     for (const [navLabel, heading] of destinations) {
-      await page.getByRole("button", { name: navName(navLabel) }).click();
+      await openNav(page, navLabel);
       await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
     }
 
     expectClean();
   });
 
+  // The design's account menu holds Profile and Log out; the theme and the
+  // dashboard's text size are preferences on the profile screen.
   test("the account menu reaches the profile, both dashboard views and sign-out", async ({
     page,
   }) => {
-    await page.getByRole("button", { name: /Your account menu/ }).click();
-    await expect(page.getByText("How your dashboard looks")).toBeVisible();
-    await expect(page.getByText("Light or dark")).toBeVisible();
+    await page.getByRole("button", { name: /^Account menu for/ }).click();
+    await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Profile" }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Maria Santos" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Theme" })).toBeVisible();
 
     // The large-text dashboard is a preference, not a role.
-    await page.getByRole("menuitemradio", { name: /Large text/ }).click();
+    await page.getByRole("radio", { name: /^Large text/ }).click();
+    await openNav(page, "Dashboard");
     await expect(page.getByText("Where do you want to go?")).toBeVisible();
 
-    await page.getByRole("button", { name: /Your account menu/ }).click();
-    await page.getByRole("menuitemradio", { name: /Standard/ }).click();
-    await expect(page.getByText("Needs your attention")).toBeVisible();
-
-    await page.getByRole("button", { name: /Your account menu/ }).click();
-    await page.getByRole("menuitem", { name: "My profile" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "My profile" })).toBeVisible();
+    await page.getByRole("button", { name: /^Account menu for/ }).click();
+    await page.getByRole("menuitem", { name: "Profile" }).click();
+    await page.getByRole("radio", { name: /^Standard/ }).click();
+    await openNav(page, "Dashboard");
+    await expect(page.getByText("Where do you want to go?")).toHaveCount(0);
 
     expectClean();
   });
@@ -202,23 +194,32 @@ test.describe("the shell", () => {
 test.describe("products & stock", () => {
   test.beforeEach(async ({ page, baseURL }) => {
     await signIn(page, baseURL);
-    await page.getByRole("button", { name: navName("Products & stock") }).click();
+    await openNav(page, "Inventory");
   });
+
+  // The design's Inventory screen: stock-level chips are toggle buttons in a
+  // "Stock level" group, a product's name opens it, and the row's words
+  // ("View product", "Edit product") sit in its "Actions for …" menu.
+  const levels = (page) => page.getByRole("group", { name: "Stock level" });
+  const openProduct = (page, name) =>
+    page.getByRole("table").getByRole("button", { name, exact: true }).click();
 
   test("shows counted chips, plain-language stock and word-labelled actions", async ({ page }) => {
     // Rule 2: the copy rewrites are on screen, not the stored literals.
-    await expect(page.getByRole("radio", { name: /Plenty in stock/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Running low/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Run out/ })).toBeVisible();
+    await expect(levels(page).getByRole("button", { name: /In stock/ })).toBeVisible();
+    await expect(levels(page).getByRole("button", { name: /Running low/ })).toBeVisible();
+    await expect(levels(page).getByRole("button", { name: /^Out/ })).toBeVisible();
     await expect(page.getByText("Low Stock", { exact: true })).toHaveCount(0);
 
     // Rule 3: row actions carry words.
-    await expect(page.getByRole("button", { name: "View" }).first()).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit" }).first()).toBeVisible();
+    await page.getByRole("button", { name: "Actions for Styro Ball 4 inch" }).click();
+    await expect(page.getByRole("menuitem", { name: "View product" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Edit product" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
     // A product with no inventory row says so rather than claiming zero.
     await expect(
-      page.getByRole("table").getByText("Not tracked", { exact: true })
+      page.getByRole("row", { name: /Carved centrepiece base/ }).getByText("Not tracked", { exact: true }).first()
     ).toBeVisible();
 
     expectClean();
@@ -227,7 +228,7 @@ test.describe("products & stock", () => {
   test("a filter chip narrows the list, and its count came from the unfiltered set", async ({
     page,
   }) => {
-    const runningLow = page.getByRole("radio", { name: /Running low/ });
+    const runningLow = levels(page).getByRole("button", { name: /Running low/ });
     await expect(runningLow).toContainText("2");
 
     await runningLow.click();
@@ -238,15 +239,12 @@ test.describe("products & stock", () => {
   });
 
   test("one product tells its stock story", async ({ page }) => {
-    await page
-      .getByRole("row", { name: /Styro Ball 4 inch/ })
-      .getByRole("button", { name: "View" })
-      .click();
+    await openProduct(page, "Styro Ball 4 inch");
 
-    await expect(page.getByText("On the shelf right now")).toBeVisible();
+    await expect(page.getByText("On the shelf", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Free to sell").first()).toBeVisible();
     await expect(page.getByText("Set aside for orders").first()).toBeVisible();
-    await expect(page.getByText("Stock movements")).toBeVisible();
+    await expect(page.getByText("Stock history", { exact: true })).toBeVisible();
 
     expectClean();
   });
@@ -257,10 +255,7 @@ test.describe("products & stock", () => {
     // Order #1041 is still Waiting on 40 of these, so the block explains the
     // refusal rather than disappearing -- the same treatment as a customer with
     // an order open. "Why can't I delete this" deserves an answer on screen.
-    await page
-      .getByRole("row", { name: /Styro Ball 4 inch/ })
-      .getByRole("button", { name: "View" })
-      .click();
+    await openProduct(page, "Styro Ball 4 inch");
 
     await expect(page.getByRole("heading", { name: "Remove this product" })).toBeVisible();
     await expect(page.getByText(/promised to an order that has not gone out/)).toBeVisible();
@@ -278,12 +273,9 @@ test.describe("products & stock", () => {
       if (request.method() === "DELETE") deleted.push(new URL(request.url()).pathname);
     });
 
-    await page
-      .getByRole("row", { name: /Styro Ball 6 inch/ })
-      .getByRole("button", { name: "View" })
-      .click();
+    await openProduct(page, "Styro Ball 6 inch");
 
-    await expect(page.getByText(/it is kept as .no longer sold. with all of its history/)).toBeVisible();
+    await expect(page.getByText(/it is kept as .no longer sold. with its history/)).toBeVisible();
     await page.getByRole("button", { name: "Remove Styro Ball 6 inch" }).click();
 
     // The confirm names the record and says what survives.
@@ -292,14 +284,14 @@ test.describe("products & stock", () => {
     await page.getByRole("button", { name: "Yes, remove it" }).click();
 
     await expect(page.getByText("Styro Ball 6 inch is no longer sold.")).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1, name: "Products & stock" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Inventory" })).toBeVisible();
     await expect(page.getByRole("table").getByText("Styro Ball 6 inch")).toHaveCount(0);
     await expect(page.getByRole("table").getByText("Styro Ball 4 inch")).toBeVisible();
     expect(deleted).toEqual([]);
 
     // Still there, under its own chip, and it can be put back on sale.
-    await page.getByRole("radio", { name: /No longer sold/ }).click();
-    await page.getByRole("row", { name: /Styro Ball 6 inch/ }).getByRole("button", { name: "View" }).click();
+    await levels(page).getByRole("button", { name: /No longer sold/ }).click();
+    await openProduct(page, "Styro Ball 6 inch");
     await page.getByRole("button", { name: "Put it back on sale" }).click();
     await expect(page.getByText("Styro Ball 6 inch is on sale again.")).toBeVisible();
 
@@ -307,24 +299,24 @@ test.describe("products & stock", () => {
   });
 
   test("removing a product nothing refers to deletes both halves together", async ({ page }) => {
-    await page.getByRole("row", { name: /Styro Sheet 1 inch/ }).getByRole("button", { name: "View" }).click();
+    await openProduct(page, "Styro Sheet 1 inch");
     await page.getByRole("button", { name: "Remove Styro Sheet 1 inch" }).click();
     await page.getByRole("button", { name: "Yes, remove it" }).click();
 
     await expect(page.getByText("Styro Sheet 1 inch was removed.")).toBeVisible();
     await expect(page.getByRole("table").getByText("Styro Sheet 1 inch", { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("radio", { name: /No longer sold/ })).toHaveCount(0);
+    await expect(levels(page).getByRole("button", { name: /No longer sold/ })).toHaveCount(0);
 
     expectClean();
   });
 
   test("the add form is adaptive and generates the code", async ({ page }) => {
-    await page.getByRole("button", { name: "Add a product" }).first().click();
-    await expect(page.getByRole("heading", { level: 1, name: "Add a product" })).toBeVisible();
+    await page.getByRole("button", { name: "Add product" }).first().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Add product" })).toBeVisible();
 
     // A ball is asked its diameter…
     await expect(page.getByLabel(/How wide across/)).toBeVisible();
-    await expect(page.getByText("The code is made for you")).toBeVisible();
+    await expect(page.getByText("Made for you from the kind and the size.")).toBeVisible();
 
     // …a sheet is asked its thickness and edges instead. That swap IS the
     // adaptive form.
@@ -342,25 +334,31 @@ test.describe("orders and deliveries", () => {
     await signIn(page, baseURL);
   });
 
-  test("the orders list reports status without offering to change it", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
+  // The design's Orders screen: status chips are toggle buttons in a "Show"
+  // group, and each row's one control is "Open order <number>".
+  const show = (page) => page.getByRole("group", { name: "Show" });
+  const openFirstOrder = (page) => page.getByRole("button", { name: /^Open order \d+/ }).first().click();
 
-    await expect(page.getByText("Waiting").first()).toBeVisible();
+  test("the orders list reports status without offering to change it", async ({ page }) => {
+    await openNav(page, "Orders");
+
+    await expect(page.getByRole("table").getByText("Waiting").first()).toBeVisible();
     // The one control in a row is "Open" — status is never editable from a list.
     await expect(page.getByRole("combobox").filter({ hasText: /Waiting|Done/ })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Open" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Open order \d+/ }).first()).toBeVisible();
 
     expectClean();
   });
 
   test("an order shows the stage tracker and totals", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("button", { name: "Open" }).first().click();
+    await openNav(page, "Orders");
+    await openFirstOrder(page);
 
-    for (const stage of ["Written", "Being made", "Ready to go", "Delivered"]) {
-      await expect(page.getByText(stage, { exact: true }).first()).toBeVisible();
+    const stages = page.getByRole("list", { name: "Delivery stage" });
+    for (const stage of ["Not yet sent", "Being made", "Ready to go", "On the way", "Delivered"]) {
+      await expect(stages.getByText(stage, { exact: true })).toBeVisible();
     }
-    await expect(page.getByRole("main").getByText("Total to pay")).toBeVisible();
+    await expect(page.getByRole("main").getByText("Order total")).toBeVisible();
     await expect(page.getByRole("button", { name: "Mark as done" })).toBeVisible();
 
     expectClean();
@@ -388,8 +386,8 @@ test.describe("orders and deliveries", () => {
       }
     });
 
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("button", { name: "Create order" }).click();
+    await openNav(page, "Orders");
+    await page.getByRole("button", { name: "New order" }).click();
 
     // Scoped to <main>: the sidebar's "Customers" nav button carries that as
     // its aria-label, and an unscoped getByLabel finds it first.
@@ -408,7 +406,7 @@ test.describe("orders and deliveries", () => {
 
     await page.getByRole("button", { name: "Create it anyway" }).click();
     // A written order opens on its own screen, not back on the list.
-    await expect(page.getByRole("heading", { level: 1, name: "Order details" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Order #\d+/ })).toBeVisible();
 
     expect(saved).toHaveLength(1);
     const line = saved[0].items[0];
@@ -419,33 +417,35 @@ test.describe("orders and deliveries", () => {
   });
 
   test("the deliveries board keeps all five columns and explains its filters", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Deliveries") }).click();
+    await openNav(page, "Deliveries");
+    await page.getByRole("group", { name: "View", exact: true }).getByRole("button", { name: "Board", exact: true }).click();
 
-    for (const column of ["Not sent yet", "Being made", "Ready to go", "On the way", "Arrived"]) {
-      await expect(page.getByRole("heading", { name: column })).toBeVisible();
+    for (const column of ["Not yet sent", "Being made", "Ready to go", "On the way", "Delivered"]) {
+      await expect(page.getByRole("heading", { name: column, exact: true })).toBeVisible();
     }
 
-    // The combined-filter sentence appears only once something is narrowing.
-    await expect(page.getByText(/^Showing/)).toHaveCount(0);
-    await page.getByRole("radio", { name: /Late/ }).click();
-    await expect(page.getByText(/^Showing/)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
+    // The count beside the filters says how much of the list is showing.
+    await expect(page.getByText("7 of 7 deliveries")).toBeVisible();
+    await page.getByRole("button", { name: /^Late/ }).click();
+    await expect(page.getByText("1 of 7 deliveries")).toBeVisible();
 
     // An empty column says so rather than sitting blank.
     await expect(page.getByText("Nothing here right now").first()).toBeVisible();
 
-    await page.getByRole("button", { name: "Clear filters" }).click();
-    await expect(page.getByText(/^Showing/)).toHaveCount(0);
+    await page.getByRole("combobox", { name: "Due" }).click();
+    await page.getByRole("option", { name: "Any day" }).click();
+    await expect(page.getByText("7 of 7 deliveries")).toBeVisible();
 
     expectClean();
   });
 
   test("moving a delivery forward writes it and says so", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Deliveries") }).click();
-    await page.getByRole("button", { name: /Reyes Events/ }).click();
+    await openNav(page, "Deliveries");
+    // #2041 is Reyes Events' delivery, still being made.
+    await page.getByRole("button", { name: "#2041", exact: true }).click();
 
-    await expect(page.getByText("Where it is now")).toBeVisible();
-    await page.getByRole("button", { name: /It is ready to go/ }).click();
+    await expect(page.getByRole("region", { name: "Delivery progress" })).toBeVisible();
+    await page.getByRole("button", { name: "Mark ready" }).click();
 
     await expect(page.getByText(/is now ready to go/)).toBeVisible();
 
@@ -453,43 +453,47 @@ test.describe("orders and deliveries", () => {
   });
 
   test("sending a delivery out asks what actually went on the van", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Deliveries") }).click();
+    await openNav(page, "Deliveries");
     // Ready to go -> On the way is the moment stock physically leaves, and the
-    // only advance that asks.
-    await page.getByRole("button", { name: /Liza Villanueva/ }).click();
-    await page.getByRole("button", { name: /It is on the way/ }).click();
+    // only advance that asks. #2042 is Liza Villanueva's.
+    await page.getByRole("button", { name: "#2042", exact: true }).click();
+    await page.getByRole("button", { name: "Send out" }).click();
 
-    await expect(page.getByRole("heading", { name: "What actually went out?" })).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Delivery #2042 is on the way" })).toBeVisible();
 
-    // Pre-filled with all of it, because all of it is what usually happens.
-    const count = page.getByRole("spinbutton").first();
+    // "All of it" is chosen, because all of it is what usually happens; the
+    // counts appear, pre-filled with all of it, once somebody says otherwise.
+    await expect(dialog.getByRole("radio", { name: /Yes, all 4 items/ })).toBeChecked();
+    await dialog.getByRole("radio", { name: "Some were left behind" }).click();
+    const count = dialog.getByRole("spinbutton").first();
     await expect(count).toHaveValue("4");
 
     // Drop it, and the consequence is stated before anything is pressed.
     await count.fill("1");
-    await expect(page.getByText("Some of this is being left behind")).toBeVisible();
-    await expect(page.getByText(/A second delivery will be raised/)).toBeVisible();
+    await expect(dialog.getByText("Some of this is being left behind")).toBeVisible();
+    await expect(dialog.getByText(/A second delivery is raised/)).toBeVisible();
 
-    await page.getByRole("button", { name: /Record what went, and raise the rest/ }).click();
+    await dialog.getByRole("button", { name: /Record what went, and raise the rest/ }).click();
     await expect(page.getByText(/went out short/)).toBeVisible();
 
     expectClean();
   });
 
   test("an order that went out short says so, and the tracker agrees", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
+    await openNav(page, "Orders");
 
     // The chip counts from the unfiltered set, so it is readable before it is
     // clicked — and clicking it narrows the list to exactly that order.
-    const chip = page.getByRole("radio", { name: /Some left behind/ });
+    const chip = show(page).getByRole("button", { name: /Some left behind/ });
     await expect(chip).toBeVisible();
     await chip.click();
     await expect(page.getByRole("row").filter({ hasText: "Santos Catering" })).toHaveCount(1);
 
-    await page.getByRole("button", { name: "Open" }).first().click();
+    await openFirstOrder(page);
 
-    // The fourth stage is standing in place, not finished.
-    await expect(page.getByText("Partly delivered").first()).toBeVisible();
+    // The order is standing part-delivered, not finished.
+    await expect(page.getByText("Goods still owed").first()).toBeVisible();
     await expect(
       page.getByText("Some of this order has not gone out yet")
     ).toBeVisible();
@@ -497,23 +501,22 @@ test.describe("orders and deliveries", () => {
 
     // And the price correction on the same order names the day, the person and
     // the reason rather than silently showing a different total.
-    await expect(page.getByText(/Price changed on .* by Maria Santos/)).toBeVisible();
+    await expect(page.getByText(/Price changed on .* by Maria Santos/).first()).toBeVisible();
     await expect(page.getByRole("main").getByText(/a cut was measured wrong/)).toBeVisible();
 
     expectClean();
   });
 
   test("the second run is linked to the one it follows", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Deliveries") }).click();
-    await page.getByRole("radio", { name: /Some left behind/ }).click();
+    await openNav(page, "Deliveries");
 
     // The marker suffix is not shown as part of anybody's name.
-    const card = page.getByRole("button", { name: /Santos Catering/ });
-    await expect(card).toHaveCount(1);
+    const row = page.getByRole("row", { name: /Rest of an order/ });
+    await expect(row).toHaveCount(1);
+    await expect(row).toContainText("Santos Catering");
     await expect(page.getByText("(backorder)")).toHaveCount(0);
-    await expect(page.getByText("The rest of an order")).toBeVisible();
 
-    await card.click();
+    await row.getByRole("button", { name: "#2047", exact: true }).click();
     await expect(page.getByText("This is the rest of an earlier delivery")).toBeVisible();
     await expect(page.getByRole("button", { name: "Open the first run" })).toBeVisible();
 
@@ -526,27 +529,32 @@ test.describe("money going back, and prices put right", () => {
     await signIn(page, baseURL);
   });
 
-  test("a refund is listed with what happened to the goods", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("radio", { name: /Refunded/ }).click();
-    await page.getByRole("button", { name: "Open" }).first().click();
+  const openShortOrder = async (page) => {
+    await openNav(page, "Orders");
+    await page.getByRole("group", { name: "Show" }).getByRole("button", { name: /Some left behind/ }).click();
+    await page.getByRole("button", { name: /^Open order \d+/ }).first().click();
+  };
 
-    await expect(page.getByRole("heading", { name: "Returns" })).toBeVisible();
-    await expect(page.getByRole("main").getByText("They changed their mind")).toBeVisible();
+  test("a refund is listed with what happened to the goods", async ({ page }) => {
+    await openNav(page, "Orders");
+    await page.getByRole("group", { name: "Show" }).getByRole("button", { name: /Refunded/ }).click();
+    await page.getByRole("button", { name: /^Open order \d+/ }).first().click();
+
+    const payments = page.getByRole("region", { name: "Payments" });
+    await expect(payments).toBeVisible();
+    await expect(payments.getByText("They changed their mind")).toBeVisible();
     // The disposition is the part that matters, so it is on the screen and not
     // only in the database.
-    await expect(page.getByText(/2 × Styro Block 2 inch — back on the shelf/)).toBeVisible();
+    await expect(payments.getByText(/2 × Styro Block 2 inch — back on the shelf/)).toBeVisible();
 
     expectClean();
   });
 
   test("giving money back names the goods and what happens to them", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("radio", { name: /Some left behind/ }).click();
-    await page.getByRole("button", { name: "Open" }).first().click();
+    await openShortOrder(page);
 
-    // Rule 6: its own outlined block at the bottom, never a red icon in a row.
-    await expect(page.getByRole("heading", { name: "Money on this order" })).toBeVisible();
+    // Rule 6: in the order's Payments panel, never a red icon in a row.
+    await expect(page.getByRole("heading", { name: "Payments" })).toBeVisible();
     await page.getByRole("button", { name: "Give money back" }).click();
 
     await expect(page.getByRole("heading", { name: /Give money back on order/ })).toBeVisible();
@@ -567,9 +575,7 @@ test.describe("money going back, and prices put right", () => {
   });
 
   test("fixing a price shows both figures and says which way it moved", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("radio", { name: /Some left behind/ }).click();
-    await page.getByRole("button", { name: "Open" }).first().click();
+    await openShortOrder(page);
 
     await page.getByRole("button", { name: "Fix the price" }).click();
     await expect(page.getByRole("heading", { name: /Fix the price on order/ })).toBeVisible();
@@ -601,11 +607,10 @@ test.describe("people", () => {
   });
 
   test("a supplier can be removed, in its own block, with a named confirm", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Suppliers") }).click();
-    await page
-      .getByRole("row", { name: /Davao Foam Supply/ })
-      .getByRole("button", { name: "Open" })
-      .click();
+    await openNav(page, "Suppliers");
+    // The row opens the design's side panel; "View supplier" opens the full screen.
+    await page.getByRole("button", { name: "Open Davao Foam Supply" }).click();
+    await page.getByRole("button", { name: "View supplier" }).click();
 
     // Rule 6: destructive lives in its own block at the bottom, never as an
     // icon in the row, and it says what goes and what survives.
@@ -631,12 +636,10 @@ test.describe("people", () => {
   test("a customer with an order still waiting cannot be removed, and is told why", async ({
     page,
   }) => {
-    await page.getByRole("button", { name: navName("Customers") }).click();
-    await page
-      .getByRole("listitem")
-      .filter({ hasText: "Reyes Events" })
-      .getByRole("button", { name: "Open" })
-      .click();
+    await openNav(page, "Customers");
+    // The row opens the design's side panel; "View customer" opens the full screen.
+    await page.getByRole("button", { name: "Open Reyes Events" }).click();
+    await page.getByRole("button", { name: "View customer" }).click();
 
     // The block still renders — it explains the refusal rather than vanishing,
     // because "why can't I delete this" deserves an answer on the screen.
@@ -650,16 +653,13 @@ test.describe("people", () => {
   });
 
   test("removing a customer keeps their past orders", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Customers") }).click();
-    await page
-      .getByRole("listitem")
-      .filter({ hasText: "Bloom & Co" })
-      .getByRole("button", { name: "Open" })
-      .click();
+    await openNav(page, "Customers");
+    await page.getByRole("button", { name: "Open Bloom & Co" }).click();
+    await page.getByRole("button", { name: "View customer" }).click();
 
     // Nothing waiting, so removal is offered and the copy promises the orders
     // survive -- `orders` holds the name as text with no foreign key.
-    await expect(page.getByText(/past orders are NOT deleted/)).toBeVisible();
+    await expect(page.getByText(/Their past orders stay/)).toBeVisible();
     await page.getByRole("button", { name: "Remove Bloom & Co" }).click();
 
     await expect(page.getByRole("heading", { name: "Remove Bloom & Co?" })).toBeVisible();
@@ -670,22 +670,23 @@ test.describe("people", () => {
     // each toast as a list item in a portal outside the content area. That is
     // the toast doing its job, not the customer still being on the list.
     await expect(
-      page.getByRole("main").getByRole("listitem").filter({ hasText: "Bloom & Co" })
+      page.getByRole("main").getByRole("table").getByText("Bloom & Co")
     ).toHaveCount(0);
 
     // The promise the copy makes, actually checked.
-    await page.getByRole("button", { name: navName("Orders") }).click();
+    await openNav(page, "Orders");
     await expect(page.getByRole("table").getByText("Bloom & Co")).toBeVisible();
 
     expectClean();
   });
 
-  test("customers are cards with call-list filters", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Customers") }).click();
+  test("customers have call-list filters", async ({ page }) => {
+    await openNav(page, "Customers");
 
-    await expect(page.getByRole("radio", { name: /Not ordered in a year/ })).toBeVisible();
-    await expect(page.getByRole("radio", { name: /Businesses/ })).toBeVisible();
-    await expect(page.getByText("Business customer").first()).toBeVisible();
+    const show = page.getByRole("group", { name: "Show" });
+    await expect(show.getByRole("button", { name: /Not ordered in a year/ })).toBeVisible();
+    await expect(show.getByRole("button", { name: /Businesses/ })).toBeVisible();
+    await expect(page.getByRole("table").getByText("Business", { exact: true }).first()).toBeVisible();
 
     expectClean();
   });
@@ -693,34 +694,31 @@ test.describe("people", () => {
   test("staff accounts answer 'can sign in', and removal lives in its own block", async ({
     page,
   }) => {
-    await page.getByRole("button", { name: navName("Staff & accounts") }).click();
+    await openNav(page, "User Management");
 
     await expect(page.getByRole("columnheader", { name: "Can sign in" })).toBeVisible();
-    await expect(page.getByText("Blocked").first()).toBeVisible();
-    // Rule 6: no bare destructive icon in a row.
-    await expect(page.getByRole("button", { name: "Manage" }).first()).toBeVisible();
+    // The design calls a blocked account "Suspended".
+    await expect(page.getByRole("table").getByText("Suspended").first()).toBeVisible();
+    // Rule 6: no bare destructive icon in a row; the row's actions are words in a menu.
+    await page.getByRole("button", { name: "Actions for Ana Reyes" }).click();
+    await expect(page.getByRole("menuitem", { name: "Edit details" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
-    await page
-      .getByRole("row", { name: /Ana Reyes/ })
-      .getByRole("button", { name: "Manage" })
-      .click();
+    await page.getByRole("table").getByRole("button", { name: "Ana Reyes", exact: true }).click();
 
-    await expect(page.getByText("Ana cannot sign in right now")).toBeVisible();
+    await expect(page.getByRole("switch", { name: "Can sign in" })).not.toBeChecked();
     await expect(page.getByText(/Their password still works/)).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Remove this account for good" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Remove Ana's account" })).toBeVisible();
 
     expectClean();
   });
 
   test("a destructive confirm names the record and says what survives", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Staff & accounts") }).click();
-    await page
-      .getByRole("row", { name: /Ana Reyes/ })
-      .getByRole("button", { name: "Manage" })
-      .click();
-    await page.getByRole("button", { name: /Remove Ana Reyes/ }).click();
+    await openNav(page, "User Management");
+    await page.getByRole("table").getByRole("button", { name: "Ana Reyes", exact: true }).click();
+    await page.getByRole("button", { name: "Remove account" }).click();
 
-    const dialog = page.getByRole("dialog");
+    const dialog = page.getByRole("alertdialog");
     await expect(dialog.getByText("Remove Ana Reyes?")).toBeVisible();
     await expect(dialog.getByText(/stay exactly as they are/)).toBeVisible();
     await expect(dialog.getByText(/cannot be undone/)).toBeVisible();
@@ -729,20 +727,17 @@ test.describe("people", () => {
     await expect(dialog.getByRole("button", { name: "Keep it" })).toBeVisible();
 
     await dialog.getByRole("button", { name: "Keep it" }).click();
-    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(page.getByRole("alertdialog")).toHaveCount(0);
 
     expectClean();
   });
 
   test("changing a role spells out what each one unlocks", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Staff & accounts") }).click();
-    await page
-      .getByRole("row", { name: /Juan Dela Cruz/ })
-      .getByRole("button", { name: "Manage" })
-      .click();
-    await page.getByRole("button", { name: "Change this" }).click();
+    await openNav(page, "User Management");
+    await page.getByRole("button", { name: "Actions for Juan Dela Cruz" }).click();
+    await page.getByRole("menuitem", { name: "Change role" }).click();
 
-    await expect(page.getByRole("heading", { level: 1, name: /What does this person do/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Change Juan's role" })).toBeVisible();
     await expect(page.getByText(/Writes orders and looks after customers/)).toBeVisible();
     await expect(page.getByText(/Works from the Production screen/)).toBeVisible();
 
@@ -750,11 +745,11 @@ test.describe("people", () => {
   });
 
   test("the activity log is real entries, grouped by day", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Staff & accounts") }).click();
-    await page.getByRole("button", { name: "What happened recently" }).click();
+    // The design files the activity log under Settings.
+    await openNav(page, "Activity log");
 
-    await expect(page.getByRole("heading", { level: 1, name: "What happened recently" })).toBeVisible();
-    await expect(page.getByText("Today")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Activity log" })).toBeVisible();
+    await expect(page.getByRole("rowheader", { name: "Today" })).toBeVisible();
     await expect(page.getByText(/recorded 60 × Styro Ball 4 inch made/)).toBeVisible();
     // A row written in the pre-overhaul shape still renders.
     await expect(page.getByText(/Deleted order #1039/)).toBeVisible();
@@ -775,13 +770,12 @@ test.describe("what a role is not offered", () => {
     await stubSupabase(page, { as: "juan@lsbhandicrafts.test" });
     await signIn(page, baseURL, "juan@lsbhandicrafts.test");
 
-    await page.getByRole("button", { name: navName("Orders") }).click();
-    await page.getByRole("button", { name: "Open" }).first().click();
+    await openNav(page, "Orders");
+    await page.getByRole("button", { name: /^Open order \d+/ }).first().click();
 
     // The ordinary forward action is still theirs — writing orders and moving
     // them along is the job. Only the money is not.
     await expect(page.getByRole("button", { name: "Mark as done" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Money on this order" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Give money back" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Fix the price" })).toHaveCount(0);
 
@@ -803,13 +797,11 @@ test.describe("what a role is not offered", () => {
     await stubSupabase(page, { as: "juan@lsbhandicrafts.test" });
     await signIn(page, baseURL, "juan@lsbhandicrafts.test");
 
-    await page.getByRole("button", { name: navName("Suppliers") }).click();
-    await page
-      .getByRole("row", { name: /Davao Foam Supply/ })
-      .getByRole("button", { name: "Open" })
-      .click();
+    await openNav(page, "Suppliers");
+    await page.getByRole("button", { name: "Open Davao Foam Supply" }).click();
+    await page.getByRole("button", { name: "View supplier" }).click();
 
-    await expect(page.getByRole("heading", { name: "Davao Foam Supply" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Davao Foam Supply" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Edit details" })).toHaveCount(0);
 
     await expect(
@@ -831,7 +823,7 @@ test.describe("the six rules, spot-checked", () => {
   // actions, pagination). The old 16px / 44px floors were the previous
   // overhaul's and were deliberately replaced.
   test("nothing readable is under 12px and no control is under 28px", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Products & stock") }).click();
+    await openNav(page, "Inventory");
     await page.getByRole("row").last().waitFor();
     // Measured once the screen has finished arriving.
     await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
@@ -860,7 +852,7 @@ test.describe("the six rules, spot-checked", () => {
         + 'main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select';
       for (const el of document.querySelectorAll(controls)) {
         const r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) continue;
+        if (r.width <= 1 || r.height <= 1) continue; // visually hidden (a select's form value)
         if (r.height < 27.5) tiny.push({ label: (el.textContent || el.type).slice(0, 40), h: Math.round(r.height) });
       }
 
@@ -873,7 +865,7 @@ test.describe("the six rules, spot-checked", () => {
   });
 
   test("every icon has a word beside it", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Products & stock") }).click();
+    await openNav(page, "Inventory");
 
     const wordless = await page.evaluate(() => {
       const found = [];
@@ -893,7 +885,7 @@ test.describe("the six rules, spot-checked", () => {
   });
 
   test("focus is visible on every control it lands on", async ({ page }) => {
-    await page.getByRole("button", { name: navName("Products & stock") }).click();
+    await openNav(page, "Inventory");
 
     for (let i = 0; i < 12; i += 1) {
       await page.keyboard.press("Tab");
@@ -912,24 +904,22 @@ test.describe("the six rules, spot-checked", () => {
 });
 
 test.describe("responsive", () => {
-  test("a phone gets a tab bar, cards and a sticky action — never a sideways scroll", async ({
+  // The design's sidebar becomes a sheet on a phone (below 768px), opened from
+  // the top bar's toggle, and full width with its labels from 768px up.
+  test("a phone gets the sidebar as a sheet — never a sideways scroll", async ({
     page,
     baseURL,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await signIn(page, baseURL);
 
-    // The bottom tab bar replaces the sidebar, and its targets carry words.
-    const tabs = page.getByRole("navigation", { name: "Sections" });
-    await expect(tabs).toBeVisible();
-    await expect(tabs.getByText("Products", { exact: true })).toBeVisible();
-
-    await tabs.getByText("Products", { exact: true }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Products & stock" })).toBeVisible();
-
-    // Rows became cards: the table is gone at this width.
-    await expect(page.getByRole("table")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Add a product" })).toBeVisible();
+    await expect(page.getByRole("complementary", { name: "Main navigation" })).toBeHidden();
+    await page.getByRole("button", { name: "Toggle sidebar" }).click();
+    const sheet = page.getByRole("dialog", { name: "Navigation" });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("button", { name: /^Inventory/ }).click();
+    await expect(page.getByRole("heading", { level: 1, name: "Inventory" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add product" })).toBeVisible();
 
     const overflows = await page.evaluate(
       () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1
@@ -939,13 +929,13 @@ test.describe("responsive", () => {
     expectClean();
   });
 
-  test("a tablet gets the icon rail, with a word under every icon", async ({ page, baseURL }) => {
+  test("a tablet keeps the sidebar, with a word beside every icon", async ({ page, baseURL }) => {
     await page.setViewportSize({ width: 900, height: 800 });
     await signIn(page, baseURL);
 
-    await expect(page.getByRole("navigation", { name: "Sections" })).toBeHidden();
-    // The rail shows one word per item rather than truncating the full label.
-    await expect(page.getByRole("button", { name: "Products & stock" })).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "Main" });
+    await expect(nav).toBeVisible();
+    await expect(nav.getByText("Inventory", { exact: true })).toBeVisible();
 
     expectClean();
   });

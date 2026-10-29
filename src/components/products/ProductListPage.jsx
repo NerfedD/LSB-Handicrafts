@@ -293,7 +293,7 @@ export default function ProductListPage({
                         <span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center rounded-md border border-border text-fg-3">
                           {productIcon(product.productType, "size-3.5")}
                         </span>
-                        <button type="button" onClick={() => onView(product.id)} className="truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
+                        <button type="button" data-slot="text-link" onClick={() => onView(product.id)} className="truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
                           {product.name}
                         </button>
                       </span>

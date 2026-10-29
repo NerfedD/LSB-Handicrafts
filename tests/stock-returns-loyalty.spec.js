@@ -11,8 +11,19 @@ const SALES = 'juan@lsbhandicrafts.test';
 
 async function openProduct(page, baseURL, name) {
   await page.goto(`${baseURL}/products`);
-  await page.getByRole('row', { name: new RegExp(name) }).getByRole('button', { name: 'View' }).click();
-  await expect(page.getByText('On the shelf right now')).toBeVisible();
+  await page.getByRole('table').getByRole('button', { name, exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Stock numbers' })).toBeVisible();
+}
+
+/**
+ * The design's "Count or write off stock" dialog: one dialog opened by "Count
+ * stock", with "Count what's there" and "Write off damage" side by side.
+ */
+async function openWriteOff(page) {
+  await page.getByRole('button', { name: 'Count stock' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Write off damage' }).click();
+  return dialog;
 }
 
 test('damaged stock comes off the shelf once, with a reason, and shows in the stock history', async ({ page, baseURL }) => {
@@ -24,13 +35,12 @@ test('damaged stock comes off the shelf once, with a reason, and shows in the st
   await signIn(page, baseURL);
   await openProduct(page, baseURL, 'Styro Ball 4 inch');
 
-  await page.getByRole('button', { name: 'Record damage' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('How many are damaged').fill('3');
-  await dialog.getByLabel('What happened').selectOption('broken');
-  await dialog.getByLabel('Note').fill('Dropped by the loading bay');
-  await expect(dialog).toContainText('140 − 3 damaged = 137 left on the shelf.');
-  await dialog.getByRole('button', { name: 'Write it off' }).click();
+  const dialog = await openWriteOff(page);
+  await dialog.getByLabel(/^How much to write off/).fill('3');
+  await dialog.getByLabel(/^What happened/).selectOption('broken');
+  await dialog.getByLabel(/^Note/).fill('Dropped by the loading bay');
+  await expect(dialog).toContainText(/Leaves 137 \w+ on hand\./);
+  await dialog.getByRole('button', { name: 'Write off', exact: true }).click();
 
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('The damaged stock was written off.')).toBeVisible();
@@ -49,11 +59,10 @@ test('a damage record entered wrong is put back once, and stays on the record', 
   await signIn(page, baseURL);
   await openProduct(page, baseURL, 'Styro Ball 4 inch');
 
-  await page.getByRole('button', { name: 'Record damage' }).click();
-  const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('How many are damaged').fill('5');
-  await dialog.getByLabel('What happened').selectOption('handling');
-  await dialog.getByRole('button', { name: 'Write it off' }).click();
+  const dialog = await openWriteOff(page);
+  await dialog.getByLabel(/^How much to write off/).fill('5');
+  await dialog.getByLabel(/^What happened/).selectOption('handling');
+  await dialog.getByRole('button', { name: 'Write off', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(tables.inventory.find((row) => row.sku === 'SB-040').stock).toBe(135);
 
@@ -94,13 +103,13 @@ test('a count correction refuses to overwrite a count that moved after the form 
   await signIn(page, baseURL);
   await openProduct(page, baseURL, 'Styro Ball 4 inch');
 
-  await page.getByRole('button', { name: 'Correct the count' }).click();
+  await page.getByRole('button', { name: 'Count stock' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('How many are actually there').fill('150');
-  await dialog.getByLabel('Why it is being corrected').selectOption('recount');
+  await dialog.getByLabel(/^You counted/).fill('150');
+  await dialog.getByLabel(/^Most likely reason/).selectOption('recount');
   // Somebody else's change lands while the form is open.
   tables.inventory.find((row) => row.sku === 'SB-040').stock = 139;
-  await dialog.getByRole('button', { name: 'Save the count' }).click();
+  await dialog.getByRole('button', { name: 'Save count' }).click();
   await expect(dialog.getByRole('alert')).toContainText('changed since you opened this');
   expect(tables.inventory.find((row) => row.sku === 'SB-040').stock).toBe(139);
 });
@@ -110,13 +119,15 @@ test('sales staff can look at stock but not change it, the product or its price'
   await signIn(page, baseURL, SALES);
   await openProduct(page, baseURL, 'Styro Ball 4 inch');
 
-  await expect(page.getByRole('button', { name: 'Record damage' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Correct the count' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Edit this product' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Count stock' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Edit details' })).toHaveCount(0);
 
   await page.goto(`${baseURL}/products`);
-  await expect(page.getByRole('button', { name: 'Add a product' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add product' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Actions for Styro Ball 4 inch' }).click();
+  await expect(page.getByRole('menuitem', { name: 'View product' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Edit product' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   await page.goto(`${baseURL}/products/1/edit`);
   await expect(page.getByText(/not part of your job|don't have access|do not have access/i).first()).toBeVisible();
@@ -126,7 +137,7 @@ test('damaged goods on a delivered order are replaced instead of refunded, and n
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/orders/1043`);
-  await expect(page.getByRole('heading', { name: 'Bloom & Co' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Order #1043' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Replace goods' }).click();
   const dialog = page.getByRole('dialog');
@@ -152,7 +163,7 @@ test('an order not yet delivered offers no replacement', async ({ page, baseURL 
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/orders/1042`);
-  await expect(page.getByRole('heading', { name: 'Money on this order' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Payments' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Replace goods' })).toHaveCount(0);
 });
 
@@ -174,7 +185,7 @@ test('a manager switches the loyalty reward on, and a new order for a regular ap
   await expect(rules).toHaveCount(0);
   expect(tables.loyalty_rules[0]).toMatchObject({ enabled: true, reward_after_orders: 1, reward_percent: 10 });
   // Bloom & Co has one finished order (#1043).
-  await expect(page.getByRole('radio', { name: /Loyalty reward/ })).toContainText('1');
+  await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: /Loyalty reward/ })).toContainText('1');
 
   await page.goto(`${baseURL}/orders/new`);
   // Scoped to <main>: the sidebar's Customers button would match first.
@@ -189,7 +200,7 @@ test('a manager switches the loyalty reward on, and a new order for a regular ap
   await expect(page.getByText('−₱120.00 on this order.')).toBeVisible();
   await page.getByRole('button', { name: 'Create order', exact: true }).click();
 
-  await expect(page.getByRole('heading', { level: 1, name: 'Order details' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: /^Order #\d+/ })).toBeVisible();
   expect(posted[0]).toMatchObject({ customer_id: 204, discount_amount: 120, total_amount: 1080, promotion: { kind: 'loyalty' } });
   await expect(page.getByRole('main').getByText('Loyalty reward').first()).toBeVisible();
 });
@@ -214,7 +225,7 @@ test('raw materials at or below their reorder point are one filter away', async 
   );
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/raw-materials`);
-  await page.getByRole('radio', { name: /Needs ordering/ }).click();
+  await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: /Needs ordering/ }).click();
   await expect(page.getByText('Styro Sheet 1 inch')).toBeVisible();
   await expect(page.getByText('Styro Sheet 2 inch')).toHaveCount(0);
 });

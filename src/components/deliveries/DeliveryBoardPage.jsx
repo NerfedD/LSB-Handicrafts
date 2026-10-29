@@ -265,7 +265,7 @@ export default function DeliveryBoardPage({
                   return (
                     <TableRow key={landed.key} className={landed.className}>
                       <TableCell>
-                        <button type="button" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
+                        <button type="button" data-slot="text-link" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
                           #{delivery.id}
                         </button>
                       </TableCell>
@@ -327,7 +327,7 @@ export default function DeliveryBoardPage({
                       >
                         <Landed change={change} kind="delivery" id={delivery.id} />
                         <div className="flex items-center justify-between gap-2">
-                          <button type="button" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
+                          <button type="button" data-slot="text-link" onClick={() => onOpen(delivery.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
                             #{delivery.id}
                           </button>
                           {late ? <Badge variant="destructive">{dueLabel(delivery).replace(/^(\d+) (days?) late$/, "Late $1 $2")}</Badge> : null}

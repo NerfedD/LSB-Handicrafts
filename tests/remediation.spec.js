@@ -1,26 +1,26 @@
 import { expect, test } from '@playwright/test';
-import { signIn, stubSupabase } from './stubSupabase.js';
+import { openNav, signIn, stubSupabase } from './stubSupabase.js';
 import { SIGNED_IN_EMAIL } from './fixtures.js';
 
 test('refresh keeps a nested record and its exact query', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/products/1/edit?source=audit`);
-  await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 4 inch');
+  await expect(page.getByLabel(/^Name /)).toHaveValue('Styro Ball 4 inch');
   await page.reload();
   await expect(page).toHaveURL(/\/products\/1\/edit\?source=audit$/);
-  await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 4 inch');
+  await expect(page.getByLabel(/^Name /)).toHaveValue('Styro Ball 4 inch');
 });
 
 test('filtered orders retain the query through refresh and browser history', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/orders?tab=waiting&query=Maria&source=audit`);
-  await expect(page.getByPlaceholder('Search by customer or order number')).toHaveValue('Maria');
+  await expect(page.getByRole('searchbox', { name: 'Search orders' })).toHaveValue('Maria');
   await page.reload();
   await expect(page).toHaveURL(/tab=waiting&query=Maria&source=audit/);
-  await page.getByRole('navigation').getByRole('button', { name: /^Products & stock/ }).click();
+  await openNav(page, 'Inventory');
   await expect(page).toHaveURL(/\/products$/);
   await page.goBack();
-  await expect(page.getByPlaceholder('Search by customer or order number')).toHaveValue('Maria');
+  await expect(page.getByRole('searchbox', { name: 'Search orders' })).toHaveValue('Maria');
 });
 
 test('a clean login from a nested URL lands on the overview', async ({ page, baseURL }) => {
@@ -86,17 +86,17 @@ test('failed product stock write retains inputs, focuses the error, and retries 
     await route.fallback();
   });
   await page.goto(`${baseURL}/products/new`);
-  await page.getByLabel('Product name').fill('Regression product');
+  await page.getByLabel(/^Name /).fill('Regression product');
   await page.getByLabel('How wide across').fill('4');
-  await page.getByLabel('Price', { exact: false }).fill('125');
-  await page.getByLabel('How many on the shelf now').fill('20');
-  await page.getByRole('button', { name: 'Save this product' }).click();
+  await page.getByLabel(/^Price/).fill('125');
+  await page.getByLabel('On the shelf').fill('20');
+  await page.getByRole('button', { name: 'Add product', exact: true }).click();
   await expect(page.locator('[data-form-error]')).toContainText('shelf count was not');
   await expect(page.locator('[data-form-error]')).toBeFocused();
-  await expect(page.getByLabel('Product name')).toHaveValue('Regression product');
-  await expect(page.getByLabel('How many on the shelf now')).toHaveValue('20');
+  await expect(page.getByLabel(/^Name /)).toHaveValue('Regression product');
+  await expect(page.getByLabel('On the shelf')).toHaveValue('20');
   fail = false;
-  await page.getByRole('button', { name: 'Save this product' }).click();
+  await page.getByRole('button', { name: 'Add product', exact: true }).click();
   await expect(page).toHaveURL(/\/products\/\d+$/);
   expect(tables.products.filter((row) => row.name === 'Regression product')).toHaveLength(1);
   expect(tables.inventory.filter((row) => row.name === 'Regression product')).toHaveLength(1);
@@ -113,16 +113,16 @@ test('customer failure stays open and invalid phone input never dispatches', asy
     await route.fallback();
   });
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole('button', { name: 'Add a customer', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add customer', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/name/i).fill('Regression customer');
   const phone = dialog.locator('input[type="tel"]');
   await phone.fill('letters!'); await expect(phone).toHaveValue('');
   await phone.fill('123');
-  await dialog.getByRole('button', { name: 'Add this customer' }).click();
+  await dialog.getByRole('button', { name: 'Add customer' }).click();
   expect(writes).toBe(0);
   await phone.fill('09171234567');
-  await dialog.getByRole('button', { name: 'Add this customer' }).click();
+  await dialog.getByRole('button', { name: 'Add customer' }).click();
   await expect(dialog.locator('[data-form-error]')).toContainText('email address is already in use');
   await expect(dialog.locator('[data-form-error]')).toBeFocused();
   await expect(dialog.getByLabel(/name/i)).toHaveValue('Regression customer');
@@ -147,13 +147,13 @@ test('account provisioning sends a password and a late staff read cannot erase t
   });
   await page.clock.fastForward(61_000);
   await readStarted;
-  await page.getByRole('button', { name: /^Staff & accounts/ }).click();
-  await page.getByRole('button', { name: 'Add a staff account', exact: true }).first().click();
+  await openNav(page, 'User Management');
+  await page.getByRole('button', { name: 'Add user', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Their name').fill('Regression staff');
-  await dialog.getByRole('radio', { name: /Sales Staff/ }).click();
-  await dialog.getByLabel('Email address').fill('regression@example.test');
-  await dialog.getByLabel('First password').fill('ValidPass123');
+  await dialog.getByLabel(/^Full name/).fill('Regression staff');
+  await dialog.getByLabel(/^Role/).selectOption('Sales Staff');
+  await dialog.getByLabel(/^Work email/).fill('regression@example.test');
+  await dialog.getByLabel(/^First password/).fill('ValidPass123');
   let payload;
   await page.route('**/functions/v1/admin-accounts', async (route) => {
     payload = route.request().postDataJSON();
@@ -161,13 +161,13 @@ test('account provisioning sends a password and a late staff read cannot erase t
     tables.staff.push(row);
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: row }) });
   });
-  await dialog.getByRole('button', { name: 'Create the account' }).click();
+  await dialog.getByRole('button', { name: 'Add user' }).click();
   await expect(dialog).toHaveCount(0);
   expect(payload.password).toBe('ValidPass123');
   release();
   await expect(page.getByText('Regression staff', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /^Orders/ }).click();
-  await page.getByRole('button', { name: /^Staff & accounts/ }).click();
+  await openNav(page, 'Orders');
+  await openNav(page, 'User Management');
   await expect(page.getByText('Regression staff', { exact: true })).toBeVisible();
 });
 
@@ -198,22 +198,23 @@ test('order drag saves immediately, survives refresh, and rolls back on rejectio
 
 test('a dashboard alert preserves its selected tab on refresh', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
-  await page.getByRole('button', { name: /^Alerts/ }).click();
+  // The dashboard's "Stock to watch" card opens Inventory on its running-low filter.
+  await page.getByRole('button', { name: 'Open inventory' }).click();
   await expect(page).toHaveURL(/\/products\?tab=low$/);
   await page.reload();
   await expect(page).toHaveURL(/\/products\?tab=low$/);
-  await expect(page.getByRole('radio', { name: /Running low/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('group', { name: 'Stock level' }).getByRole('button', { name: /Running low/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('failed account creation retains credentials, and a retry adds the row', async ({ page, baseURL }) => {
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/staff`);
-  await page.getByRole('button', { name: 'Add a staff account', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add user', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Their name').fill('New colleague');
-  await dialog.getByRole('radio', { name: /Sales Staff/ }).click();
-  await dialog.getByLabel('Email address').fill('new@example.test');
-  await dialog.getByLabel('First password').fill('ValidPass123');
+  await dialog.getByLabel(/^Full name/).fill('New colleague');
+  await dialog.getByLabel(/^Role/).selectOption('Sales Staff');
+  await dialog.getByLabel(/^Work email/).fill('new@example.test');
+  await dialog.getByLabel(/^First password/).fill('ValidPass123');
   let fail = true;
   await page.route('**/functions/v1/admin-accounts', async (route) => {
     if (fail) return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ message: 'That username is already taken.' }) });
@@ -221,12 +222,12 @@ test('failed account creation retains credentials, and a retry adds the row', as
     tables.staff.push(row);
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, data: row }) });
   });
-  await dialog.getByRole('button', { name: 'Create the account' }).click();
+  await dialog.getByRole('button', { name: 'Add user' }).click();
   await expect(dialog.locator('[data-form-error]')).toHaveText('That username is already taken.');
   await expect(dialog.locator('[data-form-error]')).toBeFocused();
-  await expect(dialog.getByLabel('First password')).toHaveValue('ValidPass123');
+  await expect(dialog.getByLabel(/^First password/)).toHaveValue('ValidPass123');
   fail = false;
-  await dialog.getByRole('button', { name: 'Create the account' }).click();
+  await dialog.getByRole('button', { name: 'Add user' }).click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText('New colleague', { exact: true })).toBeVisible();
 });
@@ -234,12 +235,12 @@ test('failed account creation retains credentials, and a retry adds the row', as
 test('deleted staff stays absent after refresh and loses application access', async ({ page, baseURL }) => {
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/staff/2`);
-  await page.getByRole('button', { name: 'Remove Juan Dela Cruz', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove account', exact: true }).click();
   await page.getByRole('button', { name: 'Yes, remove them', exact: true }).click();
   await expect(page).toHaveURL(`${baseURL}/staff`);
   expect(tables.staff.some((row) => row.id === 2)).toBe(false);
   await page.reload();
-  await expect(page.getByRole('heading', { level: 1, name: 'Staff & accounts' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'User Management' })).toBeVisible();
   await expect(page.getByText('Juan Dela Cruz', { exact: true })).toHaveCount(0);
   // Simulate a still-unexpired token for the deleted user: fresh staff, not
   // token claims or old browser caches, must decide whether the app opens.
@@ -256,14 +257,14 @@ test('deleted staff stays absent after refresh and loses application access', as
 
 test('desktop sidebar stays anchored through forms and dialogs; phone has no horizontal overflow', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
-  const nav = page.getByRole('button', { name: /^Products & stock/ });
+  const nav = page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: /^Inventory/ });
   const before = await nav.boundingBox();
   await nav.click();
-  await page.getByRole('button', { name: 'Add a product', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add product', exact: true }).first().click();
   expect((await nav.boundingBox()).x).toBe(before.x);
-  await page.getByRole('button', { name: /^Staff & accounts/ }).click();
-  await page.getByRole('button', { name: 'Add a staff account', exact: true }).first().click();
-  expect((await page.getByRole('button', { name: /^Products & stock/, includeHidden: true }).first().boundingBox()).x).toBe(before.x);
+  await openNav(page, 'User Management');
+  await page.getByRole('button', { name: 'Add user', exact: true }).first().click();
+  expect((await page.getByRole('button', { name: /^Inventory/, includeHidden: true }).first().boundingBox()).x).toBe(before.x);
   await page.screenshot({ path: 'test-results/remediation-desktop.png', animations: 'disabled' });
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.setViewportSize({ width: 390, height: 844 });
@@ -291,8 +292,8 @@ test('editing an order leaves its cut-to-size line alone', async ({ page, baseUR
   expect(before, 'fixture should carry a cut line').toBeTruthy();
 
   await page.goto(`${baseURL}/orders/1041/edit`);
-  await expect(page.getByRole('heading', { level: 1, name: 'Change this order' })).toBeVisible();
-  await page.getByRole('button', { name: 'Save the changes' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Edit order #1041' })).toBeVisible();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(/\/orders\/1041$/);
 
   const after = tables.orders.find((row) => row.id === 1041).items
@@ -318,16 +319,17 @@ test('a delivery that arrives with nothing left owed finishes its order', async 
   const tables = await stubSupabase(page); await signIn(page, baseURL);
   expect(tables.orders.find((row) => row.id === 1042).status).toBe('Pending');
 
-  await page.getByRole('button', { name: /^Deliveries/ }).click();
-  await page.getByRole('button', { name: /Liza Villanueva/ }).click();
+  await openNav(page, 'Deliveries');
+  // #2042 is Liza Villanueva's delivery for order #1042.
+  await page.getByRole('button', { name: '#2042', exact: true }).click();
 
   // Send the whole order out, so nothing is left owed on it.
-  await page.getByRole('button', { name: /It is on the way/ }).click();
-  await expect(page.getByRole('heading', { name: 'What actually went out?' })).toBeVisible();
-  await page.getByRole('button', { name: /Yes, it is on the way/ }).click();
+  await page.getByRole('button', { name: 'Send out' }).click();
+  await expect(page.getByRole('heading', { name: 'Delivery #2042 is on the way' })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: 'Mark on the way' }).click();
   await expect(page.getByText(/is now on the way/)).toBeVisible();
 
-  await page.getByRole('button', { name: /It arrived/ }).click();
+  await page.getByRole('button', { name: 'Mark delivered' }).click();
   await expect(page.getByText(/order #1042 is done/)).toBeVisible();
 
   expect(tables.orders.find((row) => row.id === 1042).status).toBe('Completed');

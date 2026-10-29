@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { stubSupabase, signIn } from './stubSupabase.js';
+import { openNav, stubSupabase, signIn } from './stubSupabase.js';
 
 test('BUG-01: a lost completion response retries the same transaction', async ({ page, baseURL }) => {
   const requests = [];
@@ -57,10 +57,12 @@ test('BUG-11: a follow-up asks for this trip and records only its eight units', 
   tables.deliveries.find((row) => row.id === 2047).status = 'Ready To Go';
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/deliveries/2047`);
-  await page.getByRole('button', { name: /It is on the way/ }).click();
+  await page.getByRole('button', { name: 'Send out' }).click();
   const dialog = page.getByRole('dialog');
+  // The count, shown once somebody opens it, asks for this trip's eight units.
+  await dialog.getByRole('radio', { name: 'Some were left behind' }).click();
   await expect(dialog.getByRole('spinbutton').first()).toHaveValue('8');
-  await dialog.getByRole('button', { name: /Yes, it is on the way/ }).click();
+  await dialog.getByRole('button', { name: 'Mark on the way' }).click();
   await expect(dialog).toHaveCount(0);
   const manifest = tables.deliveries.find((row) => row.id === 2047).items_manifest;
   expect(manifest[0]).toMatchObject({ deliveredQty: 8, backorderQty: 0 });
@@ -68,14 +70,17 @@ test('BUG-11: a follow-up asks for this trip and records only its eight units', 
   expect(tables.orders.find((row) => row.id === 1046).items[0].committedUnits).toBe(20);
 });
 
-test('BUG-12: the dashboard add action clears an earlier product selection', async ({ page, baseURL }) => {
+// The design's dashboard has no "Add product" action, so the same stale
+// selection is checked through Inventory's "Add product" after a product was open.
+test('BUG-12: the add action clears an earlier product selection', async ({ page, baseURL }) => {
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/products/1`);
-  await page.getByRole('button', { name: /^Dashboard/ }).click();
-  await page.getByRole('button', { name: 'Add a product', exact: true }).click();
+  await openNav(page, 'Dashboard');
+  await openNav(page, 'Inventory');
+  await page.getByRole('button', { name: 'Add product', exact: true }).click();
   await expect(page).toHaveURL(/\/products\/new$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Add a product' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Add product' })).toBeVisible();
 });
 
 test('BUG-13/15: refreshing an edit retains the order and its renamed customer identity', async ({ page, baseURL }) => {
@@ -85,7 +90,7 @@ test('BUG-13/15: refreshing an edit retains the order and its renamed customer i
   await page.goto(`${baseURL}/orders/1042/edit`);
   await page.reload();
   await expect(page.getByRole('combobox', { name: /^Customer/ })).toHaveValue('Liza Villanueva');
-  await page.getByRole('button', { name: 'Save the changes' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page).toHaveURL(/\/orders\/1042$/);
   expect(tables.orders.find((row) => row.id === 1042).customer_id).toBe(202);
 });
@@ -94,15 +99,15 @@ test('BUG-14: a formatted staff phone reaches account creation as digits', async
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/staff`);
-  await page.getByRole('button', { name: 'Add a staff account', exact: true }).first().click();
+  await page.getByRole('button', { name: 'Add user', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Their name').fill('Phone test');
-  await dialog.getByRole('radio', { name: /Sales Staff/ }).click();
-  await dialog.getByLabel('Email address').fill('phone@example.test');
-  await dialog.getByLabel('Phone number').fill('0917 555 0201');
-  await dialog.getByLabel('First password').fill('ValidPass123');
+  await dialog.getByLabel(/^Full name/).fill('Phone test');
+  await dialog.getByLabel(/^Role/).selectOption('Sales Staff');
+  await dialog.getByLabel(/^Work email/).fill('phone@example.test');
+  await dialog.getByLabel(/^Mobile/).fill('0917 555 0201');
+  await dialog.getByLabel(/^First password/).fill('ValidPass123');
   const sent = page.waitForRequest('**/functions/v1/admin-accounts');
-  await dialog.getByRole('button', { name: 'Create the account' }).click();
+  await dialog.getByRole('button', { name: 'Add user' }).click();
   expect((await sent).postDataJSON().contactNumber).toBe('09175550201');
 });
 
@@ -141,7 +146,7 @@ test('BUG-01: a second retry after a twice-failed delivery still saves the order
   await expect(page.getByText(/record changed or is no longer available/)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Create order', exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Order details' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: /^Order #\d+/ })).toBeVisible();
 
   const written = tables.orders.filter((row) => row.customer_name === 'Retry Regression');
   expect(written).toHaveLength(1);

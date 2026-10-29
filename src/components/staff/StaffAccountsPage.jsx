@@ -235,7 +235,7 @@ export default function StaffAccountsPage({
                     <TableCell>
                       <span className="flex min-w-0 items-center gap-2">
                         <Avatar name={user.name} />
-                        <button type="button" onClick={() => onManage(user.id)} className="truncate border-0 bg-transparent p-0 font-medium text-foreground hover:underline">
+                        <button type="button" data-slot="text-link" onClick={() => onManage(user.id)} className="truncate border-0 bg-transparent p-0 font-medium text-foreground hover:underline">
                           {user.name}
                         </button>
                         {user.isSuperAdmin ? <Badge variant="outline">Owner</Badge> : null}

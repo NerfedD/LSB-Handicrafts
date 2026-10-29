@@ -189,6 +189,7 @@ function AppSidebar({ items, view, profile, navCounts, onNavigate, onSignOut }) 
       </SidebarHeader>
 
       <SidebarContent>
+        <nav aria-label="Main" className="contents">
         {NAV_GROUPS.map((group) => {
           const groupItems = items.filter((item) => item.group === group.key);
           if (groupItems.length === 0) return null;
@@ -225,6 +226,7 @@ function AppSidebar({ items, view, profile, navCounts, onNavigate, onSignOut }) 
             </SidebarGroup>
           );
         })}
+        </nav>
       </SidebarContent>
 
       <SidebarFooter>

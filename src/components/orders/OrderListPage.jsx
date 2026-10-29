@@ -217,7 +217,7 @@ export default function OrderListPage({
                   return (
                     <TableRow key={landed.key} className={`h-10 ${landed.className ?? ""}`}>
                       <TableCell>
-                        <button type="button" onClick={() => onOpen(order.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
+                        <button type="button" data-slot="text-link" onClick={() => onOpen(order.id)} className="border-0 bg-transparent p-0 font-medium text-primary-text hover:underline">
                           #{order.id}
                         </button>
                       </TableCell>

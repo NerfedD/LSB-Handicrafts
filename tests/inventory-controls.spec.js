@@ -48,22 +48,25 @@ async function stubWorkshop(page, tables, calls) {
 }
 
 test.describe('finding the work', () => {
-  test('purchasing, raw materials, production and products are four separate destinations', async ({ page, baseURL }) => {
+  // The design groups the workshop under one "Production" entry whose
+  // sub-items are Batches, Raw materials, Purchasing and the report; the
+  // shelf is "Inventory", a separate destination.
+  test('batches, raw materials, purchasing and inventory are separate destinations', async ({ page, baseURL }) => {
     await setup(page, baseURL);
-    const sidebar = page.locator('aside');
-    for (const label of ['Purchasing', 'Raw materials', 'Production', 'Products & stock']) {
-      await expect(sidebar.getByRole('button', { name: new RegExp(`^${label}`) })).toBeVisible();
+    const nav = page.getByRole('navigation', { name: 'Main' });
+    await nav.getByRole('button', { name: /^Production/ }).click();
+    for (const label of ['Batches', 'Raw materials', 'Purchasing', 'Production report']) {
+      await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible();
     }
-    await expect(sidebar.getByText('Stock & production')).toBeVisible();
+    await expect(nav.getByRole('button', { name: /^Inventory/ })).toBeVisible();
 
-    await sidebar.getByRole('button', { name: /^Production/ }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Production' })).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Production sections' }).getByRole('button', { name: 'Production report' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'How stock moves here' })).toContainText('The material used is deducted');
+    await nav.getByRole('button', { name: 'Batches', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Batches' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'How a batch moves' })).toContainText('Good pieces go into inventory');
 
-    await sidebar.getByRole('button', { name: /^Purchasing/ }).click();
+    await nav.getByRole('button', { name: 'Purchasing', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Purchasing' })).toBeVisible();
-    await expect(page.getByRole('main').getByRole('button', { name: 'Order materials' })).toBeVisible();
+    await expect(page.getByRole('main').getByRole('button', { name: 'New supplier order' })).toBeVisible();
     // The workshop tab strip that used to hide these screens is gone.
     await expect(page.getByRole('navigation', { name: 'Workshop sections' })).toHaveCount(0);
   });
@@ -71,17 +74,21 @@ test.describe('finding the work', () => {
   test('primary actions sit in the page, next to the filters', async ({ page, baseURL }) => {
     await setup(page, baseURL);
     await page.goto(`${baseURL}/products`);
-    await expect(page.getByRole('main').getByRole('button', { name: 'Add a product' })).toBeVisible();
-    await expect(page.getByRole('banner').getByRole('button', { name: 'Add a product' })).toHaveCount(0);
+    // In the page header, not the top bar.
+    const header = page.getByRole('main').getByRole('heading', { level: 1 }).locator('xpath=ancestor::header[1]');
+    await expect(header.getByRole('button', { name: 'Add product' })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Add product' })).toHaveCount(0);
     await page.goto(`${baseURL}/orders`);
-    await page.getByRole('main').getByRole('button', { name: 'Create order' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Create an order' })).toBeVisible();
+    await page.getByRole('main').getByRole('button', { name: 'New order' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'New order' })).toBeVisible();
   });
 
   test('help explains the screen it is opened on', async ({ page, baseURL }) => {
     await setup(page, baseURL);
     await page.goto(`${baseURL}/raw-material-orders`);
-    await page.getByRole('banner').getByRole('button', { name: 'Help' }).click();
+    // Help is an action in the design's command menu.
+    await page.getByRole('button', { name: 'Search pages and actions' }).click();
+    await page.getByRole('option', { name: 'Help on this page' }).click();
     await expect(page.getByText(/Only the usable units counted at receiving are added to stock/)).toBeVisible();
   });
 });
@@ -91,17 +98,17 @@ test.describe('categories and photos', () => {
     await setup(page, baseURL);
     await page.goto(`${baseURL}/products/new`);
     await page.getByRole('radio', { name: 'Styro ball' }).click();
-    await page.getByLabel('Product name').fill('Styro Ball 9 inch');
+    await page.getByLabel(/^Name /).fill('Styro Ball 9 inch');
     await page.getByLabel('How wide across').fill('9');
     await page.getByLabel('Category').click();
     await page.getByRole('option', { name: 'Add a new category…' }).click();
     await page.getByLabel('New category name').fill('  styro   BALLS ');
-    await page.getByLabel('Price').fill('300');
-    await page.getByRole('button', { name: 'Save this product' }).click();
+    await page.getByLabel(/^Price/).fill('300');
+    await page.getByRole('button', { name: 'Add product', exact: true }).click();
     // Said beside the field it is about, not only in a box at the top.
     await expect(page.getByLabel('New category name')).toHaveAccessibleDescription('There is already a category called "Styro Balls". Choose it from the list instead.');
     // What was typed is still there.
-    await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 9 inch');
+    await expect(page.getByLabel(/^Name /)).toHaveValue('Styro Ball 9 inch');
   });
 
   test('a product saves with a new category and a photo, which survive a reload, and the photo can be replaced and removed', async ({ page, baseURL }) => {
@@ -112,18 +119,18 @@ test.describe('categories and photos', () => {
     });
     await page.goto(`${baseURL}/products/new`);
     await page.getByRole('radio', { name: 'Styro ball' }).click();
-    await page.getByLabel('Product name').fill('Styro Ball 9 inch');
+    await page.getByLabel(/^Name /).fill('Styro Ball 9 inch');
     await page.getByLabel('How wide across').fill('9');
     await page.getByLabel('Category').click();
     await page.getByRole('option', { name: 'Add a new category…' }).click();
     await page.getByLabel('New category name').fill('Large Balls');
     // A whole number is a price; nobody has to type ".00".
-    await page.getByLabel('Price').fill('300');
-    await page.getByLabel('Product photo').setInputFiles({ name: 'ball.png', mimeType: 'image/png', buffer: PNG });
+    await page.getByLabel(/^Price/).fill('300');
+    await page.getByLabel('Photo', { exact: true }).setInputFiles({ name: 'ball.png', mimeType: 'image/png', buffer: PNG });
     await expect(page.getByRole('img', { name: 'Photo of Styro Ball 9 inch' })).toBeVisible();
-    await page.getByRole('button', { name: 'Save this product' }).click();
+    await page.getByRole('button', { name: 'Add product', exact: true }).click();
 
-    await expect(page.getByRole('heading', { level: 1, name: 'Product details' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Styro Ball 9 inch' })).toBeVisible();
     expect(rpcs).toEqual(['category_command', 'save_product_image']);
     expect(tables.product_categories.map((c) => c.name)).toContain('Large Balls');
     const product = tables.products.find((p) => p.name === 'Styro Ball 9 inch');
@@ -132,24 +139,25 @@ test.describe('categories and photos', () => {
     expect(tables.product_images).toEqual([expect.objectContaining({ product_id: product.id, data_url: expect.stringMatching(/^data:image\/jpeg;base64,/) })]);
 
     await page.reload();
-    await expect(page.getByRole('img', { name: 'Photo of Styro Ball 9 inch' })).toBeVisible();
+    // The product screen shows it as the design's 64px photo tile.
+    await expect(page.getByRole('button', { name: 'Photo of Styro Ball 9 inch' })).toBeVisible();
 
-    await page.getByRole('button', { name: /^Edit/ }).first().click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Edit product' })).toBeVisible();
+    await page.getByRole('button', { name: 'Edit details' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Edit Styro Ball 9 inch' })).toBeVisible();
     await page.getByRole('button', { name: 'Remove photo' }).click();
     await expect(page.getByText('The photo will be removed when you save the product.')).toBeVisible();
     await page.getByRole('button', { name: 'Keep the saved photo' }).click();
-    await page.getByLabel('Product photo').setInputFiles({ name: 'ball2.png', mimeType: 'image/png', buffer: PNG });
-    await page.getByRole('button', { name: 'Save the changes' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Product details' })).toBeVisible();
+    await page.getByLabel('Photo', { exact: true }).setInputFiles({ name: 'ball2.png', mimeType: 'image/png', buffer: PNG });
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Styro Ball 9 inch' })).toBeVisible();
     expect(tables.product_images).toHaveLength(1);
 
-    await page.getByRole('button', { name: /^Edit/ }).first().click();
+    await page.getByRole('button', { name: 'Edit details' }).click();
     await page.getByRole('button', { name: 'Remove photo' }).click();
-    await page.getByRole('button', { name: 'Save the changes' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'Product details' })).toBeVisible();
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Styro Ball 9 inch' })).toBeVisible();
     expect(tables.product_images).toHaveLength(0);
-    await expect(page.getByText('No photo yet')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add a photo of this product' })).toBeVisible();
   });
 
   test('categories are managed in one list, and one in use cannot be removed', async ({ page, baseURL }) => {
@@ -174,13 +182,13 @@ test.describe('categories and photos', () => {
     await setup(page, baseURL);
     await page.goto(`${baseURL}/products/new`);
     await page.getByRole('radio', { name: 'Styro ball' }).click();
-    await page.getByLabel('Product name').fill('Tiny ball');
+    await page.getByLabel(/^Name /).fill('Tiny ball');
     await page.getByLabel('How wide across').fill('-2');
-    await page.getByLabel('Price').fill('12.345');
-    await page.getByRole('button', { name: 'Save this product' }).click();
+    await page.getByLabel(/^Price/).fill('12.345');
+    await page.getByRole('button', { name: 'Add product', exact: true }).click();
     await expect(page.getByLabel('How wide across')).toHaveAccessibleDescription('The width across must be a number above 0.');
-    await expect(page.getByLabel('Price')).toHaveAccessibleDescription('The price can have at most 2 decimal places.');
-    await expect(page.getByLabel('Product name')).toHaveValue('Tiny ball');
+    await expect(page.getByLabel(/^Price/)).toHaveAccessibleDescription('The price can have at most 2 decimal places.');
+    await expect(page.getByLabel(/^Name /)).toHaveValue('Tiny ball');
   });
 });
 
@@ -190,22 +198,22 @@ test.describe('raw materials and purchasing', () => {
     const calls = [];
     await stubWorkshop(page, tables, calls);
     await page.goto(`${baseURL}/raw-materials`);
-    await page.getByRole('button', { name: 'Add raw material' }).click();
+    await page.getByRole('button', { name: 'Add material' }).click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Material name').fill('Hot glue, 1/2" (clear)');
-    await dialog.getByLabel('Material code').fill('GLUE_1');
-    await dialog.getByLabel('Kind of material').selectOption('adhesive');
-    await dialog.getByLabel('Unit it is counted in').selectOption('__other');
+    await dialog.getByLabel(/^Name/).fill('Hot glue, 1/2" (clear)');
+    await dialog.getByLabel(/^Code/).fill('GLUE_1');
+    await dialog.getByLabel(/^Kind/).selectOption('adhesive');
+    await dialog.getByLabel(/^Counted in/).selectOption('__other');
     await dialog.getByLabel('Name of the new unit').fill('stick!');
     await dialog.getByLabel('Density (kg/m³)').fill('-3');
     await dialog.getByRole('button', { name: 'Add material' }).click();
-    await expect(dialog.getByLabel('Material code')).toHaveAccessibleDescription('Use 2 to 40 letters, numbers and single hyphens, such as SS-100-4X8.');
+    await expect(dialog.getByLabel(/^Code/)).toHaveAccessibleDescription('Use 2 to 40 letters, numbers and single hyphens, such as SS-100-4X8.');
     await expect(dialog.getByLabel('Name of the new unit')).toHaveAccessibleDescription('Write the unit in letters only, such as sheet, roll or kg.');
     await expect(dialog.getByLabel('Density (kg/m³)')).toHaveAccessibleDescription('The density must be a number above 0.');
     await expect(dialog.getByRole('alert')).toHaveText('Check the 3 fields marked below.');
     expect(calls).toHaveLength(0);
 
-    await dialog.getByLabel('Material code').fill('');
+    await dialog.getByLabel(/^Code/).fill('');
     await dialog.getByLabel('Name of the new unit').fill('Stick');
     await dialog.getByLabel('Density (kg/m³)').fill('30');
     await dialog.getByLabel('Weight of one unit (kg)').fill('1');
@@ -219,10 +227,10 @@ test.describe('raw materials and purchasing', () => {
     await setup(page, baseURL);
     await page.goto(`${baseURL}/raw-materials`);
     await expect(page.getByRole('main')).not.toContainText('Old glue');
-    await page.getByRole('radio', { name: /Out of stock/ }).click();
+    await page.getByRole('group', { name: 'Show' }).getByRole('button', { name: /Out of stock/ }).click();
     await expect(page.getByRole('main')).toContainText('Styro Sheet 3 inch');
     await expect(page.getByRole('main').getByText('Out of stock', { exact: true }).last()).toBeVisible();
-    await page.getByRole('radio', { name: /No longer in use/ }).click();
+    await page.getByRole('button', { name: 'Show them' }).click();
     await expect(page.getByRole('main')).toContainText('Old glue');
   });
 
@@ -231,18 +239,20 @@ test.describe('raw materials and purchasing', () => {
     const calls = [];
     await stubWorkshop(page, tables, calls);
     await page.goto(`${baseURL}/raw-materials`);
-    await page.getByRole('group', { name: 'Styro Sheet 3 inch' }).getByRole('button', { name: 'Order more' }).click();
+    // The material's side panel carries "Order more".
+    await page.getByRole('button', { name: 'Open Styro Sheet 3 inch' }).click();
+    await page.getByRole('complementary', { name: 'Styro Sheet 3 inch' }).getByRole('button', { name: 'Order more' }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByLabel('Material to order')).toHaveValue('702');
-    await dialog.getByLabel('Supplier').selectOption({ index: 1 });
-    await dialog.getByLabel('How many sheets').fill('40');
-    await dialog.getByLabel('Agreed price per unit (₱)').fill('95');
-    await dialog.getByLabel('Promised delivery date').fill(localDay(-1));
+    await expect(dialog.getByLabel(/^Material/)).toHaveValue('702');
+    await dialog.getByLabel(/^Supplier/).selectOption({ index: 1 });
+    await dialog.getByLabel(/^How much/).fill('40');
+    await dialog.getByLabel(/^Agreed price/).fill('95');
+    await dialog.getByLabel('Expected').fill(localDay(-1));
     await dialog.getByRole('button', { name: 'Place order' }).click();
-    await expect(dialog.getByLabel('Promised delivery date')).toHaveAccessibleDescription('That date has already passed. Choose today or a later date.');
+    await expect(dialog.getByLabel('Expected')).toHaveAccessibleDescription('That date has already passed. Choose today or a later date.');
     expect(calls).toHaveLength(0);
 
-    await dialog.getByLabel('Promised delivery date').fill(localDay(3));
+    await dialog.getByLabel('Expected').fill(localDay(3));
     await dialog.getByRole('button', { name: 'Place order' }).click();
     await expect(dialog).toHaveCount(0);
     expect(calls[0]).toMatchObject({ p_action: 'save_order', p_data: expect.objectContaining({ raw_material_id: 702, quantity_ordered: '40', unit_price: '95' }) });
@@ -259,7 +269,7 @@ test.describe('production', () => {
     await page.goto(`${baseURL}/production`);
     await page.getByRole('main').getByRole('button', { name: 'Start batch', exact: true }).first().click();
     const dialog = page.getByRole('dialog');
-    const picker = dialog.getByLabel('Which raw material?');
+    const picker = dialog.getByLabel(/^Material \(/);
     await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toBeDisabled();
     await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toContainText('none free (out of stock)');
     await expect(picker.locator('option', { hasText: 'Styro Sheet 2 inch' })).toBeEnabled();
@@ -271,12 +281,12 @@ test.describe('production', () => {
     await page.goto(`${baseURL}/production`);
     await page.getByRole('main').getByRole('button', { name: 'Start batch', exact: true }).first().click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('What are we making?').selectOption('1');
-    await dialog.getByLabel('Target pieces').fill('10');
-    await dialog.getByLabel('Which raw material?').selectOption('701');
-    await dialog.getByLabel('Material to set aside').fill('60');
-    await dialog.getByRole('button', { name: 'Plan this batch' }).click();
-    await expect(dialog.getByLabel('Material to set aside')).toHaveAccessibleDescription('Only 48 sheets of Styro Sheet 2 inch are free after other batches. Set aside 48 or fewer.');
+    await dialog.getByLabel(/^Product/).selectOption('1');
+    await dialog.getByLabel(/^How many/).fill('10');
+    await dialog.getByLabel(/^Material \(/).selectOption('701');
+    await dialog.getByLabel(/^Material to set aside/).fill('60');
+    await dialog.getByRole('button', { name: 'Plan batch' }).click();
+    await expect(dialog.getByLabel(/^Material to set aside/)).toHaveAccessibleDescription('Only 48 sheets of Styro Sheet 2 inch are free after other batches. Set aside 48 or fewer.');
   });
 });
 
@@ -306,8 +316,8 @@ test.describe('orders and stock history', () => {
     );
     await page.goto(`${baseURL}/products/1`);
     const history = page.getByRole('table', { name: /Every change to this stock count/ });
-    for (const header of ['Stock in', 'Stock out', 'Balance']) {
-      await expect(history.getByRole('columnheader', { name: header })).toBeVisible();
+    for (const header of ['In', 'Out', 'Balance']) {
+      await expect(history.getByRole('columnheader', { name: header, exact: true })).toBeVisible();
     }
     await expect(history.getByRole('row', { name: /Made in production/ })).toContainText('+20');
     await expect(history.getByRole('row', { name: /Sold/ })).toContainText('−20');
@@ -328,11 +338,12 @@ test('a supplier order not yet sent can have its quantity and price corrected', 
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(order) });
   });
   await page.goto(`${baseURL}/raw-material-orders`);
-  await page.getByRole('button', { name: 'Edit order' }).click();
+  await page.getByRole('button', { name: 'More for order 802' }).click();
+  await page.getByRole('menuitem', { name: 'Edit order' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('To change the supplier or material, cancel this order and place a new one.');
-  await dialog.getByLabel('How many sheets').fill('60');
-  await dialog.getByLabel('Agreed price per unit (₱)').fill('95');
+  await expect(dialog).toContainText('for another supplier or material, cancel it and place a new one.');
+  await dialog.getByLabel(/^How much/).fill('60');
+  await dialog.getByLabel(/^Agreed price/).fill('95');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toHaveCount(0);
   expect(calls[0].p_data).toEqual({ id: 802, quantity_ordered: '60', unit_price: '95', expected_delivery_date: '', carrier_notes: '' });

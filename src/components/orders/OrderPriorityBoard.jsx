@@ -59,7 +59,7 @@ export default function OrderPriorityBoard({ orders, onReorder, onOpen }) {
           >
             <span className="flex min-w-0 items-center gap-3 text-13">
               <span className="w-6 text-right text-muted-fg">{index + 1}</span>
-              <button type="button" className="border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline" onClick={() => onOpen(order.id)}>
+              <button data-slot="text-link" type="button" className="border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline" onClick={() => onOpen(order.id)}>
                 #{order.id} · {order.customerName}
               </button>
             </span>

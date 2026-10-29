@@ -241,7 +241,7 @@ export default function SupplierListPage({
                   return (
                     <TableRow key={landed.key} data-state={supplier.id === selectedId ? "selected" : undefined} className={`h-10 ${landed.className ?? ""}`}>
                       <TableCell>
-                        <button type="button" onClick={() => setSelectedId(supplier.id)} className="block max-w-[240px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
+                        <button type="button" data-slot="text-link" onClick={() => setSelectedId(supplier.id)} className="block max-w-[240px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
                           {supplier.name}
                         </button>
                         <span className="block text-2xs leading-[14px] text-muted-fg">{supplier.contactPerson || supplier.address || "—"}</span>
