@@ -826,25 +826,20 @@ test.describe("the six rules, spot-checked", () => {
     await signIn(page, baseURL);
   });
 
-  test("nothing readable is under 16px and no control is under 44px", async ({ page }) => {
+  // The admin dashboard design sets the floors: 13px tables and meta text,
+  // 12px captions and badges, 32px controls with 28px compact ones (row
+  // actions, pagination). The old 16px / 44px floors were the previous
+  // overhaul's and were deliberately replaced.
+  test("nothing readable is under 12px and no control is under 28px", async ({ page }) => {
     await page.getByRole("button", { name: navName("Products & stock") }).click();
     await page.getByRole("row").last().waitFor();
-    // Measured once the screen has finished arriving: mid-way through its
-    // 200ms slide a 44px button can report 43.99998px.
+    // Measured once the screen has finished arriving.
     await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
 
     const findings = await page.evaluate(() => {
-      // The two documented exceptions: tracked uppercase signposts (column
-      // headers, sidebar group labels) and monospace identifiers, which are
-      // matched character by character rather than read as words.
-      const isSignpost = (el) => {
-        const s = getComputedStyle(el);
-        return (
-          s.textTransform === "uppercase" ||
-          s.fontFamily.includes("mono") ||
-          el.closest("th") !== null
-        );
-      };
+      // Monospace identifiers and keyboard hints are matched character by
+      // character rather than read as words.
+      const isExempt = (el) => getComputedStyle(el).fontFamily.includes("mono") || el.closest("kbd") !== null;
 
       const small = [];
       for (const el of document.querySelectorAll("main *")) {
@@ -853,16 +848,20 @@ test.describe("the six rules, spot-checked", () => {
           .map((n) => n.textContent.trim())
           .join("");
         if (text.length < 4) continue;
-        if (isSignpost(el)) continue;
+        if (isExempt(el)) continue;
         const size = parseFloat(getComputedStyle(el).fontSize);
-        if (size < 13.5) small.push({ text: text.slice(0, 40), size });
+        if (size < 12) small.push({ text: text.slice(0, 40), size });
       }
 
+      // Checkboxes, radios and switches are drawn at 16-18px on purpose, and a
+      // text link is a run of text, not a control box.
       const tiny = [];
-      for (const el of document.querySelectorAll("main button, main a[href], main input")) {
+      const controls = 'main button:not([role="checkbox"]):not([role="radio"]):not([role="switch"]):not([data-slot="text-link"]), '
+        + 'main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), main select';
+      for (const el of document.querySelectorAll(controls)) {
         const r = el.getBoundingClientRect();
         if (r.width === 0 && r.height === 0) continue;
-        if (r.height < 44) tiny.push({ label: (el.textContent || el.type).slice(0, 40), h: Math.round(r.height) });
+        if (r.height < 27.5) tiny.push({ label: (el.textContent || el.type).slice(0, 40), h: Math.round(r.height) });
       }
 
       return { small, tiny };

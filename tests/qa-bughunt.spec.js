@@ -115,16 +115,15 @@ test('BUG-F08: recording a delivery refuses more units than were ordered instead
   await expect(dialog.getByText(/whole number/i)).toBeVisible();
 });
 
-test('BUG-F12: the text the QA run named on the order screen is 16px or more', async ({ page, baseURL }) => {
+test('BUG-F12: the text the QA run named on the order screen is the design 13px or more', async ({ page, baseURL }) => {
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/orders/1041`);
   await expect(page.getByRole('heading', { name: 'Reyes Events' })).toBeVisible();
   await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
 
-  // The subtotal labels and the order date were 15.5px and 14.5px. Other small
-  // text on this screen comes from shared components (fact tables, callouts)
-  // and is a wider design change that was deliberately left out of this fix.
+  // The subtotal labels and the order date. The admin dashboard design sets
+  // meta text at 13px (it was 16px under the previous overhaul).
   const sizes = await page.evaluate(() => {
     const px = (el) => parseFloat(getComputedStyle(el).fontSize);
     const labels = [...document.querySelectorAll('main dt')]
@@ -136,5 +135,5 @@ test('BUG-F12: the text the QA run named on the order screen is 16px or more', a
     return [...labels, ...ordered];
   });
   expect(sizes.length).toBeGreaterThan(1);
-  expect(sizes.filter((one) => one.fontSize < 16), JSON.stringify(sizes)).toEqual([]);
+  expect(sizes.filter((one) => one.fontSize < 13), JSON.stringify(sizes)).toEqual([]);
 });

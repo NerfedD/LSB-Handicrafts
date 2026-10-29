@@ -104,11 +104,14 @@ test('phone receiving form has readable text, large controls and no horizontal o
   await dialog.evaluate((root) => Promise.all(root.getAnimations({ subtree: true }).map((animation) => animation.finished.catch(() => {}))));
   const violations = await dialog.evaluate((root) => {
     const failures = [];
+    // The design's floors: 12px text, 28px controls (16px checkboxes, radios
+    // and switches are drawn that size on purpose).
     for (const el of root.querySelectorAll('p, label, input, select, button')) {
       const rect = el.getBoundingClientRect();
       if (!rect.width || !rect.height) continue;
-      if (parseFloat(getComputedStyle(el).fontSize) < 16) failures.push(`text too small: ${el.tagName}`);
-      if (el.matches('input, select, button') && (rect.height < 44 || rect.width < 44)) failures.push(`target too small: ${el.tagName}`);
+      if (el.matches('[role="checkbox"], [role="radio"], [role="switch"], input[type="checkbox"], input[type="radio"]')) continue;
+      if (parseFloat(getComputedStyle(el).fontSize) < 12) failures.push(`text too small: ${el.tagName}`);
+      if (el.matches('input, select, button') && (rect.height < 27.5 || rect.width < 27.5)) failures.push(`target too small: ${el.tagName}`);
     }
     if (root.scrollWidth > root.clientWidth + 1) failures.push('horizontal overflow');
     return failures;

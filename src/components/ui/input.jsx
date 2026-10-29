@@ -10,129 +10,73 @@ import {
 import { refusedNumberText } from "@/utils/validation";
 
 /**
- * Text input.
+ * Text field, as drawn on the dialog boards: 32px tall, 6px radius, a 1px
+ * --border edge on --card, 14px text and shadow-xs. Focused, the edge turns
+ * 2px --primary with a soft 3px halo (`.lsb-field` in index.css); an invalid
+ * field turns its border --danger.
  *
- * 54px tall, 11px radius, a 1.5px border and 16px text — the handoff's field
- * geometry. The old 44px/13px-text field was under both floors it sets: a
- * control has to be 44px to be tappable and the text inside it is a sentence
- * somebody reads, so it cannot be below 16px.
- *
- * `aria-invalid` drives the error tone rather than a prop, which is how
- * shared/ProfileForm already did it — so the field-level validation the forms
- * produce passes straight through, and assistive technology hears about the
- * error at the same time as the eye sees it.
+ * The input rules are the app's, not the design's, and stay: a number field
+ * refuses letters and signs before they land, and a phone field keeps only
+ * what a phone number can contain.
  */
 const fieldBase = [
-  "w-full rounded-field border-[1.5px] border-field bg-surface text-[16px] text-ink",
-  "placeholder:text-muted-2 transition duration-150",
-  "hover:border-chip2",
-  "focus:border-cobalt focus:outline-none focus:shadow-[0_0_0_4px_#1462c826]",
-  "disabled:cursor-not-allowed disabled:border-chip disabled:bg-tint-neutral disabled:text-muted",
-  "aria-[invalid=true]:border-red aria-[invalid=true]:focus:shadow-[0_0_0_4px_#a8332f26]",
-  "dark:focus:border-dk-cobalt dark:focus:shadow-[0_0_0_4px_#3b8ae533]",
+  "w-full min-w-0 rounded-md border border-border bg-card text-sm text-foreground shadow-xs",
+  "lsb-field placeholder:text-muted-2",
+  "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-fg disabled:opacity-70",
+  "read-only:bg-muted read-only:text-fg-2",
+  "aria-[invalid=true]:border-danger",
 ].join(" ");
 
-const Input = forwardRef(function Input(
-  { className, type = "text", hasLeadingIcon = false, ...props },
-  ref
-) {
+const Input = forwardRef(function Input({ className, type = "text", hasLeadingIcon = false, ...props }, ref) {
   const errorId = useId();
-  const [validationError, setValidationError] = useState('');
-  // A caller says WHAT the field is -- type="tel" -- and this decides how it
-  // behaves, down to which keypad. A caller that sets inputMode itself is
-  // therefore not declaring a phone field, which is why that spelling is still
-  // read but nothing relies on it.
-  const phone = type === 'tel' || props.inputMode === 'tel';
+  const [validationError, setValidationError] = useState("");
+  const phone = type === "tel" || props.inputMode === "tel";
   const { onChange, onKeyDown, onPaste, ...rest } = props;
 
-  /**
-   * A NUMBER FIELD TAKES ONLY WHAT ITS RULE ACCEPTS, for the same reason the
-   * phone field does. Left alone, the browser lets `e`, `+` and `-` in — `1e3`
-   * and `-4` are numbers to it — and the form then refuses them on submit. A
-   * count (step 1, or the numeric keypad) refuses the decimal point too.
-   * Shortcuts and editing keys pass: only a single printable character is
-   * judged, and a paste is refused whole rather than quietly turned into a
-   * different number (`-5` is not 5).
-   */
-  const numberRule = type === 'number'
-    ? { whole: props.inputMode === 'numeric' || String(props.step) === '1' }
+  const numberRule = type === "number"
+    ? { whole: props.inputMode === "numeric" || String(props.step) === "1" }
     : null;
 
-  /**
-   * THE PHONE FIELD DEFERS TO utils/phone. It does not carry its own rule.
-   *
-   * It used to: `pattern="[0-9]{7,15}"`, a `minLength`/`maxLength` counting
-   * CHARACTERS rather than digits, and a numeric keypad with no + on it. Every
-   * other layer — utils/phone, and the `contact_number_ok` constraint in
-   * schema.sql — allows punctuation and counts digits, so this field was at
-   * once the strictest rule in the stack and the only wrong one. A number
-   * already sitting in the customers table, `0917 555 0204`, could not be saved
-   * back from the screen that displayed it: guardForm found the element
-   * invalid and refused the submit with the browser's own "Please match the
-   * requested format".
-   *
-   * What is left here is shape, and the database's own character cap. The digit
-   * count belongs to phoneProblem, which can say "that has 4 digits" instead.
-   */
   const phoneProps = phone
-    ? {
-        type: 'tel',
-        inputMode: 'numeric',
-        pattern: PHONE_SHAPE_PATTERN,
-        maxLength: PHONE_MAX_CHARS,
-        title: PHONE_TITLE,
-      }
+    ? { type: "tel", inputMode: "numeric", pattern: PHONE_SHAPE_PATTERN, maxLength: PHONE_MAX_CHARS, title: PHONE_TITLE }
     : undefined;
+
   return (
     <>
-    <input
-      ref={ref}
-      type={type}
-      className={cn(
-        fieldBase,
-        "h-13.5 px-4",
-        // A leading icon sits 16px in and is 20px wide, so the text has to
-        // start past it. Passed as a flag rather than left to each caller to
-        // remember, because a forgotten pl- is text overlapping an icon.
-        hasLeadingIcon && "pl-12.5",
-        className
+      <input
+        ref={ref}
+        type={type}
+        data-slot="input"
+        className={cn(fieldBase, "h-8 px-2.5", hasLeadingIcon && "pl-8", className)}
+        {...rest}
+        {...phoneProps}
+        aria-describedby={[props["aria-describedby"], validationError ? errorId : null].filter(Boolean).join(" ") || undefined}
+        aria-invalid={validationError ? true : props["aria-invalid"]}
+        onInvalid={(event) => setValidationError(event.currentTarget.validationMessage)}
+        onKeyDown={(event) => {
+          if (numberRule && event.key.length === 1 && !event.ctrlKey && !event.metaKey
+            && refusedNumberText(event.key, numberRule)) event.preventDefault();
+          onKeyDown?.(event);
+        }}
+        onPaste={(event) => {
+          if (numberRule && refusedNumberText(event.clipboardData.getData("text").trim(), numberRule)) {
+            event.preventDefault();
+          }
+          onPaste?.(event);
+        }}
+        onChange={(event) => {
+          if (phone) {
+            const cleaned = cleanPhoneInput(event.target.value);
+            if (cleaned !== event.target.value) event.target.value = cleaned;
+          }
+          setValidationError("");
+          event.target.removeAttribute("aria-invalid");
+          onChange?.(event);
+        }}
+      />
+      {validationError && (
+        <p id={errorId} role="alert" className="mt-1.5 text-xs font-medium text-danger-fg">{validationError}</p>
       )}
-      {...rest}
-      {...phoneProps}
-      aria-describedby={[props['aria-describedby'], validationError ? errorId : null].filter(Boolean).join(' ') || undefined}
-      aria-invalid={validationError ? true : props['aria-invalid']}
-      onInvalid={(event) => setValidationError(event.currentTarget.validationMessage)}
-      onKeyDown={(event) => {
-        if (numberRule && event.key.length === 1 && !event.ctrlKey && !event.metaKey
-          && refusedNumberText(event.key, numberRule)) event.preventDefault();
-        onKeyDown?.(event);
-      }}
-      onPaste={(event) => {
-        if (numberRule && refusedNumberText(event.clipboardData.getData('text').trim(), numberRule)) {
-          event.preventDefault();
-        }
-        onPaste?.(event);
-      }}
-      onChange={(event) => {
-        // A letter never lands in the box at all, rather than landing and being
-        // complained about later — see cleanPhoneInput for the argument. Doing
-        // it HERE rather than in each caller is why the one screen that forgot
-        // (staff -> manage an account) is covered without knowing about it.
-        //
-        // The previous guard dropped the whole keystroke instead of stripping
-        // it, and judged it with the same digits-only rule as the pattern — so
-        // a space could not be typed into a field whose own placeholder reads
-        // "09XX XXX XXXX", and the message explaining why was itself wrong.
-        if (phone) {
-          const cleaned = cleanPhoneInput(event.target.value);
-          if (cleaned !== event.target.value) event.target.value = cleaned;
-        }
-        setValidationError('');
-        event.target.removeAttribute('aria-invalid');
-        onChange?.(event);
-      }}
-    />
-    {validationError && <p id={errorId} role="alert" className="pt-2 text-[16px] font-bold text-red-text">{validationError}</p>}
     </>
   );
 });
@@ -142,33 +86,16 @@ const Textarea = forwardRef(function Textarea({ className, rows = 3, ...props },
     <textarea
       ref={ref}
       rows={rows}
-      className={cn(fieldBase, "min-h-24 resize-y px-4 py-3.5 leading-[1.5]", className)}
+      data-slot="textarea"
+      className={cn(fieldBase, "min-h-16 resize-y px-2.5 py-1.5", className)}
       {...props}
     />
   );
 });
 
-/**
- * A field that cannot be edited here, and says why.
- *
- * Used for the email on "manage one account" (2p): it is how the person signs
- * in, so changing it is not an edit to a detail. A disabled input alone reads
- * as a bug — the lock icon and the help text under it are what make it read as
- * a rule.
- */
+/** A value shown in field shape that cannot be edited here. */
 const LockedInput = forwardRef(function LockedInput({ className, ...props }, ref) {
-  return (
-    <input
-      ref={ref}
-      readOnly
-      className={cn(
-        "h-13.5 w-full rounded-field border-[1.5px] border-chip bg-tint-neutral px-4 pl-12.5",
-        "text-[16px] text-muted",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <input ref={ref} readOnly className={cn(fieldBase, "h-8 px-2.5", className)} {...props} />;
 });
 
 export { Input, Textarea, LockedInput, fieldBase };
