@@ -237,7 +237,7 @@ const daysAgo =(days) => new Date(Date.now() - days * 86_400_000).toISOString().
 /** Shown while a route chunk is still downloading, outside the shell. */
 function RouteFallback() {
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-paper text-[16px] text-muted">
+    <div className="flex min-h-screen w-full items-center justify-center bg-surface-2 text-13 text-muted-fg">
       Just a moment…
     </div>
   );

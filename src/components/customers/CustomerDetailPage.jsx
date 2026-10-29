@@ -1,31 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  AtSign,
-  Building2,
-  Calendar,
-  ClipboardList,
-  MapPin,
-  Pencil,
-  Phone,
-  UserRound,
-} from "../icons";
+import { CaretRight, Pencil, Receipt } from "../icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { DangerBlock } from "../shared/Callout";
 import { Avatar, Mono } from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
-import FactTable, { StatTiles } from "../shared/FactTable";
 import { EmptySlot, NotFoundState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
+import { Fact, Page, PageHeader, SectionCard, StatCard, StatCards } from "../shared/page";
 import { orderLabel, orderTone } from "../../utils/copy";
 import { customerSummary, DEFAULT_LOYALTY } from "../../utils/customers";
 import { formatLongDate, formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
- * One customer — screen 2n.
+ * One customer, an app-only screen built from the Customers board's side
+ * panel and the detail boards' parts: header, two stat cards, their orders
+ * and how to reach them.
  *
  * TWO NUMBERS AND TWO BUTTONS. What somebody standing at a counter needs from
  * a customer's screen is how much they matter (orders placed, spent with us)
@@ -103,156 +94,96 @@ export default function CustomerDetailPage({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" className="self-start px-2" onClick={onBack}>
-        <ArrowLeft className="h-5 w-5" />
-        All customers
-      </Button>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Card className="p-5.5">
-            <div className="flex flex-wrap items-center gap-4">
-              <Avatar name={customer.name} size="xl" />
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-ink">
-                  {customer.name}
-                </h2>
-                <p className="flex items-center gap-1.5 pt-1 text-[15.5px] text-muted">
-                  {summary.isBusiness ? (
-                    <>
-                      <Building2 className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-                      Business customer
-                    </>
-                  ) : (
-                    <>
-                      <UserRound className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-                      Walk-in customer
-                    </>
-                  )}
-                  <span aria-hidden="true">·</span>
-                  on record since {formatLongDate(customer.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            <StatTiles
-              className="pt-5"
-              tiles={[
-                {
-                  label: "Orders placed",
-                  value: summary.orderCount,
-                  hint: summary.rewardEligible
-                    ? `Loyalty reward: ${loyalty.rewardPercent}% off their next order`
-                    : summary.isRegular
-                      ? "A regular"
-                      : undefined,
-                },
-                {
-                  label: "Spent with us",
-                  value: formatPeso(summary.spent),
-                  hint: summary.lastOrderAt
-                    ? `Last order ${formatShortDate(new Date(summary.lastOrderAt).toISOString())}`
-                    : "No orders yet",
-                },
-              ]}
-            />
-
-            <div className="flex flex-wrap gap-3 pt-5">
-              <Button variant="cobalt" size="lg" onClick={() => onWriteOrder(customer)}>
-                <ClipboardList className="h-5 w-5" />
-                Write them an order
+    <Page>
+      <PageHeader
+        back={{ label: "Back to Customers", onClick: onBack }}
+        leading={<Avatar name={customer.name} size="lg" />}
+        title={customer.name}
+        titleBadge={
+          <Badge variant="secondary">{summary.isBusiness ? "Business" : "Walk-in"}</Badge>
+        }
+        description={`On record since ${formatLongDate(customer.createdAt)}`}
+        actions={
+          <>
+            {canEdit && (
+              <Button variant="outline" onClick={() => onEdit(customer.id)}>
+                <Pencil aria-hidden="true" />
+                Edit details
               </Button>
-              {canEdit && (
-                <Button variant="outline" size="lg" onClick={() => onEdit(customer.id)}>
-                  <Pencil className="h-5 w-5" />
-                  Edit details
-                </Button>
-              )}
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>What they have ordered</CardTitle>
-            </CardHeader>
-
-            {!historyLoaded ? (
-              <EmptySlot className="py-10 text-[15px]">Loading their orders…</EmptySlot>
-            ) : history.failed ? (
-              <EmptySlot className="py-10 text-[15px]">
-                Their orders could not be loaded. Reopen this screen to try again.
-              </EmptySlot>
-            ) : theirOrders.length === 0 ? (
-              <EmptySlot className="py-10 text-[15px]">
-                Nothing yet. Orders written for this customer will be listed here.
-              </EmptySlot>
-            ) : (
-              <ul>
-                {theirOrders.map((order) => (
-                  <li key={order.id}>
-                    <button
-                      type="button"
-                      onClick={() => onOpenOrder(order.id)}
-                      className="flex w-full min-h-15.5 items-center gap-4 border-b border-hair px-5.5 py-3.5 text-left transition duration-150 last:border-b-0 hover:bg-wash-2"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <Mono className="text-[13.5px]">#{order.id}</Mono>
-                        <span className="block text-[16px] font-bold text-ink">
-                          {formatShortDate(order.createdAt)}
-                        </span>
-                      </span>
-                      <StatusPill
-                        label={orderLabel(order.status)}
-                        tone={orderTone(order.status)}
-                        size="sm"
-                      />
-                      <span className="w-28 shrink-0 text-right text-[16.5px] font-bold tabular-nums text-ink">
-                        {formatPeso(order.totalAmount)}
-                      </span>
-                      <ArrowRight className="h-5 w-5 shrink-0 text-muted" aria-hidden="true" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
             )}
-          </Card>
-        </div>
+            <Button onClick={() => onWriteOrder(customer)}>
+              <Receipt aria-hidden="true" />
+              Write them an order
+            </Button>
+          </>
+        }
+      />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>How to reach them</CardTitle>
-          </CardHeader>
-          <FactTable
-            rows={[
-              {
-                label: "Phone",
-                value: customer.contactNumber || null,
-                icon: <Phone className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Email",
-                value: customer.email || null,
-                icon: <AtSign className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Address",
-                value: customer.address || null,
-                icon: <MapPin className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "On record since",
-                value: formatLongDate(customer.createdAt),
-                icon: <Calendar className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Open orders",
-                value: summary.hasOpenOrder ? `${openCount} waiting` : "None waiting",
-                icon: <ClipboardList className="h-4.5 w-4.5" />,
-              },
-            ]}
-          />
-        </Card>
+      <StatCards label="Their numbers">
+        <StatCard
+          label="Orders placed"
+          value={summary.orderCount}
+          caption={
+            summary.rewardEligible
+              ? `Loyalty reward: ${loyalty.rewardPercent}% off their next order`
+              : summary.isRegular
+                ? "A regular"
+                : "Finished and open orders"
+          }
+        />
+        <StatCard
+          label="Spent with us"
+          value={formatPeso(summary.spent)}
+          caption={
+            summary.lastOrderAt
+              ? `Last order ${formatShortDate(new Date(summary.lastOrderAt).toISOString())}`
+              : "No orders yet"
+          }
+        />
+        <StatCard
+          label="Open orders"
+          value={openCount}
+          caption={summary.hasOpenOrder ? "Still waiting" : "None waiting"}
+        />
+      </StatCards>
+
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <SectionCard title="What they have ordered" bodyClassName="p-0">
+          {!historyLoaded ? (
+            <EmptySlot>Loading their orders…</EmptySlot>
+          ) : history.failed ? (
+            <EmptySlot>Their orders could not be loaded. Reopen this screen to try again.</EmptySlot>
+          ) : theirOrders.length === 0 ? (
+            <EmptySlot>Nothing yet. Orders written for this customer will be listed here.</EmptySlot>
+          ) : (
+            <ul className="m-0 list-none p-0">
+              {theirOrders.map((order) => (
+                <li key={order.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenOrder(order.id)}
+                    className="flex h-10 w-full items-center gap-3 border-0 border-b border-row-divider bg-transparent px-4 text-left text-13 last:border-b-0 hover:bg-row-hover"
+                  >
+                    <Mono className="w-14 shrink-0">#{order.id}</Mono>
+                    <span className="min-w-0 flex-1 truncate">{formatShortDate(order.createdAt)}</span>
+                    <StatusPill label={orderLabel(order.status)} tone={orderTone(order.status)} size="sm" />
+                    <span className="w-24 shrink-0 text-right font-medium tabular-nums">{formatPeso(order.totalAmount)}</span>
+                    <CaretRight className="size-4 shrink-0 text-muted-fg" aria-hidden="true" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard title="How to reach them">
+          <dl className="m-0 flex flex-col gap-3">
+            <Fact label="Phone">{customer.contactNumber || "Not given"}</Fact>
+            <Fact label="Email">{customer.email || "Not given"}</Fact>
+            <Fact label="Delivery address">{customer.address || "Not given"}</Fact>
+            <Fact label="On record since">{formatLongDate(customer.createdAt)}</Fact>
+          </dl>
+        </SectionCard>
       </div>
 
       {/* ---- the only place a customer can be removed ---- */}
@@ -261,7 +192,7 @@ export default function CustomerDetailPage({
           title="Remove this customer for good"
           action={
             blocked ? null : (
-              <Button variant="danger" size="lg" onClick={() => setConfirming(true)}>
+              <Button variant="destructive-outline" onClick={() => setConfirming(true)}>
                 Remove {customer.name}
               </Button>
             )
@@ -270,21 +201,16 @@ export default function CustomerDetailPage({
           {blocked ? (
             <>
               {customer.name} has {openCount === 1 ? "an order" : `${openCount} orders`} still
-              waiting, so they cannot be removed yet — you would be throwing away the phone
-              number of somebody you still owe goods to. Finish or cancel{" "}
-              {openCount === 1 ? "that order" : "those orders"} first and this becomes
-              available.
+              waiting, so they cannot be removed yet: you would lose the phone number of
+              somebody you still owe goods to. Finish or cancel{" "}
+              {openCount === 1 ? "that order" : "those orders"} first.
             </>
           ) : (
             <>
-              Their phone number, email and address are deleted, and they disappear from the
-              customers list. Their past orders are NOT deleted — those keep {customer.name}
-              &rsquo;s name and stay in the orders list and in the takings — but nothing will
-              link back to a way of contacting them. This cannot be undone.
-              <br />
-              <br />
-              If they have simply not been in for a while, leaving the record alone costs
-              nothing and keeps their number to hand.
+              Their phone number, email and address are deleted, and they leave the customers
+              list. Their past orders stay, under {customer.name}&rsquo;s name, but nothing will
+              link back to a way of contacting them. This cannot be undone. If they have simply
+              not been in for a while, leaving the record costs nothing.
             </>
           )}
         </DangerBlock>
@@ -305,6 +231,6 @@ export default function CustomerDetailPage({
         busy={working}
         onConfirm={runDelete}
       />
-    </div>
+    </Page>
   );
 }

@@ -57,7 +57,7 @@ import { initialsOf } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import CommandMenu from "./CommandMenu";
 import { canAccess } from "../../utils/permissions";
-import { crumbForView, metaForView, NAV_GROUPS, NAV_PARENTS, NAV_TREE, SECTION_OF } from "../../utils/navigation";
+import { crumbForView, NAV_GROUPS, NAV_PARENTS, NAV_TREE, SECTION_OF } from "../../utils/navigation";
 import useTheme from "../../hooks/useTheme";
 
 // The tree in utils/navigation.js is plain data so utils/permissions.js can
@@ -146,7 +146,7 @@ export default function Shell({
       <AppSidebar items={items} view={view} profile={profile} navCounts={navCounts} onNavigate={onNavigate} onSignOut={onSignOut} />
       <SidebarInset>
         <TopBar crumb={crumbForView(view, recordTitle)} onNavigate={onNavigate} onSearch={() => setCommandOpen(true)} />
-        <Content view={view} title={metaForView(view).title}>{children}</Content>
+        <Content view={view}>{children}</Content>
       </SidebarInset>
       <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} groups={commandGroups} />
     </SidebarProvider>
@@ -154,14 +154,7 @@ export default function Shell({
 }
 
 /** The page area. A new view starts at the top, and its sections rise in once. */
-// TRANSITIONAL: screens rebuilt to their board draw their own PageHeader
-// (and h1). Until every screen is, the rest get their title here.
-const REBUILT_VIEWS = new Set(["dashboard", "staff", "directory", "products", "deliveries",
-  "production", "raw-materials", "raw-material-detail", "raw-material-orders", "production-report", "customers", "suppliers", "orders", "order-detail", "delivery-detail", "product-detail",
-  "manage-account", "assign-role", "profile", "profile-edit", "change-password",
-  "activity", "settings-general", "settings-roles", "settings-notifications"]);
-
-function Content({ view, title, children }) {
+function Content({ view, children }) {
   const ref = useRef(null);
   useEffect(() => {
     ref.current?.scrollIntoView?.({ block: "start" });
@@ -171,9 +164,6 @@ function Content({ view, title, children }) {
     <div ref={ref} className="min-w-0 flex-1">
       <Suspense fallback={<ContentFallback />}>
         <div key={view} className="min-w-0">
-          {!REBUILT_VIEWS.has(view) && title ? (
-            <h1 className="m-0 px-4 pt-4 text-xl font-semibold tracking-[-0.01em]">{title}</h1>
-          ) : null}
           {children}
         </div>
       </Suspense>

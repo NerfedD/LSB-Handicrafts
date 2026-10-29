@@ -2,9 +2,7 @@ import FormError from "../shared/FormError";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
-import { Info, Save } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -13,17 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mono } from "../shared/Chip";
-import { InfoNote } from "../shared/Callout";
 import {
   ChoiceButtons,
   Field,
-  FormBand,
-  FormFooter,
   LockedField,
   Row,
 } from "../shared/forms";
-import { productChoiceIcon } from "../shared/productIcons";
+import { Page, PageHeader, SectionCard } from "../shared/page";
 import { PRODUCT_TYPE, PRODUCT_TYPE_OPTIONS, SELL_UNIT_OPTIONS } from "../../utils/constants";
 import { suggestItemCode, suggestProductName } from "../../utils/productFormat";
 import { countProblem, measureProblem, moneyProblem, nameProblem, tidyLabel } from "../../utils/validation";
@@ -284,51 +278,86 @@ export default function ProductFormPage({
     />
   );
 
+  const unitShort = SELL_UNIT_OPTIONS.find((option) => option.value === values.unit)?.label ?? values.unit;
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Card className="min-w-0">
-        <FormError message={saveError} />
-        <FormBand step={1} title="What is it?">
-          <Field
-            label="Kind of product"
-            hint="This decides which measurements we ask for next."
-          >
+    <Page>
+      <PageHeader
+        back={{ label: isEdit ? "Back to the product" : "Back to Inventory", onClick: onCancel }}
+        title={isEdit ? `Edit ${product?.name ?? "product"}` : "Add product"}
+        description={isEdit ? "Its stock count changes only through counts and write-offs, never here." : "Something the shop sells. Its stock is counted from here on."}
+      />
+      <form onSubmit={handleSubmit} noValidate className="w-full max-w-[640px]">
+        <SectionCard
+          title={isEdit ? "Product details" : "New product"}
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={onCancel} disabled={saving}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Saving…" : isEdit ? "Save changes" : "Add product"}
+              </Button>
+            </div>
+          }
+          bodyClassName="flex flex-col gap-3.5"
+        >
+          <FormError message={saveError} />
+
+          <Field label="Kind" hint="This decides which measurements are asked for.">
             <ChoiceButtons
-              label="Kind of product"
+              label="Kind"
               value={values.productType}
               onChange={(next) => setField("productType", next)}
-              className="sm:grid-cols-4"
-              options={PRODUCT_TYPE_OPTIONS.map((option) => ({
-                ...option,
-                icon: productChoiceIcon(option.value),
-              }))}
+              options={PRODUCT_TYPE_OPTIONS}
             />
           </Field>
 
-          <Field
-            label="Product name"
-            required
-            error={errors.name}
-            hint={
-              suggestedName && values.name !== suggestedName
-                ? `Write it the way staff say it out loud. Suggestion: ${suggestedName}`
-                : "Write it the way staff say it out loud."
-            }
-          >
-            {(props) => (
-              <Input
-                {...props}
-                value={values.name}
-                onChange={(event) => setField("name", event.target.value)}
-                placeholder={suggestedName || "Styro Ball 4 inch"}
+          <div className="grid gap-3.5 sm:grid-cols-[120px_minmax(0,1fr)]">
+            <ProductPhotoField
+              value={photo}
+              current={saved.photo?.dataUrl ?? null}
+              onChange={setPhoto}
+              disabled={saving}
+              name={values.name}
+            />
+            <div className="flex min-w-0 flex-col gap-3.5">
+              <Field
+                label="Name"
+                required
+                error={errors.name}
+                hint={
+                  suggestedName && values.name !== suggestedName
+                    ? `The way staff say it out loud. Suggestion: ${suggestedName}`
+                    : "The way staff say it out loud."
+                }
+              >
+                {(props) => (
+                  <Input
+                    {...props}
+                    value={values.name}
+                    onChange={(event) => setField("name", event.target.value)}
+                    placeholder={suggestedName || "Styro ball, 4 inch"}
+                  />
+                )}
+              </Field>
+              <LockedField
+                label="Item code"
+                value={itemCode}
+                hint={isEdit ? "Kept as it is, so shelf labels stay right." : "Made for you from the kind and the size."}
               />
-            )}
-          </Field>
+            </div>
+          </div>
 
           {isBall && (
             <Row>
-              <Field label="How wide across" required error={errors.diameterIn} hint="In inches.">
-                {number("diameterIn", { step: "any", min: "0", placeholder: "4" })}
+              <Field label="How wide across" required error={errors.diameterIn}>
+                {(props) => (
+                  <div className="relative">
+                    {number("diameterIn", { step: "any", min: "0", placeholder: "4", className: "pr-14" })(props)}
+                    <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">inches</span>
+                  </div>
+                )}
               </Field>
               <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Balls" />
             </Row>
@@ -336,61 +365,34 @@ export default function ProductFormPage({
 
           {isFlat && (
             <>
-              <Row>
-                <Field label="How thick" required error={errors.thicknessIn} hint="In inches.">
+              <Row className="sm:grid-cols-3">
+                <Field label="How thick" required error={errors.thicknessIn} hint="Inches.">
                   {number("thicknessIn", { step: "any", min: "0", placeholder: "1" })}
                 </Field>
-                <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Sheets" />
-              </Row>
-              <Row>
-                <Field label="How long" error={errors.lengthFt} hint="In feet.">
+                <Field label="How long" error={errors.lengthFt} hint="Feet.">
                   {number("lengthFt", { step: "any", min: "0", placeholder: "4" })}
                 </Field>
-                <Field label="How wide" error={errors.widthFt} hint="In feet.">
+                <Field label="How wide" error={errors.widthFt} hint="Feet.">
                   {number("widthFt", { step: "any", min: "0", placeholder: "2" })}
                 </Field>
               </Row>
+              <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Sheets" />
             </>
           )}
 
           {!isBall && !isFlat && (
             <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Custom shapes" />
           )}
-        </FormBand>
 
-        <FormBand step={2} title="How is it sold and counted?" tinted>
           <Row>
-            <Field label="Price" required error={errors.unitPrice} hint="What one costs a customer.">
-              {(props) => (
-                <div className="relative">
-                  <span
-                    className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[16px] font-bold text-muted"
-                    aria-hidden="true"
-                  >
-                    ₱
-                  </span>
-                  <Input
-                    {...props}
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    min="0"
-                    className="pl-10"
-                    value={values.unitPrice}
-                    onChange={(event) => setField("unitPrice", event.target.value)}
-                    placeholder="0.00"
-                  />
-                </div>
-              )}
-            </Field>
-
-            <Field label="Sold by" hint="How you count one of them at the counter.">
+            <Field label="Sold" hint="How one is counted at the counter.">
               {(props) => (
                 <Select
+                  items={SELL_UNIT_OPTIONS}
                   value={values.unit}
                   onValueChange={(next) => setField("unit", next)}
                 >
-                  <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]}>
+                  <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]} className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -403,13 +405,37 @@ export default function ProductFormPage({
                 </Select>
               )}
             </Field>
+
+            <Field label="Price" required error={errors.unitPrice} hint="What one costs a customer.">
+              {(props) => (
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
+                    ₱
+                  </span>
+                  <Input
+                    {...props}
+                    type="number"
+                    inputMode="decimal"
+                    step="any"
+                    min="0"
+                    className="pl-6 pr-20"
+                    value={values.unitPrice}
+                    onChange={(event) => setField("unitPrice", event.target.value)}
+                    placeholder="0.00"
+                  />
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
+                    {String(unitShort).toLowerCase()}
+                  </span>
+                </div>
+              )}
+            </Field>
           </Row>
 
           {values.unit !== "piece" && (
             <Field
-              label={`How many pieces in one ${values.unit}`}
+              label={`Pieces in one ${values.unit}`}
               error={errors.packSize}
-              hint="So we can tell how many actual pieces are on the shelf. A whole number."
+              hint="So the shelf count can be told in actual pieces. A whole number."
             >
               {number("packSize", { step: "1", inputMode: "numeric", min: "1", placeholder: "25" })}
             </Field>
@@ -421,62 +447,30 @@ export default function ProductFormPage({
                 product's own screen -- so every change has a reason and a name. */}
             {isEdit && stock?.tracked ? (
               <LockedField
-                label="On the shelf now"
+                label="On the shelf"
                 value={String(stock.onHand)}
-                hint="To change this, use “Correct the count” on the product's screen."
+                hint="To change this, count it from the product's screen."
               />
             ) : (
               <Field
-                label="How many on the shelf now"
+                label="On the shelf"
                 error={errors.stock}
-                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is actually there today. A whole number, 0 or more."}
+                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is there today."}
               >
                 {number("stock", { step: "1", inputMode: "numeric", min: "0", placeholder: "0" })}
               </Field>
             )}
 
             <Field
-              label="Reorder point"
+              label="Warn me below"
               error={errors.lowStockThreshold}
-              hint="At or below this, it shows as running low and is listed as needed next under Production."
+              hint="Below this number the product shows as running low."
             >
               {number("lowStockThreshold", { step: "1", inputMode: "numeric", min: "0", placeholder: "15" })}
             </Field>
           </Row>
-        </FormBand>
-
-        <FormFooter
-          left={
-            <Button variant="outline" size="lg" onClick={onCancel} disabled={saving}>
-              Cancel
-            </Button>
-          }
-          right={
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
-              <Save className="h-5 w-5" />
-              {saving ? "Saving…" : isEdit ? "Save the changes" : "Save this product"}
-            </Button>
-          }
-        />
-      </Card>
-
-      <div className="flex flex-col gap-4">
-        <Card className="p-4">
-          <ProductPhotoField
-            value={photo}
-            current={saved.photo?.dataUrl ?? null}
-            onChange={setPhoto}
-            disabled={saving}
-            name={values.name}
-          />
-        </Card>
-
-        <InfoNote icon={<Info className="h-5 w-5" />} title="The code is made for you">
-          This one will be <Mono className="text-[14.5px] text-cobalt-deep">{itemCode}</Mono> — built
-          from the kind and the size. You never have to invent a code, and two people adding
-          the same product will not end up with two different ones.
-        </InfoNote>
-      </div>
-    </form>
+        </SectionCard>
+      </form>
+    </Page>
   );
 }

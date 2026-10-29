@@ -13,7 +13,7 @@ export function ProductPhoto({ src, name, isLoaded = true, className }) {
     <img
       src={src}
       alt={name ? `Photo of ${name}` : 'Product photo'}
-      className={`aspect-square w-full rounded-tile2 border border-card bg-paper-2 object-cover ${className ?? ''}`}
+      className={`aspect-square w-full rounded-md border border-border bg-surface-2 object-cover ${className ?? ''}`}
     />
   );
 }
@@ -51,8 +51,8 @@ export function ProductPhotoField({ value, current, onChange, disabled = false, 
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <p className="text-[16px] font-bold text-ink" id={`${id}-label`}>Product photo</p>
+    <div className="flex flex-col gap-1.5">
+      <p className="m-0 text-sm font-medium" id={`${id}-label`}>Photo</p>
       <ProductPhoto src={shown} name={name} />
       <input
         ref={input}
@@ -65,27 +65,27 @@ export function ProductPhotoField({ value, current, onChange, disabled = false, 
         disabled={disabled || working}
         onChange={choose}
       />
-      <div className="flex flex-wrap gap-2.5">
-        <Button variant="outline" disabled={disabled || working} onClick={() => input.current?.click()}>
-          <ImagePlus className="h-4.5 w-4.5" />
+      <div className="flex flex-wrap gap-1.5">
+        <Button variant="outline" size="sm" disabled={disabled || working} onClick={() => input.current?.click()}>
+          <ImagePlus />
           {working ? 'Preparing…' : shown ? 'Replace photo' : 'Add a photo'}
         </Button>
         {shown && (
-          <Button variant="outline" disabled={disabled || working} onClick={() => onChange({ change: current ? 'remove' : null, dataUrl: null })}>
-            <Trash2 className="h-4.5 w-4.5" />
+          <Button variant="ghost" size="sm" disabled={disabled || working} onClick={() => onChange({ change: current ? 'remove' : null, dataUrl: null })}>
+            <Trash2 />
             Remove photo
           </Button>
         )}
         {value.change && current && (
-          <Button variant="ghost" disabled={disabled || working} onClick={() => { setError(null); onChange({ change: null, dataUrl: null }); }}>
+          <Button variant="ghost" size="sm" disabled={disabled || working} onClick={() => { setError(null); onChange({ change: null, dataUrl: null }); }}>
             Keep the saved photo
           </Button>
         )}
       </div>
       {error ? (
-        <p role="alert" className="text-[14.5px] font-bold text-red-text">{error}</p>
+        <p role="alert" className="m-0 text-13 text-danger-fg">{error}</p>
       ) : (
-        <p id={`${id}-hint`} className="text-[14.5px] text-muted">
+        <p id={`${id}-hint`} className="m-0 text-xs text-muted-fg">
           {value.change === 'set' ? 'New photo chosen. It is saved when you save the product.'
             : value.change === 'remove' ? 'The photo will be removed when you save the product.'
               : 'JPEG, PNG or WebP. It is resized to 800 × 800 at most before it is saved.'}
