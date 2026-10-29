@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assign drivers dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-modal="true" aria-labelledby="ad-title" aria-describedby="ad-desc" style="position: relative; box-sizing: border-box; width: 560px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<button type="button" aria-label="Close" onClick="{{close}}" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+
+<div style="padding: 20px 52px 0 20px;">
+<h2 id="ad-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Assign drivers</h2>
+<p id="ad-desc" style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">3 deliveries have nobody to take them. Each driver is told when you save.</p>
+</div>
+
+<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;">
+<sc-for list="{{drivers}}" as="dr" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px;">
+<span aria-hidden="true" style="flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">{{dr.initials}}</span>
+<div style="min-width: 0;"><div style="font-size: 13px; font-weight: 500;">{{dr.name}}</div><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{dr.load}}</div></div>
+</div>
+</sc-for>
+</div>
+
+<div role="table" aria-label="Deliveries without a driver" style="border: 1px solid var(--border, #d4d4d8); border-radius: 6px; overflow: hidden; font-size: 13px; line-height: 18px;">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+<div role="row" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="flex: 1 1 200px; min-width: 0;">
+<div style="display: flex; align-items: center; gap: 6px;"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">#{{r.id}}</span><span style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{r.customer}}</span></div>
+<div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{r.area}} · {{r.due}} · {{r.stage}}</div>
+</div>
+<div role="cell"><div role="radiogroup" aria-label="Driver for delivery {{r.id}}" style="display: inline-flex; gap: 4px;">
+<sc-for list="{{r.options}}" as="o" hint-placeholder-count="2">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 4px; border: 1px solid {{o.bd}}; border-radius: 6px; background: {{o.bg}}; color: {{o.fg}}; font: inherit; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer;"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 50%; background: {{o.avBg}}; font-size: 9px; display: inline-flex; align-items: center; justify-content: center;">{{o.initials}}</span>{{o.first}}</button>
+</sc-for>
+</div></div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px;">
+<span style="color: var(--muted-fg, #71717a);">{{assignedLabel}}</span>
+<span style="display: inline-flex; align-items: center; gap: 8px;"><button type="button" role="checkbox" aria-checked="{{notify}}" id="ad-notify" aria-labelledby="ad-notify-label" onClick="{{toggleNotify}}" style="width: 16px; height: 16px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid {{nBd}}; border-radius: 4px; background: {{nBg}}; color: var(--on-primary, #ffffff); cursor: pointer;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{nCheck}};"><path d="M40 144l56 56L224 72"></path></svg></button><label id="ad-notify-label" for="ad-notify" style="cursor: pointer;">Text each driver their run</label></span>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 20px 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Cancel</button>
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">{{cta}}</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"onClose":{"editor":null},"$preview":{"width":560,"height":520}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const pick = s.pick ?? { 2051: 'ben', 2050: 'jun' };
+    const notify = s.notify ?? true;
+    const DRIVERS = [
+      { key: 'ben', name: 'Ben Aquino', first: 'Ben', initials: 'BA', base: 2 },
+      { key: 'jun', name: 'Jun Dela Cruz', first: 'Jun', initials: 'JD', base: 2 }
+    ];
+    const list = [
+      { id: 2051, customer: 'Bautista Party Supplies', area: 'Matina', due: 'Today', stage: 'Ready to go' },
+      { id: 2050, customer: 'St. Jude Parish', area: 'Toril', due: 'Thu, Oct 30', stage: 'Being made' },
+      { id: 2049, customer: 'Mintal Events Co.', area: 'Mintal', due: 'Wed, Oct 29', stage: 'Being made' }
+    ];
+    const rows = list.map((r) => ({
+      ...r,
+      options: DRIVERS.map((d) => {
+        const on = pick[r.id] === d.key;
+        return {
+          first: d.first, initials: d.initials, on,
+          bg: on ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)', fg: on ? 'var(--on-primary, #ffffff)' : 'var(--foreground, #09090b)', bd: on ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+          avBg: on ? 'rgba(255,255,255,0.2)' : 'var(--muted, #f4f4f5)',
+          pick: () => this.setState({ pick: { ...pick, [r.id]: on ? undefined : d.key } })
+        };
+      })
+    }));
+    const n = list.filter((r) => pick[r.id]).length;
+    const drivers = DRIVERS.map((d) => {
+      const extra = list.filter((r) => pick[r.id] === d.key).length;
+      return { ...d, load: (d.base + extra) + ' deliveries this week' + (extra ? ' · +' + extra + ' here' : '') };
+    });
+    return {
+      rows,
+      drivers,
+      notify,
+      nBg: notify ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)', nBd: notify ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)', nCheck: notify ? 'block' : 'none',
+      toggleNotify: () => this.setState({ notify: !notify }),
+      assignedLabel: n + ' of ' + list.length + ' assigned',
+      cta: n === 0 ? 'Assign' : 'Assign ' + n + (n === 1 ? ' delivery' : ' deliveries'),
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

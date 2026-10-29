@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Top bar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div style="box-sizing: border-box; width: 100%; min-height: 48px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px 8px 12px; border-bottom: 1px solid var(--border, #d4d4d8); background: transparent; color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<button type="button" aria-label="Toggle sidebar" title="Toggle sidebar (Ctrl+B)" onClick="{{trigger}}" style="flex: none; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--fg-2, #3f3f46); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="32" y="48" width="192" height="160" rx="8"></rect><path d="M88 48v160"></path></svg></button>
+<div role="separator" aria-orientation="vertical" style="flex: none; width: 1px; height: 16px; margin: 0 4px; background: var(--muted-strong, #e4e4e7);"></div>
+<nav aria-label="Breadcrumb" style="flex: 1 1 auto; min-width: 0;">
+<ol style="display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; white-space: nowrap;">
+<li><a href="Main.dc.html" style="color: var(--muted-fg, #71717a); text-decoration: none;">{{section}}</a></li>
+<li aria-hidden="true" style="display: flex; color: var(--muted-2, #a1a1aa);"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M96 48l80 80-80 80"></path></svg></li>
+<li><span aria-current="page" style="color: var(--foreground, #09090b); font-weight: 500;">{{page}}</span></li>
+</ol>
+</nav>
+<button type="button" aria-label="Search pages and actions" aria-keyshortcuts="Control+K Meta+K" onClick="{{search}}" style="flex: 0 1 260px; min-width: 180px; height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--muted-fg, #71717a); font: inherit; font-size: 13px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg>
+<span style="flex: 1;">Search…</span>
+<kbd style="display: inline-flex; align-items: center; height: 20px; padding: 0 5px; border: 1px solid var(--border, #d4d4d8); border-radius: 4px; background: var(--muted, #f4f4f5); color: var(--muted-fg, #71717a); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 11px; font-weight: 500;">⌘K</kbd>
+</button>
+<button type="button" role="switch" aria-checked="{{dark}}" aria-label="Dark mode" title="{{themeTitle}}" onClick="{{toggleTheme}}" class="theme-toggle" style="flex: none; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+<span class="theme-icon" style="display: {{sunDisp}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="128" cy="128" r="56"></circle><path d="M128 16v24M128 216v24M48.8 48.8l17 17M190.2 190.2l17 17M16 128h24M216 128h24M48.8 207.2l17-17M190.2 65.8l17-17"></path></svg></span>
+<span class="theme-icon" style="display: {{moonDisp}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M108.1 40.6A88 88 0 1 0 215.4 147.9 72 72 0 0 1 108.1 40.6Z"></path></svg></span>
+</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"section":{"editor":"text","default":"Overview"},"page":{"editor":"text","default":"Dashboard"},"onTrigger":{"editor":null},"onSearch":{"editor":null},"$preview":{"width":1200,"height":48}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const p = this.props;
+    const root = document.documentElement;
+    if (!this._themeBound) {
+      // Another artboard flipped the theme: redraw the icon to match.
+      this._themeBound = true;
+      window.addEventListener('storage', (e) => { if (!e.key || e.key === 'lsb-theme') this.setState({ t: Date.now() }); });
+    }
+    const dark = root.classList.contains('dark');
+    return {
+      dark: dark ? 'true' : 'false',
+      themeTitle: dark ? 'Switch to light mode' : 'Switch to dark mode',
+      sunDisp: dark ? 'inline-flex' : 'none',
+      moonDisp: dark ? 'none' : 'inline-flex',
+      toggleTheme: () => {
+        const next = root.classList.contains('dark') ? 'light' : 'dark';
+        try { window.localStorage.setItem('lsb-theme', next); } catch (e) { /* storage blocked: this artboard only */ }
+        root.classList.add('theme-anim');
+        root.classList.toggle('dark', next === 'dark');
+        setTimeout(() => root.classList.remove('theme-anim'), 300);
+        this.setState({ t: Date.now() });
+      },
+      section: p.section ?? 'Overview',
+      page: p.page ?? 'Dashboard',
+      trigger: () => { if (typeof p.onTrigger === 'function') p.onTrigger(); },
+      search: () => { if (typeof p.onSearch === 'function') p.onSearch(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

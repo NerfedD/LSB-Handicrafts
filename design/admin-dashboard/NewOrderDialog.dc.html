@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>New order dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-modal="true" aria-labelledby="no-title" aria-describedby="no-desc" style="position: relative; box-sizing: border-box; width: 640px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<button type="button" aria-label="Close" onClick="{{close}}" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+
+<div style="padding: 20px 52px 0 20px;">
+<h2 id="no-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">New order</h2>
+<p id="no-desc" style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Stock is set aside when you create the order. Nothing leaves the shelf until it is delivered.</p>
+</div>
+
+<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 16px;">
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span id="no-cust-label" style="font-size: 14px; font-weight: 500;">Customer</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="no-cust-label no-cust-value" style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+<span aria-hidden="true" style="flex: none; width: 28px; height: 28px; border-radius: 6px; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 11px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">BP</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column;"><span id="no-cust-value" style="font-size: 14px; line-height: 18px; font-weight: 500;">Bautista Party Supplies</span><span style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Matina · 0917 555 0142 · 2 open orders</span></span>
+<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg>
+</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 14px; font-weight: 500;">Items</span>
+<div role="table" aria-label="Order items" style="border: 1px solid var(--border, #d4d4d8); border-radius: 6px; overflow: hidden; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 76px 92px 104px 36px; align-items: center; height: 32px; background: var(--surface-2, #fafafa); border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 10px;">Product</div>
+<div role="columnheader" style="padding: 0 6px; text-align: right;">Qty</div>
+<div role="columnheader" style="padding: 0 6px; text-align: right;">Price</div>
+<div role="columnheader" style="padding: 0 10px 0 6px; text-align: right;">Total</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Remove</span></div>
+</div>
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="3">
+<div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 76px 92px 104px 36px; align-items: center; height: 40px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 10px; min-width: 0;"><span style="display: block; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{l.name}}</span><span style="display: block; font-size: 11px; line-height: 14px; color: var(--muted-fg, #71717a);">{{l.note}}</span></div>
+<div role="cell" style="padding: 0 6px;"><label for="no-qty-{{l.key}}" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Quantity of {{l.name}}</label><input id="no-qty-{{l.key}}" type="text" inputmode="numeric" value="{{l.qty}}" onChange="{{l.onQty}}" style="width: 100%; height: 28px; box-sizing: border-box; padding: 0 8px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 13px; text-align: right;"></div>
+<div role="cell" style="padding: 0 6px; text-align: right; color: var(--fg-2, #3f3f46);">{{l.priceLabel}}</div>
+<div role="cell" style="padding: 0 10px 0 6px; text-align: right; font-weight: 500;">{{l.totalLabel}}</div>
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" aria-label="Remove {{l.name}}" onClick="{{l.remove}}" style="width: 24px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button></div>
+</div>
+</sc-for>
+<div style="padding: 4px;"><button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 8px; border: 0; border-radius: 4px; background: transparent; color: var(--foreground, #09090b); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add item</button></div>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="no-date" style="font-size: 14px; font-weight: 500;">Deliver on</label>
+<input id="no-date" type="text" value="Mon, Nov 3" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<span id="no-how-label" style="font-size: 14px; font-weight: 500;">How</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="no-how-label no-how-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="no-how-value">We deliver</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="no-down" style="font-size: 14px; font-weight: 500;">Down payment</label>
+<input id="no-down" type="text" inputmode="decimal" value="{{downLabel}}" onChange="{{onDown}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); font-size: 13px; line-height: 18px;">
+<div style="display: flex; justify-content: space-between;"><span style="color: var(--muted-fg, #71717a);">Items</span><span>{{subtotal}}</span></div>
+<div style="display: flex; justify-content: space-between;"><span style="color: var(--muted-fg, #71717a);">Delivery to Matina</span><span>₱250.00</span></div>
+<div style="display: flex; justify-content: space-between;"><span style="color: var(--muted-fg, #71717a);">Down payment</span><span>{{downNeg}}</span></div>
+<div style="height: 1px; margin: 4px 0; background: var(--border, #d4d4d8);"></div>
+<div style="display: flex; justify-content: space-between; align-items: baseline;"><span style="font-weight: 500;">To collect on delivery</span><span style="font-size: 18px; line-height: 24px; font-weight: 600;">{{due}}</span></div>
+</div>
+
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 20px 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Cancel</button>
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Save as draft</button>
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Create order</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"onClose":{"editor":null},"$preview":{"width":640,"height":720}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const peso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const base = [
+      { key: 'a', name: 'Styro ball, 6 inch', note: 'SB-060 · 18 on the shelf, rest to be made', price: 35 },
+      { key: 'b', name: 'Star cutout, 12 inch', note: 'CP-STAR-12 · 120 on the shelf', price: 25 },
+      { key: 'c', name: 'Letter cutouts, “HAPPY 50TH”', note: 'Made to order · priced by hand', price: 850 }
+    ];
+    const qty = s.qty ?? { a: 120, b: 60, c: 1 };
+    const removed = s.removed ?? {};
+    const lines = base.filter((l) => !removed[l.key]).map((l) => {
+      const q = parseInt(qty[l.key], 10) || 0;
+      return {
+        ...l,
+        qty: qty[l.key],
+        priceLabel: peso(l.price),
+        totalLabel: peso(q * l.price),
+        sum: q * l.price,
+        onQty: (e) => this.setState({ qty: { ...qty, [l.key]: e.target.value.replace(/[^0-9]/g, '') } }),
+        remove: () => this.setState({ removed: { ...removed, [l.key]: true } })
+      };
+    });
+    const sub = lines.reduce((a, l) => a + l.sum, 0);
+    const downRaw = s.down ?? '2000';
+    const down = parseFloat(String(downRaw).replace(/[^0-9.]/g, '')) || 0;
+    return {
+      lines,
+      subtotal: peso(sub),
+      downLabel: downRaw,
+      downNeg: '−' + peso(down),
+      due: peso(Math.max(0, sub + 250 - down)),
+      onDown: (e) => this.setState({ down: e.target.value }),
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Styro ball, 6 inch</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1060px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="inventory" collapsed="{{collapsed}}" h="1060" on-toggle="{{toggleNav}}" hint-size="240px,1060px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Inventory" page="Styro ball, 6 inch" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<a href="Stock.dc.html" style="display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 13px; font-weight: 500; color: var(--fg-2, #3f3f46); text-decoration: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M160 208l-80-80 80-80"></path></svg>Back to Inventory</a>
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: center; gap: 14px; min-width: 0;">
+<button type="button" aria-label="Add a photo of this product" style="flex: none; width: 64px; height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1px dashed var(--input-strong, #a1a1aa); border-radius: 8px; background: var(--card, #ffffff); color: var(--muted-fg, #71717a); font-size: 11px; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M208 208H48a16 16 0 0 1-16-16V80a16 16 0 0 1 16-16h32l16-24h64l16 24h32a16 16 0 0 1 16 16v112a16 16 0 0 1-16 16Z"></path><circle cx="128" cy="132" r="36"></circle></svg>Photo</button>
+<div style="min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Styro ball, 6 inch</h1>
+<span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Running low</span>
+</div>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">SB-060</span> · Styro ball · ₱35.00 each</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" onClick="{{openCount}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Count stock</button>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Edit details</button>
+<button type="button" onClick="{{openBatch}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Plan a batch</button>
+</div>
+</header>
+
+<section aria-label="Stock numbers" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; gap: 1px; background: var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">On the shelf</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">18</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Set aside for orders</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">18</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Free to sell</div><div style="font-size: 18px; line-height: 26px; font-weight: 600; color: var(--warning-fg, #b45309);">0</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Being made</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">200</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Sold in October</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">214</div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+<div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+
+<section aria-labelledby="pd-trend" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 14px 16px 0;"><div><h2 id="pd-trend" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">On the shelf, last 30 days</h2><p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Below its warning level of 50 since Oct 21</p></div><span aria-hidden="true" style="display: inline-flex; gap: 14px; font-size: 12px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 2px; background: var(--primary, #004E89);"></span>On the shelf</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 12px; height: 0; border-top: 2px dashed var(--input-strong, #a1a1aa);"></span>Warn below</span></span></div>
+<div style="padding: 12px 16px 6px;"><svg role="img" aria-label="Line chart: shelf stock fell from 52 to 18 over 30 days, with one batch adding 30 on Oct 6." width="100%" height="120" viewBox="0 0 300 80" preserveAspectRatio="none" style="display: block;">
+<path d="M0 79.5H300" stroke-width="1" vector-effect="non-scaling-stroke" style="stroke: var(--border-subtle, #e4e4e7)"></path>
+<path d="M0 30H300" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" style="stroke: var(--muted-2, #a1a1aa)"></path>
+<path d="M0 28L33.3 32L66.7 10L100 14L133.3 20L166.7 26L200 39L233.3 47L266.7 54L300 62L300 80L0 80Z" fill-opacity="0.06" style="fill: var(--primary, #004E89)"></path>
+<polyline points="0,28 33.3,32 66.7,10 100,14 133.3,20 166.7,26 200,39 233.3,47 266.7,54 300,62" fill="none" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke" style="stroke: var(--primary-text, #004E89)"></polyline>
+</svg>
+<div aria-hidden="true" style="display: flex; justify-content: space-between; padding-top: 6px; font-size: 11px; color: var(--muted-fg, #71717a);"><span>Sep 28</span><span>Oct 6 · +30 from B-0312</span><span>Oct 14</span><span>Oct 21</span><span>Today · 18</span></div>
+</div>
+</section>
+
+<section aria-labelledby="pd-orders" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="pd-orders" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Open orders that need it</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">160 ordered · 18 set aside · 142 still to make. B-0321 makes 200.</p></div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 18px;">
+<li style="display: grid; grid-template-columns: 70px 1fr 80px 110px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><a href="OrderDetail.dc.html" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-decoration: none;">#2048</a><span>Bautista Party Supplies</span><span style="text-align: right; font-weight: 500;">60</span><span style="color: var(--muted-fg, #71717a);">Due Mon, Nov 3</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr 80px 110px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px;"><a href="OrderDetail.dc.html" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-decoration: none;">#2049</a><span>Mintal Events Co.</span><span style="text-align: right; font-weight: 500;">100</span><span style="color: var(--warning-fg, #b45309);">Due Wed, Oct 29</span></li>
+</ul>
+</section>
+
+<section aria-labelledby="pd-moves" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="pd-moves" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Stock history</h2><a href="#" style="font-size: 13px; font-weight: 500; text-decoration: none;">Full history</a></div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 18px;">
+<li style="display: grid; grid-template-columns: 80px 1fr 70px 60px; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Today</span><span>Set aside for order #2048</span><span style="text-align: right; color: var(--muted-fg, #71717a);">18 held</span><span style="text-align: right; color: var(--muted-fg, #71717a);">18</span></li>
+<li style="display: grid; grid-template-columns: 80px 1fr 70px 60px; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Oct 27</span><span>Counted by Carla Mendoza (expected 30)</span><span style="text-align: right; color: var(--warning-fg, #b45309); font-weight: 500;">−12</span><span style="text-align: right; color: var(--muted-fg, #71717a);">18</span></li>
+<li style="display: grid; grid-template-columns: 80px 1fr 70px 60px; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Oct 25</span><span>Delivered on order #2042</span><span style="text-align: right; font-weight: 500;">−14</span><span style="text-align: right; color: var(--muted-fg, #71717a);">30</span></li>
+<li style="display: grid; grid-template-columns: 80px 1fr 70px 60px; align-items: center; gap: 8px; min-height: 36px; padding: 0 16px;"><span style="color: var(--muted-fg, #71717a);">Oct 6</span><span>Finished batch B-0312: 30 good, 1 damaged</span><span style="text-align: right; color: var(--success-fg, #15803d); font-weight: 500;">+30</span><span style="text-align: right; color: var(--muted-fg, #71717a);">70</span></li>
+</ul>
+</section>
+</div>
+
+<aside style="flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; gap: 16px;">
+<section aria-labelledby="pd-details" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 8px;"><h2 id="pd-details" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Details</h2></div>
+<dl style="margin: 0; padding: 0 16px 14px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; line-height: 18px;">
+<dt style="color: var(--muted-fg, #71717a);">Kind</dt><dd style="margin: 0;">Styro ball</dd>
+<dt style="color: var(--muted-fg, #71717a);">Size</dt><dd style="margin: 0;">6 inch across</dd>
+<dt style="color: var(--muted-fg, #71717a);">Price</dt><dd style="margin: 0;">₱35.00 each</dd>
+<dt style="color: var(--muted-fg, #71717a);">Warn below</dt><dd style="margin: 0;">50 on the shelf</dd>
+<dt style="color: var(--muted-fg, #71717a);">Shelf spot</dt><dd style="margin: 0;">Rack B, bin 4</dd>
+</dl>
+</section>
+<section aria-labelledby="pd-recipe" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px 6px;"><h2 id="pd-recipe" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Made from, per 100</h2><button type="button" style="padding: 0; border: 0; background: transparent; color: var(--primary-text, #004E89); font-size: 13px; font-weight: 500; cursor: pointer;">Edit recipe</button></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 12px; font-size: 13px; line-height: 18px;">
+<li style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><a href="RawMaterials.dc.html" style="text-decoration: none;">EPS block, raw</a><span>1 block</span></li>
+<li style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><a href="RawMaterials.dc.html" style="text-decoration: none;">Hot-wire, nichrome</a><span>3 m</span></li>
+<li style="display: flex; justify-content: space-between; padding: 6px 0;"><a href="RawMaterials.dc.html" style="text-decoration: none;">Spray paint, white</a><span>2 cans</span></li>
+</ul>
+</section>
+<section aria-labelledby="pd-batches" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 6px;"><h2 id="pd-batches" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Batches</h2></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 12px; font-size: 13px; line-height: 18px;">
+<li style="display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><a href="Production.dc.html" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-decoration: none;">B-0321</a><span>200 · Lito Garcia</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">Planned</span></li>
+<li style="display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; padding: 6px 0;"><a href="Production.dc.html" style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; text-decoration: none;">B-0312</a><span>31 · Oct 6</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;">Completed</span></li>
+</ul>
+</section>
+</aside>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgCount}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;"><dc-import name="StockChangeDialog" on-close="{{closeDlg}}" mode="count" item="Styro ball, 6 inch" unit="pcs" on-hand="18" hint-size="480px,560px"></dc-import></div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgBatch}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;"><dc-import name="StartBatchDialog" on-close="{{closeDlg}}" hint-size="520px,600px"></dc-import></div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="inventory" h="1060" hint-size="240px,1060px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      dlgCount: s.dlg === 'count',
+      dlgBatch: s.dlg === 'batch',
+      openCount: () => this.setState({ dlg: 'count' }),
+      openBatch: () => this.setState({ dlg: 'batch' }),
+      closeDlg: () => this.setState({ dlg: null }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

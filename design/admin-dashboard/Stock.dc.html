@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inventory</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 960px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="inventory" collapsed="{{collapsed}}" h="960" on-toggle="{{toggleNav}}" hint-size="240px,960px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Operations" page="Inventory" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<!-- PageHeader -->
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 129.09V232M32.7 76.92 128 129.09l95.3-52.17M219.84 182.84l-88 48.18a8 8 0 0 1-7.68 0l-88-48.18a8 8 0 0 1-4.16-7V80.18a8 8 0 0 1 4.16-7l88-48.18a8 8 0 0 1 7.68 0l88 48.18a8 8 0 0 1 4.16 7v95.64a8 8 0 0 1-4.16 7Z"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Inventory</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Finished products on the shelf, ready to sell.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" onClick="{{openCount}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M88 104h80M88 136h80M88 168h48"></path><rect x="48" y="40" width="160" height="184" rx="8"></rect><path d="M96 24h64v32H96Z"></path></svg>Stock count</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 144V32M216 144v64a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8v-64M168 104l-40 40-40-40"></path></svg>Export</button>
+<button type="button" onClick="{{openDialog}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>{{cta}}</button>
+</div>
+</header>
+
+<!-- StatCards -->
+<section aria-label="Stock totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Products</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">64</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">3 added in October</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Running low</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">7</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--danger-bd, #fee2e2); background: var(--danger-bg, #fef2f2); color: var(--danger-fg, #b91c1c); font-size: 12px; font-weight: 500;">1 out of stock</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Stock value</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">₱486,200.00</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">at selling price</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Raw materials to order</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">3</span><a href="RawMaterials.dc.html" style="font-size: 12px; font-weight: 500; text-decoration: none;">Open raw materials</a></div></div>
+</section>
+
+<!-- Products -->
+<sc-if value="{{isProducts}}" hint-placeholder-val="{{true}}">
+<section role="tabpanel" aria-label="Products" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<div style="position: relative; flex: 0 1 260px; min-width: 180px;">
+<label for="stock-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search products</label>
+<span style="position: absolute; left: 10px; top: 8px; line-height: 0; color: var(--muted-fg, #71717a); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<input id="stock-search" type="search" placeholder="Search name or code" value="{{query}}" onChange="{{onQuery}}" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="position: relative;">
+<button type="button" aria-haspopup="listbox" aria-expanded="{{kindOpen}}" onClick="{{toggleKind}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span style="color: var(--muted-fg, #71717a);">Kind</span><span style="font-weight: 500;">{{kindLabel}}</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+<sc-if value="{{kindOpen}}" hint-placeholder-val="{{false}}">
+<div role="listbox" aria-label="Kind" style="position: absolute; left: 0; top: 36px; z-index: 20; width: 200px; padding: 4px; box-sizing: border-box; background: var(--card, #ffffff); border: 1px solid var(--border, #d4d4d8); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+<sc-for list="{{kindOptions}}" as="opt" hint-placeholder-count="5">
+<button type="button" role="option" aria-selected="{{opt.selected}}" onClick="{{opt.pick}}" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 4px; background: {{opt.bg}}; font-size: 13px; text-align: left; cursor: pointer;"><span style="flex: 1;">{{opt.label}}</span><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{opt.checkD}}; stroke: var(--foreground, #09090b)"><path d="M40 144l56 56L224 72"></path></svg></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<div role="group" aria-label="Stock level" style="display: inline-flex; gap: 4px; flex-wrap: wrap;">
+<sc-for list="{{levelOptions}}" as="lv" hint-placeholder-count="4">
+<button type="button" aria-pressed="{{lv.on}}" onClick="{{lv.pick}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid {{lv.bd}}; border-radius: 6px; background: {{lv.bg}}; color: var(--foreground, #09090b); font-size: 13px; font-weight: 500; cursor: pointer;">{{lv.label}}<span style="font-size: 12px; color: var(--muted-fg, #71717a);">{{lv.count}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<div style="overflow-x: auto;">
+<div role="table" aria-label="Products" style="min-width: 920px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) 120px minmax(110px, 1fr) 170px 90px 100px 120px 48px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Product</div>
+<div role="columnheader" style="padding: 0 8px;">Code</div>
+<div role="columnheader" style="padding: 0 8px;">Kind</div>
+<div role="columnheader" style="padding: 0 8px;">On the shelf</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Reorder at</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Price</div>
+<div role="columnheader" style="padding: 0 8px;">Stock</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></div>
+</div>
+<sc-for list="{{products}}" as="p" hint-placeholder-count="10">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) 120px minmax(110px, 1fr) 170px 90px 100px 120px 48px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; display: flex; align-items: center; gap: 8px; min-width: 0;">
+<span aria-hidden="true" style="flex: none; width: 24px; height: 24px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--fg-3, #52525b);">
+<sc-if value="{{p.isBall}}" hint-placeholder-val="{{true}}"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" aria-hidden="true"><circle cx="128" cy="128" r="88"></circle></svg></sc-if>
+<sc-if value="{{p.isSheet}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="176" height="176" rx="8"></rect></svg></sc-if>
+<sc-if value="{{p.isBlock}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linejoin="round" aria-hidden="true"><path d="M128 129.09V232M32.7 76.92 128 129.09l95.3-52.17M219.84 182.84l-88 48.18a8 8 0 0 1-7.68 0l-88-48.18a8 8 0 0 1-4.16-7V80.18a8 8 0 0 1 4.16-7l88-48.18a8 8 0 0 1 7.68 0l88 48.18a8 8 0 0 1 4.16 7v95.64a8 8 0 0 1-4.16 7Z"></path></svg></sc-if>
+<sc-if value="{{p.isOther}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linejoin="round" aria-hidden="true"><path d="M80 32 136 128H24Z"></path><rect x="144" y="40" width="80" height="80" rx="8"></rect><circle cx="100" cy="188" r="40"></circle></svg></sc-if>
+</span>
+<a href="ProductDetail.dc.html" style="font-weight: 500; color: var(--foreground, #09090b); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.name}}</a>
+</div>
+<div role="cell" style="padding: 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b); white-space: nowrap;">{{p.code}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46); white-space: nowrap;">{{p.kindLabel}}</div>
+<div role="cell" style="padding: 0 8px; display: flex; align-items: center; gap: 10px;"><span style="min-width: 56px;">{{p.qtyLabel}}</span><span aria-hidden="true" style="position: relative; flex: none; width: 64px; height: 4px; border-radius: 2px; background: var(--muted, #f4f4f5); overflow: hidden;"><span style="position: absolute; left: 0; top: 0; bottom: 0; width: {{p.pct}}%; background: var(--muted-2, #a1a1aa);"></span></span></div>
+<div role="cell" style="padding: 0 8px; text-align: right; color: var(--muted-fg, #71717a);">{{p.reorder}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{p.price}}</div>
+<div role="cell" style="padding: 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{p.st.bd}}; background: {{p.st.bg}}; color: {{p.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>{{p.st.label}}</span></div>
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" aria-label="Actions for {{p.name}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--fg-2, #3f3f46); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><circle cx="60" cy="128" r="14"></circle><circle cx="128" cy="128" r="14"></circle><circle cx="196" cy="128" r="14"></circle></svg></button></div>
+</div>
+</sc-for>
+<sc-if value="{{noProducts}}" hint-placeholder-val="{{false}}">
+<div role="row"><div role="cell" style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 16px; text-align: center;">
+<span style="width: 40px; height: 40px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted-fg, #71717a);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<h3 style="margin: 4px 0 0; font-size: 14px; line-height: 20px; font-weight: 600;">No products match these filters</h3>
+<p style="margin: 0; font-size: 13px; color: var(--muted-fg, #71717a);">Try another name, or show every kind.</p>
+<button type="button" onClick="{{clearFilters}}" style="margin-top: 4px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Clear filters</button>
+</div></div>
+</sc-if>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; font-size: 13px; color: var(--muted-fg, #71717a);">
+<span>Showing {{productCount}} of 64 products</span>
+<span style="display: inline-flex; align-items: center; gap: 12px;"><span style="color: var(--foreground, #09090b); font-weight: 500;">Page 1 of 7</span>
+<span style="display: inline-flex; gap: 4px;">
+<button type="button" disabled aria-label="Previous page" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--muted-2, #a1a1aa); cursor: not-allowed;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M160 208l-80-80 80-80"></path></svg></button>
+<button type="button" aria-label="Next page" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></button>
+</span></span>
+</div>
+</section>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{dialogProduct}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDialog}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="AddProductDialog" on-close="{{closeDialog}}" hint-size="520px,640px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgStock}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="StockChangeDialog" on-close="{{closeDlg}}" mode="count" item="Styro ball, 6 inch" unit="pcs" on-hand="18" hint-size="480px,560px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; border-right: 1px solid var(--border, #d4d4d8); background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="inventory" h="960" hint-size="240px,960px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tab":{"editor":"enum","options":["products","materials"],"default":"products"},"$preview":{"width":1440,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const tab = s.tab ?? (this.props.tab ?? 'products');
+    const query = s.query ?? '';
+    const q = query.trim().toLowerCase();
+    const kind = s.kind ?? 'all';
+    const level = s.level ?? 'all';
+    const KINDS = { all: 'All', ball: 'Styro ball', sheet: 'Styro sheet', block: 'Styro block', other: 'Something else' };
+    const LEVEL = {
+      in: { label: 'In stock', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' },
+      low: { label: 'Running low', bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)' },
+      out: { label: 'Out of stock', bg: 'var(--danger-bg, #fef2f2)', fg: 'var(--danger-fg, #b91c1c)', bd: 'var(--danger-bd, #fee2e2)' }
+    };
+    const all = [
+      { name: 'Styro ball, 4 inch', code: 'SB-040', kind: 'ball', qty: 240, unit: 'pcs', reorder: 100, price: '₱18.00' },
+      { name: 'Styro ball, 6 inch', code: 'SB-060', kind: 'ball', qty: 18, unit: 'pcs', reorder: 50, price: '₱35.00' },
+      { name: 'Styro ball, 10 inch', code: 'SB-100', kind: 'ball', qty: 64, unit: 'pcs', reorder: 30, price: '₱95.00' },
+      { name: 'Styro sheet, 1 in, 4 × 8 ft', code: 'SS-100-4X8', kind: 'sheet', qty: 6, unit: 'sheets', reorder: 20, price: '₱620.00' },
+      { name: 'Styro sheet, ½ in, 4 × 8 ft', code: 'SS-050-4X8', kind: 'sheet', qty: 42, unit: 'sheets', reorder: 20, price: '₱340.00' },
+      { name: 'Foam block, 12 inch', code: 'FB-120', kind: 'block', qty: 22, unit: 'pcs', reorder: 25, price: '₱480.00' },
+      { name: 'Foam block, 24 inch', code: 'FB-240', kind: 'block', qty: 9, unit: 'pcs', reorder: 5, price: '₱1,450.00' },
+      { name: 'Glitter, gold, 100 g', code: 'GL-100-GD', kind: 'other', qty: 0, unit: 'packs', reorder: 15, price: '₱45.00' },
+      { name: 'Satin ribbon, red, 1 in', code: 'RB-025-RD', kind: 'other', qty: 9, unit: 'rolls', reorder: 12, price: '₱60.00' },
+      { name: 'Star cutout, 12 inch', code: 'CP-STAR-12', kind: 'other', qty: 120, unit: 'pcs', reorder: 40, price: '₱25.00' }
+    ].map((p) => ({ ...p, level: p.qty === 0 ? 'out' : (p.qty <= p.reorder ? 'low' : 'in') }));
+    const products = all
+      .filter((p) => (kind === 'all' || p.kind === kind) && (level === 'all' || p.level === level) &&
+        (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)))
+      .map((p) => ({
+        ...p,
+        kindLabel: KINDS[p.kind],
+        qtyLabel: p.qty + ' ' + p.unit,
+        pct: Math.min(100, Math.round((p.qty / (p.reorder * 3)) * 100)),
+        st: LEVEL[p.level],
+        isBall: p.kind === 'ball', isSheet: p.kind === 'sheet', isBlock: p.kind === 'block', isOther: p.kind === 'other'
+      }));
+    const kindOptions = Object.keys(KINDS).map((k) => ({
+      label: k === 'all' ? 'All kinds' : KINDS[k],
+      selected: k === kind,
+      bg: k === kind ? 'var(--muted, #f4f4f5)' : 'transparent',
+      checkD: k === kind ? 'block' : 'none',
+      pick: () => this.setState({ kind: k, kindOpen: false })
+    }));
+    const levelOptions = [['all', 'All'], ['in', 'In stock'], ['low', 'Running low'], ['out', 'Out']].map(([v, label]) => ({
+      label,
+      count: v === 'all' ? all.length : all.filter((p) => p.level === v).length,
+      on: v === level,
+      bg: v === level ? 'var(--muted, #f4f4f5)' : 'var(--card, #ffffff)',
+      bd: v === level ? 'var(--border, #d4d4d8)' : 'var(--border-subtle, #e4e4e7)',
+      pick: () => this.setState({ level: v })
+    }));
+    const MAT = {
+      ok: { label: 'Enough', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' },
+      low: { label: 'Running low', bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)' },
+      short: { label: 'Short by 2 L', bg: 'var(--danger-bg, #fef2f2)', fg: 'var(--danger-fg, #b91c1c)', bd: 'var(--danger-bd, #fee2e2)' },
+      out: { label: 'Out of stock', bg: 'var(--danger-bg, #fef2f2)', fg: 'var(--danger-fg, #b91c1c)', bd: 'var(--danger-bd, #fee2e2)' }
+    };
+    const materials = [
+      { name: 'EPS block, raw, 1 × 1 × 2 m', unit: 'block', onHand: 14, aside: 4, free: 10, s: 'ok' },
+      { name: 'Hot-wire, nichrome', unit: 'm', onHand: 30, aside: 0, free: 30, s: 'low' },
+      { name: 'Spray paint, white', unit: 'can', onHand: 48, aside: 12, free: 36, s: 'ok' },
+      { name: 'Glue, foam-safe', unit: 'L', onHand: 3, aside: 5, free: 0, s: 'short' },
+      { name: 'Glitter, bulk, gold', unit: 'kg', onHand: 0, aside: 0, free: 0, s: 'out' },
+      { name: 'Gold leaf sheets', unit: 'pack', onHand: 6, aside: 0, free: 6, s: 'ok' }
+    ].map((m) => ({ ...m, st: MAT[m.s], needsOrder: m.s !== 'ok' }));
+    const isProducts = tab === 'products';
+    const on = { bg: 'var(--card, #ffffff)', shadow: '0 1px 2px rgba(0,0,0,0.06)', fg: 'var(--foreground, #09090b)' };
+    const off = { bg: 'transparent', shadow: 'none', fg: 'var(--muted-fg, #71717a)' };
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      isProducts,
+      isMaterials: !isProducts,
+      tabP: isProducts ? on : off,
+      tabM: isProducts ? off : on,
+      cta: isProducts ? 'Add product' : 'Add material',
+      query,
+      kindOpen: !!s.kindOpen,
+      kindLabel: kind === 'all' ? 'All' : KINDS[kind],
+      kindOptions,
+      levelOptions,
+      products,
+      productCount: products.length,
+      noProducts: products.length === 0,
+      materials,
+      showProducts: () => this.setState({ tab: 'products' }),
+      showMaterials: () => this.setState({ tab: 'materials' }),
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleKind: () => this.setState({ kindOpen: !s.kindOpen }),
+      clearFilters: () => this.setState({ query: '', kind: 'all', level: 'all' }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgStock: s.dlg === 'stock',
+      openCount: () => this.setState({ dlg: 'stock' }),
+      dialog: !!s.dialog,
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false }),
+      dialogProduct: !!s.dialog && isProducts,
+      dialogMaterial: !!s.dialog && !isProducts
+    };
+  }
+}
+</script>
+</body>
+</html>

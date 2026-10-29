@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings · Roles and permissions</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 940px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="settings" sub="roles" collapsed="{{collapsed}}" h="940" on-toggle="{{toggleNav}}" hint-size="240px,940px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Settings" page="Roles and permissions" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 114.79V56a8 8 0 0 1 8-8h160a8 8 0 0 1 8 8v58.77c0 84.18-71.31 112.07-85.54 116.8a7.54 7.54 0 0 1-4.92 0C111.31 226.86 40 199 40 114.79Z"></path><path d="M88 136l24 24 56-56"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Roles and permissions</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">What each role can see and change. Everyone with that role gets the change on their next page load.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<button type="button" onClick="{{openRole}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add role</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Save changes</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+<!-- Role list -->
+<nav class="roles-nav" aria-label="Roles" style="position: relative; flex: 0 1 260px; min-width: 220px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); padding: 4px;">
+<span class="roles-ind" aria-hidden="true" style="transform: translateY({{rolesY}});"></span>
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="5">
+<button type="button" aria-current="{{r.current}}" onClick="{{r.pick}}" style="display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; box-sizing: border-box; padding: 8px 10px; border: 0; border-radius: 6px; background: {{r.bg}}; color: {{r.fg}}; text-align: left; cursor: pointer;">
+<span style="flex: 1; min-width: 0;"><span style="display: block; font-size: 14px; font-weight: 500;">{{r.name}}</span><span style="display: block; font-size: 12px; line-height: 16px; color: {{r.sub}};">{{r.people}}</span></span>
+<sc-if value="{{r.locked}}" hint-placeholder-val="{{false}}"><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round" aria-label="Locked" role="img"><rect x="40" y="88" width="176" height="128" rx="8"></rect><path d="M88 88V56a40 40 0 0 1 80 0v32"></path></svg></sc-if>
+</button>
+</sc-for>
+</nav>
+
+<!-- Permission grid -->
+<section aria-labelledby="sr-title" style="flex: 999 1 560px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<div>
+<h2 id="sr-title" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">{{role.name}}</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">{{role.desc}}</p>
+</div>
+<div style="display: flex; align-items: center;">
+<sc-for list="{{role.faces}}" as="f" hint-placeholder-count="3">
+<span title="{{f.name}}" style="width: 28px; height: 28px; margin-left: -6px; border: 2px solid var(--card, #ffffff); border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">{{f.initials}}</span>
+</sc-for>
+</div>
+</div>
+
+<sc-if value="{{role.locked}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; gap: 10px; margin: 12px 16px 0; padding: 10px 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); font-size: 13px; line-height: 18px; color: var(--fg-2, #3f3f46);">
+<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; margin-top: 1px; stroke: var(--muted-fg, #71717a)"><rect x="40" y="88" width="176" height="128" rx="8"></rect><path d="M88 88V56a40 40 0 0 1 80 0v32"></path></svg>
+<span>Admin can always do everything, so nobody can lock the business out of its own system.</span>
+</div>
+</sc-if>
+
+<div style="overflow-x: auto; padding: 4px 0 8px;">
+<div role="table" aria-label="Permissions for {{role.name}}" style="min-width: 600px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(72px, 1fr)); align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 16px;">Area</div>
+<div role="columnheader" style="text-align: center;">See</div>
+<div role="columnheader" style="text-align: center;">Add</div>
+<div role="columnheader" style="text-align: center;">Change</div>
+<div role="columnheader" style="text-align: center;">Remove</div>
+</div>
+<sc-for list="{{rows}}" as="row" hint-placeholder-count="8">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) repeat(4, minmax(72px, 1fr)); align-items: center; min-height: 44px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 4px 16px;"><div style="font-weight: 500;">{{row.area}}</div><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{row.hint}}</div></div>
+<sc-for list="{{row.cells}}" as="c" hint-placeholder-count="4">
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" role="checkbox" aria-checked="{{c.on}}" aria-label="{{c.label}}" disabled="{{c.locked}}" onClick="{{c.toggle}}" style="width: 16px; height: 16px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid {{c.bd}}; border-radius: 4px; background: {{c.bg}}; color: var(--on-primary, #ffffff); opacity: {{c.opacity}}; cursor: {{c.cursor}};"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{c.checkD}};"><path d="M40 144l56 56L224 72"></path></svg></button></div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgRole}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="AddRoleDialog" on-close="{{closeDlg}}" hint-size="480px,440px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="settings" sub="roles" h="940" hint-size="240px,940px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const picked = s.role ?? 'sales';
+    const edits = s.edits ?? {};
+    const AREAS = [
+      ['orders', 'Orders and customers', 'Orders, quotes, customer records'],
+      ['inventory', 'Products and stock', 'Prices, stock counts, write-offs'],
+      ['materials', 'Raw materials and suppliers', 'Supplier orders and claims'],
+      ['production', 'Production', 'Batches and quality checks'],
+      ['deliveries', 'Deliveries', 'Drivers, runs, proof of delivery'],
+      ['people', 'Staff and accounts', 'Directory and sign-in accounts'],
+      ['reports', 'Reports', 'Sales, production and stock reports'],
+      ['settings', 'Settings', 'Business details and these permissions']
+    ];
+    const ALL = [1, 1, 1, 1];
+    const ROLES = {
+      admin: { name: 'Admin', locked: true, desc: 'Owns the system. Cannot be limited.', people: ['Maria Santos'], p: {} },
+      manager: { name: 'Manager', desc: 'Runs the floor day to day.', people: ['Carla Mendoza'],
+        p: { orders: ALL, inventory: ALL, materials: ALL, production: ALL, deliveries: ALL, people: [1, 1, 1, 0], reports: [1, 0, 0, 0], settings: [1, 0, 0, 0] } },
+      sales: { name: 'Sales Staff', desc: 'Takes orders and looks after customers.', people: ['Ana Reyes', 'Paolo Villanueva', 'Mark Torres'],
+        p: { orders: [1, 1, 1, 0], inventory: [1, 0, 0, 0], production: [1, 0, 0, 0], deliveries: [1, 0, 0, 0], reports: [1, 0, 0, 0] } },
+      production: { name: 'Production Staff', desc: 'Makes the products and keeps materials counted.', people: ['Lito Garcia', 'Liza Ramos', 'Edwin Castro', 'Rosa Navarro'],
+        p: { orders: [1, 0, 0, 0], inventory: [1, 0, 1, 0], materials: [1, 1, 1, 0], production: ALL } },
+      delivery: { name: 'Delivery Staff', desc: 'Takes orders out and records what arrived.', people: ['Jun Dela Cruz', 'Ben Aquino'],
+        p: { orders: [1, 0, 0, 0], deliveries: [1, 0, 1, 0] } }
+    };
+    const initials = (n) => n.split(' ').map((w) => w[0]).slice(0, 2).join('');
+    const roles = Object.keys(ROLES).map((k) => {
+      const r = ROLES[k];
+      const on = k === picked;
+      return {
+        name: r.name, locked: !!r.locked,
+        people: r.people.length + (r.people.length === 1 ? ' person' : ' people'),
+        bg: on ? 'var(--primary, #004E89)' : 'transparent', fg: on ? 'var(--on-primary, #ffffff)' : 'var(--foreground, #09090b)', sub: on ? 'rgba(255,255,255,0.8)' : 'var(--muted-fg, #71717a)',
+        current: on ? 'true' : undefined,
+        pick: () => this.setState({ role: k })
+      };
+    });
+    const rolesY = Math.max(0, Object.keys(ROLES).indexOf(picked)) * 52 + 'px';
+    const r = ROLES[picked];
+    const VERBS = ['see', 'add', 'change', 'remove'];
+    const rows = AREAS.map(([key, area, hint]) => ({
+      area, hint,
+      cells: VERBS.map((verb, i) => {
+        const id = picked + '.' + key + '.' + i;
+        const base = r.locked ? 1 : ((r.p[key] || [0, 0, 0, 0])[i]);
+        const on = !!(edits[id] ?? base);
+        return {
+          on,
+          locked: !!r.locked,
+          label: r.name + ' can ' + verb + ' ' + area.toLowerCase(),
+          bg: on ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)',
+          bd: on ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)',
+          checkD: on ? 'block' : 'none',
+          opacity: r.locked ? '0.55' : '1',
+          cursor: r.locked ? 'not-allowed' : 'pointer',
+          toggle: () => this.setState({ edits: { ...edits, [id]: !on } })
+        };
+      })
+    }));
+    return {
+      rolesY,
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      roles,
+      role: { name: r.name, desc: r.desc, locked: !!r.locked, faces: r.people.map((n) => ({ name: n, initials: initials(n) })) },
+      rows,
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgRole: s.dlg === 'role',
+      openRole: () => this.setState({ dlg: 'role' })
+    };
+  }
+}
+</script>
+</body>
+</html>

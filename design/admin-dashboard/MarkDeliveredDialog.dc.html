@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mark delivered dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-modal="true" aria-labelledby="md-title" aria-describedby="md-desc" style="position: relative; box-sizing: border-box; width: 480px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+<button type="button" aria-label="Close" onClick="{{close}}" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+<div style="padding: 20px 52px 0 20px;">
+<h2 id="md-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Delivery #{{deliveryId}} arrived</h2>
+<p id="md-desc" style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">{{customer}} · {{items}} items</p>
+</div>
+<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: grid; grid-template-columns: 1fr 140px; gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="md-who" style="font-size: 14px; font-weight: 500;">Received by</label><input id="md-who" type="text" placeholder="Name of the person who signed" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="md-when" style="font-size: 14px; font-weight: 500;">At</label><input id="md-when" type="text" defaultValue="11:20 AM" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span id="md-all" style="font-size: 14px; font-weight: 500;">Did everything arrive in good shape?</span>
+<div role="radiogroup" aria-labelledby="md-all" style="display: flex; flex-direction: column; gap: 2px;">
+<sc-for list="{{outcomes}}" as="o" hint-placeholder-count="2">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0; border: 0; background: transparent; color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; cursor: pointer;"><span aria-hidden="true" style="flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{o.bd}}; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{o.dot}};"></span></span>{{o.label}}</button>
+</sc-for>
+</div>
+</div>
+<sc-if value="{{problem}}" hint-placeholder-val="{{false}}">
+<div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 12px; border: 1px solid var(--warning-bd, #fef3c7); border-radius: 6px; background: var(--warning-bg, #fffbeb);">
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="md-n" style="font-size: 13px; font-weight: 500;">How many</label><input id="md-n" type="text" inputmode="numeric" defaultValue="1" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: right;"></div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="md-what" style="font-size: 13px; font-weight: 500;">What happened</label><input id="md-what" type="text" placeholder="Broken corner on the star cutout" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px;"></div>
+<p style="grid-column: 1 / -1; margin: 0; font-size: 12px; line-height: 16px; color: var(--fg-2, #3f3f46);">Sales is told so they can arrange a replacement.</p>
+</div>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 14px; font-weight: 500;">Proof of delivery</span>
+<button type="button" style="display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px dashed var(--input-strong, #a1a1aa); border-radius: 6px; background: var(--surface-2, #fafafa); color: var(--fg-2, #3f3f46); font: inherit; font-size: 13px; text-align: left; cursor: pointer;"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M208 208H48a16 16 0 0 1-16-16V80a16 16 0 0 1 16-16h32l16-24h64l16 24h32a16 16 0 0 1 16 16v112a16 16 0 0 1-16 16Z"></path><circle cx="128" cy="132" r="36"></circle></svg><span><span style="display: block; font-weight: 500; color: var(--foreground, #09090b);">Add a photo of the signed slip</span><span style="display: block; color: var(--muted-fg, #71717a);">Or of the items at the door</span></span></button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 20px 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Not yet</button>
+<button type="button" onClick="{{confirm}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Mark delivered</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"deliveryId":{"editor":"text","default":"2046"},"customer":{"editor":"text","default":"SM Lanang Display Team"},"items":{"editor":"int","default":8},"onClose":{"editor":null},"onConfirm":{"editor":null},"$preview":{"width":480,"height":580}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const pick = s.pick ?? 'all';
+    const items = p.items ?? 8;
+    const outcomes = [['all', 'Yes, all ' + items + ' items'], ['some', 'Some were missing or damaged']].map(([v, label]) => {
+      const on = v === pick;
+      return { label, on, bd: on ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)', dot: on ? 'var(--primary, #004E89)' : 'transparent', pick: () => this.setState({ pick: v }) };
+    });
+    return {
+      deliveryId: p.deliveryId ?? '2046',
+      customer: p.customer ?? 'SM Lanang Display Team',
+      items,
+      outcomes,
+      problem: pick === 'some',
+      confirm: () => { if (typeof p.onConfirm === 'function') p.onConfirm(); else if (typeof p.onClose === 'function') p.onClose(); },
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

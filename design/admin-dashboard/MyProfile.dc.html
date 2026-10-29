@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your profile</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1320px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="profile" collapsed="{{collapsed}}" h="1320" on-toggle="{{toggleNav}}" hint-size="240px,1320px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Account" page="Your profile" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 1040px; box-sizing: border-box; width: 100%;">
+
+<!-- Header -->
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<span aria-hidden="true" style="flex: none; width: 64px; height: 64px; border-radius: 50%; background: var(--muted-strong, #e4e4e7); color: var(--foreground, #09090b); font-size: 20px; font-weight: 500; display: flex; align-items: center; justify-content: center;">MS</span>
+<div style="flex: 1 1 260px; min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Maria Santos</h1><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--card, #ffffff); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">Admin</span></div>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Owner · maria@lsbhandicrafts.ph</p>
+<div style="display: flex; gap: 8px; margin-top: 8px;">
+<button type="button" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Change photo</button>
+<button type="button" style="height: 28px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); font-size: 13px; font-weight: 500; cursor: pointer;">Use initials</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<sc-if value="{{dirty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: var(--muted-fg, #71717a);">Unsaved changes</span></sc-if>
+<button type="button" onClick="{{save}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Save changes</button>
+</div>
+</header>
+
+<!-- Details -->
+<section aria-labelledby="mp-details" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 220px; min-width: 200px;"><h2 id="mp-details" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Your details</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">How your name shows on orders and in the activity log.</p></div>
+<div style="flex: 1 1 420px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="mp-name" style="font-size: 14px; font-weight: 500;">Your name</label><input id="mp-name" type="text" defaultValue="Maria Santos" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="mp-phone" style="font-size: 14px; font-weight: 500;">Mobile</label><input id="mp-phone" type="tel" defaultValue="0917 555 0101" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="mp-email" style="font-size: 14px; font-weight: 500;">Sign-in email</label><input id="mp-email" type="email" value="maria@lsbhandicrafts.ph" readonly aria-describedby="mp-email-hint" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); color: var(--fg-3, #52525b); font-size: 14px;"><span id="mp-email-hint" style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Another admin can change this for you.</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><span style="font-size: 14px; font-weight: 500;">What you do</span><span style="display: flex; align-items: center; height: 32px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); color: var(--fg-3, #52525b); font-size: 14px;">Admin · Owner</span><span style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Set in User Management.</span></div>
+</div>
+</section>
+
+<!-- Password -->
+<section aria-labelledby="mp-pass" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 220px; min-width: 200px;"><h2 id="mp-pass" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Password</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Last changed Aug 14, 2026. Other devices stay signed in.</p></div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px; max-width: 320px;"><label for="mp-cur" style="font-size: 14px; font-weight: 500;">Current password</label><input id="mp-cur" type="password" autocomplete="current-password" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="mp-new" style="font-size: 14px; font-weight: 500;">New password</label><input id="mp-new" type="password" autocomplete="new-password" onChange="{{onNew}}" aria-describedby="mp-strength" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="mp-again" style="font-size: 14px; font-weight: 500;">Type it again</label><input id="mp-again" type="password" autocomplete="new-password" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</div>
+<div id="mp-strength" style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted-fg, #71717a);">
+<span aria-hidden="true" style="display: inline-flex; gap: 3px;"><span style="width: 32px; height: 4px; border-radius: 2px; background: {{s1}};"></span><span style="width: 32px; height: 4px; border-radius: 2px; background: {{s2}};"></span><span style="width: 32px; height: 4px; border-radius: 2px; background: {{s3}};"></span></span>
+<span>{{strengthLabel}}</span>
+</div>
+<div><button type="button" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Change password</button></div>
+</div>
+</section>
+
+<!-- Preferences -->
+<section aria-labelledby="mp-prefs" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 220px; min-width: 200px;"><h2 id="mp-prefs" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">How the app looks for you</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Only on your account, on every device.</p></div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span id="mp-theme" style="font-size: 14px; font-weight: 500;">Theme</span>
+<div role="radiogroup" aria-labelledby="mp-theme" style="display: flex; flex-wrap: wrap; gap: 4px 20px;">
+<sc-for list="{{themes}}" as="o" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0; border: 0; background: transparent; font-size: 14px; cursor: pointer;"><span aria-hidden="true" style="flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{o.bd}}; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{o.dot}};"></span></span>{{o.label}}</button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span id="mp-size" style="font-size: 14px; font-weight: 500;">Text size</span>
+<div role="radiogroup" aria-labelledby="mp-size" style="display: flex; flex-direction: column; gap: 2px;">
+<sc-for list="{{sizes}}" as="o" hint-placeholder-count="2">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: inline-flex; align-items: flex-start; gap: 8px; padding: 4px 0; border: 0; background: transparent; text-align: left; cursor: pointer;"><span aria-hidden="true" style="flex: none; margin-top: 2px; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{o.bd}}; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{o.dot}};"></span></span><span><span style="display: block; font-size: 14px;">{{o.label}}</span><span style="display: block; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">{{o.hint}}</span></span></button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; max-width: 320px;"><span id="mp-start-label" style="font-size: 14px; font-weight: 500;">Open on</span><button type="button" aria-haspopup="listbox" aria-labelledby="mp-start-label mp-start-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="mp-start-value">Dashboard</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button></div>
+</div>
+</section>
+
+<!-- Sessions -->
+<section aria-labelledby="mp-sessions" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<div><h2 id="mp-sessions" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Where you're signed in</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Sign out anything you don't recognise, then change your password.</p></div>
+<button type="button" onClick="{{signOutOthers}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Sign out everywhere else</button>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0;">
+<sc-for list="{{sessions}}" as="d" hint-placeholder-count="3">
+<li style="display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5); font-size: 13px; line-height: 18px;">
+<span aria-hidden="true" style="flex: none; width: 32px; height: 32px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-3, #52525b);">
+<sc-if value="{{d.isPhone}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="64" y="24" width="128" height="208" rx="16"></rect><path d="M64 56h128M64 200h128"></path></svg></sc-if>
+<sc-if value="{{d.isScreen}}" hint-placeholder-val="{{true}}"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="48" width="192" height="136" rx="16"></rect><path d="M160 224H96M128 184v40"></path></svg></sc-if>
+</span>
+<div style="flex: 1; min-width: 0;"><div style="display: flex; align-items: center; gap: 8px;"><span style="font-weight: 500;">{{d.device}}</span><sc-if value="{{d.current}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;">This device</span></sc-if></div><div style="color: var(--muted-fg, #71717a);">{{d.where}} · {{d.when}}</div></div>
+<sc-if value="{{d.canEnd}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{d.end}}" aria-label="Sign out of {{d.device}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; cursor: pointer;">Sign out</button></sc-if>
+</li>
+</sc-for>
+</ul>
+</section>
+
+</div>
+</main>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="profile" h="1320" hint-size="240px,1320px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1320}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    let saved = null;
+    try { saved = window.localStorage.getItem('lsb-theme'); } catch (e) { /* storage blocked */ }
+    const theme = s.theme ?? (saved === 'dark' || saved === 'device' ? saved : 'light');
+    const applyTheme = (v) => {
+      // The choice previews at once, here and on every other open artboard.
+      try { window.localStorage.setItem('lsb-theme', v); } catch (e) { /* storage blocked */ }
+      const root = document.documentElement;
+      const dark = v === 'dark' || (v === 'device' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      root.classList.add('theme-anim');
+      root.classList.toggle('dark', dark);
+      setTimeout(() => root.classList.remove('theme-anim'), 300);
+    };
+    const size = s.size ?? 'standard';
+    const ended = s.ended ?? {};
+    const pw = s.pw ?? '';
+    const radio = (on) => ({ bd: on ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)', dot: on ? 'var(--primary, #004E89)' : 'transparent' });
+    const themes = [['light', 'Light'], ['dark', 'Dark'], ['device', 'Match this device']].map(([v, label]) => ({
+      label, on: v === theme, ...radio(v === theme), pick: () => { applyTheme(v); this.setState({ theme: v, dirty: true }); }
+    }));
+    const sizes = [['standard', 'Standard', 'Compact tables and 14px text, as designed.'], ['large', 'Large', 'Bigger text and buttons, and a simpler dashboard with big tiles.']].map(([v, label, hint]) => ({
+      label, hint, on: v === size, ...radio(v === size), pick: () => this.setState({ size: v, dirty: true })
+    }));
+    const score = (pw.length >= 12 ? 1 : 0) + (/[0-9]/.test(pw) ? 1 : 0) + (/[^A-Za-z0-9]/.test(pw) || /[A-Z]/.test(pw) ? 1 : 0);
+    const level = pw.length === 0 ? 0 : Math.max(1, score);
+    const colors = ['var(--muted-strong, #e4e4e7)', 'var(--warning, #b45309)', 'var(--muted-2, #a1a1aa)', 'var(--success, #15803d)'];
+    const seg = (n) => (level >= n ? colors[level] : 'var(--muted-strong, #e4e4e7)');
+    const LABELS = ['At least 12 characters. A short sentence works well.', 'Too easy to guess', 'Getting there: add a number or a symbol', 'Strong'];
+    const sessions = [
+      { key: 'mac', device: 'Safari on Mac', where: 'Davao City', when: 'Active now', current: true, phone: false },
+      { key: 'phone', device: 'iPhone · LSB app', where: 'Davao City', when: '2 hours ago', current: false, phone: true },
+      { key: 'tablet', device: 'Workshop tablet · Chrome', where: 'Mintal workshop', when: 'Yesterday, 4:12 PM', current: false, phone: false }
+    ].filter((d) => !ended[d.key]).map((d) => ({
+      ...d, isPhone: d.phone, isScreen: !d.phone, canEnd: !d.current,
+      end: () => this.setState({ ended: { ...ended, [d.key]: true } })
+    }));
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      dirty: !!s.dirty,
+      themes,
+      sizes,
+      s1: seg(1), s2: seg(2), s3: seg(3),
+      strengthLabel: LABELS[level],
+      onNew: (e) => this.setState({ pw: e.target.value }),
+      sessions,
+      signOutOthers: () => this.setState({ ended: { phone: true, tablet: true } }),
+      touch: () => this.setState({ dirty: true }),
+      save: () => this.setState({ dirty: false }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

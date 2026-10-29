@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Staff Directory</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 900px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="staff" collapsed="{{collapsed}}" h="900" on-toggle="{{toggleNav}}" hint-size="240px,900px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="People" page="Staff Directory" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<!-- PageHeader -->
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="24" y="48" width="208" height="160" rx="8"></rect><path d="M152 112h48M152 144h48"></path><circle cx="96" cy="120" r="24"></circle><path d="M64 168c3.55-13.8 17.09-24 32-24s28.46 10.19 32 24"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Staff Directory</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Everyone at the workshop, across production, sales, delivery and the office.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 144V32M216 144v64a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8v-64M168 104l-40 40-40-40"></path></svg>Export</button>
+<button type="button" onClick="{{openDialog}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add staff member</button>
+</div>
+</header>
+
+<!-- FilterBar -->
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<div style="position: relative; flex: 0 1 260px; min-width: 180px;">
+<label for="staff-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search staff</label>
+<span style="position: absolute; left: 10px; top: 8px; line-height: 0; color: var(--muted-fg, #71717a); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<input id="staff-search" type="search" placeholder="Search name or position" value="{{query}}" onChange="{{onQuery}}" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="position: relative;">
+<button type="button" aria-haspopup="listbox" aria-expanded="{{deptOpen}}" onClick="{{toggleDept}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span style="color: var(--muted-fg, #71717a);">Department</span><span style="font-weight: 500;">{{dept}}</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+<sc-if value="{{deptOpen}}" hint-placeholder-val="{{false}}">
+<div role="listbox" aria-label="Department" style="position: absolute; left: 0; top: 36px; z-index: 20; width: 200px; padding: 4px; box-sizing: border-box; background: var(--card, #ffffff); border: 1px solid var(--border, #d4d4d8); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+<sc-for list="{{deptOptions}}" as="opt" hint-placeholder-count="5">
+<button type="button" role="option" aria-selected="{{opt.selected}}" onClick="{{opt.pick}}" style="display: flex; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 8px; border: 0; border-radius: 4px; background: {{opt.bg}}; font-size: 13px; text-align: left; cursor: pointer;"><span style="flex: 1;">{{opt.label}}</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">{{opt.count}}</span><svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{opt.checkD}}; stroke: var(--foreground, #09090b)"><path d="M40 144l56 56L224 72"></path></svg></button>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<span style="flex: 1 1 0; font-size: 13px; color: var(--muted-fg, #71717a); white-space: nowrap;">{{countLabel}}</span>
+<div class="seg2" data-on="{{isGrid}}" role="group" aria-label="View" style="display: inline-flex; padding: 2px; gap: 2px; border-radius: 6px; --seg-p: 2px; --seg-r: 4px; background: var(--muted, #f4f4f5);">
+<span class="seg-ind" aria-hidden="true"></span>
+<button type="button" aria-pressed="{{isTable}}" onClick="{{showTable}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 4px; background: {{tableBtnBg}}; box-shadow: {{tableBtnShadow}}; color: {{tableBtnFg}}; font-size: 13px; font-weight: 500; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 64h176M40 128h176M40 192h176"></path></svg>Table</button>
+<button type="button" aria-pressed="{{isGrid}}" onClick="{{showGrid}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 0; border-radius: 4px; background: {{gridBtnBg}}; box-shadow: {{gridBtnShadow}}; color: {{gridBtnFg}}; font-size: 13px; font-weight: 500; cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="72" height="72" rx="8"></rect><rect x="144" y="40" width="72" height="72" rx="8"></rect><rect x="40" y="144" width="72" height="72" rx="8"></rect><rect x="144" y="144" width="72" height="72" rx="8"></rect></svg>Cards</button>
+</div>
+</div>
+
+<!-- Card grid -->
+<sc-if value="{{showCards}}" hint-placeholder-val="{{true}}">
+<section aria-label="Staff cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+<sc-for list="{{people}}" as="p" hint-placeholder-count="12">
+<article style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<span aria-hidden="true" style="flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center;">{{p.initials}}</span>
+<div style="flex: 1; min-width: 0;">
+<h3 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.name}}</h3>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.title}}</p>
+</div>
+<button type="button" aria-label="More for {{p.name}}" style="flex: none; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--fg-2, #3f3f46); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><circle cx="60" cy="128" r="14"></circle><circle cx="128" cy="128" r="14"></circle><circle cx="196" cy="128" r="14"></circle></svg></button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+<span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">{{p.dept}}</span>
+<sc-if value="{{p.onShift}}" hint-placeholder-val="{{true}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>On shift</span></sc-if>
+<sc-if value="{{p.onLeave}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>On leave</span></sc-if>
+<sc-if value="{{p.offToday}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--muted-fg, #71717a);"></span>Off today</span></sc-if>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 18px; color: var(--fg-3, #52525b);">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; stroke: var(--muted-2, #a1a1aa)"><path d="M32 56h192v136a8 8 0 0 1-8 8H40a8 8 0 0 1-8-8ZM224 56l-96 88-96-88"></path></svg><span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.email}}</span></span>
+<span style="display: flex; align-items: center; gap: 8px;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; stroke: var(--muted-2, #a1a1aa)"><rect x="40" y="40" width="176" height="176" rx="8"></rect><path d="M176 24v32M80 24v32M40 88h176"></path></svg>With LSB since {{p.since}}</span>
+</div>
+<a href="AccountDetail.dc.html" style="display: flex; align-items: center; justify-content: center; height: 28px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; color: var(--foreground, #09090b); font-size: 13px; font-weight: 500; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">View profile</a>
+</article>
+</sc-for>
+</section>
+</sc-if>
+
+<!-- Table view -->
+<sc-if value="{{showTableView}}" hint-placeholder-val="{{false}}">
+<section aria-label="Staff table" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div role="table" aria-label="Staff" style="min-width: 860px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(190px, 1.4fr) minmax(150px, 1fr) 120px 112px minmax(220px, 1.5fr) 80px 48px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Name</div>
+<div role="columnheader" style="padding: 0 8px;">Position</div>
+<div role="columnheader" style="padding: 0 8px;">Department</div>
+<div role="columnheader" style="padding: 0 8px;">Today</div>
+<div role="columnheader" style="padding: 0 8px;">Email</div>
+<div role="columnheader" style="padding: 0 8px;">Since</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Actions</span></div>
+</div>
+<sc-for list="{{people}}" as="p" hint-placeholder-count="12">
+<div role="row" style="display: grid; grid-template-columns: minmax(190px, 1.4fr) minmax(150px, 1fr) 120px 112px minmax(220px, 1.5fr) 80px 48px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; display: flex; align-items: center; gap: 8px; min-width: 0;"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">{{p.initials}}</span><span style="font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.name}}</span></div>
+<div role="cell" style="padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.title}}</div>
+<div role="cell" style="padding: 0 8px;"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">{{p.dept}}</span></div>
+<div role="cell" style="padding: 0 8px;">
+<sc-if value="{{p.onShift}}" hint-placeholder-val="{{true}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>On shift</span></sc-if>
+<sc-if value="{{p.onLeave}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>On leave</span></sc-if>
+<sc-if value="{{p.offToday}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--muted-fg, #71717a);"></span>Off today</span></sc-if>
+</div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-3, #52525b); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{p.email}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--muted-fg, #71717a);">{{p.since}}</div>
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" aria-label="Actions for {{p.name}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--fg-2, #3f3f46); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><circle cx="60" cy="128" r="14"></circle><circle cx="128" cy="128" r="14"></circle><circle cx="196" cy="128" r="14"></circle></svg></button></div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<!-- EmptyState -->
+<sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+<section style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 48px 16px; border: 1px dashed var(--border, #d4d4d8); border-radius: 8px; text-align: center;">
+<span style="width: 40px; height: 40px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--muted-fg, #71717a); background: var(--card, #ffffff);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="84" cy="108" r="52"></circle><path d="M10.23 200a88 88 0 0 1 147.54 0M172 160a87.93 87.93 0 0 1 73.77 40M152.69 59.7A52 52 0 1 1 172 160"></path></svg></span>
+<h3 style="margin: 4px 0 0; font-size: 14px; line-height: 20px; font-weight: 600;">Nobody matches these filters</h3>
+<p style="margin: 0; font-size: 13px; color: var(--muted-fg, #71717a);">Try another name, or show every department.</p>
+<button type="button" onClick="{{clearFilters}}" style="margin-top: 4px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Clear filters</button>
+</section>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{dialog}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDialog}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="AddStaffDialog" on-close="{{closeDialog}}" hint-size="480px,560px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; border-right: 1px solid var(--border, #d4d4d8); background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="staff" h="900" hint-size="240px,900px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["cards","table"],"default":"cards"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const view = s.view ?? (this.props.view ?? 'cards');
+    const query = s.query ?? '';
+    const q = query.trim().toLowerCase();
+    const dept = s.dept ?? 'All';
+    const all = [
+      { name: 'Maria Santos', initials: 'MS', title: 'Owner', dept: 'Office', status: 'on', email: 'maria.santos@lsbhandicrafts.ph', since: '2014' },
+      { name: 'Carla Mendoza', initials: 'CM', title: 'Operations manager', dept: 'Office', status: 'on', email: 'carla.mendoza@lsbhandicrafts.ph', since: '2017' },
+      { name: 'Lito Garcia', initials: 'LG', title: 'Production lead', dept: 'Production', status: 'on', email: 'lito.garcia@lsbhandicrafts.ph', since: '2016' },
+      { name: 'Rosa Navarro', initials: 'RN', title: 'Foam cutter', dept: 'Production', status: 'leave', email: 'rosa.navarro@lsbhandicrafts.ph', since: '2019' },
+      { name: 'Liza Ramos', initials: 'LR', title: 'Finisher', dept: 'Production', status: 'on', email: 'liza.ramos@lsbhandicrafts.ph', since: '2024' },
+      { name: 'Edwin Castro', initials: 'EC', title: 'Packer', dept: 'Production', status: 'off', email: 'edwin.castro@lsbhandicrafts.ph', since: '2022' },
+      { name: 'Ana Reyes', initials: 'AR', title: 'Sales associate', dept: 'Sales', status: 'on', email: 'ana.reyes@lsbhandicrafts.ph', since: '2020' },
+      { name: 'Paolo Villanueva', initials: 'PV', title: 'Sales associate', dept: 'Sales', status: 'on', email: 'paolo.villanueva@lsbhandicrafts.ph', since: '2025' },
+      { name: 'Mark Torres', initials: 'MT', title: 'Account manager', dept: 'Sales', status: 'off', email: 'mark.torres@lsbhandicrafts.ph', since: '2021' },
+      { name: 'Jun Dela Cruz', initials: 'JD', title: 'Driver', dept: 'Delivery', status: 'on', email: 'jun.delacruz@lsbhandicrafts.ph', since: '2018' },
+      { name: 'Ben Aquino', initials: 'BA', title: 'Driver', dept: 'Delivery', status: 'on', email: 'ben.aquino@lsbhandicrafts.ph', since: '2023' },
+      { name: 'Nora Lim', initials: 'NL', title: 'Bookkeeper', dept: 'Office', status: 'leave', email: 'nora.lim@lsbhandicrafts.ph', since: '2019' }
+    ];
+    const people = all
+      .filter((p) => (dept === 'All' || p.dept === dept) && (!q || p.name.toLowerCase().includes(q) || p.title.toLowerCase().includes(q)))
+      .map((p) => ({ ...p, onShift: p.status === 'on', onLeave: p.status === 'leave', offToday: p.status === 'off' }));
+    const depts = ['All', 'Production', 'Sales', 'Delivery', 'Office'];
+    const deptOptions = depts.map((label) => ({
+      label: label === 'All' ? 'All departments' : label,
+      count: label === 'All' ? all.length : all.filter((p) => p.dept === label).length,
+      selected: label === dept,
+      bg: label === dept ? 'var(--muted, #f4f4f5)' : 'transparent',
+      checkD: label === dept ? 'block' : 'none',
+      pick: () => this.setState({ dept: label, deptOpen: false })
+    }));
+    const isTable = view === 'table';
+    const empty = people.length === 0;
+    const on = { bg: 'var(--card, #ffffff)', shadow: '0 1px 2px rgba(0,0,0,0.06)', fg: 'var(--foreground, #09090b)' };
+    const off = { bg: 'transparent', shadow: 'none', fg: 'var(--muted-fg, #71717a)' };
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      query,
+      dept: dept === 'All' ? 'All' : dept,
+      deptOpen: !!s.deptOpen,
+      deptOptions,
+      people,
+      empty,
+      showCards: !isTable && !empty,
+      showTableView: isTable && !empty,
+      isTable,
+      isGrid: !isTable,
+      countLabel: people.length + ' of 24 people',
+      tableBtnBg: isTable ? on.bg : off.bg, tableBtnShadow: isTable ? on.shadow : off.shadow, tableBtnFg: isTable ? on.fg : off.fg,
+      gridBtnBg: !isTable ? on.bg : off.bg, gridBtnShadow: !isTable ? on.shadow : off.shadow, gridBtnFg: !isTable ? on.fg : off.fg,
+      showTable: () => this.setState({ view: 'table' }),
+      showGrid: () => this.setState({ view: 'cards' }),
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleDept: () => this.setState({ deptOpen: !s.deptOpen }),
+      clearFilters: () => this.setState({ query: '', dept: 'All' }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      dialog: !!s.dialog,
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false })
+    };
+  }
+}
+</script>
+</body>
+</html>
