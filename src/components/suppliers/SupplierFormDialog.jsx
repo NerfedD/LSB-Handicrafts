@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
-import { Field } from "../shared/forms";
+import { Field, Row } from "../shared/forms";
 import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 
 /**
@@ -194,16 +194,16 @@ export default function SupplierFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent size="md">
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit this supplier" : "Add a supplier"}</DialogTitle>
+            <DialogTitle>{isEdit ? "Edit supplier" : "Add supplier"}</DialogTitle>
             <DialogDescription>
-              So anyone can find their number without having to ask around.
+              Where the workshop buys from, and how to reach them.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody>
             <FormError message={saveError} />
             <Field label="Supplier name" required error={errors.name} warning={warnings.name}>
               {(props) => (
@@ -216,7 +216,8 @@ export default function SupplierFormDialog({
               )}
             </Field>
 
-            <Field label="Who do you ask for" hint="The person who picks up the phone.">
+            <Row>
+            <Field label="Contact person" hint="The person who picks up the phone.">
               {(props) => (
                 <Input
                   {...props}
@@ -228,7 +229,7 @@ export default function SupplierFormDialog({
             </Field>
 
             <Field
-              label="Phone number"
+              label="Phone"
               required
               error={errors.contactNumber}
               warning={warnings.contactNumber}
@@ -239,12 +240,14 @@ export default function SupplierFormDialog({
                   type="tel"
                   value={values.contactNumber}
                   onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
-                  placeholder="09171234503"
+                  placeholder="0917 000 0000"
                 />
               )}
             </Field>
 
-            <Field label="Email address" error={errors.email} hint="Only if they have one.">
+            </Row>
+
+            <Field label={<>Email <span className="font-normal text-muted-fg">(optional)</span></>} error={errors.email}>
               {(props) => (
                 <Input
                   {...props}
@@ -257,7 +260,7 @@ export default function SupplierFormDialog({
             </Field>
 
             <Field
-              label="Where they are"
+              label="Address"
               error={errors.address}
               hint="Put the district or city last — it is what the area filter reads."
             >
@@ -272,11 +275,11 @@ export default function SupplierFormDialog({
             </Field>
           </DialogBody>
 
-          <DialogFooter className="justify-between">
-            <Button variant="outline" size="lg" disabled={saving} onClick={() => handleOpenChange(false)}>
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="clay" size="lg" disabled={saving}>
+            <Button type="submit" disabled={saving}>
               {saving
                 ? "Saving…"
                 : Object.keys(warnings).some((field) => warnings[field])
@@ -284,8 +287,8 @@ export default function SupplierFormDialog({
                     ? "Save it anyway"
                     : "Add them anyway"
                   : isEdit
-                    ? "Save the changes"
-                    : "Add this supplier"}
+                    ? "Save changes"
+                    : "Add supplier"}
             </Button>
           </DialogFooter>
         </form>

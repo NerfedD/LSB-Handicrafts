@@ -28,18 +28,18 @@ export default function EditBatchDialog({ batch, product, material, batches, sta
     };
   }
 
-  return <WorkshopForm title={`Change ${batch.batch_code}`}
+  return <WorkshopForm title={`Edit ${batch.batch_code}`}
     description={`${product?.name ?? 'This product'} from ${material?.name ?? 'its material'}. To make a different product or use a different material, cancel this batch and start a new one.`}
-    submitLabel="Save the changes"
+    submitLabel="Save changes"
     initial={{ id: batch.id, output_qty: String(batch.target_output_qty), material_qty: String(batch.raw_material_used_qty),
       assigned_staff_id: batch.assigned_staff_id, order_id: orderStillWaiting ? batch.order_id : '', notes: batch.notes ?? '' }}
     validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => <>
-      <WorkshopField name="output_qty" label="Target pieces" hint="Count individual pieces, even when they are sold in packs. A whole number." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
+      <WorkshopField name="output_qty" label="How many" hint="Pieces, even when they are sold in packs." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
       <WorkshopField name="material_qty" label="Material to set aside" hint={material ? `Up to ${units(free, material.unit)} of ${material.name}, counting what other batches have set aside.` : 'The material this batch was planned with.'} type="number" inputMode="numeric" min="1" max={Math.max(1, free)} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
-      <WorkshopField name="assigned_staff_id" label="Who will make it?" hint="The worker responsible for this batch." required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
-      <WorkshopField name="order_id" label="Customer order, if any" hint="Leave blank when making shelf stock." placeholder="None: for shelf stock" options={waiting.map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
-      <WorkshopField name="notes" label="Instructions for this batch" hint="Optional: a custom size, event details or changes to the recipe." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
+      <WorkshopField name="assigned_staff_id" label="Made by" required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
+      <WorkshopField name="order_id" label="For order" hint="Leave blank when making shelf stock." placeholder="None: for shelf stock" options={waiting.map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
+      <WorkshopField name="notes" label={<>Notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="A custom size, event details or changes to the recipe." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
       <ReviewBox>
         {batch.order_id && !orderStillWaiting && <p>Order #{batch.order_id} is no longer waiting, so this batch will be for shelf stock unless another order is chosen.</p>}
         {material && Number(v.material_qty) > 0

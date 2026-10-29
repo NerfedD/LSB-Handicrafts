@@ -179,6 +179,7 @@ const OrderFormPage = lazy(() => import("./components/orders/OrderFormPage"));
 const DeliveryBoardPage = lazy(() => import("./components/deliveries/DeliveryBoardPage"));
 const DeliveryDetailPage = lazy(() => import("./components/deliveries/DeliveryDetailPage"));
 const AssignDriverDialog = lazy(() => import("./components/deliveries/AssignDriverDialog"));
+const AssignDriversDialog = lazy(() => import("./components/deliveries/AssignDriversDialog"));
 const RecordDeliveredDialog = lazy(() =>
   import("./components/deliveries/RecordDeliveredDialog")
 );
@@ -355,6 +356,7 @@ export default function App() {
   useEffect(() => () => clearTimeout(landedTimer.current), []);
 
   const [assignDriverFor, setAssignDriverFor] = useState(null); // deliveryId | null
+  const [isAssignDriversOpen, setIsAssignDriversOpen] = useState(false);
   // { deliveryId, toStage } — the manifest asked for when goods actually leave.
   const [recordDeliveredFor, setRecordDeliveredFor] = useState(null);
   const [refundFor, setRefundFor] = useState(null); // orderId | null
@@ -2498,6 +2500,7 @@ export default function App() {
               setView("delivery-detail");
             }}
             onMoveForward={(id, next) => advanceDelivery(deliveries.find((d) => d.id === id), next)}
+            onAssignDrivers={() => setIsAssignDriversOpen(true)}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
             initialFilter={pendingFilter}
@@ -2858,6 +2861,13 @@ export default function App() {
           if (result.ok) navigate('production');
           return result;
         }} />}
+      <AssignDriversDialog
+        open={isAssignDriversOpen}
+        onOpenChange={setIsAssignDriversOpen}
+        deliveries={deliveries}
+        staff={staff}
+        onAssign={assignDriver}
+      />
       <AssignDriverDialog
         key={`driver-${assignDriverFor ?? "none"}`}
         open={assignDriverFor !== null}

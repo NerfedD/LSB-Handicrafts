@@ -190,7 +190,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody className="flex flex-col gap-3.5">
             {lines.map((line) => {
               const taken = Math.min(asUnits(units[line.index]), line.refundable);
               return (
@@ -246,8 +246,8 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
               );
             })}
 
-            <Button variant="outline" size="lg" onClick={takeAll} disabled={saving}>
-              <Undo2 className="h-5 w-5" />
+            <Button variant="outline" onClick={takeAll} disabled={saving}>
+              <Undo2 />
               Give all of it back
             </Button>
 
@@ -315,7 +315,6 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
           <DialogFooter className="justify-between">
             <Button
               variant="outline"
-              size="lg"
               disabled={saving}
               onClick={() => handleOpenChange(false)}
             >
@@ -323,14 +322,13 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
             </Button>
             <Button
               type="submit"
-              variant="danger-solid"
-              size="lg"
+              variant="destructive"
               // A button that is always pressable reads as ready even at
               // ₱0.00 — the one figure that is guaranteed to fail on submit.
               // Disabled here is the honest default; enabled is the promise.
               disabled={saving || givingBack <= 0 || Boolean(amountProblem)}
             >
-              <Banknote className="h-5 w-5" />
+              <Banknote />
               {saving ? "Working…" : `Give back ${formatPeso(givingBack)}`}
             </Button>
           </DialogFooter>
