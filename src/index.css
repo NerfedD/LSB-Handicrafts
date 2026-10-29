@@ -229,6 +229,23 @@ html.theme-anim, html.theme-anim * {
   background: var(--primary); transition: transform 260ms var(--ease-spring);
 }
 
+/* The sign-in photo panel (Login board): the workshop photographs under a
+   deep-blue wash, heavy at the top and foot where the type sits. */
+.lsb-panel { --brand-deep: #00294a; background: var(--brand-deep); }
+.lsb-panel-wash {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--brand-deep) 92%, transparent) 0%,
+    color-mix(in srgb, var(--brand-deep) 45%, transparent) 22%,
+    color-mix(in srgb, var(--brand-deep) 15%, transparent) 46%,
+    color-mix(in srgb, var(--brand-deep) 55%, transparent) 68%,
+    color-mix(in srgb, var(--brand-deep) 96%, transparent) 100%);
+}
+.lsb-panel-caption { color: rgba(255, 255, 255, 0.75); }
+.lsb-panel-track { background: rgba(255, 255, 255, 0.28); }
+.lsb-panel :focus-visible { outline-color: var(--card); }
+@keyframes lsb-photo-timer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.lsb-photo-timer { animation: lsb-photo-timer linear forwards; }
+
 /* The entry landing: when a write comes back saved, the record it changed
    says so in place with one quiet success wash. */
 @keyframes lsb-land { 0% { opacity: 0; } 10% { opacity: 1; } 45% { opacity: 1; } 100% { opacity: 0; } }

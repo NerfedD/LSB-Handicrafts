@@ -1,168 +1,193 @@
 /**
  * The single source of truth for navigation.
  *
- * WHY THIS FILE EXISTS. The app had two sidebars — one with 7 items and one
- * with 4 — plus a third hand-maintained copy of the same rules in
- * utils/permissions.js. Opening User Management swapped one for the other, so
- * the nav visibly changed out from under you, and the three lists had to be
- * edited in lockstep or they drifted. That drift is exactly how a non-admin was
- * once able to walk into the user-management screens.
- *
- * Now there is one tree. `views` is what makes it authoritative rather than
+ * One tree, read by the sidebar, the command menu, the route table and the
+ * permission checks. `views` is what makes it authoritative rather than
  * decorative: permissions.js derives its allow/deny sets from these same
  * arrays, so a nav entry cannot be hidden while the screen behind it stays
- * reachable.
+ * reachable. Hiding an entry and denying its screens are the same edit.
  *
- * WHAT THE OVERHAUL CHANGED HERE:
+ * Structure, labels, icons and order follow the AppSidebar board
+ * (design/admin-dashboard/AppSidebar.dc.html): five captioned groups, with
+ * Production and Settings opening a sub-menu. A sub-item names its `parent`;
+ * the parent itself is not a screen, only a disclosure, so it carries no
+ * views and no permissions of its own. It is shown when any of its children
+ * is.
  *
- *  - LABELS ARE PLAIN WORDS. "Inventory" and "Product / Item Profiles" were
- *    two entries for one question ("how many have we got"), and both are now
- *    "Products & stock". "User Management" is "Staff & accounts". A label
- *    naming the database table it opens is a label written for whoever built
- *    the system.
- *  - GROUPS ARE LABELS, NOT ACCORDIONS. There are two, MAIN and PEOPLE, and
- *    they are captions over a flat list. The collapsible groups they replace
- *    hid three of the seven destinations behind a disclosure triangle, which
- *    is a click and a guess to reach a screen that was always there.
- *  - ORDERS AND DELIVERIES ARE ROUTED. They were the last screens living in
- *    the unrouted legacy workspace, reachable only through a placeholder on
- *    the dashboard.
- *  - MY PROFILE IS NOT IN THE SIDEBAR. It lives in the header's account chip,
- *    with sign-out and the dashboard-view preference — the three things that
- *    are about the person rather than about the business.
- *
- * Deliberately plain data — no icon imports, no React. That keeps permissions
- * free of a `utils -> components` dependency; the sidebar maps `icon` names to
- * components itself.
+ * Deliberately plain data -- no icon imports, no React. That keeps
+ * permissions free of a `utils -> components` dependency; the sidebar maps
+ * `icon` names (Phosphor's) to components itself.
  *
  * `views[0]` is where an entry navigates to. The rest are the screens that
  * belong to it and keep it lit.
  */
 
 export const NAV_GROUPS = [
-  { key: "main", label: "Sales" },
-  { key: "stock", label: "Stock & production" },
+  { key: "overview", label: "Overview" },
+  { key: "operations", label: "Operations" },
   { key: "people", label: "People" },
+  { key: "contacts", label: "Contacts" },
+  { key: "system", label: "System" },
 ];
 
-/**
- * THE WORKSHOP IS THREE DESTINATIONS, NOT ONE WITH TABS. Raw materials,
- * purchasing and production used to sit behind a row of tabs inside "Raw
- * materials", so ordering material meant Raw materials -> Supplier deliveries
- * -> Order materials, and production was a tab called "Make list" that people
- * went looking for under Deliveries (whose board has a "Being made" column).
- * Each is its own entry now, under one caption, in the order stock moves:
- * bought in, held, made into products, sold.
- */
+/** The two disclosures. `count` names the nav count the parent shows. */
+export const NAV_PARENTS = {
+  production: { key: "production", label: "Production", icon: "Hammer", group: "operations", count: "batches", countLabel: "unfinished batches" },
+  settings: { key: "settings", label: "Settings", icon: "Gear", group: "system" },
+};
+
 export const NAV_TREE = [
   {
     key: "dashboard",
     label: "Dashboard",
-    icon: "LayoutDashboard",
-    group: "main",
+    icon: "SquaresFour",
+    group: "overview",
     views: ["dashboard"],
   },
   {
     key: "orders",
     label: "Orders",
-    icon: "ShoppingCart",
-    group: "main",
+    icon: "Receipt",
+    group: "operations",
     count: "orders",
+    countLabel: "open",
     views: ["orders", "order-detail", "order-form", "order-edit"],
+  },
+  {
+    key: "products",
+    label: "Inventory",
+    icon: "Package",
+    group: "operations",
+    // An ATTENTION count: how many products are running low or out.
+    count: "products",
+    countLabel: "running low",
+    views: ["products", "product-detail", "product-form"],
   },
   {
     key: "deliveries",
     label: "Deliveries",
     icon: "Truck",
-    group: "main",
+    group: "operations",
     count: "deliveries",
+    countLabel: "open",
     views: ["deliveries", "delivery-detail"],
   },
   {
-    key: "raw-material-orders", label: "Purchasing", icon: "ClipboardList", group: "stock",
-    views: ["raw-material-orders"],
+    key: "production",
+    label: "Batches",
+    parent: "production",
+    group: "operations",
+    hideFrom: ["Sales Staff", "Delivery Staff"],
+    views: ["production"],
   },
   {
-    key: "raw-materials", label: "Raw materials", icon: "Layers", group: "stock",
+    key: "raw-materials",
+    label: "Raw materials",
+    parent: "production",
+    group: "operations",
     views: ["raw-materials", "raw-material-detail"],
   },
   {
-    // "Damage & yield" is the production report, so it lives here as a tab
-    // rather than as its own entry. VIEW_CAPABILITY below keeps it to
-    // managers, which hideFrom on its old entry used to do.
-    key: "production", label: "Production", icon: "Hammer", group: "stock",
-    hideFrom: ["Sales Staff", "Delivery Staff"], views: ["production", "production-report"],
+    key: "raw-material-orders",
+    label: "Purchasing",
+    parent: "production",
+    group: "operations",
+    views: ["raw-material-orders"],
   },
   {
-    key: "products",
-    label: "Products & stock",
-    // The word the icon rail and phone tab bar lead with when there is only
-    // room for one -- a DELIBERATE choice, not `label.split(" ")[0]` picked
-    // for you. Falls back to that split when omitted (see Shell's
-    // `shortLabel`), which happens to agree here, but a label edit can no
-    // longer silently change what the compact nav says.
-    shortLabel: "Products",
-    icon: "Package",
-    group: "stock",
-    // `count` names the nav count this entry shows. "products" is an ATTENTION
-    // count (how many are running low), so it paints clay rather than white --
-    // see Shell's NavItem.
-    count: "products",
-    views: ["products", "product-detail", "product-form"],
+    // VIEW_CAPABILITY below keeps it to managers as well.
+    key: "production-report",
+    label: "Production report",
+    parent: "production",
+    group: "operations",
+    hideFrom: ["Sales Staff", "Delivery Staff"],
+    views: ["production-report"],
+  },
+  {
+    key: "staff",
+    label: "User Management",
+    icon: "Users",
+    group: "people",
+    adminOnly: true,
+    count: "accounts",
+    countLabel: "accounts",
+    views: ["staff", "manage-account", "assign-role"],
+  },
+  {
+    key: "directory",
+    label: "Staff Directory",
+    icon: "IdentificationCard",
+    group: "people",
+    adminOnly: true,
+    count: "people",
+    countLabel: "people",
+    views: ["directory"],
   },
   {
     key: "customers",
     label: "Customers",
-    icon: "UserRound",
-    group: "people",
+    icon: "Storefront",
+    group: "contacts",
     hideFrom: ["Production Staff"],
+    count: "customers",
     views: ["customers", "customer-detail"],
   },
   {
     key: "suppliers",
     label: "Suppliers",
-    icon: "Handshake",
-    group: "people",
+    icon: "Factory",
+    group: "contacts",
     hideFrom: ["Production Staff"],
+    count: "suppliers",
     views: ["suppliers", "supplier-detail"],
   },
+  // Settings. General, Notifications and editing roles have no backend yet:
+  // their screens are built to the design with nothing to save to, so their
+  // controls are disabled (see components/settings). They are kept to
+  // administrators, like the activity log beside them.
   {
-    key: "staff",
-    label: "Staff & accounts",
-    shortLabel: "Staff",
-    icon: "Users",
-    group: "people",
+    key: "settings-general",
+    label: "General",
+    parent: "settings",
+    group: "system",
     adminOnly: true,
-    // The directory and the activity log have no nav entry of their own -- they
-    // are reached from this screen and from the dashboard's "See all" -- but
-    // they belong to this section, so opening either keeps it lit.
-    views: ["staff", "manage-account", "assign-role", "directory", "activity"],
+    views: ["settings-general"],
+  },
+  {
+    key: "settings-roles",
+    label: "Roles and permissions",
+    parent: "settings",
+    group: "system",
+    adminOnly: true,
+    views: ["settings-roles"],
+  },
+  {
+    key: "settings-notifications",
+    label: "Notifications",
+    parent: "settings",
+    group: "system",
+    adminOnly: true,
+    views: ["settings-notifications"],
+  },
+  {
+    key: "activity",
+    label: "Activity log",
+    parent: "settings",
+    group: "system",
+    adminOnly: true,
+    views: ["activity"],
   },
 ];
 
 /**
- * Which sections a role's phone tab bar leads with. The bar has room for four
- * before "More", and the right four depend on the job: a production worker
- * should not have to open "More" to reach production.
- */
-export const PHONE_FIRST = {
-  default: ["dashboard", "orders", "products", "deliveries"],
-  "Sales Staff": ["dashboard", "orders", "customers", "products"],
-  "Production Staff": ["dashboard", "production", "raw-materials", "products"],
-  "Delivery Staff": ["dashboard", "deliveries", "orders", "raw-material-orders"],
-};
-
-/**
- * Screens with no nav entry, listed so the route gate and SECTION_OF still
- * know about them. All three are reached from the header's account chip.
+ * Screens with no nav entry, listed so the route gate still knows about
+ * them. All three are reached from the sidebar's account menu.
  */
 export const ACCOUNT_VIEWS = ["profile", "profile-edit", "change-password"];
 
 const viewsOf = (item) => item.views;
 
-/**
- * view key -> nav key. A customer detail screen keeps "Customers" lit.
- */
+/** view key -> nav key. A customer detail screen keeps "Customers" lit. */
 export const SECTION_OF = Object.fromEntries(
   NAV_TREE.flatMap((item) => item.views.map((view) => [view, item.key]))
 );
@@ -198,7 +223,7 @@ export const VIEW_CAPABILITY = {
   "production-report": "viewReports",
 };
 
-/** Screens that render without the shell — pre-auth, and the boot state. */
+/** Screens that render without the shell -- pre-auth, and the boot state. */
 export const CHROMELESS_VIEWS = new Set([
   "checking-session",
   "login",
@@ -207,60 +232,51 @@ export const CHROMELESS_VIEWS = new Set([
 ]);
 
 /**
- * Header copy, keyed by view.
+ * The breadcrumb and help copy, keyed by view.
  *
- * This lives here rather than on each page because the shell renders ABOVE the
- * lazy boundary — it has to know the title before the page's chunk exists.
- * Were the title supplied by the page, the header would sit blank for the whole
- * chunk download, which is the exact flash the persistent shell removed.
- *
- * `context` is the SECOND line, and it is not a breadcrumb any more. A
- * breadcrumb ("Dashboard / Product / Item Profiles") restates the sidebar,
- * which is on screen. What a list screen's second line is for is a count —
- * "148 products · 7 running low" — and what a detail screen's is for is which
- * record you are looking at. Anything the shell cannot know without the data is
- * left to the screen, which passes it up via `contextLine`.
+ * This lives here rather than on each page because the shell renders ABOVE
+ * the lazy boundary: it has to know the title before the page's chunk
+ * exists. `help` is what the command menu's "Help on this page" says.
  */
 const VIEW_META = {
   "raw-materials": { title: "Raw materials", help: "Everything the workshop builds with. Stock comes in when a supplier order is received and goes out when a production batch is finished. Open a material to see every movement." },
-  "raw-material-detail": { title: "Raw material details", help: "The count on hand, what batches have set aside, and every stock movement for this material with who made it and why." },
+  "raw-material-detail": { title: "Raw material", help: "The count on hand, what batches have set aside, and every stock movement for this material with who made it and why." },
   "raw-material-orders": { title: "Purchasing", help: "Order raw materials from a supplier, then receive the delivery when it arrives. Only the usable units counted at receiving are added to stock." },
-  production: { title: "Production", help: "Plan a batch, make it, check it and finish it. Material is set aside when a batch is planned and deducted only when it is finished; the good pieces are added to Products & stock at the same moment." },
+  production: { title: "Batches", help: "Plan a batch, make it, check it and finish it. Material is set aside when a batch is planned and deducted only when it is finished; the good pieces are added to Inventory at the same moment." },
   "production-report": { title: "Production report", help: "Good pieces, damaged pieces and yield across every finished batch, and damage found on supplier deliveries." },
   dashboard: { title: "Dashboard", help: "What needs attention today. Each line opens the screen where it can be dealt with." },
 
-  products: { title: "Products & stock", help: "What is sold, its price and how many are on the shelf. Stock goes up when a production batch is finished and down when an order is completed or sent out." },
-  "product-detail": { title: "Product details", help: "The shelf count, what waiting orders have set aside, and every stock movement for this product." },
-  "product-form": { title: "Add a product", help: "Choose the kind first: it decides which measurements are asked for. The item code is made for you." },
+  products: { title: "Inventory", help: "What is sold, its price and how many are on the shelf. Stock goes up when a production batch is finished and down when an order is completed or sent out." },
+  "product-detail": { title: "Product", help: "The shelf count, what waiting orders have set aside, and every stock movement for this product." },
+  "product-form": { title: "Add product", help: "Choose the kind first: it decides which measurements are asked for. The item code is made for you." },
 
   orders: { title: "Orders", help: "Customer orders. Stock is set aside while an order is waiting and taken off the shelf when it is completed or sent out." },
-  "order-detail": { title: "Order details" },
-  "order-form": { title: "Create an order" },
-  // Its own key rather than a flag on order-form, so the heading is not lying
-  // about what the screen is doing. Same tree, same permission as the rest of
-  // orders -- see NAV_TREE above.
-  "order-edit": { title: "Change this order" },
+  "order-detail": { title: "Order" },
+  "order-form": { title: "New order" },
+  "order-edit": { title: "Edit order" },
 
   deliveries: { title: "Deliveries", help: "Every delivery by stage. Goods leave the shelf when a delivery is marked as on the way. Production work is planned under Production." },
-  "delivery-detail": { title: "Delivery details" },
+  "delivery-detail": { title: "Delivery" },
 
   customers: { title: "Customers" },
-  "customer-detail": { title: "Customer details" },
+  "customer-detail": { title: "Customer" },
 
   suppliers: { title: "Suppliers" },
-  "supplier-detail": { title: "Supplier details" },
+  "supplier-detail": { title: "Supplier" },
 
-  staff: { title: "Staff & accounts" },
-  "manage-account": { title: "Manage one account" },
-  "assign-role": { title: "What does this person do?" },
-  directory: { title: "Who to call for what" },
-  activity: { title: "What happened recently" },
+  staff: { title: "User Management" },
+  "manage-account": { title: "Account details" },
+  "assign-role": { title: "Change role" },
+  directory: { title: "Staff Directory" },
+  activity: { title: "Activity log" },
 
-  profile: { title: "My profile" },
-  "profile-edit": { title: "Edit my details" },
+  "settings-general": { title: "General" },
+  "settings-roles": { title: "Roles and permissions" },
+  "settings-notifications": { title: "Notifications" },
+
+  profile: { title: "Your profile" },
+  "profile-edit": { title: "Edit your details" },
   "change-password": { title: "Change password" },
-  // Without a title the header sat empty above the not-found card, which read
-  // as a screen that had failed to load rather than one that answered.
   "not-found": { title: "Page not found" },
 };
 
@@ -269,20 +285,35 @@ export function metaForView(view) {
 }
 
 /**
+ * The breadcrumb for a view: { section, sectionView, page }.
+ *
+ * A list screen reads "Group / Entry" (Operations / Orders); a sub-item reads
+ * "Parent / Entry" (Production / Batches); a record reads "Entry / record"
+ * (Orders / #2048), where the entry links back to its list. `record` is the
+ * record's name when the caller has it.
+ */
+export function crumbForView(view, record) {
+  if (ACCOUNT_VIEWS.includes(view)) {
+    return { section: "Account", sectionView: view === "profile" ? null : "profile", page: metaForView(view).title };
+  }
+  const item = NAV_TREE.find((entry) => entry.views.includes(view));
+  if (!item) return { section: "", page: metaForView(view).title };
+  if (view !== item.views[0]) {
+    return { section: item.label, sectionView: item.views[0], page: record || metaForView(view).title };
+  }
+  if (item.parent) return { section: NAV_PARENTS[item.parent].label, page: item.label };
+  return { section: NAV_GROUPS.find((group) => group.key === item.group)?.label ?? "", page: item.label };
+}
+
+/**
  * Each list screen's primary action: what it says and who may see it.
- *
- * It is drawn IN THE PAGE, beside the search and filters, not in the header.
- * Reviewers looked for "Add a product" and "Create order" on the screen they
- * were working on and did not find the header copy; the workshop screens
- * already put theirs in the page, so every screen now does it one way.
- *
- * `capability` hides it from a role the database would refuse (see
- * utils/permissions.js).
+ * Drawn in the PageHeader, the one primary button on the view. `capability`
+ * hides it from a role the database would refuse (see utils/permissions.js).
  */
 export const PRIMARY_ACTION = {
-  products: { label: "Add a product", icon: "PackagePlus", view: "product-form", capability: "manageCatalogue" },
-  orders: { label: "Create order", icon: "ClipboardList", view: "order-form" },
-  customers: { label: "Add a customer", icon: "UserPlus", action: "add-customer", capability: "editCustomers" },
-  suppliers: { label: "Add a supplier", icon: "Handshake", action: "add-supplier", tone: "clay", capability: "manageSuppliers" },
-  staff: { label: "Add a staff account", icon: "UserPlus", action: "add-staff", capability: "manageStaff" },
+  products: { label: "Add product", capability: "manageCatalogue" },
+  orders: { label: "New order" },
+  customers: { label: "Add customer", capability: "editCustomers" },
+  suppliers: { label: "Add supplier", capability: "manageSuppliers" },
+  staff: { label: "Add user", capability: "manageStaff" },
 };

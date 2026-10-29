@@ -66,6 +66,8 @@ import { rawMaterialsCollection, rawMaterialOrdersCollection, productionBatchesC
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
 import { Toaster, toast } from "@/components/ui/sonner";
+import { exportUsers } from "./lib/exports";
+import { activeBatch } from "./utils/production";
 
 // Login is the entry point, so it stays in the initial bundle. Everything
 // behind it is split out and fetched on first navigation — no signed-out
@@ -361,7 +363,8 @@ export default function App() {
 
   // The header's second line. Screens push it up because it is usually a count
   // the shell -- which renders above the lazy boundary -- cannot know.
-  const [contextLine, setContextLine] = useState("");
+  // Screens still report a context line; the design's top bar has no second line for it.
+  const [, setContextLine] = useState("");
   // A filter a screen should open with, set by a dashboard attention button.
   const [pendingFilter, setPendingFilter] = useState(null);
   const [orderDraftFor, setOrderDraftFor] = useState(null);
@@ -2150,18 +2153,40 @@ export default function App() {
 
   const handleContext = useCallback((line) => setContextLine(line), []);
 
-  // Counts for the sidebar badges. "products" is an ATTENTION count -- how many
-  // need making -- which is why it paints clay rather than white.
+  // Counts for the sidebar badges. "products" is an ATTENTION count -- how
+  // many are running low or out -- and "batches" is how many are unfinished.
+  // A count whose rows this screen has not read is simply left off.
   const navCounts = useMemo(() => {
     const stock = stockCounts(activeProducts, inventory, orders);
+    const unfinished = productionBatchesState.rows.filter(activeBatch).length;
     return {
       products: stock.low + stock.out || undefined,
       orders: orders.filter((order) => order.status === ORDER_STATUS.PENDING).length || undefined,
       deliveries:
         deliveries.filter((delivery) => delivery.status !== DELIVERY_STAGE.ARRIVED).length ||
         undefined,
+      batches: productionBatchesState.isLoaded ? unfinished || undefined : undefined,
+      accounts: staff.length || undefined,
+      people: staff.length || undefined,
+      customers: customersState.isLoaded ? customers.length || undefined : undefined,
+      suppliers: suppliersState.isLoaded ? suppliers.length || undefined : undefined,
     };
-  }, [activeProducts, inventory, orders, deliveries]);
+  }, [activeProducts, inventory, orders, deliveries, productionBatchesState.rows, productionBatchesState.isLoaded,
+    staff, customers, customersState.isLoaded, suppliers, suppliersState.isLoaded]);
+
+  // The record a detail screen shows, for the breadcrumb: "Orders / #2048".
+  const recordTitle = {
+    "order-detail": selectedOrder && `#${selectedOrder.id}`,
+    "order-edit": selectedOrder && `#${selectedOrder.id}`,
+    "delivery-detail": selectedDelivery && `#${selectedDelivery.id}`,
+    "product-detail": selectedProduct?.name,
+    "product-form": selectedProductId ? selectedProduct?.name : undefined,
+    "customer-detail": selectedCustomer?.name,
+    "supplier-detail": selectedSupplier?.name,
+    "manage-account": selectedAccount?.name,
+    "assign-role": selectedAccount?.name,
+    "raw-material-detail": rawMaterialsState.rows.find((row) => row.id === selectedRawMaterialId)?.name,
+  }[view];
 
   // ---- rendering -----------------------------------------------------------
 
@@ -2272,6 +2297,10 @@ export default function App() {
               navigate("product-form");
             } : undefined}
             onManageCategories={can(role, "manageCatalogue") ? () => setIsCategoriesOpen(true) : undefined}
+            materials={rawMaterialsState.rows}
+            batches={productionBatchesState.rows}
+            materialsLoaded={rawMaterialsState.isLoaded && productionBatchesState.isLoaded}
+            onOpenMaterials={() => navigate("raw-materials")}
             onGoToDashboard={() => navigate("dashboard")}
             onContext={handleContext}
             initialFilter={pendingFilter}
@@ -2573,9 +2602,12 @@ export default function App() {
               setSelectedAccountId(id);
               setView("manage-account");
             }}
+            onChangeRole={(id) => {
+              setSelectedAccountId(id);
+              setView("assign-role");
+            }}
+            activity={activity}
             onAdd={() => setIsCreateStaffOpen(true)}
-            onOpenDirectory={() => navigate("directory")}
-            onOpenActivity={() => navigate("activity")}
             onContext={handleContext}
             initialFilter={pendingFilter}
             key={`staff-${pendingFilter ?? "all"}`}
@@ -2643,8 +2675,11 @@ export default function App() {
           <StaffDirectoryPage
             staff={staff}
             isLoaded={isStaffLoaded}
-            onBack={() => navigate("staff")}
-            onContext={handleContext}
+            onAdd={() => setIsCreateStaffOpen(true)}
+            onOpen={(id) => {
+              setSelectedAccountId(id);
+              setView("manage-account");
+            }}
           />
         );
 
@@ -2853,6 +2888,18 @@ export default function App() {
     </Suspense>
   );
 
+  const shellCommands = {
+    onNewOrder: () => navigate("order-form"),
+    onAddUser: can(role, "manageStaff") ? () => setIsCreateStaffOpen(true) : undefined,
+    onExportUsers: can(role, "manageStaff") ? () => exportUsers(staff) : undefined,
+    onHelp: () =>
+      toast.info(meta.title || "Help", {
+        description: meta.help
+          ?? "The muted line under each field says what it needs. Anything that changes stock says so before you save.",
+        duration: 12000,
+      }),
+  };
+
   return (
     <>
       {chromeless ? (
@@ -2864,25 +2911,12 @@ export default function App() {
         // never blanks the chrome.
         <Shell
           view={view}
-          title={meta.title}
-          contextLine={contextLine}
           profile={profile}
+          recordTitle={recordTitle}
           navCounts={navCounts}
-          alertCount={navCounts.products ?? 0}
-          dashboardView={dashboardView}
           onNavigate={navigate}
           onSignOut={handleSignOut}
-          onSetDashboardView={setDashboardView}
-          onOpenAlerts={() =>
-            openFiltered("products", navCounts.products ? "low" : "all")
-          }
-          onHelp={() =>
-            toast.info(meta.title || "Help", {
-              description: meta.help
-                ?? "The grey text under each field says what it needs. Anything that changes stock says so before you save.",
-              duration: 12000,
-            })
-          }
+          commands={shellCommands}
         >
           {denied ? <NotAllowedState role={profile?.role} onGoToDashboard={() => navigate("dashboard")} onSignOut={handleSignOut} /> : renderView()}
         </Shell>
