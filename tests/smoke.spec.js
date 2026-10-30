@@ -312,7 +312,7 @@ test.describe("products & stock", () => {
 
   test("the add form is adaptive and generates the code", async ({ page }) => {
     await page.getByRole("button", { name: "Add product" }).first().click();
-    await expect(page.getByRole("heading", { level: 1, name: "Add product" })).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "Add product" })).toBeVisible();
 
     // A ball is asked its diameter…
     await expect(page.getByLabel(/How wide across/)).toBeVisible();
@@ -389,9 +389,9 @@ test.describe("orders and deliveries", () => {
     await openNav(page, "Orders");
     await page.getByRole("button", { name: "New order" }).click();
 
-    // Scoped to <main>: the sidebar's "Customers" nav button carries that as
+    // Scoped to the dialog: the sidebar's "Customers" nav button carries that as
     // its aria-label, and an unscoped getByLabel finds it first.
-    const form = page.getByRole("main");
+    const form = page.getByRole("dialog", { name: "New order" });
     await form.getByLabel(/^Customer/).fill("Luis Benito");
     await form.getByLabel("Item").click();
     await page.getByRole("option", { name: /Styro Ball 4 inch/ }).click();

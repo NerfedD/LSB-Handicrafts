@@ -304,7 +304,7 @@ test.describe('orders and stock history', () => {
     await page.getByLabel('How many').fill('2');
     await page.getByLabel('Where to').fill('12 Mabini St, Davao City');
     await page.getByLabel('Promised for').fill(localDay(-2));
-    await page.getByRole('main').getByRole('button', { name: 'Create order', exact: true }).last().click();
+    await page.getByRole('dialog', { name: 'New order' }).getByRole('button', { name: 'Create order', exact: true }).click();
     await expect(page.getByLabel('Promised for')).toHaveAccessibleDescription('That date has already passed. Choose today or a later date.');
     expect(writes.filter((w) => w.table === 'orders')).toHaveLength(0);
   });

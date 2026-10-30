@@ -261,7 +261,11 @@ test('desktop sidebar stays anchored through forms and dialogs; phone has no hor
   const before = await nav.boundingBox();
   await nav.click();
   await page.getByRole('button', { name: 'Add product', exact: true }).first().click();
-  expect((await nav.boundingBox()).x).toBe(before.x);
+  await expect(page.getByRole('dialog', { name: 'Add product' })).toBeVisible();
+  // An open dialog hides the rest of the page from the accessibility tree.
+  expect((await page.getByRole('button', { name: /^Inventory/, includeHidden: true }).first().boundingBox()).x).toBe(before.x);
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await openNav(page, 'User Management');
   await page.getByRole('button', { name: 'Add user', exact: true }).first().click();
   expect((await page.getByRole('button', { name: /^Inventory/, includeHidden: true }).first().boundingBox()).x).toBe(before.x);
