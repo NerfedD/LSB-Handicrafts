@@ -188,8 +188,8 @@ test('a manager switches the loyalty reward on, and a new order for a regular ap
   await expect(page.getByRole('group', { name: 'Show' }).getByRole('button', { name: /Loyalty reward/ })).toContainText('1');
 
   await page.goto(`${baseURL}/orders/new`);
-  // Scoped to <main>: the sidebar's Customers button would match first.
-  const form = page.getByRole('main');
+  // Scoped to the dialog: the sidebar's Customers button would match first.
+  const form = page.getByRole('dialog', { name: 'New order' });
   await form.getByLabel(/^Customer/).fill('Bloom & Co');
   await expect(form.getByText('Bloom & Co has earned the loyalty reward')).toBeVisible();
   await form.getByLabel('Item').click();

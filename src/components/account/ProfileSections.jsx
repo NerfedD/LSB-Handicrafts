@@ -16,8 +16,8 @@ import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/pho
 import { roleLabel } from "../../utils/copy";
 
 /**
- * The sections of the "13 · Your profile" board, used by Your profile and by
- * the two focused screens behind it (edit details, change password).
+ * The sections of the "13 · Your profile" board. Your profile edits details
+ * and the password in place, so there is no separate screen for either.
  */
 export function ProfilePanel({ id, title, description, action, children, className }) {
   return (
@@ -242,17 +242,69 @@ export function PreferencesSection({ theme, onTheme, dashboardView, onSetDashboa
   );
 }
 
-/** This device only: the app keeps no list of sessions, so the others cannot be shown or ended. */
+/**
+ * This device, and a way to end every other sign-in.
+ *
+ * The app still keeps no LIST of sessions -- Supabase does not expose one to
+ * the signed-in person, only to the service key -- so the others cannot be
+ * shown. They can be ENDED, which is the whole point of the button: somebody
+ * used a shared computer in the workshop and forgot to sign out.
+ *
+ * `scope: 'others'` revokes every session except this one. That asymmetry is
+ * deliberate -- nobody locks themselves out of the screen they are standing
+ * on -- and auth-js fires no SIGNED_OUT event for `others`, so the app's own
+ * session state is left alone and no reload is needed.
+ */
 export function SessionsSection() {
   const phone = typeof navigator !== "undefined" && /Mobi|Android|iPhone/i.test(navigator.userAgent);
   const Icon = phone ? DeviceMobile : Monitor;
+  const [working, setWorking] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function signOutOthers() {
+    if (working) return;
+    setError(null);
+    setWorking(true);
+    try {
+      const { error: failed } = await supabase.auth.signOut({ scope: "others" });
+      if (failed) {
+        setError("Those sign-ins are still open. Check the connection and try again.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setError("We could not reach the system, so nothing was signed out.");
+    } finally {
+      setWorking(false);
+    }
+  }
+
   return (
     <ProfilePanel
       id="mp-sessions"
       title="Where you're signed in"
       description="Sign out anything you don't recognise, then change your password."
-      action={<Button variant="outline" size="sm" disabled title="Not available yet">Sign out everywhere else</Button>}
+      action={
+        <Button variant="outline" size="sm" onClick={signOutOthers} disabled={working || done}>
+          {working ? "Signing out…" : done ? "Signed out everywhere else" : "Sign out everywhere else"}
+        </Button>
+      }
     >
+      {done ? (
+        <div className="px-4 pt-3">
+          <Callout tone="green" icon={<CheckCircle />}>
+            <span className="font-medium text-success-fg">
+              Every other sign-in was ended. This device is still signed in.
+            </span>
+          </Callout>
+        </div>
+      ) : null}
+      {error ? (
+        <div className="px-4 pt-3">
+          <Callout tone="red" icon={<WarningCircle />} title="Nothing was signed out.">{error}</Callout>
+        </div>
+      ) : null}
       <ul className="m-0 list-none p-0">
         <li className="flex items-center gap-3 px-4 py-3 text-13">
           <span aria-hidden="true" className="flex size-8 items-center justify-center rounded-md border border-border text-fg-2">

@@ -130,8 +130,12 @@ for (const role of ['Admin', 'Manager', 'Sales Staff', 'Production Staff', 'Deli
     tables.staff.push({ id: 991, name: run + ' ' + role, email: as, role, status: 'Active', is_super_admin: false, dashboard_view: 'standard' });
     await signIn(page, baseURL, as);
     const manager = ['Admin', 'Manager'].includes(role);
+    // /products/new opens the Add product dialog over Inventory, which every
+    // role can see; only the dialog is a manager's.
+    await page.goto(`${baseURL}/products/new`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Inventory' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Add product' })).toHaveCount(manager ? 1 : 0);
     for (const [path, allowed, heading] of [
-      ['products/new', manager, 'Add product'],
       ['orders/1041/edit', manager, 'Edit order #1041'],
       ['production-report', manager, 'Production report'],
       ['staff', role === 'Admin', 'User Management'],

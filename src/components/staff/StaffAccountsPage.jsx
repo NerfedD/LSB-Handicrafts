@@ -32,7 +32,9 @@ import {
 } from "../shared/page";
 import { ErrorState, LoadingState } from "../shared/PageStates";
 import StatusPill from "../shared/StatusPill";
+import { toast } from "@/components/ui/sonner";
 import { exportUsers } from "@/lib/exports";
+import { supabase } from "../../lib/supabaseClient";
 import { matches } from "../../utils/search";
 import { sameEmail } from "../../utils/email";
 import { whenLabel } from "../../utils/activityLog";
@@ -49,6 +51,10 @@ import { ROLES } from "../../utils/staffData";
  * "Last active" is the newest activity-log entry by that person. Bulk actions
  * are shown as the board draws them but stay disabled: accounts change one at
  * a time, on the account's own screen.
+ *
+ * "Reset password" in a row's menu sends the reset link to that account's own
+ * email -- the same call as "Send password reset" on Manage account -- so the
+ * administrator starts the recovery without ever seeing the password.
  */
 const STATUS_LABEL = { Yes: "Active", Blocked: "Suspended", "Not set up": "Not set up" };
 
@@ -70,6 +76,21 @@ export default function StaffAccountsPage({
   const [status, setStatus] = useUrlState("tab", initialFilter ?? "all", "staff");
   const [role, setRole] = useState("all");
   const [selected, setSelected] = useState(() => new Set());
+
+  async function sendPasswordReset(user) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        toast.error("That did not send. Too many resets in a row are refused for a few minutes — wait, then try again.");
+        return;
+      }
+      toast.success(`Reset link sent to ${user.email}.`);
+    } catch {
+      toast.error("We could not reach the system, so no reset link was sent.");
+    }
+  }
 
   const lastSeen = useMemo(() => {
     const map = new Map();
@@ -261,7 +282,7 @@ export default function StaffAccountsPage({
                             <PencilSimple aria-hidden="true" />
                             Edit details
                           </DropdownMenuItem>
-                          <DropdownMenuItem disabled>
+                          <DropdownMenuItem disabled={!user.email} onClick={() => sendPasswordReset(user)}>
                             <Key aria-hidden="true" />
                             Reset password
                           </DropdownMenuItem>

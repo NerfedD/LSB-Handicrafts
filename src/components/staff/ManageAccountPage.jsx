@@ -13,6 +13,7 @@ import { NotFoundState } from "../shared/PageStates";
 import { Page, PageHeader, TextLink } from "../shared/page";
 import StatusPill from "../shared/StatusPill";
 import { RoleChoices } from "./RoleChoices";
+import { supabase } from "../../lib/supabaseClient";
 import { guardForm } from "../../utils/formErrors";
 import { sameEmail } from "../../utils/email";
 import { nameProblem } from "../../utils/validation";
@@ -30,9 +31,15 @@ import { formatShortDate } from "../../utils/profileFormat";
  *
  * Name, phone and role save together through the app's own handlers; the
  * sign-in switch blocks or unblocks the account after a confirmation. The
- * sign-in email cannot change here, and the app records no position, start
- * date, password resets or sessions, so those fields and buttons are
- * read-only or disabled.
+ * sign-in email cannot change here, and the app records no position or start
+ * date, so those fields are read-only.
+ *
+ * "Send password reset" posts a reset link to the account's OWN email address,
+ * so an administrator can start the recovery without ever learning or setting
+ * the password themselves. "Sign out everywhere" stays disabled: signOut only
+ * ever ends the CALLER's own sessions, so ending somebody else's needs the
+ * service key through an Edge Function, which supabase/functions/admin-accounts
+ * does not do yet.
  */
 const DEPARTMENT = { Admin: "Office", Manager: "Office", "Sales Staff": "Sales", "Production Staff": "Production", "Delivery Staff": "Delivery" };
 
@@ -74,6 +81,26 @@ export default function ManageAccountPage({
   const [confirm, setConfirm] = useState(null); // "block" | "unblock" | "delete" | null
   const [working, setWorking] = useState(false);
   const [now] = useState(() => Date.now());
+  // "idle" | "sending" | "sent" | "failed" -- a reset is a one-shot action with
+  // no record on the row, so its outcome lives here rather than in the account.
+  const [reset, setReset] = useState("idle");
+
+  async function sendPasswordReset() {
+    if (reset === "sending" || reset === "sent" || !account?.email) return;
+    setReset("sending");
+    try {
+      // The link goes to the account holder's own inbox, never to the
+      // administrator who pressed this, so it cannot be used to take an
+      // account over -- it only saves a phone call to the person who is
+      // locked out. Same call the sign-in screen's "Forgot password" makes.
+      const { error } = await supabase.auth.resetPasswordForEmail(account.email, {
+        redirectTo: window.location.origin,
+      });
+      setReset(error ? "failed" : "sent");
+    } catch {
+      setReset("failed");
+    }
+  }
 
   if (!account) return <NotFoundState noun="account" onBack={onBack} />;
 
@@ -223,9 +250,33 @@ export default function ManageAccountPage({
               <dt className="text-muted-fg">Last signed in</dt>
               <dd className="m-0">{lastSignIn ? whenLabel(lastSignIn.at) : "Not in the activity log"}</dd>
             </dl>
-            <div className="flex flex-wrap gap-2 border-t border-row-divider px-4 py-3">
-              <Button variant="outline" size="sm" disabled title="Password resets are sent from the sign-in screen">Send password reset</Button>
-              <Button variant="outline" size="sm" disabled title="Not available yet">Sign out everywhere</Button>
+            <div className="flex flex-wrap items-center gap-2 border-t border-row-divider px-4 py-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendPasswordReset}
+                disabled={!account.email || reset === "sending" || reset === "sent"}
+              >
+                {reset === "sending" ? "Sending…" : reset === "sent" ? "Reset link sent" : "Send password reset"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                title="Ending someone else's sessions needs the admin service key, which a browser never holds"
+              >
+                Sign out everywhere
+              </Button>
+              {reset === "sent" ? (
+                <span className="text-13 text-muted-fg">
+                  Sent to {account.email}. {first} can set a new password from that link; their current one keeps working until they do.
+                </span>
+              ) : null}
+              {reset === "failed" ? (
+                <span className="text-13 text-danger-fg">
+                  That did not send. Too many resets in a row are refused for a few minutes — wait, then try again.
+                </span>
+              ) : null}
             </div>
           </Panel>
 

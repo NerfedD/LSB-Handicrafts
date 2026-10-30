@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 
-import { CalendarBlank, CaretDown, DownloadSimple, Hammer, Money, Package, Plus, Receipt, SquaresFour, Users } from "../icons";
+import { CalendarBlank, CaretDown, DownloadSimple, Hammer, Money, Package, Plus, Receipt, SquaresFour, UserPlus, Users } from "../icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
@@ -116,6 +117,8 @@ export default function DashboardPage({
   onOpenFiltered,
   onWriteOrder,
   onRecordMade,
+  onAddProduct,
+  onAddCustomer,
 }) {
   const role = profile?.role;
   const isSales = role === "Sales Staff";
@@ -235,6 +238,30 @@ export default function DashboardPage({
               <DownloadSimple aria-hidden="true" />
               Export
             </Button>
+            {/* App passes these only to roles allowed to use them, so the
+                menu shows only what this person can add. */}
+            {onAddProduct || onAddCustomer ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="outline" />}>
+                  Add
+                  <CaretDown aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {onAddProduct ? (
+                    <DropdownMenuItem onClick={onAddProduct}>
+                      <Package aria-hidden="true" />
+                      Add product
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onAddCustomer ? (
+                    <DropdownMenuItem onClick={onAddCustomer}>
+                      <UserPlus aria-hidden="true" />
+                      Add customer
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
             <Button onClick={onWriteOrder} aria-haspopup="dialog">
               <Plus aria-hidden="true" />
               New order

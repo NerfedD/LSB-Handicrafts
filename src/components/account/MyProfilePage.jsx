@@ -17,9 +17,10 @@ import { roleLabel } from "../../utils/copy";
  *   changes) → Your details → Password → How the app looks for you → Where
  *   you're signed in.
  *
- * The app keeps no profile photo or list of sessions, so those buttons are
- * disabled. Theme goes through hooks/useTheme; text size is the dashboard
- * view preference.
+ * The app stores no profile photo, so those two buttons are disabled. The
+ * other sign-ins cannot be LISTED (Supabase shows a person only their own
+ * current session) but they can be ended -- see SessionsSection. Theme goes
+ * through hooks/useTheme; text size is the dashboard view preference.
  */
 export default function MyProfilePage({ profile, dashboardView = DASHBOARD_VIEW.STANDARD, onSaveDetails, onSetDashboardView }) {
   const [theme, setTheme] = useTheme();

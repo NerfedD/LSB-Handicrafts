@@ -79,8 +79,10 @@ test('BUG-12: the add action clears an earlier product selection', async ({ page
   await openNav(page, 'Dashboard');
   await openNav(page, 'Inventory');
   await page.getByRole('button', { name: 'Add product', exact: true }).click();
-  await expect(page).toHaveURL(/\/products\/new$/);
-  await expect(page.getByRole('heading', { level: 1, name: 'Add product' })).toBeVisible();
+  const dialog = page.getByRole('dialog', { name: 'Add product' });
+  await expect(dialog).toBeVisible();
+  // Blank, not product 1 loaded for editing.
+  await expect(dialog.getByLabel(/^Name /)).toHaveValue('');
 });
 
 test('BUG-13/15: refreshing an edit retains the order and its renamed customer identity', async ({ page, baseURL }) => {
@@ -129,7 +131,7 @@ test('BUG-01: a second retry after a twice-failed delivery still saves the order
   });
 
   await page.goto(`${baseURL}/orders/new`);
-  const form = page.getByRole('main');
+  const form = page.getByRole('dialog', { name: 'New order' });
   await form.getByLabel(/^Customer/).fill('Retry Regression');
   await form.getByLabel('Item').click();
   await page.getByRole('option', { name: /Styro Ball 4 inch/ }).click();

@@ -16,7 +16,7 @@
    --------------------------------------------------------------------------- */
 :root {
   color-scheme: light;
-  --background: #F1FAEE;
+  --background: #EDF2FB;
   --card: #ffffff;
   --surface-2: #fafafa;
   --muted: #f4f4f5;
@@ -25,7 +25,7 @@
   --border-subtle: #e4e4e7;
   --row-divider: #f4f4f5;
   --input-strong: #a1a1aa;
-  --column: #e6f2e2;
+  --column: #dfe7f5;
   --inverse: #18181b;
   --inverse-fg: #fafafa;
   --inverse-strong: #09090b;
@@ -329,6 +329,32 @@ html.theme-anim, html.theme-anim * {
   .slip-table td { padding: 2.4mm 0; border-bottom: 0.2mm solid #e4e4e7; font-size: 10.5pt; vertical-align: top; }
   .slip-th-qty, .slip-td-qty { width: 28mm; padding-left: 8mm; text-align: right; }
   .slip-th-money, .slip-td-money { width: 34mm; padding-left: 8mm; text-align: right; }
+
+  /* RUN SHEET (RunSheet.jsx). The driver's round rather than a customer's
+     document: grouped by whose truck it is on, with a box to tick per stop.
+     A group is kept off a page break so no driver's block is split in two. */
+  .sheet-group { padding-top: 7mm; break-inside: avoid; }
+  .sheet-group:first-of-type { padding-top: 0; }
+  .sheet-driver { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 2mm; }
+  .sheet-driver-name { font-size: 12pt; font-weight: 600; letter-spacing: -0.01em; }
+  .sheet-driver-count { font-size: 9pt; font-weight: 500; color: #71717a; }
+
+  .run-th-no, .run-td-no { width: 24mm; }
+  .run-th-items, .run-td-items { width: 16mm; text-align: right; }
+  .run-th-due, .run-td-due { width: 30mm; padding-left: 6mm; }
+  .run-th-done, .run-td-done { width: 16mm; text-align: center; }
+
+  .run-order { display: block; font-size: 8.5pt; color: #71717a; }
+  .run-customer { display: block; font-weight: 500; }
+  .run-where { display: block; font-size: 9.5pt; color: #52525b; }
+  .run-stage { display: block; font-size: 8.5pt; color: #71717a; }
+
+  /* Ticked with a pen in the cab. 0.3mm matches the table's header rule, so
+     the box reads as part of the ruling rather than as a printed glyph. */
+  .run-tick {
+    display: inline-block; width: 4.5mm; height: 4.5mm;
+    border: 0.3mm solid #09090b; border-radius: 0.6mm;
+  }
 
   .slip-totals { display: flex; justify-content: flex-end; padding-top: 5mm; break-inside: avoid; }
   .slip-totals dl { width: 78mm; margin: 0; }

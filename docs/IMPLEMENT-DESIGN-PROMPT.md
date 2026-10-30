@@ -70,7 +70,7 @@ Build each board into the component listed. Keep the existing view key, URL, dat
 | 14 · Customers, 15 · Suppliers | `customers/CustomerListPage.jsx`, `suppliers/SupplierListPage.jsx` | customers, suppliers |
 | 16 · Orders, 17 · Order detail and edit | `orders/OrderListPage.jsx`, `orders/OrderDetailPage.jsx` (board 17 has the edit mode) | orders, order-detail, order-edit |
 | 11 · Activity log | `staff/ActivityLogPage.jsx` | activity |
-| 13 · Your profile | `account/MyProfilePage.jsx`, `account/EditProfilePage.jsx`, `account/ChangePasswordPage.jsx` | profile, profile-edit, change-password |
+| 13 · Your profile | `account/MyProfilePage.jsx`, `account/ProfileSections.jsx` | profile |
 | AppSidebar, TopBar, Sidebar · states, Search ⌘K | `layout/Shell.jsx` (sidebar, top bar, mobile sheet, command menu) | all views |
 | Every `*Dialog` board, plus Toasts | The matching dialog (for example `AddCustomerDialog` → `customers/CustomerFormDialog.jsx`, `StockChangeDialog` → `products/StockChangeDialog.jsx`, `StartBatchDialog` → `products/StartBatchDialog.jsx`, `FinishBatchDialog` → `products/CompleteBatchDialog.jsx`, `MarkDeliveredDialog` → `deliveries/RecordDeliveredDialog.jsx`, `AssignDriversDialog` → `deliveries/AssignDriverDialog.jsx`, `ReceiveDeliveryDialog` → `suppliers/ReceiveSupplierDeliveryDialog.jsx`, `ConfirmDialog` → `shared/ConfirmDialog.jsx`, `AddUserDialog` → `staff/CreateAccountDialog.jsx`), and `ui/sonner.jsx` | — |
 | Tokens, Component inventory, Motion | `src/index.css`, `tailwind.config.js`, `src/components/ui/*` | — |

@@ -181,9 +181,9 @@ export const NAV_TREE = [
 
 /**
  * Screens with no nav entry, listed so the route gate still knows about
- * them. All three are reached from the sidebar's account menu.
+ * them. Reached from the sidebar's account menu.
  */
-export const ACCOUNT_VIEWS = ["profile", "profile-edit", "change-password"];
+export const ACCOUNT_VIEWS = ["profile"];
 
 const viewsOf = (item) => item.views;
 
@@ -275,8 +275,6 @@ const VIEW_META = {
   "settings-notifications": { title: "Notifications" },
 
   profile: { title: "Your profile" },
-  "profile-edit": { title: "Edit your details" },
-  "change-password": { title: "Change password" },
   "not-found": { title: "Page not found" },
 };
 

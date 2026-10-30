@@ -62,4 +62,6 @@ export const DIALOG_NEEDS = {
   customer: ['customers'],
   supplier: ['suppliers'],
   startBatch: WORKSHOP,
+  addProduct: ['categories'],
+  newOrder: CUSTOMER_FACTS,
 };

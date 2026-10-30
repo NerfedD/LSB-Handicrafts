@@ -6,6 +6,7 @@ import Callout from "../shared/Callout";
 import { Avatar } from "../shared/Chip";
 import { NotFoundState } from "../shared/PageStates";
 import { Page, PageHeader, TextLink } from "../shared/page";
+import DeliverySlip from "./DeliverySlip";
 import StageBadge from "./StageBadge";
 import { STAGE_LOOK } from "./stageLook";
 import { cn } from "@/lib/utils";
@@ -24,8 +25,9 @@ import { formatPeso, formatShortDate } from "../../utils/profileFormat";
  *   Where, Driver and History.
  *
  * The header's primary button is the delivery's next step, so it reads
- * "Mark delivered" on the way and "Send out" when it is ready. There is no
- * delivery slip to print yet, so that button is disabled.
+ * "Mark delivered" on the way and "Send out" when it is ready. Print delivery
+ * slip prints DeliverySlip -- the sheet that rides on the truck and gets
+ * signed on the doorstep.
  */
 function Panel({ id, title, action, children }) {
   return (
@@ -105,7 +107,7 @@ export default function DeliveryDetailPage({
                 Move back a step
               </Button>
             ) : null}
-            <Button variant="outline" disabled title="There is no delivery slip to print yet">
+            <Button variant="outline" onClick={() => window.print()}>
               <Printer aria-hidden="true" />
               Print delivery slip
             </Button>
@@ -224,6 +226,10 @@ export default function DeliveryDetailPage({
           </Panel>
         </aside>
       </div>
+
+      {/* Renders to document.body, not here: the print stylesheet hides #root
+          and shows .slip, which only works from outside the app's tree. */}
+      <DeliverySlip delivery={delivery} />
     </Page>
   );
 }

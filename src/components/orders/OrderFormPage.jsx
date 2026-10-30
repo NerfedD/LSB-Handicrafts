@@ -17,7 +17,8 @@ import Callout from "../shared/Callout";
 import { EmptySlot } from "../shared/PageStates";
 import { Field, Row } from "../shared/forms";
 import { Avatar } from "../shared/Chip";
-import { Page, PageHeader, SectionCard, TextLink } from "../shared/page";
+import { TextLink } from "../shared/page";
+import FormFrame from "../shared/FormFrame";
 import { Checkbox } from "../shared/AuthField";
 import { LINE_KIND } from "../../utils/constants";
 import { customerSummary, DEFAULT_LOYALTY, loyaltyDiscount } from "../../utils/customers";
@@ -29,7 +30,11 @@ import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
 
 /**
- * Write a new order.
+ * Write a new order (the NewOrderDialog board), or rewrite one.
+ *
+ * WRITING ONE IS A DIALOG over the Orders list, like the other Add actions;
+ * REWRITING one is a screen reached from the order. FormFrame draws one or
+ * the other around the same fields.
  *
  * NOT ONE OF THE 25 DESIGNED SCREENS. The handoff shows "Write a new order" as
  * a call to action on three dashboards and on the orders list, but it does not
@@ -158,6 +163,8 @@ export default function OrderFormPage({
   saving = false,
   onSave,
   onCancel,
+  /** Draw it as a dialog over the current screen rather than as a screen. */
+  asDialog = false,
 }) {
   const isEdit = mode === "edit";
   const [customerName, setCustomerName] = useState(
@@ -423,44 +430,45 @@ export default function OrderFormPage({
   const cell = "border-b border-row-divider px-2 py-2 align-top first:pl-3 last:pr-3";
 
   return (
-    <Page>
-      <PageHeader
-        back={{ label: isEdit ? "Back to the order" : "Back to Orders", onClick: onCancel }}
-        title={isEdit ? `Edit order #${order?.id ?? ""}` : "New order"}
-        description="Stock is set aside when you create the order. Nothing leaves the shelf until it is delivered."
-      />
-      <form onSubmit={handleSubmit} noValidate className="w-full max-w-[720px]">
-        <SectionCard
-          title={isEdit ? "Order details" : "Order"}
-          bodyClassName="flex flex-col gap-3.5 px-4 pb-4"
-          footer={
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving
-                  ? "Saving…"
-                  : deliveryDoubt
-                    ? isEdit
-                      ? "Save it anyway"
-                      : "Create it anyway"
-                    : isEdit
-                      ? "Save changes"
-                      : "Create order"}
-              </Button>
-            </div>
-          }
-        >
-          <FormError message={error} />
+    <FormFrame
+      asDialog={asDialog}
+      size="xl"
+      back={{ label: isEdit ? "Back to the order" : "Back to Orders", onClick: onCancel }}
+      title={isEdit ? `Edit order #${order?.id ?? ""}` : "New order"}
+      description="Stock is set aside when you create the order. Nothing leaves the shelf until it is delivered."
+      sectionTitle={isEdit ? "Order details" : "Order"}
+      className="w-full max-w-[720px]"
+      saving={saving}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      footer={
+        <>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving
+              ? "Saving…"
+              : deliveryDoubt
+                ? isEdit
+                  ? "Save it anyway"
+                  : "Create it anyway"
+                : isEdit
+                  ? "Save changes"
+                  : "Create order"}
+          </Button>
+        </>
+      }
+    >
+      <FormError message={error} />
 
-          <Field
-            label="Customer"
-            required
-            error={customerProblem}
-            hint={linked ? undefined : "Start typing to find someone already on the books, or write a new name."}
-          >
-            {(props) => (
+      <Field
+        label="Customer"
+        required
+        error={customerProblem}
+        hint={linked ? undefined : "Start typing to find someone already on the books, or write a new name."}
+      >
+        {(props) => (
               <>
                 <Input
                   {...props}
@@ -481,46 +489,46 @@ export default function OrderFormPage({
                   ))}
                 </datalist>
               </>
-            )}
-          </Field>
-          {linked ? (
-            <div className="-mt-1.5 flex items-center gap-2.5 rounded-md border border-border px-3 py-2 text-13">
-              <Avatar name={linked.name} size="sm" />
-              <span className="min-w-0 truncate">
-                <span className="font-medium">{linked.name}</span>
-                <span className="text-muted-fg">
-                  {[linked.address, linked.contactNumber, earned ? `${earned.openCount} open ${earned.openCount === 1 ? "order" : "orders"}` : null]
-                    .filter(Boolean)
-                    .map((part) => ` · ${part}`)
-                    .join("")}
-                </span>
-              </span>
-            </div>
-          ) : null}
+        )}
+      </Field>
+      {linked ? (
+        <div className="-mt-1.5 flex items-center gap-2.5 rounded-md border border-border px-3 py-2 text-13">
+          <Avatar name={linked.name} size="sm" />
+          <span className="min-w-0 truncate">
+            <span className="font-medium">{linked.name}</span>
+            <span className="text-muted-fg">
+              {[linked.address, linked.contactNumber, earned ? `${earned.openCount} open ${earned.openCount === 1 ? "order" : "orders"}` : null]
+                .filter(Boolean)
+                .map((part) => ` · ${part}`)
+                .join("")}
+            </span>
+          </span>
+        </div>
+      ) : null}
 
-          <div className="flex flex-col gap-1.5">
-            <p className="m-0 text-sm font-medium">Items</p>
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full min-w-[560px] border-collapse text-13">
-                <thead>
-                  <tr className="bg-surface-2 text-left text-xs text-muted-fg">
-                    <th scope="col" className="h-8 px-2 pl-3 font-medium">Product</th>
-                    <th scope="col" className="h-8 w-20 px-2 font-medium">Qty</th>
-                    <th scope="col" className="h-8 w-28 px-2 font-medium">Price</th>
-                    <th scope="col" className="h-8 w-28 px-2 text-right font-medium">Total</th>
-                    <th scope="col" className="h-8 w-10 px-2 pr-3"><span className="sr-only">Remove</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lines.map((line) => {
-                    const match = shelf.find(
-                      ({ product }) => String(product.id) === String(line.productId)
-                    );
-                    return (
-                      <tr key={line.key}>
-                        <td className={cell}>
-                          <div className="flex min-w-0 flex-col gap-1.5">
-                            {line.custom ? (
+      <div className="flex flex-col gap-1.5">
+        <p className="m-0 text-sm font-medium">Items</p>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full min-w-[560px] border-collapse text-13">
+            <thead>
+              <tr className="bg-surface-2 text-left text-xs text-muted-fg">
+                <th scope="col" className="h-8 px-2 pl-3 font-medium">Product</th>
+                <th scope="col" className="h-8 w-20 px-2 font-medium">Qty</th>
+                <th scope="col" className="h-8 w-28 px-2 font-medium">Price</th>
+                <th scope="col" className="h-8 w-28 px-2 text-right font-medium">Total</th>
+                <th scope="col" className="h-8 w-10 px-2 pr-3"><span className="sr-only">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const match = shelf.find(
+                  ({ product }) => String(product.id) === String(line.productId)
+                );
+                return (
+                  <tr key={line.key}>
+                    <td className={cell}>
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        {line.custom ? (
                               <>
                                 <Input
                                   aria-label="What is it"
@@ -535,220 +543,218 @@ export default function OrderFormPage({
                                   placeholder="Size, shape, colour: why the price is what it is"
                                 />
                               </>
-                            ) : (
-                              <Select
-                                items={shelf.map(({ product }) => ({ value: String(product.id), label: product.name }))}
-                                value={String(line.productId)}
-                                onValueChange={(next) => chooseProduct(line.key, next)}
-                              >
-                                <SelectTrigger aria-label="Item" className="w-full">
-                                  <SelectValue placeholder="Pick a product" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {shelf.map(({ product, stock }) => (
-                                    <SelectItem key={product.id} value={String(product.id)}>
-                                      {product.name}
-                                      {stock.tracked ? ` — ${stock.available} left` : ""}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                            <span className="text-xs text-muted-fg">
-                              {line.custom
-                                ? "Made to order · priced by hand"
-                                : !match
-                                  // Nothing picked yet: "not tracked" here stated a
-                                  // fact about a product nobody had chosen.
-                                  ? "Pick a product to see how many are on the shelf"
-                                  : match.stock.tracked
-                                    ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
-                                    : "Stock not tracked for this one"}
-                              {match && Number(line.unitPrice) !== Number(line.listPrice)
-                                ? ` · list price ${formatPeso(line.listPrice)}`
-                                : ""}
-                            </span>
-                            <TextLink className="w-fit text-xs" onClick={() => toggleCustom(line.key)}>
-                              {line.custom ? "Pick from the catalogue instead" : "Not in the catalogue? Add it by hand"}
-                            </TextLink>
-                          </div>
-                        </td>
-                        <td className={cell}>
-                          <Input
-                            aria-label="How many"
-                            type="number"
-                            inputMode="numeric"
-                            min="1"
-                            value={line.quantity}
-                            onChange={(event) => setLine(line.key, { quantity: event.target.value })}
-                          />
-                        </td>
-                        <td className={cell}>
-                          <Input
-                            aria-label="Price each"
-                            aria-invalid={priceProblems[line.key] ? true : undefined}
-                            type="number"
-                            inputMode="decimal"
-                            step="0.01"
-                            min="0"
-                            value={line.unitPrice}
-                            onChange={(event) => {
-                              setLine(line.key, { unitPrice: event.target.value });
-                              setPriceProblems((previous) => ({ ...previous, [line.key]: undefined }));
-                            }}
-                          />
-                          {priceProblems[line.key] ? (
-                            <span role="alert" className="mt-1 block text-xs text-danger-fg">{priceProblems[line.key]}</span>
-                          ) : null}
-                        </td>
-                        <td className={`${cell} pt-3.5 text-right font-medium tabular-nums`}>
-                          {formatPeso(roundMoney(Number(line.unitPrice) * Number(line.quantity || 0)))}
-                        </td>
-                        <td className={cell}>
-                          {lines.length > 1 && (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              aria-label="Remove"
-                              onClick={() => setLines((previous) => previous.filter((l) => l.key !== line.key))}
-                            >
-                              <Trash />
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {lines.length === 0 && <EmptySlot>Nothing on the order yet.</EmptySlot>}
-              <div className="px-3 py-2">
-                <Button variant="ghost" size="sm" onClick={() => setLines((previous) => [...previous, emptyLine()])}>
-                  <Plus />
-                  Add another item
-                </Button>
-              </div>
-            </div>
+                        ) : (
+                          <Select
+                            items={shelf.map(({ product }) => ({ value: String(product.id), label: product.name }))}
+                            value={String(line.productId)}
+                            onValueChange={(next) => chooseProduct(line.key, next)}
+                          >
+                            <SelectTrigger aria-label="Item" className="w-full">
+                              <SelectValue placeholder="Pick a product" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {shelf.map(({ product, stock }) => (
+                                <SelectItem key={product.id} value={String(product.id)}>
+                                  {product.name}
+                                  {stock.tracked ? ` — ${stock.available} left` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        <span className="text-xs text-muted-fg">
+                          {line.custom
+                            ? "Made to order · priced by hand"
+                            : !match
+                              // Nothing picked yet: "not tracked" here stated a
+                              // fact about a product nobody had chosen.
+                              ? "Pick a product to see how many are on the shelf"
+                              : match.stock.tracked
+                                ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
+                                : "Stock not tracked for this one"}
+                          {match && Number(line.unitPrice) !== Number(line.listPrice)
+                            ? ` · list price ${formatPeso(line.listPrice)}`
+                            : ""}
+                        </span>
+                        <TextLink className="w-fit text-xs" onClick={() => toggleCustom(line.key)}>
+                          {line.custom ? "Pick from the catalogue instead" : "Not in the catalogue? Add it by hand"}
+                        </TextLink>
+                      </div>
+                    </td>
+                    <td className={cell}>
+                      <Input
+                        aria-label="How many"
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        value={line.quantity}
+                        onChange={(event) => setLine(line.key, { quantity: event.target.value })}
+                      />
+                    </td>
+                    <td className={cell}>
+                      <Input
+                        aria-label="Price each"
+                        aria-invalid={priceProblems[line.key] ? true : undefined}
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={line.unitPrice}
+                        onChange={(event) => {
+                          setLine(line.key, { unitPrice: event.target.value });
+                          setPriceProblems((previous) => ({ ...previous, [line.key]: undefined }));
+                        }}
+                      />
+                      {priceProblems[line.key] ? (
+                        <span role="alert" className="mt-1 block text-xs text-danger-fg">{priceProblems[line.key]}</span>
+                      ) : null}
+                    </td>
+                    <td className={`${cell} pt-3.5 text-right font-medium tabular-nums`}>
+                      {formatPeso(roundMoney(Number(line.unitPrice) * Number(line.quantity || 0)))}
+                    </td>
+                    <td className={cell}>
+                      {lines.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Remove"
+                          onClick={() => setLines((previous) => previous.filter((l) => l.key !== line.key))}
+                        >
+                          <Trash />
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {lines.length === 0 && <EmptySlot>Nothing on the order yet.</EmptySlot>}
+          <div className="px-3 py-2">
+            <Button variant="ghost" size="sm" onClick={() => setLines((previous) => [...previous, emptyLine()])}>
+              <Plus />
+              Add another item
+            </Button>
           </div>
+        </div>
+      </div>
 
-          {shortages.length > 0 && (
-            <Callout tone="amber" icon={<Warning />} title="More than we have on the shelf">
-              {shortages.map((shortage) => (
-                <span key={shortage.name} className="block">
-                  {shortage.name}: only {shortage.have} free to sell, so {shortage.short} would
-                  need making.
-                </span>
-              ))}
-              <span className="block pt-1">
-                You can still save the order. What is short shows as needed next under Batches.
-              </span>
-            </Callout>
-          )}
+      {shortages.length > 0 && (
+        <Callout tone="amber" icon={<Warning />} title="More than we have on the shelf">
+          {shortages.map((shortage) => (
+            <span key={shortage.name} className="block">
+              {shortage.name}: only {shortage.have} free to sell, so {shortage.short} would
+              need making.
+            </span>
+          ))}
+          <span className="block pt-1">
+            You can still save the order. What is short shows as needed next under Batches.
+          </span>
+        </Callout>
+      )}
 
-          <Field
-            label="Where to"
-            warning={deliveryDoubt}
-            hint="Leave this empty if they are collecting. Put the district or city last."
-          >
+      <Field
+        label="Where to"
+        warning={deliveryDoubt}
+        hint="Leave this empty if they are collecting. Put the district or city last."
+      >
+        {(props) => (
+          <Input
+            {...props}
+            value={address}
+            onChange={(event) => {
+              setAddress(event.target.value);
+              // Typing an address answers the question outright.
+              setDeliveryDoubt(null);
+              setAskedAboutDelivery(false);
+            }}
+            placeholder="12 Mabini St, Poblacion, Davao City"
+          />
+        )}
+      </Field>
+
+      {address.trim() && (
+        <Row className="sm:grid-cols-3">
+          <Field label="Promised for" error={dueError} hint="Today or later.">
             {(props) => (
               <Input
                 {...props}
-                value={address}
-                onChange={(event) => {
-                  setAddress(event.target.value);
-                  // Typing an address answers the question outright.
-                  setDeliveryDoubt(null);
-                  setAskedAboutDelivery(false);
-                }}
-                placeholder="12 Mabini St, Poblacion, Davao City"
+                type="date"
+                min={isEdit && delivery?.dueOn && delivery.dueOn < localDateIso() ? undefined : localDateIso()}
+                value={dueOn}
+                onChange={(event) => { setDueOn(event.target.value); setDueError(null); }}
               />
             )}
           </Field>
+          <Field label="Who is taking it" hint="Can be filled in later.">
+            {(props) => (
+              <Input
+                {...props}
+                value={driver}
+                onChange={(event) => setDriver(event.target.value)}
+                placeholder="Nobody yet"
+              />
+            )}
+          </Field>
+          <Field label="Delivery charge" hint="Empty if free.">
+            {(props) => (
+              <Input
+                {...props}
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={deliveryCharge}
+                onChange={(event) => setDeliveryCharge(event.target.value)}
+                placeholder="0.00"
+              />
+            )}
+          </Field>
+        </Row>
+      )}
 
-          {address.trim() && (
-            <Row className="sm:grid-cols-3">
-              <Field label="Promised for" error={dueError} hint="Today or later.">
-                {(props) => (
-                  <Input
-                    {...props}
-                    type="date"
-                    min={isEdit && delivery?.dueOn && delivery.dueOn < localDateIso() ? undefined : localDateIso()}
-                    value={dueOn}
-                    onChange={(event) => { setDueOn(event.target.value); setDueError(null); }}
-                  />
-                )}
-              </Field>
-              <Field label="Who is taking it" hint="Can be filled in later.">
-                {(props) => (
-                  <Input
-                    {...props}
-                    value={driver}
-                    onChange={(event) => setDriver(event.target.value)}
-                    placeholder="Nobody yet"
-                  />
-                )}
-              </Field>
-              <Field label="Delivery charge" hint="Empty if free.">
-                {(props) => (
-                  <Input
-                    {...props}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    value={deliveryCharge}
-                    onChange={(event) => setDeliveryCharge(event.target.value)}
-                    placeholder="0.00"
-                  />
-                )}
-              </Field>
-            </Row>
-          )}
+      {offerReward && (
+        <Callout
+          tone="green"
+          icon={<Gift />}
+          title={`${linked.name} has earned the loyalty reward`}
+        >
+          {earned.completedCount} finished orders. The reward is {loyalty.rewardPercent}% off the
+          items{useReward ? `: −${formatPeso(discount)} on this order.` : "."}
+          <span className="block pt-2">
+            <Checkbox
+              id="apply-reward"
+              checked={useReward}
+              onChange={setUseReward}
+              label="Apply it to this order"
+            />
+          </span>
+        </Callout>
+      )}
 
-          {offerReward && (
-            <Callout
-              tone="green"
-              icon={<Gift />}
-              title={`${linked.name} has earned the loyalty reward`}
-            >
-              {earned.completedCount} finished orders. The reward is {loyalty.rewardPercent}% off the
-              items{useReward ? `: −${formatPeso(discount)} on this order.` : "."}
-              <span className="block pt-2">
-                <Checkbox
-                  id="apply-reward"
-                  checked={useReward}
-                  onChange={setUseReward}
-                  label="Apply it to this order"
-                />
-              </span>
-            </Callout>
-          )}
-
-          {/* What is read out to the customer, line by line, then the total. */}
-          <dl className="m-0 flex flex-col gap-1.5 rounded-md bg-surface-2 px-3 py-2.5 text-13">
-            <div className="flex justify-between gap-6">
-              <dt className="text-muted-fg">Items</dt>
-              <dd className="m-0 tabular-nums">{formatPeso(itemsTotal)}</dd>
-            </div>
-            {Number(deliveryCharge) > 0 && address.trim() ? (
-              <div className="flex justify-between gap-6">
-                <dt className="text-muted-fg">Delivery</dt>
-                <dd className="m-0 tabular-nums">{formatPeso(Number(deliveryCharge))}</dd>
-              </div>
-            ) : null}
-            {discount > 0 ? (
-              <div className="flex justify-between gap-6">
-                <dt className="text-muted-fg">{keptDiscount > 0 ? "Loyalty reward agreed when written" : "Loyalty reward"}</dt>
-                <dd className="m-0 tabular-nums">−{formatPeso(discount)}</dd>
-              </div>
-            ) : null}
-            <div className="mt-1 flex items-baseline justify-between gap-6 border-t border-border pt-2">
-              <dt className="font-medium">Total to pay</dt>
-              <dd className="m-0 text-base font-semibold tabular-nums">{formatPeso(total)}</dd>
-            </div>
-          </dl>
-        </SectionCard>
-      </form>
-    </Page>
+      {/* What is read out to the customer, line by line, then the total. */}
+      <dl className="m-0 flex flex-col gap-1.5 rounded-md bg-surface-2 px-3 py-2.5 text-13">
+        <div className="flex justify-between gap-6">
+          <dt className="text-muted-fg">Items</dt>
+          <dd className="m-0 tabular-nums">{formatPeso(itemsTotal)}</dd>
+        </div>
+        {Number(deliveryCharge) > 0 && address.trim() ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">Delivery</dt>
+            <dd className="m-0 tabular-nums">{formatPeso(Number(deliveryCharge))}</dd>
+          </div>
+        ) : null}
+        {discount > 0 ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">{keptDiscount > 0 ? "Loyalty reward agreed when written" : "Loyalty reward"}</dt>
+            <dd className="m-0 tabular-nums">−{formatPeso(discount)}</dd>
+          </div>
+        ) : null}
+        <div className="mt-1 flex items-baseline justify-between gap-6 border-t border-border pt-2">
+          <dt className="font-medium">Total to pay</dt>
+          <dd className="m-0 text-base font-semibold tabular-nums">{formatPeso(total)}</dd>
+        </div>
+      </dl>
+    </FormFrame>
   );
 }

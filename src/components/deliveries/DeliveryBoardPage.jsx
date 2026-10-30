@@ -12,6 +12,7 @@ import { landedRow } from "../shared/landing";
 import { EmptyState, FilterSelect, Page, PageHeader, SearchField, StatCard, StatCards } from "../shared/page";
 import { ErrorState, LoadingState } from "../shared/PageStates";
 import { cn } from "@/lib/utils";
+import RunSheet from "./RunSheet";
 import StageBadge from "./StageBadge";
 import { STAGE_LOOK } from "./stageLook";
 import { isBackorderDelivery } from "../../utils/orders";
@@ -38,6 +39,10 @@ import {
  *   PageHeader (Print run sheet, Assign drivers) → four compact StatCards →
  *   FilterBar (search, Due, Driver, count, Table / Board) → the table, or the
  *   kanban board with one column per stage.
+ *
+ * Print run sheet prints RunSheet, which takes the FILTERED list rather than
+ * every delivery -- the filters above it are how somebody says what they want
+ * on the paper.
  *
  * Each row and card carries the next step ("Start making", "Mark ready",
  * "Send out", "Mark delivered"), which moves the delivery the way the detail
@@ -141,6 +146,18 @@ export default function DeliveryBoardPage({
   );
   const columns = useMemo(() => board(filtered), [filtered]);
 
+  // Said on the printed sheet, so an hour later it is still clear which
+  // deliveries it covers and which it leaves out.
+  const printScope = useMemo(() => {
+    const bits = [];
+    if (due !== "any") bits.push(DUE_OPTIONS.find((option) => option.value === due)?.label.toLowerCase());
+    if (driver === "none") bits.push("no driver yet");
+    else if (driver !== "any") bits.push(driver);
+    if (area !== "any") bits.push(area);
+    if (query.trim()) bits.push(`matching “${query.trim()}”`);
+    return bits.filter(Boolean).join(" · ") || "Every delivery";
+  }, [due, driver, area, query]);
+
   const clearAll = () => {
     setDue("any");
     setDriver("any");
@@ -185,7 +202,7 @@ export default function DeliveryBoardPage({
         description="Every order on its way out, from the workshop to the customer's door."
         actions={
           <>
-            <Button variant="outline" disabled title="The run sheet is not printable yet">
+            <Button variant="outline" onClick={() => window.print()}>
               <Printer aria-hidden="true" />
               Print run sheet
             </Button>
@@ -359,6 +376,11 @@ export default function DeliveryBoardPage({
           </div>
         </section>
       )}
+
+      {/* Renders to document.body, not here: the print stylesheet hides #root
+          and shows .slip, which only works from outside the app's tree. It
+          gets the filtered list, so Print puts on paper what is on screen. */}
+      <RunSheet deliveries={filtered} scope={printScope} />
     </Page>
   );
 }

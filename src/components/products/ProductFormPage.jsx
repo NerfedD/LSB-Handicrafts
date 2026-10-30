@@ -17,7 +17,7 @@ import {
   LockedField,
   Row,
 } from "../shared/forms";
-import { Page, PageHeader, SectionCard } from "../shared/page";
+import FormFrame from "../shared/FormFrame";
 import { PRODUCT_TYPE, PRODUCT_TYPE_OPTIONS, SELL_UNIT_OPTIONS } from "../../utils/constants";
 import { suggestItemCode, suggestProductName } from "../../utils/productFormat";
 import { countProblem, measureProblem, moneyProblem, nameProblem, tidyLabel } from "../../utils/validation";
@@ -28,12 +28,11 @@ import { ProductPhotoField } from "./ProductPhoto";
 const NEW_CATEGORY = "__new";
 
 /**
- * Add a product — screen 2g.
+ * Add a product (the AddProductDialog board) or edit one.
  *
- * A FULL SCREEN, NOT A DIALOG. Adding a customer is four fields and belongs in
- * a modal over the list you are adding to; adding a product is a decision with
- * a dozen inputs, a photograph and a generated code, and a modal that scrolls
- * is a form somebody loses their place in.
+ * ADDING IS A DIALOG over the Inventory list, like adding a customer or a
+ * user; EDITING is a screen reached from the product. FormFrame draws one or
+ * the other around the same fields.
  *
  * THE FORM IS ADAPTIVE, which is the reason for the numbered bands. "What is
  * it?" has to be answered first because the answer changes what is asked next:
@@ -189,6 +188,8 @@ export default function ProductFormPage({
   saving = false,
   onSave,
   onCancel,
+  /** Draw it as a dialog over the current screen rather than as a screen. */
+  asDialog = false,
 }) {
   const isEdit = mode === "edit";
   const [values, setValues] = useState(() => seed(isEdit ? product : null, stock));
@@ -281,89 +282,90 @@ export default function ProductFormPage({
   const unitShort = SELL_UNIT_OPTIONS.find((option) => option.value === values.unit)?.label ?? values.unit;
 
   return (
-    <Page>
-      <PageHeader
-        back={{ label: isEdit ? "Back to the product" : "Back to Inventory", onClick: onCancel }}
-        title={isEdit ? `Edit ${product?.name ?? "product"}` : "Add product"}
-        description={isEdit ? "Its stock count changes only through counts and write-offs, never here." : "Something the shop sells. Its stock is counted from here on."}
-      />
-      <form onSubmit={handleSubmit} noValidate className="w-full max-w-[640px]">
-        <SectionCard
-          title={isEdit ? "Product details" : "New product"}
-          footer={
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={onCancel} disabled={saving}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={saving}>
-                {saving ? "Saving…" : isEdit ? "Save changes" : "Add product"}
-              </Button>
-            </div>
-          }
-          bodyClassName="flex flex-col gap-3.5 px-4 pb-4"
-        >
-          <FormError message={saveError} />
+    <FormFrame
+      asDialog={asDialog}
+      size="lg"
+      back={{ label: isEdit ? "Back to the product" : "Back to Inventory", onClick: onCancel }}
+      title={isEdit ? `Edit ${product?.name ?? "product"}` : "Add product"}
+      description={isEdit ? "Its stock count changes only through counts and write-offs, never here." : "Something the shop sells. Its stock is counted from here on."}
+      sectionTitle={isEdit ? "Product details" : "New product"}
+      className="w-full max-w-[640px]"
+      saving={saving}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      footer={
+        <>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Save changes" : "Add product"}
+          </Button>
+        </>
+      }
+    >
+      <FormError message={saveError} />
 
-          <Field label="Kind" hint="This decides which measurements are asked for.">
-            <ChoiceButtons
-              label="Kind"
-              value={values.productType}
-              onChange={(next) => setField("productType", next)}
-              options={PRODUCT_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))}
-            />
-          </Field>
+      <Field label="Kind" hint="This decides which measurements are asked for.">
+        <ChoiceButtons
+          label="Kind"
+          value={values.productType}
+          onChange={(next) => setField("productType", next)}
+          options={PRODUCT_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))}
+        />
+      </Field>
 
-          <div className="grid gap-3.5 sm:grid-cols-[120px_minmax(0,1fr)]">
-            <ProductPhotoField
-              value={photo}
-              current={saved.photo?.dataUrl ?? null}
-              onChange={setPhoto}
-              disabled={saving}
-              name={values.name}
-            />
-            <div className="flex min-w-0 flex-col gap-3.5">
-              <Field
-                label="Name"
-                required
-                error={errors.name}
-                hint={
-                  suggestedName && values.name !== suggestedName
-                    ? `The way staff say it out loud. Suggestion: ${suggestedName}`
-                    : "The way staff say it out loud."
-                }
-              >
-                {(props) => (
-                  <Input
-                    {...props}
-                    value={values.name}
-                    onChange={(event) => setField("name", event.target.value)}
-                    placeholder={suggestedName || "Styro ball, 4 inch"}
-                  />
-                )}
-              </Field>
-              <LockedField
-                label="Item code"
-                value={itemCode}
-                hint={isEdit ? "Kept as it is, so shelf labels stay right." : "Made for you from the kind and the size."}
+      <div className="grid gap-3.5 sm:grid-cols-[120px_minmax(0,1fr)]">
+        <ProductPhotoField
+          value={photo}
+          current={saved.photo?.dataUrl ?? null}
+          onChange={setPhoto}
+          disabled={saving}
+          name={values.name}
+        />
+        <div className="flex min-w-0 flex-col gap-3.5">
+          <Field
+            label="Name"
+            required
+            error={errors.name}
+            hint={
+              suggestedName && values.name !== suggestedName
+                ? `The way staff say it out loud. Suggestion: ${suggestedName}`
+                : "The way staff say it out loud."
+            }
+          >
+            {(props) => (
+              <Input
+                {...props}
+                value={values.name}
+                onChange={(event) => setField("name", event.target.value)}
+                placeholder={suggestedName || "Styro ball, 4 inch"}
               />
-            </div>
-          </div>
+            )}
+          </Field>
+          <LockedField
+            label="Item code"
+            value={itemCode}
+            hint={isEdit ? "Kept as it is, so shelf labels stay right." : "Made for you from the kind and the size."}
+          />
+        </div>
+      </div>
 
-          {isBall && (
-            <Row>
-              <Field label="How wide across" required error={errors.diameterIn}>
-                {(props) => (
-                  <div className="relative">
-                    {number("diameterIn", { step: "any", min: "0", placeholder: "4", className: "pr-14" })(props)}
-                    <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">inches</span>
-                  </div>
-                )}
-              </Field>
-              <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Balls" />
-            </Row>
-          )}
+      {isBall && (
+        <Row>
+          <Field label="How wide across" required error={errors.diameterIn}>
+            {(props) => (
+              <div className="relative">
+                {number("diameterIn", { step: "any", min: "0", placeholder: "4", className: "pr-14" })(props)}
+                <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">inches</span>
+              </div>
+            )}
+          </Field>
+          <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Balls" />
+        </Row>
+      )}
 
-          {isFlat && (
+      {isFlat && (
             <>
               <Row className="sm:grid-cols-3">
                 <Field label="How thick" required error={errors.thicknessIn} hint="Inches.">
@@ -378,99 +380,97 @@ export default function ProductFormPage({
               </Row>
               <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Styro Sheets" />
             </>
-          )}
+      )}
 
-          {!isBall && !isFlat && (
-            <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Custom shapes" />
-          )}
+      {!isBall && !isFlat && (
+        <CategoryField values={values} errors={errors} categories={categories} setField={setField} placeholder="Custom shapes" />
+      )}
 
-          <Row>
-            <Field label="Sold" hint="How one is counted at the counter.">
-              {(props) => (
-                <Select
-                  items={SELL_UNIT_OPTIONS}
-                  value={values.unit}
-                  onValueChange={(next) => setField("unit", next)}
-                >
-                  <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SELL_UNIT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </Field>
-
-            <Field label="Price" required error={errors.unitPrice} hint="What one costs a customer.">
-              {(props) => (
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
-                    ₱
-                  </span>
-                  <Input
-                    {...props}
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    min="0"
-                    className="pl-6 pr-20"
-                    value={values.unitPrice}
-                    onChange={(event) => setField("unitPrice", event.target.value)}
-                    placeholder="0.00"
-                  />
-                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
-                    {String(unitShort).toLowerCase()}
-                  </span>
-                </div>
-              )}
-            </Field>
-          </Row>
-
-          {values.unit !== "piece" && (
-            <Field
-              label={`Pieces in one ${values.unit}`}
-              error={errors.packSize}
-              hint="So the shelf count can be told in actual pieces. A whole number."
+      <Row>
+        <Field label="Sold" hint="How one is counted at the counter.">
+          {(props) => (
+            <Select
+              items={SELL_UNIT_OPTIONS}
+              value={values.unit}
+              onValueChange={(next) => setField("unit", next)}
             >
-              {number("packSize", { step: "1", inputMode: "numeric", min: "1", placeholder: "25" })}
-            </Field>
+              <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]} className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SELL_UNIT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
+        </Field>
 
-          <Row>
-            {/* The opening count only. After that a count moves through recorded
-                movements -- "Correct the count" and "Record damage" on the
-                product's own screen -- so every change has a reason and a name. */}
-            {isEdit && stock?.tracked ? (
-              <LockedField
-                label="On the shelf"
-                value={String(stock.onHand)}
-                hint="To change this, count it from the product's screen."
+        <Field label="Price" required error={errors.unitPrice} hint="What one costs a customer.">
+          {(props) => (
+            <div className="relative">
+              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
+                ₱
+              </span>
+              <Input
+                {...props}
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                className="pl-6 pr-20"
+                value={values.unitPrice}
+                onChange={(event) => setField("unitPrice", event.target.value)}
+                placeholder="0.00"
               />
-            ) : (
-              <Field
-                label="On the shelf"
-                error={errors.stock}
-                hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is there today."}
-              >
-                {number("stock", { step: "1", inputMode: "numeric", min: "0", placeholder: "0" })}
-              </Field>
-            )}
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg" aria-hidden="true">
+                {String(unitShort).toLowerCase()}
+              </span>
+            </div>
+          )}
+        </Field>
+      </Row>
 
-            <Field
-              label="Warn me below"
-              error={errors.lowStockThreshold}
-              hint="Below this number the product shows as running low."
-            >
-              {number("lowStockThreshold", { step: "1", inputMode: "numeric", min: "0", placeholder: "15" })}
-            </Field>
-          </Row>
-        </SectionCard>
-      </form>
-    </Page>
+      {values.unit !== "piece" && (
+        <Field
+          label={`Pieces in one ${values.unit}`}
+          error={errors.packSize}
+          hint="So the shelf count can be told in actual pieces. A whole number."
+        >
+          {number("packSize", { step: "1", inputMode: "numeric", min: "1", placeholder: "25" })}
+        </Field>
+      )}
+
+      <Row>
+        {/* The opening count only. After that a count moves through recorded
+            movements -- "Correct the count" and "Record damage" on the
+            product's own screen -- so every change has a reason and a name. */}
+        {isEdit && stock?.tracked ? (
+          <LockedField
+            label="On the shelf"
+            value={String(stock.onHand)}
+            hint="To change this, count it from the product's screen."
+          />
+        ) : (
+          <Field
+            label="On the shelf"
+            error={errors.stock}
+            hint={isEdit ? "Nobody is counting this one yet. Put in what is there to start." : "Count what is there today."}
+          >
+            {number("stock", { step: "1", inputMode: "numeric", min: "0", placeholder: "0" })}
+          </Field>
+        )}
+
+        <Field
+          label="Warn me below"
+          error={errors.lowStockThreshold}
+          hint="Below this number the product shows as running low."
+        >
+          {number("lowStockThreshold", { step: "1", inputMode: "numeric", min: "0", placeholder: "15" })}
+        </Field>
+      </Row>
+    </FormFrame>
   );
 }

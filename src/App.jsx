@@ -208,8 +208,6 @@ const SettingsNotificationsPage = lazy(() => import("./components/settings/Setti
 const CreateAccountDialog = lazy(() => import("./components/staff/CreateAccountDialog"));
 
 const MyProfilePage = lazy(() => import("./components/account/MyProfilePage"));
-const EditProfilePage = lazy(() => import("./components/account/EditProfilePage"));
-const ChangePasswordPage = lazy(() => import("./components/account/ChangePasswordPage"));
 
 /** Which list screen each record dialog belongs to — used for its route gate. */
 const LIST_VIEW_OF = { customer: "customers", supplier: "suppliers" };
@@ -366,13 +364,14 @@ export default function App() {
   const [adjustPriceFor, setAdjustPriceFor] = useState(null); // orderId | null
   const [busy, setBusy] = useState(false);
 
-  // The header's second line. Screens push it up because it is usually a count
-  // the shell -- which renders above the lazy boundary -- cannot know.
-  // Screens still report a context line; the design's top bar has no second line for it.
-  const [, setContextLine] = useState("");
   // A filter a screen should open with, set by a dashboard attention button.
   const [pendingFilter, setPendingFilter] = useState(null);
   const [orderDraftFor, setOrderDraftFor] = useState(null);
+  // Add product and New order are dialogs over the list they land in, and
+  // /products/new and /orders/new open them (see utils/routes) -- once a
+  // restored session actually lands there, not over a fresh sign-in.
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
 
   const isSignedIn = !!sessionEmail;
 
@@ -406,6 +405,8 @@ export default function App() {
     ...(profileDialog?.kind === "customer" ? DIALOG_NEEDS.customer : []),
     ...(profileDialog?.kind === "supplier" ? DIALOG_NEEDS.supplier : []),
     ...(recordMadeFor ? DIALOG_NEEDS.startBatch : []),
+    ...(isAddProductOpen ? DIALOG_NEEDS.addProduct : []),
+    ...(isNewOrderOpen ? DIALOG_NEEDS.newOrder : []),
   ];
   const needed = collectionsFor(view, { role, open: dialogNeeds });
   const use = (key, params) => ({ enabled: isSignedIn, active: key ? needed.has(key) : true, params });
@@ -530,6 +531,10 @@ export default function App() {
           return;
         }
         setSessionEmail(email);
+        if (!recoveryRef.current) {
+          setIsAddProductOpen(initialRoute.dialog === 'add-product');
+          setIsNewOrderOpen(initialRoute.dialog === 'new-order');
+        }
         setView(recoveryRef.current ? 'reset-password' :
           CHROMELESS_VIEWS.has(initialRoute.view) ? 'dashboard' : initialRoute.view);
       } catch {
@@ -590,6 +595,8 @@ export default function App() {
       if (route.record === 'Order') pinOrder(route.id);
       if (route.record === 'Delivery') pinDelivery(route.id);
       setPendingFilter(null);
+      setIsAddProductOpen(route.dialog === 'add-product');
+      setIsNewOrderOpen(route.dialog === 'new-order');
       setView(sessionEmail ? route.view : 'login');
     };
     window.addEventListener('popstate', restore);
@@ -665,6 +672,9 @@ export default function App() {
     setSelectedRawMaterialId(null);
     setProfileDialog(null);
     setIsCreateStaffOpen(false);
+    setIsAddProductOpen(false);
+    setIsNewOrderOpen(false);
+    setOrderDraftFor(null);
     setRecordMadeFor(null);
     setRecordChange(null);
     setAssignDriverFor(null);
@@ -2136,10 +2146,30 @@ export default function App() {
   const navigate = useCallback((next) => {
     productRetryRef.current = null;
     orderRetryRef.current = null;
-    setContextLine("");
     setPendingFilter(null);
     setView(next);
   }, []);
+
+  /**
+   * Add product and New order open as dialogs over the list the new record
+   * lands in, the way Add customer and Add user do. `customer` pre-fills the
+   * order when it was started from a customer's own screen.
+   */
+  function openAddProduct() {
+    setSelectedProductId(null);
+    navigate("products");
+    setIsAddProductOpen(true);
+  }
+  function openNewOrder(customer = null) {
+    navigate("orders");
+    setOrderDraftFor(customer);
+    setIsNewOrderOpen(true);
+  }
+  // Closing one that was opened from /products/new or /orders/new takes the
+  // /new off the address, so a reload does not open it again.
+  function leaveNewPath() {
+    if (/\/new$/.test(window.location.pathname)) window.history.replaceState(null, "", routePath(view, null));
+  }
 
   /** A dashboard attention button: open a screen with a filter already applied. */
   const openFiltered = useCallback((target, filter) => {
@@ -2151,12 +2181,9 @@ export default function App() {
     const url = new URL(routePath(target, null), window.location.origin);
     if (filter) url.searchParams.set('tab', filter);
     window.history.pushState(null, '', url);
-    setContextLine("");
     setPendingFilter(filter ?? null);
     setView(target);
   }, []);
-
-  const handleContext = useCallback((line) => setContextLine(line), []);
 
   // Counts for the sidebar badges. "products" is an ATTENTION count -- how
   // many are running low or out -- and "batches" is how many are unfinished.
@@ -2243,19 +2270,17 @@ export default function App() {
             batches={productionBatchesState.rows}
             onNavigate={navigate}
             onOpenFiltered={openFiltered}
-            // Clearing the selection is what makes this an ADD. The product
-            // form decides between adding and editing purely from
-            // selectedProductId (see saveProduct), and the dashboard is
-            // reachable from a product's own screen -- so without this, "Add a
-            // product" opened the last product viewed and saving it overwrote
-            // that product instead of creating a new one. The products list
-            // (onAdd below) and the header's primary action already clear it;
-            // this was the one entry point that did not.
-            onAddProduct={can(role, "manageCatalogue") ? () => { setSelectedProductId(null); navigate("product-form"); } : undefined}
-            onAddCustomer={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
-            onWriteOrder={() => navigate("order-form")}
+            // openAddProduct clears the selection, which is what makes this an
+            // ADD: saveProduct decides between adding and editing purely from
+            // selectedProductId, and the dashboard is reachable from a
+            // product's own screen -- so without it, saving would overwrite
+            // the last product viewed instead of creating a new one.
+            onAddProduct={can(role, "manageCatalogue") ? openAddProduct : undefined}
+            // Lands on Customers first, as Add product lands on Products, so the
+            // new customer appears in the list once the dialog saves.
+            onAddCustomer={can(role, "editCustomers") ? () => { navigate("customers"); openProfileForm("customer"); } : undefined}
+            onWriteOrder={() => openNewOrder()}
             onRecordMade={(productId, needed) => setRecordMadeFor({ productId: typeof productId === 'number' ? productId : undefined, needed })}
-            onContext={handleContext}
           />
         );
 
@@ -2271,7 +2296,7 @@ export default function App() {
           onRetry={() => { reloadWorkshop(); productsState.reload(); inventoryState.reload(); ordersState.reload(); suppliersState.reload(); resolveStaff({ force: true }); }}
           onCommand={handleWorkshopCommand} onStockCommand={handleStockCommand} initialFilter={pendingFilter}
           onRemoveMaterial={deleteMaterial} onRestoreMaterial={putMaterialBack}
-          onContext={handleContext} onNavigate={navigate}
+          onNavigate={navigate}
           change={recordChange} />;
 
       // ---- products ----
@@ -2297,17 +2322,13 @@ export default function App() {
               setSelectedProductId(id);
               setView("product-form");
             } : undefined}
-            onAdd={can(role, "manageCatalogue") ? () => {
-              setSelectedProductId(null);
-              navigate("product-form");
-            } : undefined}
+            onAdd={can(role, "manageCatalogue") ? openAddProduct : undefined}
             onManageCategories={can(role, "manageCatalogue") ? () => setIsCategoriesOpen(true) : undefined}
             materials={rawMaterialsState.rows}
             batches={productionBatchesState.rows}
             materialsLoaded={rawMaterialsState.isLoaded && productionBatchesState.isLoaded}
             onOpenMaterials={() => navigate("raw-materials")}
             onGoToDashboard={() => navigate("dashboard")}
-            onContext={handleContext}
             initialFilter={pendingFilter}
             key={`products-${pendingFilter ?? "all"}`}
           />
@@ -2344,20 +2365,21 @@ export default function App() {
           />
         );
 
+      // Editing only: adding is a dialog (openAddProduct).
       case "product-form":
-        return (
+        return selectedProductId ? (
           <ProductFormPage
-            key={selectedProductId ?? "new"}
-            mode={selectedProductId ? "edit" : "add"}
+            key={selectedProductId}
+            mode="edit"
             product={selectedProduct}
             stock={stockForSelectedProduct}
             takenCodes={products.map((product) => product.itemCode)}
             categories={categoriesState.rows}
             saving={busy}
             onSave={saveProduct}
-            onCancel={() => navigate(selectedProductId ? "product-detail" : "products")}
+            onCancel={() => navigate("product-detail")}
           />
-        );
+        ) : null;
 
       // ---- orders ----
       case "orders":
@@ -2383,9 +2405,8 @@ export default function App() {
               setSelectedOrderId(id);
               setView("order-detail");
             }}
-            onWriteOrder={() => navigate("order-form")}
+            onWriteOrder={() => openNewOrder()}
             onGoToDashboard={() => navigate("dashboard")}
-            onContext={handleContext}
             initialFilter={pendingFilter}
             key={`orders-${pendingFilter ?? "all"}`}
           />
@@ -2444,25 +2465,6 @@ export default function App() {
           />
         );
 
-      case "order-form":
-        return (
-          <OrderFormPage
-            customers={customers}
-            customerStats={customerStats}
-            loyalty={loyalty}
-            products={activeProducts}
-            inventory={inventory}
-            existingOrders={orders}
-            customer={orderDraftFor}
-            saving={busy}
-            onSave={saveOrder}
-            onCancel={() => {
-              setOrderDraftFor(null);
-              navigate("orders");
-            }}
-          />
-        );
-
       case "order-edit":
         return (
           <OrderFormPage
@@ -2502,7 +2504,6 @@ export default function App() {
             onMoveForward={(id, next) => advanceDelivery(deliveries.find((d) => d.id === id), next)}
             onAssignDrivers={() => setIsAssignDriversOpen(true)}
             onGoToDashboard={() => navigate("dashboard")}
-            onContext={handleContext}
             initialFilter={pendingFilter}
             key={`deliveries-${pendingFilter ?? "all"}`}
           />
@@ -2544,15 +2545,11 @@ export default function App() {
             }}
             onAdd={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
             onEdit={can(role, "editCustomers") ? (id) => openProfileForm("customer", id) : undefined}
-            onWriteOrder={(one) => {
-              setOrderDraftFor(one);
-              setView("order-form");
-            }}
+            onWriteOrder={(one) => openNewOrder(one)}
             onOpenOrder={openOrder}
             loadOrders={loadCustomerOrders}
             onEditLoyalty={can(role, "manageLoyalty") ? () => setIsLoyaltyOpen(true) : undefined}
             onGoToDashboard={() => navigate("dashboard")}
-            onContext={handleContext}
             initialFilter={pendingFilter}
             key={`customers-${pendingFilter ?? "all"}`}
           />
@@ -2570,10 +2567,7 @@ export default function App() {
             onDelete={deleteCustomer}
             onBack={() => navigate("customers")}
             onEdit={(id) => openProfileForm("customer", id)}
-            onWriteOrder={(one) => {
-              setOrderDraftFor(one);
-              setView("order-form");
-            }}
+            onWriteOrder={(one) => openNewOrder(one)}
             onOpenOrder={openOrder}
           />
         );
@@ -2597,7 +2591,6 @@ export default function App() {
             materials={rawMaterialsState.rows}
             onOpenPurchasing={() => navigate("raw-material-orders")}
             onGoToDashboard={() => navigate("dashboard")}
-            onContext={handleContext}
           />
         );
 
@@ -2641,7 +2634,6 @@ export default function App() {
             }}
             activity={activity}
             onAdd={() => setIsCreateStaffOpen(true)}
-            onContext={handleContext}
             initialFilter={pendingFilter}
             key={`staff-${pendingFilter ?? "all"}`}
           />
@@ -2731,8 +2723,6 @@ export default function App() {
               ? () => setActivityLimit((limit) => limit + ACTIVITY_PAGE)
               : undefined}
             isLoaded={activityState.isLoaded}
-            onBack={() => navigate("staff")}
-            onContext={handleContext}
           />
         );
 
@@ -2758,29 +2748,6 @@ export default function App() {
               if (await updateProfile(changes)) toast.success("Your details were saved.");
             }}
             onSetDashboardView={setDashboardView}
-          />
-        );
-
-      case "profile-edit":
-        return (
-          <EditProfilePage
-            profile={profile}
-            onBack={() => setView("profile")}
-            onSave={async (changes) => {
-              if (await updateProfile(changes)) {
-                toast.success("Your details were saved.");
-                setView("profile");
-              }
-            }}
-          />
-        );
-
-      case "change-password":
-        return (
-          <ChangePasswordPage
-            profile={profile}
-            onBack={() => setView("profile")}
-            onDone={() => setView("profile")}
           />
         );
 
@@ -2822,6 +2789,47 @@ export default function App() {
       {/* Mounted at the root rather than inside a screen, because each is
           opened from list screens, detail screens AND dashboard actions.
           `key` forces fresh state when the target record changes. */}
+      {isAddProductOpen && can(role, "manageCatalogue") ? (
+        <ProductFormPage
+          asDialog
+          mode="add"
+          takenCodes={products.map((product) => product.itemCode)}
+          categories={categoriesState.rows}
+          saving={busy}
+          onSave={async (values) => {
+            const result = await saveProduct(values);
+            if (result?.ok) setIsAddProductOpen(false);
+            return result;
+          }}
+          onCancel={() => {
+            setIsAddProductOpen(false);
+            leaveNewPath();
+          }}
+        />
+      ) : null}
+      {isNewOrderOpen && canAccess(role, "order-form") ? (
+        <OrderFormPage
+          asDialog
+          customers={customers}
+          customerStats={customerStats}
+          loyalty={loyalty}
+          products={activeProducts}
+          inventory={inventory}
+          existingOrders={orders}
+          customer={orderDraftFor}
+          saving={busy}
+          onSave={async (values) => {
+            const result = await saveOrder(values);
+            if (result?.ok) setIsNewOrderOpen(false);
+            return result;
+          }}
+          onCancel={() => {
+            setOrderDraftFor(null);
+            setIsNewOrderOpen(false);
+            leaveNewPath();
+          }}
+        />
+      ) : null}
       <CustomerFormDialog
         key={`customer-${profileDialog?.id ?? "new"}`}
         open={profileDialog?.kind === "customer"}
@@ -2949,7 +2957,7 @@ export default function App() {
   );
 
   const shellCommands = {
-    onNewOrder: () => navigate("order-form"),
+    onNewOrder: () => openNewOrder(),
     onAddUser: can(role, "manageStaff") ? () => setIsCreateStaffOpen(true) : undefined,
     onExportUsers: can(role, "manageStaff") ? () => exportUsers(staff) : undefined,
     onHelp: () =>

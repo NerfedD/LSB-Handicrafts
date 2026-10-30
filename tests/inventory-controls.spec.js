@@ -80,7 +80,8 @@ test.describe('finding the work', () => {
     await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'Add product' })).toHaveCount(0);
     await page.goto(`${baseURL}/orders`);
     await page.getByRole('main').getByRole('button', { name: 'New order' }).click();
-    await expect(page.getByRole('heading', { level: 1, name: 'New order' })).toBeVisible();
+    // A dialog over the list, like the other Add actions.
+    await expect(page.getByRole('dialog', { name: 'New order' })).toBeVisible();
   });
 
   test('help explains the screen it is opened on', async ({ page, baseURL }) => {
