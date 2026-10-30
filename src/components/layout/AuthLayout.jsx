@@ -66,7 +66,7 @@ function PhotoPanel() {
             loading="lazy"
             fetchPriority={index === 0 ? "high" : "low"}
             className={cn(
-              "absolute inset-0 size-full object-cover transition-[opacity,transform] duration-[1400ms] ease-in-out",
+              "absolute inset-0 size-full object-cover transition-[opacity,transform] duration-1400 ease-in-out",
               index === active ? "scale-[1.04] opacity-100" : "scale-100 opacity-0"
             )}
             style={{ objectPosition: photo.position, transformOrigin: photo.origin }}

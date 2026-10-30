@@ -96,6 +96,9 @@ export default {
         spring: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
       },
       width: { sidebar: '15rem', 'sidebar-icon': '3rem' },
+      // A named value, not `duration-[1400ms]`: tailwindcss-animate also defines
+      // `duration-*`, so an arbitrary value matches two utilities and warns.
+      transitionDuration: { 1400: '1400ms' },
     },
   },
   plugins: [tailwindcssAnimate],
