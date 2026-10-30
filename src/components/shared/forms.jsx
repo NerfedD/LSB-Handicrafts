@@ -3,7 +3,7 @@ import { useId } from "react";
 import { Check, Circle, ImageSquare, Lock, Warning, WarningCircle } from "../icons";
 import { cn } from "@/lib/utils";
 import { Input, LockedInput, Textarea } from "@/components/ui/input";
-import { BandHeading, FieldHint, Label } from "@/components/ui/label";
+import { FieldHint, Label } from "@/components/ui/label";
 
 /**
  * The form parts every dialog board is drawn from: a 14/500 label 6px above
@@ -13,21 +13,6 @@ import { BandHeading, FieldHint, Label } from "@/components/ui/label";
  * The validation itself is the app's: a field shows whatever message the
  * screen hands it.
  */
-
-/** A group of fields with an optional 14px heading, ruled off from the next group. */
-export function FormBand({ step, title, tinted = false, children, className }) {
-  return (
-    <section className={cn("border-b border-border-subtle px-5 py-4 last:border-b-0", tinted && "bg-surface-2", className)}>
-      {title ? (
-        <BandHeading className="mb-3">
-          {step !== undefined ? <span className="text-muted-fg">{step}. </span> : null}
-          {title}
-        </BandHeading>
-      ) : null}
-      <div className="flex flex-col gap-3.5">{children}</div>
-    </section>
-  );
-}
 
 /**
  * A label, its control, and the line under it. Pass the control as a
@@ -213,16 +198,6 @@ export function RequirementList({ requirements, className }) {
         </li>
       ))}
     </ul>
-  );
-}
-
-/** The foot of a form: the way out on the left, the way forward on the right. */
-export function FormFooter({ left, right, className }) {
-  return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-2 border-t border-border px-5 py-3", className)}>
-      <div className="flex flex-wrap gap-2">{left}</div>
-      <div className="flex flex-wrap gap-2">{right}</div>
-    </div>
   );
 }
 

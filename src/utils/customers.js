@@ -145,13 +145,3 @@ export function cityOf(customer) {
     .filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : '';
 }
-
-/** The distinct places customers are, for the Area filter. */
-export function citiesOf(customers = []) {
-  const seen = new Map();
-  for (const customer of customers) {
-    const city = cityOf(customer);
-    if (city && !seen.has(city.toLowerCase())) seen.set(city.toLowerCase(), city);
-  }
-  return [...seen.values()].sort((a, b) => a.localeCompare(b));
-}

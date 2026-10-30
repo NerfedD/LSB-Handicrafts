@@ -18,9 +18,4 @@ function FieldHint({ className, ...props }) {
   return <p data-slot="field-hint" className={cn("mt-1.5 text-xs text-muted-fg", className)} {...props} />;
 }
 
-/** A heading for a group of fields inside a form: 14/20 semibold. */
-function BandHeading({ className, ...props }) {
-  return <h3 className={cn("m-0 text-sm font-semibold text-foreground", className)} {...props} />;
-}
-
-export { Label, FieldHint, BandHeading };
+export { Label, FieldHint };

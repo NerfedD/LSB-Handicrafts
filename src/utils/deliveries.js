@@ -7,7 +7,7 @@
  */
 
 import { DELIVERY_STAGE } from "./constants";
-import { BACKORDER_CHIP, DELIVERY_STAGES, deliveryStageIndex } from "./copy";
+import { DELIVERY_STAGES, deliveryStageIndex } from "./copy";
 import { BACKORDER_SUFFIX, isBackorderDelivery } from "./orders";
 
 /** Midnight today, as a number, for date-only comparisons. */
@@ -25,7 +25,7 @@ export function dueTime(delivery) {
   return new Date(year, month - 1, day).getTime();
 }
 
-export const hasArrived = (delivery) => delivery?.status === DELIVERY_STAGE.ARRIVED;
+const hasArrived = (delivery) => delivery?.status === DELIVERY_STAGE.ARRIVED;
 
 /**
  * Late means: promised for a day that has passed, and not there yet.
@@ -62,47 +62,8 @@ export const hasNoDriver = (delivery) => !String(delivery?.driver || "").trim();
  * customer has already had half of what they paid for and is waiting on the
  * rest, and they should not have to be found by reading every card.
  */
-export const isLeftBehindRun = (delivery) =>
+const isLeftBehindRun = (delivery) =>
   isBackorderDelivery(delivery) && !hasArrived(delivery);
-
-/**
- * The board's chips. Counts come from the UNFILTERED set, like every list in
- * this system.
- *
- * "No driver yet" is a filter and a to-do list at the same time, which is the
- * same reasoning behind the customers screen's "Not ordered in a year": the
- * useful chips are the ones that name a problem.
- */
-export function deliveryChips(deliveries = []) {
-  return [
-    { value: "all", label: "Everything", count: deliveries.length },
-    { value: "late", label: "Late", count: deliveries.filter(isLate).length, tone: "red" },
-    {
-      value: "today",
-      label: "Due today",
-      count: deliveries.filter(isDueToday).length,
-      tone: "amber",
-    },
-    { value: "week", label: "This week", count: deliveries.filter(isDueThisWeek).length },
-    {
-      value: "no-driver",
-      label: "No driver yet",
-      count: deliveries.filter((d) => hasNoDriver(d) && !hasArrived(d)).length,
-    },
-    {
-      value: "left-behind",
-      label: BACKORDER_CHIP,
-      count: deliveries.filter(isLeftBehindRun).length,
-      tone: "amber",
-    },
-    {
-      value: "arrived",
-      label: "Arrived",
-      count: deliveries.filter(hasArrived).length,
-      tone: "green",
-    },
-  ];
-}
 
 const CHIP_TESTS = {
   all: () => true,

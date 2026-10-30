@@ -21,6 +21,3 @@ export default function useMediaQuery(query) {
     () => list.matches
   );
 }
-
-/** The `tab` breakpoint from tailwind.config.js -- where the two-column list layouts switch from cards to a table. */
-export const TAB_QUERY = "(min-width: 834px)";

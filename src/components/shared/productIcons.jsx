@@ -24,8 +24,3 @@ export function productIcon(productType, className = "h-5 w-5") {
   const Icon = BY_TYPE[productType] ?? Shapes;
   return <Icon className={className} />;
 }
-
-/** The same map, sized for the form's choice buttons. */
-export function productChoiceIcon(productType) {
-  return productIcon(productType, "h-5 w-5");
-}

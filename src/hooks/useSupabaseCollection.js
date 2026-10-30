@@ -7,7 +7,7 @@ import { toast } from 'sonner';
  * this device show immediately; these only bound how long a change made on
  * another device takes to appear.
  */
-export const REFRESH_MS = 60_000;
+const REFRESH_MS = 60_000;
 export const STALE_MS = 30_000;
 
 /**

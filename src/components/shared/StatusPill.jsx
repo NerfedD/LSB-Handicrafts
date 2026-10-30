@@ -21,8 +21,3 @@ export function InlineBadge({ label, tone = "neutral", className }) {
     </Badge>
   );
 }
-
-export function CountBadge({ count, className }) {
-  if (count === null || count === undefined) return null;
-  return <Badge variant="secondary" className={className}>{count}</Badge>;
-}

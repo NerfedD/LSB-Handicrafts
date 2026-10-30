@@ -51,12 +51,3 @@ export function DangerBlock({ title, children, action, className }) {
     </section>
   );
 }
-
-/** A neutral note: an icon and a line of explanation on --muted. */
-export function InfoNote({ icon, title, children, className }) {
-  return (
-    <Callout tone="neutral" icon={icon} title={title} className={className}>
-      {children}
-    </Callout>
-  );
-}

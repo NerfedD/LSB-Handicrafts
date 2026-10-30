@@ -36,7 +36,7 @@ export const STAFF = {
   production: { id: 14, role: 'Production Staff' },
   delivery: { id: 15, role: 'Delivery Staff' },
 };
-export const emailOf = (who) => `${who}@lsb.test`;
+const emailOf = (who) => `${who}@lsb.test`;
 
 export async function freshDatabase() {
   const db = new PGlite();

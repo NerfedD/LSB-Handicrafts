@@ -61,7 +61,7 @@ const KIND = {
   progress: "neutral",
 };
 
-export const statusKind = (name) => KIND[name] ?? "neutral";
+const statusKind = (name) => KIND[name] ?? "neutral";
 
 /** Falls back to neutral rather than throwing on an unmapped tone. */
 export const tone = (name) => STATUS[statusKind(name)];

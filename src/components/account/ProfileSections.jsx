@@ -19,7 +19,7 @@ import { roleLabel } from "../../utils/copy";
  * The sections of the "13 · Your profile" board. Your profile edits details
  * and the password in place, so there is no separate screen for either.
  */
-export function ProfilePanel({ id, title, description, action, children, className }) {
+function ProfilePanel({ id, title, description, action, children, className }) {
   return (
     <section aria-labelledby={id} className={cn("rounded-lg border border-border bg-card shadow-xs", className)}>
       <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5">
