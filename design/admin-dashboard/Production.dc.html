@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Production</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1000px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="production" psub="batches" collapsed="{{collapsed}}" h="1000" on-toggle="{{toggleNav}}" hint-size="240px,1000px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Production" page="Batches" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<!-- PageHeader -->
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 216l96-96"></path><path d="M112 96l48-48 56 56-48 48Z"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Batches</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Batches on the workshop floor, and what the open orders still need made.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<a href="ProductionReport.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M224 208H32V48M224 96l-64 56-64-48-64 56"></path></svg>Production report</a>
+<button type="button" onClick="{{openDialog}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Start batch</button>
+</div>
+</header>
+
+<!-- StatCards -->
+<section aria-label="Production totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Unfinished batches</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">5</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">2 waiting for quality check</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Made this week</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">1,240</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">good pieces</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Damaged</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">2.1%</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;">−0.6 pts</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Waiting on material</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">1</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">foam-safe glue, short 2 L</span></div></div>
+</section>
+
+<!-- How a batch moves -->
+<section aria-label="How a batch moves" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; background: var(--border, #d4d4d8); gap: 1px;">
+<div style="padding: 12px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">1. Plan</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Choose the product and the material. The material is set aside, not used up.</div></div>
+<div style="padding: 12px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">2. Make and check</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Start production, then send the finished pieces to quality check.</div></div>
+<div style="padding: 12px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">3. Finish</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Count good and damaged pieces. Good pieces go into inventory in the same step.</div></div>
+</section>
+
+<!-- Tabs + filter -->
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;">
+<div class="seg2" data-on="{{isMake}}" role="tablist" aria-label="Production sections" style="display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; --seg-p: 3px; --seg-r: 6px; background: var(--muted, #f4f4f5);">
+<span class="seg-ind" aria-hidden="true"></span>
+<button type="button" role="tab" aria-selected="{{isBatches}}" onClick="{{showBatches}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: {{tabB.bg}}; box-shadow: {{tabB.shadow}}; color: {{tabB.fg}}; font-size: 13px; font-weight: 500; cursor: pointer;">Batches<span style="font-size: 12px; color: var(--muted-fg, #71717a);">8</span></button>
+<button type="button" role="tab" aria-selected="{{isMake}}" onClick="{{showMake}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 6px; background: {{tabM.bg}}; box-shadow: {{tabM.shadow}}; color: {{tabM.fg}}; font-size: 13px; font-weight: 500; cursor: pointer;">Make list<span style="font-size: 12px; color: var(--muted-fg, #71717a);">5</span></button>
+</div>
+<sc-if value="{{isBatches}}" hint-placeholder-val="{{true}}">
+<div role="group" aria-label="Show batches" style="display: inline-flex; gap: 4px;">
+<button type="button" aria-pressed="{{onlyOpen}}" onClick="{{showOpen}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid {{fo.bd}}; border-radius: 6px; background: {{fo.bg}}; font-size: 13px; font-weight: 500; cursor: pointer;">Unfinished<span style="font-size: 12px; color: var(--muted-fg, #71717a);">{{openCount}}</span></button>
+<button type="button" aria-pressed="{{showAllB}}" onClick="{{showAllBatches}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid {{fa.bd}}; border-radius: 6px; background: {{fa.bg}}; font-size: 13px; font-weight: 500; cursor: pointer;">All batches<span style="font-size: 12px; color: var(--muted-fg, #71717a);">8</span></button>
+</div>
+</sc-if>
+</div>
+
+<!-- Batches -->
+<sc-if value="{{isBatches}}" hint-placeholder-val="{{true}}">
+<section role="tabpanel" aria-label="Batches" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div role="table" aria-label="Batches" style="min-width: 1040px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: 90px minmax(210px, 1.8fr) 90px 130px 90px 120px 150px 90px 140px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Batch</div>
+<div role="columnheader" style="padding: 0 8px;">Product</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Planned</div>
+<div role="columnheader" style="padding: 0 8px;">Stage</div>
+<div role="columnheader" style="padding: 0 8px;">Progress</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Good / damaged</div>
+<div role="columnheader" style="padding: 0 8px;">Made by</div>
+<div role="columnheader" style="padding: 0 8px;">Started</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Next step</span></div>
+</div>
+<sc-for list="{{batches}}" as="b" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: 90px minmax(210px, 1.8fr) 90px 130px 90px 120px 150px 90px 140px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">{{b.id}}</div>
+<div role="cell" style="padding: 0 8px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{b.product}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{b.planned}}</div>
+<div role="cell" style="padding: 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{b.st.bd}}; background: {{b.st.bg}}; color: {{b.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{b.st.dot}};"></span>{{b.st.label}}</span></div>
+<div role="cell" style="padding: 0 8px;"><span role="img" aria-label="Step {{b.step}} of 4" style="display: inline-flex; gap: 3px;"><span style="width: 14px; height: 4px; border-radius: 2px; background: {{b.seg1}};"></span><span style="width: 14px; height: 4px; border-radius: 2px; background: {{b.seg2}};"></span><span style="width: 14px; height: 4px; border-radius: 2px; background: {{b.seg3}};"></span><span style="width: 14px; height: 4px; border-radius: 2px; background: {{b.seg4}};"></span></span></div>
+<div role="cell" style="padding: 0 8px; text-align: right; color: {{b.countColor}};">{{b.counts}}</div>
+<div role="cell" style="padding: 0 8px;"><span style="display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">{{b.initials}}</span>{{b.by}}</span></div>
+<div role="cell" style="padding: 0 8px; color: var(--muted-fg, #71717a);">{{b.started}}</div>
+<div role="cell" style="padding: 0 12px 0 8px; display: flex; justify-content: flex-end;">
+<sc-if value="{{b.canMove}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{b.move}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">{{b.verb}}</button></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<!-- Make list -->
+<sc-if value="{{isMake}}" hint-placeholder-val="{{false}}">
+<section role="tabpanel" aria-label="Make list" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div style="padding: 12px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">What open orders still need</h2>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Ordered quantities minus what is on the shelf and what is already being made.</p>
+</div>
+<div role="table" aria-label="Make list" style="min-width: 900px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) 150px 90px 90px 90px 170px 150px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Product</div>
+<div role="columnheader" style="padding: 0 8px;">For orders</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Needed</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">On shelf</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Short by</div>
+<div role="columnheader" style="padding: 0 8px;">Covered by</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Action</span></div>
+</div>
+<sc-for list="{{makeList}}" as="m" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: minmax(220px, 2fr) 150px 90px 90px 90px 170px 150px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{m.product}}</div>
+<div role="cell" style="padding: 0 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">{{m.orders}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{m.needed}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right; color: var(--muted-fg, #71717a);">{{m.shelf}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right; font-weight: 500;">{{m.short}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46); white-space: nowrap;">
+<sc-if value="{{m.covered}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">{{m.coverLabel}}</span></sc-if>
+<sc-if value="{{m.uncovered}}" hint-placeholder-val="{{true}}"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Nothing planned</span></sc-if>
+</div>
+<div role="cell" style="padding: 0 12px 0 8px; display: flex; justify-content: flex-end;">
+<sc-if value="{{m.uncovered}}" hint-placeholder-val="{{true}}"><button type="button" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">{{m.action}}</button></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{dialog}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDialog}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="StartBatchDialog" on-close="{{closeDialog}}" hint-size="520px,600px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgFinish}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="FinishBatchDialog" on-close="{{closeDlg}}" batch-id="{{finishId}}" product="{{finishProduct}}" planned="{{finishPlanned}}" on-confirm="{{finishNow}}" hint-size="560px,700px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; border-right: 1px solid var(--border, #d4d4d8); background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="production" h="1000" hint-size="240px,1000px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tab":{"editor":"enum","options":["batches","make"],"default":"batches"},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const tab = s.tab ?? (this.props.tab ?? 'batches');
+    const onlyOpen = s.onlyOpen ?? false;
+    const moves = s.moves ?? {};
+    const STAGES = {
+      planned: { label: 'Planned', verb: 'Start making', next: 'making', step: 1, bg: 'var(--card, #ffffff)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border-subtle, #e4e4e7)', dot: 'var(--muted-2, #a1a1aa)' },
+      making: { label: 'In production', verb: 'Send to check', next: 'check', step: 2, bg: 'var(--muted, #f4f4f5)', fg: 'var(--ink, #18181b)', bd: 'var(--border, #d4d4d8)', dot: 'var(--inverse, #18181b)' },
+      check: { label: 'Quality check', verb: 'Count and finish', next: 'done', step: 3, bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)', dot: 'var(--warning, #b45309)' },
+      done: { label: 'Completed', verb: '', next: null, step: 4, bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)', dot: 'var(--success, #15803d)' },
+      cancelled: { label: 'Cancelled', verb: '', next: null, step: 0, bg: 'var(--card, #ffffff)', fg: 'var(--muted-fg, #71717a)', bd: 'var(--border-subtle, #e4e4e7)', dot: 'var(--border, #d4d4d8)' }
+    };
+    const all = [
+      { id: 'B-0321', product: 'Styro ball, 6 inch', planned: 200, stage: 'planned', by: 'Lito Garcia', started: 'Not yet' },
+      { id: 'B-0320', product: 'Star cutout, 12 inch', planned: 150, stage: 'making', by: 'Liza Ramos', started: 'Oct 27' },
+      { id: 'B-0319', product: 'Stage backdrop, St. Jude Parish', planned: 1, stage: 'making', by: 'Lito Garcia', started: 'Oct 25' },
+      { id: 'B-0318', product: 'Foam block, 12 inch', planned: 40, stage: 'check', by: 'Edwin Castro', started: 'Oct 26' },
+      { id: 'B-0317', product: 'Styro ball, 4 inch', planned: 300, stage: 'check', by: 'Liza Ramos', started: 'Oct 26' },
+      { id: 'B-0316', product: 'Styro sheet, 1 in, 4 × 8 ft', planned: 30, stage: 'done', good: 29, bad: 1, by: 'Edwin Castro', started: 'Oct 24' },
+      { id: 'B-0315', product: 'Styro ball, 10 inch', planned: 80, stage: 'done', good: 78, bad: 2, by: 'Lito Garcia', started: 'Oct 23' },
+      { id: 'B-0314', product: 'Letter cutouts, “HAPPY 50TH”', planned: 9, stage: 'cancelled', by: 'Liza Ramos', started: 'Oct 22' }
+    ];
+    const initials = (n) => n.split(' ').map((w) => w[0]).slice(0, 2).join('');
+    const withStage = all.map((b) => ({ ...b, stage: moves[b.id] ?? b.stage }));
+    const isOpen = (b) => b.stage === 'planned' || b.stage === 'making' || b.stage === 'check';
+    const batches = withStage.filter((b) => !onlyOpen || isOpen(b)).map((b) => {
+      const st = STAGES[b.stage];
+      const seg = (n) => (st.step >= n ? (b.stage === 'done' ? 'var(--success, #15803d)' : 'var(--fg-3, #52525b)') : 'var(--muted-strong, #e4e4e7)');
+      const finished = b.stage === 'done';
+      const good = b.good ?? (finished ? b.planned - Math.round(b.planned * 0.02) : null);
+      const bad = b.bad ?? (finished ? b.planned - good : null);
+      return {
+        ...b,
+        st,
+        step: st.step,
+        seg1: seg(1), seg2: seg(2), seg3: seg(3), seg4: seg(4),
+        counts: finished ? good + ' / ' + bad : '—',
+        countColor: finished ? 'var(--foreground, #09090b)' : 'var(--muted-2, #a1a1aa)',
+        initials: initials(b.by),
+        canMove: !!st.next,
+        verb: st.verb,
+        move: () => (st.next === 'done' ? this.setState({ dlg: 'finish', target: b.id }) : this.setState({ moves: { ...moves, [b.id]: st.next } }))
+      };
+    });
+    const makeList = [
+      { product: 'Styro ball, 6 inch', orders: '#2048 #2049', needed: 220, shelf: 18, short: 202, cover: 'B-0321 · 200 planned' },
+      { product: 'Styro sheet, 1 in, 4 × 8 ft', orders: '#2050', needed: 24, shelf: 6, short: 18, cover: '', action: 'Start batch' },
+      { product: 'Foam block, 12 inch', orders: '#2049 #2052', needed: 30, shelf: 22, short: 8, cover: 'B-0318 · 40 in check' },
+      { product: 'Glitter, gold, 100 g', orders: '#2047', needed: 10, shelf: 0, short: 10, cover: '', action: 'Order from supplier' },
+      { product: 'Satin ribbon, red, 1 in', orders: '#2051', needed: 15, shelf: 9, short: 6, cover: '', action: 'Order from supplier' }
+    ].map((m) => ({ ...m, covered: !!m.cover, uncovered: !m.cover, coverLabel: m.cover }));
+    const isBatches = tab === 'batches';
+    const on = { bg: 'var(--card, #ffffff)', shadow: '0 1px 2px rgba(0,0,0,0.06)', fg: 'var(--foreground, #09090b)' };
+    const off = { bg: 'transparent', shadow: 'none', fg: 'var(--muted-fg, #71717a)' };
+    const chipOn = { bg: 'var(--muted, #f4f4f5)', bd: 'var(--border, #d4d4d8)' };
+    const chipOff = { bg: 'var(--card, #ffffff)', bd: 'var(--border-subtle, #e4e4e7)' };
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      isBatches,
+      isMake: !isBatches,
+      tabB: isBatches ? on : off,
+      tabM: isBatches ? off : on,
+      onlyOpen,
+      showAllB: !onlyOpen,
+      fo: onlyOpen ? chipOn : chipOff,
+      fa: onlyOpen ? chipOff : chipOn,
+      openCount: withStage.filter(isOpen).length,
+      batches,
+      makeList,
+      showBatches: () => this.setState({ tab: 'batches' }),
+      showMake: () => this.setState({ tab: 'make' }),
+      showOpen: () => this.setState({ onlyOpen: true }),
+      showAllBatches: () => this.setState({ onlyOpen: false }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgFinish: s.dlg === 'finish',
+      finishId: s.target ?? 'B-0318',
+      finishProduct: (withStage.find((b) => b.id === s.target) || { product: 'Foam block, 12 inch' }).product,
+      finishPlanned: (withStage.find((b) => b.id === s.target) || { planned: 40 }).planned,
+      finishNow: () => this.setState({ moves: { ...moves, [s.target]: 'done' }, dlg: null }),
+      dialog: !!s.dialog,
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

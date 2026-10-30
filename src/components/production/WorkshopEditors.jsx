@@ -1,4 +1,5 @@
 import WorkshopForm, { ReviewBox, WorkshopField } from './WorkshopForm';
+import { Row } from '../shared/forms';
 import { formatPeso } from '../../utils/profileFormat';
 import { MATERIAL_KIND } from '../../utils/copy';
 import { pluralUnit, units } from '../../utils/production';
@@ -84,31 +85,36 @@ export function MaterialDialog({ material, materials = [], onSave, onClose }) {
     return onSave(editing ? { ...payload, expectedRevision: material.revision ?? 0 } : payload, key);
   };
 
-  return <WorkshopForm title={editing ? `Edit ${material.name}` : 'Add a raw material'}
-    description="Raw materials are what the workshop builds with. They are counted separately from the products you sell."
+  return <WorkshopForm title={editing ? `Edit ${material.name}` : 'Add raw material'}
+    description="Something the workshop uses up to make products. Counted apart from the products you sell."
     submitLabel={editing ? 'Save changes' : 'Add material'} initial={initial} validate={validate} onSave={submit} onClose={onClose}>
     {(v, change) => <>
-      <WorkshopField name="name" label="Material name" hint="The name staff use on the floor. Any punctuation is fine, such as 1/2&quot; or (high density)." required maxLength={200} value={v.name} onChange={(e) => change('name', e.target.value)} />
-      <WorkshopField name="sku" label="Material code"
+      <WorkshopField name="name" label="Name" hint="The name staff use on the floor. Any punctuation is fine, such as 1/2&quot; or (high density)." required maxLength={200} value={v.name} onChange={(e) => change('name', e.target.value)} />
+      <Row>
+      <WorkshopField name="sku" label={editing ? 'Code' : <>Code <span className="font-normal text-muted-fg">(optional)</span></>}
         hint={editing
           ? 'Letters, numbers and single hyphens, such as SS-100-4X8. Use the same code as a product to be able to move stock between them.'
-          : 'Optional. Leave it blank and a code such as RM-SHT-001 is made for you. Letters, numbers and single hyphens only.'}
+          : 'Leave it blank and a code such as RM-SHT-001 is made for you.'}
         required={editing} maxLength={40} autoCapitalize="characters" value={v.sku}
         onChange={(e) => change('sku', e.target.value.toUpperCase())} />
-      <WorkshopField name="material_type" label="Kind of material" hint="What the workshop uses it as." required options={MATERIAL_KINDS} value={v.material_type} onChange={(e) => change('material_type', e.target.value)} />
-      <WorkshopField name="unit" label="Unit it is counted in" hint="Every delivery, batch and stock count for this material uses this unit." required
+      <WorkshopField name="material_type" label="Kind" hint="What the workshop uses it as." required options={MATERIAL_KINDS} value={v.material_type} onChange={(e) => change('material_type', e.target.value)} />
+      </Row>
+      <WorkshopField name="unit" label="Counted in" hint="Every delivery, batch and stock count for this material uses this unit." required
         options={[...unitsOffered.map((u) => ({ value: u, label: u })), { value: OTHER_UNIT, label: 'Another unit…' }]}
         value={v.unit} onChange={(e) => change('unit', e.target.value)} />
       {v.unit === OTHER_UNIT && (
         <WorkshopField name="unit_other" label="Name of the new unit" hint="One word or a short phrase in letters, such as tube or spool. It is saved in lower case and offered for other materials too." required maxLength={24} value={v.unit_other} onChange={(e) => change('unit_other', e.target.value)} />
       )}
-      {SIZE_FIELDS.map(({ key, label }) => (
-        <WorkshopField key={key} name={key} label={label} hint="Optional. Leave blank if it does not apply. Whole numbers or decimals, above 0." type="number" inputMode="decimal" min="0" step="any" value={v[key]} onChange={(e) => change(key, e.target.value)} />
-      ))}
-      <WorkshopField name="low_stock_threshold" label="Warn when stock reaches" hint="At or below this many units free to use, the material is shown as running low." required type="number" inputMode="numeric" min="0" max="2000000000" step="1" value={v.low_stock_threshold} onChange={(e) => change('low_stock_threshold', e.target.value)} />
+      <div className="grid gap-3.5 sm:grid-cols-2">
+        <p className="m-0 text-13 text-muted-fg sm:col-span-2">Size and weight, all optional. Leave blank what does not apply.</p>
+        {SIZE_FIELDS.map(({ key, label }) => (
+          <WorkshopField key={key} name={key} label={label} type="number" inputMode="decimal" min="0" step="any" value={v[key]} onChange={(e) => change(key, e.target.value)} />
+        ))}
+      </div>
+      <WorkshopField name="low_stock_threshold" label="Order more below" hint="At or below this many free to use, the material shows as running low." suffix={v.unit === OTHER_UNIT ? undefined : pluralUnit(v.unit, 2)} required type="number" inputMode="numeric" min="0" max="2000000000" step="1" value={v.low_stock_threshold} onChange={(e) => change('low_stock_threshold', e.target.value)} />
       <ReviewBox>{editing
         ? 'Changing these details never changes the count on hand. Stock only changes when a supplier order is received, a production batch is finished, damage is written off or a manager corrects the count.'
-        : 'A new material starts at 0 on hand. Order it under Purchasing and receive the delivery to add stock.'}</ReviewBox>
+        : 'A new material starts at 0 on hand. After this, stock only comes in when a supplier order is received.'}</ReviewBox>
     </>}
   </WorkshopForm>;
 }
@@ -121,12 +127,19 @@ export function MaterialDialog({ material, materials = [], onSave, onClose }) {
  * placed: a different supplier or material is a different order, so that one
  * is cancelled and a new one placed.
  */
+/** How a supplier order is paid. A card payment is made on ordering; COD on arrival. */
+const SUPPLIER_PAYMENT_METHODS = [
+  { value: 'cod', label: 'Cash on delivery' },
+  { value: 'card', label: 'Credit card' },
+];
+
 export function SupplierOrderDialog({ order, preset, materials, suppliers, profile, onSave, onClose }) {
   const today = localDateIso();
   const initial = order
     ? { id: order.id, quantity_ordered: String(order.quantity_ordered ?? ''), unit_price: String(order.unit_price ?? ''),
-        expected_delivery_date: order.expected_delivery_date || '', carrier_notes: order.carrier_notes || '' }
-    : { supplier_id: '', raw_material_id: '', quantity_ordered: '', unit_price: '', expected_delivery_date: '', carrier_notes: '', ...preset };
+        expected_delivery_date: order.expected_delivery_date || '', carrier_notes: order.carrier_notes || '',
+        payment_method: order.payment_method || 'cod' }
+    : { supplier_id: '', raw_material_id: '', quantity_ordered: '', unit_price: '', expected_delivery_date: '', carrier_notes: '', payment_method: 'cod', ...preset };
   const orderedMaterial = order ? materials.find((m) => m.id === order.raw_material_id) : null;
   const orderedFrom = order ? suppliers.find((s) => s.id === order.supplier_id) : null;
 
@@ -143,10 +156,15 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
     };
   }
 
-  return <WorkshopForm title={order ? `Edit supplier order #${order.id}` : 'Order raw materials'}
+  // Only a total somebody can actually check: "—" until both the quantity
+  // and the price are typed, never "₱0.00" as if it were the agreed price.
+  const total = (v) => (Number(v.quantity_ordered) > 0 && v.unit_price !== '' && Number(v.unit_price) >= 0
+    ? formatPeso(Number(v.quantity_ordered) * Number(v.unit_price)) : '—');
+  return <WorkshopForm size="lg" title={order ? `Edit supplier order #${order.id}` : 'New supplier order'}
     description={order
-      ? `${orderedMaterial?.name ?? 'Material'} from ${orderedFrom?.name ?? 'the supplier'}. Correct the quantity, price, date or notes until the order leaves the supplier. To change the supplier or material, cancel this order and place a new one.`
-      : 'Record what you ordered from a supplier and the price you agreed. Stock is added only when the delivery is received.'}
+      ? `${orderedMaterial?.name ?? 'Material'} from ${orderedFrom?.name ?? 'the supplier'}. Correct it until the order leaves the supplier; for another supplier or material, cancel it and place a new one.`
+      : 'Nothing is added to stock until the delivery is received and counted.'}
+    footerNote={(v) => <>Order total <strong className="ml-1 font-semibold text-foreground tabular-nums">{total(v)}</strong></>}
     submitLabel={order ? 'Save changes' : 'Place order'} initial={initial} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => {
       const material = order ? orderedMaterial : materials.find((m) => String(m.id) === String(v.raw_material_id));
@@ -155,28 +173,31 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
           {suppliers.length === 0 && (
             <ReviewBox warning>There are no suppliers yet. Add the supplier under Suppliers first, then come back to order from them.</ReviewBox>
           )}
-          <WorkshopField name="supplier_id" label="Supplier" hint="Who you are ordering from. Suppliers no longer used are not listed." required options={suppliers.filter((s) => s.status !== 'Archived').map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
-          <WorkshopField name="raw_material_id" label="Material to order" hint="The material's code fixes the size and density being ordered." required
-            options={materials.map((m) => ({ value: m.id, label: `${m.name} (${m.sku}) · ${units(m.stock, m.unit)} on hand` }))}
+          <Row>
+          <WorkshopField name="raw_material_id" label="Material" required
+            options={materials.map((m) => ({ value: m.id, label: `${m.name} (${m.sku})` }))}
             value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)} />
+          <WorkshopField name="supplier_id" label="Supplier" required options={suppliers.filter((s) => s.status !== 'Archived').map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
+          </Row>
         </>}
-          <WorkshopField name="quantity_ordered" label={material ? `How many ${pluralUnit(material.unit, 2)}` : 'Quantity ordered'}
-            hint={material ? `Counted in ${pluralUnit(material.unit, 2)}, the unit this material is counted in. A whole number.` : 'A whole number, in the unit the material is counted in.'}
+        {material ? (
+          <p className="m-0 rounded-md bg-muted px-3 py-2 text-13 text-fg-2">
+            {units(material.stock, material.unit)} on hand. Order more below {units(material.low_stock_threshold ?? 0, material.unit)}.
+          </p>
+        ) : null}
+        <Row className="sm:grid-cols-3">
+          <WorkshopField name="quantity_ordered" label="How much" suffix={material ? pluralUnit(material.unit, 2) : undefined}
             required type="number" inputMode="numeric" min="1" max="2000000000" step="1" value={v.quantity_ordered} onChange={(e) => change('quantity_ordered', e.target.value)} />
-          <WorkshopField name="unit_price" label="Agreed price per unit (₱)" hint="Whole pesos or pesos and centavos, such as 120 or 120.50." required type="number" inputMode="decimal" min="0" max="100000000" step="0.01" value={v.unit_price} onChange={(e) => change('unit_price', e.target.value)} />
-        <WorkshopField name="expected_delivery_date" label="Promised delivery date"
-          hint="Optional until the supplier confirms. Today or later. Setting a date marks the order as having a delivery date."
+          <WorkshopField name="unit_price" label="Agreed price" suffix={material ? `₱ / ${material.unit}` : '₱ each'} required type="number" inputMode="decimal" min="0" max="100000000" step="0.01" value={v.unit_price} onChange={(e) => change('unit_price', e.target.value)} />
+        <WorkshopField name="expected_delivery_date" label="Expected"
           type="date" min={order?.expected_delivery_date && order.expected_delivery_date < today ? undefined : today}
           value={v.expected_delivery_date || ''} onChange={(e) => change('expected_delivery_date', e.target.value)} />
-        <WorkshopField name="carrier_notes" label="Courier, vehicle and driver contact" hint="Optional. The driver's phone number and any delivery instructions." multiline maxLength={1000} value={v.carrier_notes || ''} onChange={(e) => change('carrier_notes', e.target.value)} />
-        {/* Only a total somebody can actually check. Multiplying two empty
-            fields printed "₱0.00" as if it were the agreed price. */}
-        <ReviewBox>
-          {Number(v.quantity_ordered) > 0 && v.unit_price !== '' && Number(v.unit_price) >= 0
-            ? <>Agreed total: <strong className="font-extrabold text-ink">{formatPeso(Number(v.quantity_ordered) * Number(v.unit_price))}</strong>.</>
-            : 'The agreed total is worked out from the quantity and the price per unit.'}
-          <p>{order ? 'Changed' : 'Placed'} by {profile.name}. Nothing is added to stock until the delivery is received and counted.</p>
-        </ReviewBox>
+        </Row>
+        <WorkshopField name="payment_method" label="Paid by" required placeholder="Choose how"
+          hint={v.payment_method === 'card' ? 'Paid by card when the order is placed.' : 'Paid in cash when the delivery is received.'}
+          options={SUPPLIER_PAYMENT_METHODS} value={v.payment_method} onChange={(e) => change('payment_method', e.target.value)} />
+        <WorkshopField name="carrier_notes" label={<>Courier and delivery notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="The driver's phone number and any delivery instructions. The expected date can wait until the supplier confirms." multiline maxLength={1000} value={v.carrier_notes || ''} onChange={(e) => change('carrier_notes', e.target.value)} />
+        <ReviewBox>{order ? 'Changed' : 'Placed'} by {profile.name}.</ReviewBox>
       </>;
     }}
   </WorkshopForm>;
@@ -189,7 +210,7 @@ export function RecipeDialog({ products, materials, onSave, onClose }) {
     material_qty: countProblem(v.material_qty, { min: 1, label: 'The material needed' }),
     output_qty: countProblem(v.output_qty, { min: 1, label: 'The pieces produced' }),
   });
-  return <WorkshopForm title="Save a material recipe" description="The usual amount of material for a finished product. A batch can still use a different amount."
+  return <WorkshopForm title="Material recipe" description="The usual amount of material for a finished product. A batch can still use a different amount."
     submitLabel="Save recipe" initial={{ product_id: '', raw_material_id: '', material_qty: '', output_qty: '' }} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => <>
       <WorkshopField name="product_id" label="Finished product" hint="Saving this product and material again replaces its previous recipe." required options={products.map((p) => ({ value: p.id, label: p.name }))} value={v.product_id} onChange={(e) => change('product_id', e.target.value)} />
@@ -228,11 +249,11 @@ export function WorkshopConfirmation({
   title, description, action, initial, needsReason = false, danger = false,
   reasonLabel = 'How was the supplier issue settled?',
   reasonHint = 'The replacement, refund or other outcome agreed. A replacement delivery is ordered and received as a new order.',
-  reasonMissing = 'Write how the issue was settled.', reasonMax = 1000,
+  reasonMissing = 'Write how the issue was settled.', reasonMax = 1000, cancelLabel,
   profile, onSave, onClose,
 }) {
   const validate = needsReason ? (v) => ({ reason: String(v.reason ?? '').trim() ? null : reasonMissing }) : undefined;
-  return <WorkshopForm title={title} description={description} submitLabel={action} submitVariant={danger ? 'danger' : 'clay'} initial={{ ...initial, reason: '' }} validate={validate} onSave={onSave} onClose={onClose}>
+  return <WorkshopForm title={title} description={description} submitLabel={action} submitVariant={danger ? 'danger' : 'default'} cancelLabel={cancelLabel} initial={{ ...initial, reason: '' }} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => <>
       {needsReason && <WorkshopField name="reason" label={reasonLabel} hint={reasonHint} required multiline maxLength={reasonMax} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
       <ReviewBox>Confirmed by {profile.name}. This is saved in the activity log.</ReviewBox>

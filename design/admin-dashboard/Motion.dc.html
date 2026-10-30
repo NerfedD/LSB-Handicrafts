@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--background, #F1FAEE)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+.mo-card{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid var(--border, #d4d4d8);border-radius:8px;background:var(--card, #ffffff);box-shadow:0 1px 2px rgba(0,0,0,0.05);min-width:0}
+.mo-stage{position:relative;height:132px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--border, #d4d4d8);border-radius:6px;background:var(--surface-2, #fafafa);overflow:hidden}
+.mo-spec{margin:0;font-size:12px;line-height:16px;color:var(--muted-fg, #71717a);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.mo-h{margin:0;font-size:14px;line-height:20px;font-weight:600}
+.mo-p{margin:0;font-size:13px;line-height:18px;color:var(--muted-fg, #71717a)}
+.mo-tabs{position:relative;display:inline-flex;padding:3px;border-radius:8px;background:var(--muted, #f4f4f5)}
+.mo-tabs button{position:relative;z-index:1;height:28px;padding:0 12px;border:0;border-radius:6px;background:transparent;font-size:13px;font-weight:500;cursor:pointer}
+.mo-ind{position:absolute;top:3px;height:28px;border-radius:6px;background:var(--card, #ffffff);box-shadow:0 1px 2px rgba(0,0,0,0.08);transition:left 260ms var(--ease-spring),width 260ms var(--ease-spring)}
+@keyframes mo-count{from{opacity:.4}to{opacity:1}}
+</style>
+</helmet>
+<div style="width: 1200px; min-height: 1040px; box-sizing: border-box; padding: 24px; display: flex; flex-direction: column; gap: 16px; background: var(--background, #F1FAEE); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Motion</h1>
+<p class="mo-p">Small and quick: motion confirms what happened, it never makes anyone wait. Ideas borrowed from Animate UI and kept under 320 ms.</p>
+</div>
+<div style="display: flex; gap: 8px;">
+<button type="button" onClick="{{toggleTheme}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">{{themeLabel}}</button>
+<button type="button" onClick="{{replay}}" style="height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M176 104h48V56"></path><path d="M190.2 190.2a88 88 0 1 1 0-124.4L224 104"></path></svg>Replay all</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 10px 14px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff);">
+<span class="mo-spec">fast 120 ms · hover, press, colour</span>
+<span class="mo-spec">base 180 ms · dialogs, menus</span>
+<span class="mo-spec">slow 320 ms · page sections</span>
+<span class="mo-spec">ease-out cubic-bezier(.2,.8,.2,1)</span>
+<span class="mo-spec">spring cubic-bezier(.34,1.56,.64,1)</span>
+<span class="mo-spec">reduced motion → 1 ms, no travel</span>
+</div>
+
+<sc-if value="{{show}}" hint-placeholder-val="{{true}}">
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;">
+
+<!-- Dialog -->
+<section class="mo-card">
+<div><h2 class="mo-h">Dialog</h2><p class="mo-p">Backdrop fades, panel rises 6 px and scales from 97%.</p></div>
+<div class="mo-stage" style="background: var(--overlay, rgba(9,9,11,0.5)); border-style: solid;">
+<div role="dialog" aria-modal="true" aria-label="Example dialog" style="width: 200px; padding: 14px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 10px 24px rgba(0,0,0,0.18);">
+<div style="font-weight: 600; font-size: 13px;">Mark #D-0412 delivered?</div>
+<div style="display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px;"><span style="height: 24px; padding: 0 8px; display: inline-flex; align-items: center; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; font-size: 12px;">Cancel</span><span style="height: 24px; padding: 0 8px; display: inline-flex; align-items: center; border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 12px; font-weight: 500;">Delivered</span></div>
+</div>
+</div>
+<p class="mo-spec">lsb-pop · 180 ms · ease-out</p>
+</section>
+
+<!-- Menu -->
+<section class="mo-card">
+<div><h2 class="mo-h">Menu and select</h2><p class="mo-p">Drops 4 px from its trigger, origin at the top.</p></div>
+<div class="mo-stage" style="align-items: flex-start; padding-top: 14px;">
+<div style="display: flex; flex-direction: column; gap: 4px; width: 180px;">
+<span style="height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px;">Status: All<svg width="14" height="14" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M208 96l-80 80-80-80"></path></svg></span>
+<div role="menu" aria-label="Status" style="padding: 4px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); box-shadow: 0 4px 12px rgba(0,0,0,0.12); font-size: 13px;">
+<div role="menuitem" style="height: 26px; display: flex; align-items: center; padding: 0 8px; border-radius: 4px; background: var(--muted, #f4f4f5);">All</div>
+<div role="menuitem" style="height: 26px; display: flex; align-items: center; padding: 0 8px;">Active</div>
+<div role="menuitem" style="height: 26px; display: flex; align-items: center; padding: 0 8px;">Suspended</div>
+</div>
+</div>
+</div>
+<p class="mo-spec">lsb-drop · 140 ms · ease-out</p>
+</section>
+
+<!-- Toast -->
+<section class="mo-card">
+<div><h2 class="mo-h">Toast</h2><p class="mo-p">Slides 16 px in from the right edge.</p></div>
+<div class="mo-stage" style="justify-content: flex-end; padding-right: 12px;">
+<div role="status" style="width: 230px; display: flex; align-items: center; gap: 8px; padding: 10px 12px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 4px 12px rgba(0,0,0,0.08); font-size: 13px;">
+<span aria-hidden="true" style="flex: none; width: 16px; height: 16px; border-radius: 50%; background: var(--success, #15803d); color: var(--on-primary, #ffffff); display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"><path d="M40 144l56 56L224 72"></path></svg></span>
+<span style="font-weight: 500;">Order #2048 created</span>
+</div>
+</div>
+<p class="mo-spec">lsb-slide · 260 ms · ease-out</p>
+</section>
+
+<!-- Checkbox / radio / switch -->
+<section class="mo-card">
+<div><h2 class="mo-h">Checkbox, radio, switch</h2><p class="mo-p">The tick draws, the dot springs, the thumb overshoots a touch. Click them.</p></div>
+<div class="mo-stage" style="flex-direction: column; gap: 14px;">
+<button type="button" role="checkbox" aria-checked="{{chk.on}}" onClick="{{chk.toggle}}" style="display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; font-size: 14px; cursor: pointer;"><span aria-hidden="true" style="width: 16px; height: 16px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border: 1px solid {{chk.bd}}; border-radius: 4px; background: {{chk.bg}}; color: var(--on-primary, #ffffff);"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" style="display: {{chk.tick}};"><path d="M40 144l56 56L224 72"></path></svg></span>Paid in full</button>
+<div role="radiogroup" aria-label="Delivery" style="display: flex; gap: 16px;">
+<sc-for list="{{radios}}" as="o" hint-placeholder-count="2">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: inline-flex; align-items: center; gap: 8px; padding: 0; border: 0; background: transparent; font-size: 14px; cursor: pointer;"><span aria-hidden="true" style="flex: none; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{o.bd}}; background: var(--card, #ffffff); display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{o.dot}};"></span></span>{{o.label}}</button>
+</sc-for>
+</div>
+<button type="button" role="switch" aria-checked="{{sw.on}}" aria-label="Email me" onClick="{{sw.toggle}}" style="position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{sw.track}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{sw.thumb}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<p class="mo-spec">draw 260 ms · dot 220 ms spring · thumb 240 ms spring</p>
+</section>
+
+<!-- Tabs -->
+<section class="mo-card">
+<div><h2 class="mo-h">Segmented tabs</h2><p class="mo-p">One highlight slides between options instead of blinking. Used for Table / Board.</p></div>
+<div class="mo-stage">
+<div class="mo-tabs" role="tablist" aria-label="View">
+<span class="mo-ind" aria-hidden="true" style="left: {{tab.left}}; width: {{tab.width}};"></span>
+<sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+<button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="width: {{t.w}}; color: {{t.color}};">{{t.label}}</button>
+</sc-for>
+</div>
+</div>
+<p class="mo-spec">left + width · 260 ms · spring</p>
+</section>
+
+<!-- Counting number -->
+<section class="mo-card">
+<div><h2 class="mo-h">Counting number</h2><p class="mo-p">Stat cards count up once when the dashboard opens.</p></div>
+<div class="mo-stage" style="flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 20px;">
+<span style="font-size: 12px; color: var(--muted-fg, #71717a);">Sales this month</span>
+<span style="font-size: 28px; line-height: 34px; font-weight: 600; letter-spacing: -0.02em;">₱{{count}}</span>
+<span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border: 1px solid var(--success-bd, #dcfce7); border-radius: 4px; background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;">+12%</span>
+</div>
+<p class="mo-spec">600 ms · ease-out · tabular figures so width holds</p>
+</section>
+
+<!-- Page rise -->
+<section class="mo-card">
+<div><h2 class="mo-h">Page sections</h2><p class="mo-p">Header, stats, filters and table rise in 40 ms apart, once per visit.</p></div>
+<div class="mo-stage" style="align-items: stretch; justify-content: stretch; padding: 12px;">
+<div class="app-inset" style="flex: 1; display: flex;"><div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+<span style="height: 14px; width: 45%; border-radius: 4px; background: var(--muted-strong, #e4e4e7);"></span>
+<span style="height: 30px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;"><span style="border: 1px solid var(--border, #d4d4d8); border-radius: 4px; background: var(--card, #ffffff);"></span><span style="border: 1px solid var(--border, #d4d4d8); border-radius: 4px; background: var(--card, #ffffff);"></span><span style="border: 1px solid var(--border, #d4d4d8); border-radius: 4px; background: var(--card, #ffffff);"></span></span>
+<span style="height: 12px; width: 70%; border-radius: 4px; background: var(--muted, #f4f4f5);"></span>
+<span style="flex: 1; border: 1px solid var(--border, #d4d4d8); border-radius: 4px; background: var(--card, #ffffff);"></span>
+</div></div>
+</div>
+<p class="mo-spec">lsb-rise · 320 ms · stagger 40 ms</p>
+</section>
+
+<!-- Row hover -->
+<section class="mo-card">
+<div><h2 class="mo-h">Row hover</h2><p class="mo-p">Rows tint by 2–4% so a long table is easy to track. Hover one.</p></div>
+<div class="mo-stage" style="align-items: stretch; padding: 0; border-style: solid;">
+<div role="table" aria-label="Example rows" style="flex: 1; display: flex; flex-direction: column; background: var(--card, #ffffff); font-size: 13px;">
+<div role="row" style="height: 32px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">Customer</div>
+<div role="row" style="height: 32px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">Bautista Party Supplies</div>
+<div role="row" style="height: 32px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">Casa Luna Events</div>
+<div role="row" style="height: 32px; display: flex; align-items: center; padding: 0 12px;">Dela Cruz Florals</div>
+</div>
+</div>
+<p class="mo-spec">inset tint · 120 ms</p>
+</section>
+
+<!-- Theme -->
+<section class="mo-card">
+<div><h2 class="mo-h">Theme switch</h2><p class="mo-p">Colours crossfade for 240 ms; the sun or moon turns in. Every open board follows.</p></div>
+<div class="mo-stage">
+<button type="button" onClick="{{toggleTheme}}" aria-label="Toggle dark mode" style="width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+<span class="theme-icon" style="display: {{sunDisp}};"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="128" cy="128" r="56"></circle><path d="M128 16v24M128 216v24M48.8 48.8l17 17M190.2 190.2l17 17M16 128h24M216 128h24M48.8 207.2l17-17M190.2 65.8l17-17"></path></svg></span>
+<span class="theme-icon" style="display: {{moonDisp}};"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M108.1 40.6A88 88 0 1 0 215.4 147.9 72 72 0 0 1 108.1 40.6Z"></path></svg></span>
+</button>
+</div>
+<p class="mo-spec">crossfade 240 ms · icon 300 ms spring</p>
+</section>
+
+</div>
+</sc-if>
+
+<p class="mo-p">Not animated on purpose: table sorting, filtering, typing, and anything that repeats while someone works. Nothing loops, bounces for attention or delays a click.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1200,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const root = document.documentElement;
+    if (!this._bound) {
+      this._bound = true;
+      window.addEventListener('storage', (e) => { if (!e.key || e.key === 'lsb-theme') this.setState({ t: Date.now() }); });
+      setTimeout(() => this.countUp(), 200);
+    }
+    const dark = root.classList.contains('dark');
+    const chkOn = s.chk ?? true;
+    const swOn = s.sw ?? true;
+    const pickedRadio = s.radio ?? 'pickup';
+    const tab = s.tab ?? 0;
+    const tabW = [72, 72, 92];
+    const left = 3 + tabW.slice(0, tab).reduce((a, b) => a + b, 0);
+    const target = 184250;
+    const n = Math.round(target * (s.p ?? 0));
+    return {
+      show: s.show ?? true,
+      themeLabel: dark ? 'Light mode' : 'Dark mode',
+      sunDisp: dark ? 'inline-flex' : 'none',
+      moonDisp: dark ? 'none' : 'inline-flex',
+      toggleTheme: () => {
+        const next = root.classList.contains('dark') ? 'light' : 'dark';
+        try { window.localStorage.setItem('lsb-theme', next); } catch (e) { /* storage blocked: this board only */ }
+        root.classList.add('theme-anim');
+        root.classList.toggle('dark', next === 'dark');
+        setTimeout(() => root.classList.remove('theme-anim'), 300);
+        this.setState({ t: Date.now() });
+      },
+      replay: () => {
+        this.setState({ show: false, p: 0 });
+        setTimeout(() => { this.setState({ show: true }); this.countUp(); }, 30);
+      },
+      chk: {
+        on: chkOn ? 'true' : 'false',
+        bd: chkOn ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)',
+        bg: chkOn ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)',
+        tick: chkOn ? 'block' : 'none',
+        toggle: () => this.setState({ chk: !chkOn })
+      },
+      radios: [['pickup', 'Pick-up'], ['deliver', 'Deliver']].map(([v, label]) => ({
+        label,
+        on: v === pickedRadio ? 'true' : 'false',
+        bd: v === pickedRadio ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)',
+        dot: v === pickedRadio ? 'var(--primary, #004E89)' : 'transparent',
+        pick: () => this.setState({ radio: v })
+      })),
+      sw: {
+        on: swOn ? 'true' : 'false',
+        track: swOn ? 'var(--primary, #004E89)' : 'var(--muted-strong, #e4e4e7)',
+        thumb: swOn ? '16px' : '2px',
+        toggle: () => this.setState({ sw: !swOn })
+      },
+      tab: { left: left + 'px', width: tabW[tab] + 'px' },
+      tabs: ['Table', 'Board', 'Calendar'].map((label, i) => ({
+        label,
+        w: tabW[i] + 'px',
+        on: i === tab ? 'true' : 'false',
+        color: i === tab ? 'var(--foreground, #09090b)' : 'var(--muted-fg, #71717a)',
+        pick: () => this.setState({ tab: i })
+      })),
+      count: n.toLocaleString('en-PH')
+    };
+  }
+
+  countUp() {
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { this.setState({ p: 1 }); return; }
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / 600);
+      this.setState({ p: 1 - Math.pow(1 - t, 3) });
+      if (t < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+}
+</script>
+</body>
+</html>

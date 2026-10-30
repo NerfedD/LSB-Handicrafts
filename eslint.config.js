@@ -9,13 +9,14 @@ export default defineConfig([
   // and its support script, kept in the repo because the comments throughout
   // src reference it as the source of truth for every token and measurement.
   // It is reference material, not application source, and linting it reports
+  // (design/ is the same: the admin dashboard boards and their canvas script.)
   // problems in a file nobody is going to change.
   // '**/dist' rather than 'dist': a build output is a build output wherever it
   // lands, and a stray one (an older `lsbHandicraft/dist` left in a working
   // copy, say) otherwise fails `npm run lint` with a hundred errors in minified
   // vendor code nobody wrote. The Playwright output folders are the same case:
   // a saved trace viewer is minified vendor code, and git already ignores them.
-  globalIgnores(['**/dist', 'Professional UI mockups project',
+  globalIgnores(['**/dist', 'Professional UI mockups project', 'design',
     'qa-artifacts', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{js,jsx}'],

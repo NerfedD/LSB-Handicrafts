@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings · General</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible,textarea:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1160px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="settings" sub="general" collapsed="{{collapsed}}" h="1160" on-toggle="{{toggleNav}}" hint-size="240px,1160px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Settings" page="General" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 1040px; box-sizing: border-box; width: 100%;">
+
+<!-- PageHeader -->
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="128" cy="128" r="32" stroke-width="16"></circle><circle cx="128" cy="128" r="72" stroke-width="16"></circle><path d="M208 128h20M184.57 184.57l14.14 14.14M128 208v20M71.43 184.57l-14.14 14.14M48 128H28M71.43 71.43 57.29 57.29M128 48V28M184.57 71.43l14.14-14.14" stroke-width="24" stroke-linecap="butt"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">General</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">How the business appears on receipts and order slips, and the defaults new orders start with.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<sc-if defaultValue="{{dirty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: var(--muted-fg, #71717a);">Unsaved changes</span></sc-if>
+<button type="button" onClick="{{discard}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; cursor: pointer;">Discard</button>
+<button type="button" onClick="{{save}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Save changes</button>
+</div>
+</header>
+
+<!-- Business -->
+<section aria-labelledby="sg-biz" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 240px; min-width: 200px;">
+<h2 id="sg-biz" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Business details</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Printed on receipts, order slips and delivery run sheets.</p>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+<img src="/_blob/f03b3fc781d0bdbd45f0db36281d2ab4" alt="Current LSB Handicrafts logo" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; border: 1px solid var(--border, #d4d4d8);">
+<div style="flex: 1; min-width: 0;"><div style="font-size: 14px; font-weight: 500;">Logo</div><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Square PNG or JPG, at least 256 × 256</div></div>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Replace</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-name" style="font-size: 14px; font-weight: 500;">Business name</label><input id="sg-name" type="text" defaultValue="LSB Handicrafts" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-tin" style="font-size: 14px; font-weight: 500;">TIN</label><input id="sg-tin" type="text" defaultValue="123-456-789-000" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-phone" style="font-size: 14px; font-weight: 500;">Phone</label><input id="sg-phone" type="tel" defaultValue="(082) 285 0000" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-email" style="font-size: 14px; font-weight: 500;">Email</label><input id="sg-email" type="email" defaultValue="hello@lsbhandicrafts.ph" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;"><label for="sg-addr" style="font-size: 14px; font-weight: 500;">Workshop address</label><textarea id="sg-addr" rows="2" onChange="{{touch}}" defaultValue="Purok 5, Barangay Mintal, Davao City, 8000 Davao del Sur" style="box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; line-height: 20px; resize: vertical; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></textarea></div>
+</div>
+</section>
+
+<!-- Money -->
+<section aria-labelledby="sg-money" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 240px; min-width: 200px;">
+<h2 id="sg-money" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Money and numbering</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Tax on receipts and how order numbers count up.</p>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px;">
+<div><label for="sg-vat" style="display: block; font-size: 14px; font-weight: 500;">VAT registered</label><span style="display: block; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Receipts show 12% VAT inside the price.</span></div>
+<button type="button" role="switch" id="sg-vat" aria-checked="{{vat}}" onClick="{{toggleVat}}" style="flex: none; position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{vatTrack}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{vatThumb}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><span id="sg-cur-label" style="font-size: 14px; font-weight: 500;">Currency</span><button type="button" aria-haspopup="listbox" aria-labelledby="sg-cur-label sg-cur-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="sg-cur-value">₱ Philippine peso</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-prefix" style="font-size: 14px; font-weight: 500;">Order numbers start with</label><input id="sg-prefix" type="text" defaultValue="#" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-next" style="font-size: 14px; font-weight: 500;">Next order number</label><input id="sg-next" type="text" defaultValue="2053" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</div>
+</div>
+</section>
+
+<!-- Delivery -->
+<section aria-labelledby="sg-del" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 240px; min-width: 200px;">
+<h2 id="sg-del" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Delivery</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">What new orders charge for delivery, and the areas drivers cover.</p>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-fee" style="font-size: 14px; font-weight: 500;">Delivery fee</label><div style="display: flex; align-items: center; height: 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><span aria-hidden="true" style="padding-left: 10px; color: var(--muted-fg, #71717a);">₱</span><input id="sg-fee" type="text" defaultValue="250.00" onChange="{{touch}}" style="flex: 1; min-width: 0; height: 100%; box-sizing: border-box; padding: 0 10px 0 6px; border: 0; background: transparent; font-size: 14px;"></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="sg-free" style="font-size: 14px; font-weight: 500;">Free delivery from</label><div style="display: flex; align-items: center; height: 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><span aria-hidden="true" style="padding-left: 10px; color: var(--muted-fg, #71717a);">₱</span><input id="sg-free" type="text" defaultValue="10,000.00" onChange="{{touch}}" style="flex: 1; min-width: 0; height: 100%; box-sizing: border-box; padding: 0 10px 0 6px; border: 0; background: transparent; font-size: 14px;"></div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 14px; font-weight: 500;">Areas we deliver to</span>
+<div style="display: flex; flex-wrap: wrap; gap: 6px;">
+<sc-for list="{{areas}}" as="a" hint-placeholder-count="8">
+<span style="display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px;">{{a.name}}<button type="button" aria-label="Remove {{a.name}}" onClick="{{a.remove}}" style="width: 20px; height: 20px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 4px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button></span>
+</sc-for>
+<button type="button" style="display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px; border: 1px dashed var(--input-strong, #a1a1aa); border-radius: 6px; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="20" stroke-linecap="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add area</button>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Hours -->
+<section aria-labelledby="sg-hours" style="display: flex; flex-wrap: wrap; gap: 16px 24px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 0 1 240px; min-width: 200px;">
+<h2 id="sg-hours" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Working hours</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Deliveries and pick-ups can only be booked inside these hours.</p>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+<div role="group" aria-label="Open days" style="display: flex; flex-wrap: wrap; gap: 6px;">
+<sc-for list="{{days}}" as="d" hint-placeholder-count="7">
+<button type="button" aria-pressed="{{d.on}}" onClick="{{d.toggle}}" style="width: 44px; height: 32px; padding: 0; border: 1px solid {{d.bd}}; border-radius: 6px; background: {{d.bg}}; color: {{d.fg}}; font-size: 13px; font-weight: 500; cursor: pointer;">{{d.label}}</button>
+</sc-for>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+<label for="sg-open" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Opens at</label><input id="sg-open" type="text" defaultValue="8:00 AM" onChange="{{touch}}" style="width: 110px; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<span style="color: var(--muted-fg, #71717a);">to</span>
+<label for="sg-close" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Closes at</label><input id="sg-close" type="text" defaultValue="5:00 PM" onChange="{{touch}}" style="width: 110px; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+</div>
+</section>
+
+</div>
+</main>
+
+<sc-if defaultValue="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="settings" sub="general" h="1160" hint-size="240px,1160px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1160}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const vat = s.vat ?? true;
+    const removed = s.removed ?? {};
+    const off = s.off ?? { Sun: true };
+    const areas = ['Agdao', 'Bajada', 'Buhangin', 'Lanang', 'Matina', 'Mintal', 'Poblacion', 'Toril']
+      .filter((n) => !removed[n])
+      .map((name) => ({ name, remove: () => this.setState({ removed: { ...removed, [name]: true }, dirty: true }) }));
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((label) => {
+      const on = !off[label];
+      return {
+        label, on,
+        bg: on ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)', fg: on ? 'var(--on-primary, #ffffff)' : 'var(--muted-fg, #71717a)', bd: on ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+        toggle: () => this.setState({ off: { ...off, [label]: on }, dirty: true })
+      };
+    });
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      dirty: !!s.dirty,
+      vat,
+      vatTrack: vat ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+      vatThumb: vat ? '16px' : '2px',
+      toggleVat: () => this.setState({ vat: !vat, dirty: true }),
+      areas,
+      days,
+      touch: () => this.setState({ dirty: true }),
+      save: () => this.setState({ dirty: false }),
+      discard: () => this.setState({ dirty: false, removed: {}, off: { Sun: true }, vat: true }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

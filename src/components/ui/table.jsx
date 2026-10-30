@@ -1,110 +1,71 @@
-import { forwardRef } from "react";
-
 import { cn } from "@/lib/utils";
 
 /**
- * Semantic table.
+ * shadcn/ui Table, drawn to the DataTable on the boards: 13/18 text, 36px
+ * header and body rows, a --border line under the header and a
+ * --row-divider between rows. The first and last columns sit 16px in, the
+ * rest 8px. Rows tint on hover (index.css).
  *
- * The app had five table implementations: one built from flex divs, three
- * ad-hoc CSS grids that hand-repeated the same header and footer classes, and
- * real <table>s in the legacy workspace. The grids were not tables to a screen
- * reader at all — no row/column relationship, no header association.
- *
- * GEOMETRY IS THE HANDOFF'S, and it is doing work: 62px minimum rows with 15px
- * of vertical padding, a 14px-padded header band on paper-2, and 22px side
- * gutters. Rows that size are legible from a standing position at a counter,
- * which is where the products and orders lists are actually read.
- *
- * Header type is 13px uppercase at 0.07em — the one deliberate exception to
- * the 16px floor, alongside the sidebar's group labels. A tracked uppercase
- * column label is not read as a sentence; it is read as a signpost, once.
- *
- * Wrapped in an overflow-x container so a wide table scrolls inside its own
- * card rather than pushing the whole page sideways. On a phone these lists
- * become cards instead — see the `<834px` branch on each list screen. Nothing
- * in this system is ever a horizontal scroll on a phone.
- *
- * `scroll-shadow-x` (index.css) marks that this scrolls when it needs to —
- * the tablet-width icon rail is narrower than several tables' minWidth, and
- * an "Open" button scrolled out of view with no visible cue is not a
- * discoverable control.
+ * The table scrolls sideways inside its card rather than squeezing columns:
+ * `minWidth` is the narrowest the columns read at.
  */
-const Table = forwardRef(function Table({ className, minWidth = 860, ...props }, ref) {
+function Table({ className, minWidth = 760, containerClassName, ...props }) {
   return (
-    <div className="scroll-shadow-x w-full overflow-x-auto">
+    <div data-slot="table-container" className={cn("relative w-full overflow-x-auto", containerClassName)}>
       <table
-        ref={ref}
+        data-slot="table"
         style={{ minWidth }}
-        className={cn("w-full caption-bottom border-collapse text-left", className)}
+        className={cn("w-full caption-bottom border-collapse text-13", className)}
         {...props}
       />
     </div>
   );
-});
+}
 
-const TableHeader = forwardRef(function TableHeader({ className, ...props }, ref) {
-  return (
-    <thead
-      ref={ref}
-      className={cn(
-        "border-b border-card bg-paper-2",
-        className
-      )}
-      {...props}
-    />
-  );
-});
+function TableHeader({ className, ...props }) {
+  return <thead data-slot="table-header" className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />;
+}
 
-const TableBody = forwardRef(function TableBody({ className, ...props }, ref) {
-  return <tbody ref={ref} className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
-});
+function TableBody({ className, ...props }) {
+  return <tbody data-slot="table-body" className={cn("[&_tr:last-child]:border-0", className)} {...props} />;
+}
 
-const TableRow = forwardRef(function TableRow({ className, ...props }, ref) {
+function TableRow({ className, ...props }) {
   return (
     <tr
-      ref={ref}
-      className={cn(
-        "border-b border-hair transition duration-150",
-        "hover:bg-wash-2",
-        className
-      )}
+      data-slot="table-row"
+      className={cn("h-9 border-b border-row-divider data-[state=selected]:bg-surface-2", className)}
       {...props}
     />
   );
-});
+}
 
-const TableHead = forwardRef(function TableHead({ className, ...props }, ref) {
+function TableHead({ className, ...props }) {
   return (
     <th
-      ref={ref}
+      data-slot="table-head"
       scope="col"
       className={cn(
-        // nowrap: a two-word signpost ("How many") broken over two lines
-        // makes the header band taller than every other one in the app.
-        "whitespace-nowrap px-5.5 py-3.5 align-middle text-[13px] font-extrabold uppercase tracking-[0.07em] text-muted",
+        "h-9 whitespace-nowrap px-2 text-left align-middle font-medium text-muted-fg first:pl-4 last:pr-4",
         className
       )}
       {...props}
     />
   );
-});
+}
 
-/** 15px vertical padding on a 62px minimum row. */
-const TableCell = forwardRef(function TableCell({ className, ...props }, ref) {
+function TableCell({ className, ...props }) {
   return (
     <td
-      ref={ref}
-      className={cn(
-        "h-15.5 px-5.5 py-3.5 align-middle text-[16px] text-ink",
-        className
-      )}
+      data-slot="table-cell"
+      className={cn("whitespace-nowrap px-2 align-middle first:pl-4 last:pr-4", className)}
       {...props}
     />
   );
-});
+}
 
-const TableCaption = forwardRef(function TableCaption({ className, ...props }, ref) {
-  return <caption ref={ref} className={cn("sr-only", className)} {...props} />;
-});
+function TableCaption({ className, ...props }) {
+  return <caption data-slot="table-caption" className={cn("mt-3 text-13 text-muted-fg", className)} {...props} />;
+}
 
 export { Table, TableHeader, TableBody, TableHead, TableRow, TableCell, TableCaption };

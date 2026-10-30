@@ -54,16 +54,6 @@ export const BATCH_LABEL = {
   Queued: 'Planned', 'In Progress': 'In production', 'Quality Check': 'Quality check',
   Completed: 'Completed', Cancelled: 'Cancelled',
 };
-export const MATERIAL_ORDER_TONE = {
-  Ordered: { tone: 'neutral', mark: 'clock' }, 'Delivery Scheduled': { tone: 'cobalt', mark: 'clock' },
-  'In Transit': { tone: 'cobalt', mark: 'clock' }, Arrived: { tone: 'green', mark: 'check' },
-  Cancelled: { tone: 'neutral', mark: 'x' },
-};
-export const BATCH_TONE = {
-  Queued: { tone: 'neutral', mark: 'clock' }, 'In Progress': { tone: 'clay', mark: 'dot' },
-  'Quality Check': { tone: 'amber', mark: 'clock' }, Completed: { tone: 'green', mark: 'check' },
-  Cancelled: { tone: 'neutral', mark: 'x' },
-};
 
 export const TRANSIT_REASONS = ['Broken edges/corners', 'Crushed by strap/cargo', 'Water/dirt damage', 'Wrong density/thickness'];
 export const DEFECT_REASONS = [
@@ -79,14 +69,14 @@ export const DEFECT_REASONS = [
  * "In Stock" -> "Plenty in stock". The three words staff use for the three
  * situations that change what they do next.
  */
-export const STOCK_LABEL = {
+const STOCK_LABEL = {
   [STOCK_STATUS.IN]: "Plenty in stock",
   [STOCK_STATUS.LOW]: "Running low",
   [STOCK_STATUS.OUT]: "Run out",
 };
 
 /** The tone each stock state paints in — see shared/tones.js for the palette. */
-export const STOCK_TONE = {
+const STOCK_TONE = {
   [STOCK_STATUS.IN]: "green",
   [STOCK_STATUS.LOW]: "amber",
   [STOCK_STATUS.OUT]: "red",
@@ -152,13 +142,13 @@ export const roleLabel = (role) => (role === "Admin" ? "Administrator" : role ||
 
 // ---- orders ----------------------------------------------------------------
 
-export const ORDER_LABEL = {
+const ORDER_LABEL = {
   [ORDER_STATUS.PENDING]: "Waiting",
   [ORDER_STATUS.COMPLETED]: "Done",
   [ORDER_STATUS.CANCELLED]: "Cancelled",
 };
 
-export const ORDER_TONE = {
+const ORDER_TONE = {
   [ORDER_STATUS.PENDING]: "amber",
   [ORDER_STATUS.COMPLETED]: "green",
   [ORDER_STATUS.CANCELLED]: "red",
@@ -203,7 +193,7 @@ export const DISPOSITION_OPTIONS = [
   },
 ];
 
-export const DISPOSITION_LABEL = {
+const DISPOSITION_LABEL = {
   [REFUND_DISPOSITION.RESTOCK]: "Back on the shelf",
   [REFUND_DISPOSITION.SCRAP]: "Thrown away",
 };
@@ -218,7 +208,7 @@ export const REFUND_METHOD_OPTIONS = [
   { value: REFUND_METHOD.CREDIT, label: "Left on their account" },
 ];
 
-export const REFUND_METHOD_LABEL = Object.fromEntries(
+const REFUND_METHOD_LABEL = Object.fromEntries(
   REFUND_METHOD_OPTIONS.map((option) => [option.value, option.label])
 );
 
@@ -258,7 +248,7 @@ export const REFUND_REASON_OPTIONS = [
   },
 ];
 
-export const REFUND_REASON_LABEL = Object.fromEntries(
+const REFUND_REASON_LABEL = Object.fromEntries(
   REFUND_REASON_OPTIONS.map((option) => [option.value, option.label])
 );
 
@@ -353,7 +343,7 @@ export const PRICE_REASON_OPTIONS = [
   },
 ];
 
-export const PRICE_REASON_LABEL = Object.fromEntries(
+const PRICE_REASON_LABEL = Object.fromEntries(
   PRICE_REASON_OPTIONS.map((option) => [option.value, option.label])
 );
 
@@ -368,8 +358,8 @@ export const priceReasonLabel = (value) => PRICE_REASON_LABEL[value] ?? "—";
  */
 export const DELIVERY_STAGES = [
   { value: DELIVERY_STAGE.NOT_SENT, label: "Not sent yet", tone: "neutral", icon: "inbox" },
-  { value: DELIVERY_STAGE.BEING_MADE, label: "Being made", tone: "clay", icon: "hammer" },
-  { value: DELIVERY_STAGE.READY, label: "Ready to go", tone: "cobalt", icon: "package-check" },
+  { value: DELIVERY_STAGE.BEING_MADE, label: "Being made", tone: "progress", icon: "hammer" },
+  { value: DELIVERY_STAGE.READY, label: "Ready to go", tone: "info", icon: "package-check" },
   { value: DELIVERY_STAGE.ON_THE_WAY, label: "On the way", tone: "amber", icon: "truck" },
   { value: DELIVERY_STAGE.ARRIVED, label: "Arrived", tone: "green", icon: "circle-check" },
 ];

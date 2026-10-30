@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add staff dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-modal="true" aria-labelledby="as-title" aria-describedby="as-desc" style="position: relative; box-sizing: border-box; width: 480px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+
+<button type="button" aria-label="Close" onClick="{{close}}" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+
+<div style="padding: 20px 52px 0 20px;">
+<h2 id="as-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Add staff member</h2>
+<p id="as-desc" style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">They appear in the directory right away. A sign-in account is optional.</p>
+</div>
+
+<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="as-name" style="font-size: 14px; font-weight: 500;">Full name</label>
+<input id="as-name" type="text" placeholder="Juan Dela Cruz" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="as-pos" style="font-size: 14px; font-weight: 500;">Position</label>
+<input id="as-pos" type="text" placeholder="Finisher" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<span id="as-dept-label" style="font-size: 14px; font-weight: 500;">Department</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="as-dept-label as-dept-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="as-dept-value">Production</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="as-phone" style="font-size: 14px; font-weight: 500;">Mobile</label>
+<input id="as-phone" type="tel" placeholder="0917 000 0000" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="as-start" style="font-size: 14px; font-weight: 500;">Starts on</label>
+<input id="as-start" type="text" value="Mon, Nov 3" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+<div>
+<label for="as-account" style="display: block; font-size: 14px; font-weight: 500;">Give them a sign-in account</label>
+<span style="display: block; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Adds them to User Management with an email invite.</span>
+</div>
+<button type="button" role="switch" id="as-account" aria-checked="{{account}}" onClick="{{toggleAccount}}" style="flex: none; position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{trackBg}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{thumbLeft}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<sc-if value="{{account}}" hint-placeholder-val="{{true}}">
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="as-email" style="font-size: 14px; font-weight: 500;">Work email</label>
+<input id="as-email" type="email" placeholder="name@lsbhandicrafts.ph" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<span id="as-role-label" style="font-size: 14px; font-weight: 500;">Role</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="as-role-label as-role-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="as-role-value">Production Staff</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+</div>
+</div>
+</sc-if>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 20px 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Cancel</button>
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Add staff member</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"onClose":{"editor":null},"$preview":{"width":480,"height":560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const account = s.account ?? true;
+    return {
+      account,
+      trackBg: account ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+      thumbLeft: account ? '16px' : '2px',
+      toggleAccount: () => this.setState({ account: !account }),
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

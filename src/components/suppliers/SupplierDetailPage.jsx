@@ -1,18 +1,18 @@
 import { useState } from "react";
 
-import { ArrowLeft, AtSign, Calendar, Handshake, MapPin, Pencil, Phone, Truck, UserRound } from "../icons";
+import { Factory, PencilSimple, Phone, Truck } from "../icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import Callout, { DangerBlock } from "../shared/Callout";
-import IconChip from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
-import FactTable from "../shared/FactTable";
-import { NotFoundState } from "../shared/PageStates";
+import { EmptySlot, NotFoundState } from "../shared/PageStates";
+import { Fact, Page, PageHeader, SectionCard, StatCard, StatCards } from "../shared/page";
 import { formatLongDate, formatShortDate } from "../../utils/profileFormat";
 import { units } from "../../utils/production";
 
 /**
- * One supplier.
+ * One supplier, an app-only screen built from the Suppliers board's side
+ * panel and the detail boards' parts.
  *
  * The same shape as one customer — an identity block with the two actions, then
  * a fact table of how to reach them — because the whole point of the shared
@@ -94,119 +94,84 @@ export default function SupplierDetailPage({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" className="self-start px-2" onClick={onBack}>
-        <ArrowLeft className="h-5 w-5" />
-        All suppliers
-      </Button>
-
-      {/* The purchases card sits UNDER the identity card, in the same column,
-          rather than full-width below the grid: on its own the identity card
-          was stretched to the height of the contact facts beside it and left a
-          tall empty white block under two buttons. Same shape as one customer:
-          who they are, then what we have done with them. */}
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <Card className="p-5.5">
-            <div className="flex flex-wrap items-center gap-4">
-              <IconChip icon={<Handshake />} tone="clay" size="2xl" />
-              <div className="min-w-0 flex-1">
-                <h2 className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-ink">
-                  {supplier.name}
-                </h2>
-                <p className="pt-1 text-[15.5px] text-muted">
-                  {supplier.contactPerson
-                    ? `Ask for ${supplier.contactPerson}`
-                    : "Nobody named as the contact yet"}
-                  {" · "}
-                  on record since {formatLongDate(supplier.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 pt-5">
-              {dialable && (
-                <Button variant="clay" size="lg" asChild>
-                  <a href={`tel:${dialable}`}>
-                    <Phone className="h-5 w-5" />
-                    Call {supplier.contactPerson || supplier.name}
-                  </a>
-                </Button>
-              )}
-              {canEdit && (
-                <Button variant="outline" size="lg" onClick={() => onEdit(supplier.id)}>
-                  <Pencil className="h-5 w-5" />
-                  Edit details
-                </Button>
-              )}
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Raw material purchases</CardTitle>
-            </CardHeader>
-            <div className="p-5.5 text-[16px]">
-              <p className="pb-3">
-                {purchaseOrders.length} supplier {purchaseOrders.length === 1 ? 'order' : 'orders'}
-                {' · '}
-                {claimsNeedingReview} {claimsNeedingReview === 1 ? 'claim needs' : 'claims need'} review.
-              </p>
-              {supplied.length > 0 && (
-                <ul className="mb-4 divide-y divide-hair rounded-field border border-hair">
-                  {supplied.map(({ material, ordered, usable, lastArrived }) => (
-                    <li key={material.id} className="flex flex-wrap items-baseline justify-between gap-3 px-4 py-3">
-                      <span className="font-bold text-ink">{material.name}</span>
-                      <span className="text-[15px] text-muted">
-                        {units(ordered, material.unit)} ordered · {units(usable, material.unit)} received usable
-                        {lastArrived ? ` · last arrived ${formatShortDate(lastArrived)}` : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <Button variant="outline" size="lg" onClick={onOpenPurchases}>
-                <Truck className="h-5 w-5" />
-                Open Purchasing
+    <Page>
+      <PageHeader
+        back={{ label: "Back to Suppliers", onClick: onBack }}
+        icon={Factory}
+        title={supplier.name}
+        titleBadge={archived ? <Badge variant="secondary">No longer used</Badge> : null}
+        description={
+          <>
+            {supplier.contactPerson ? `Ask for ${supplier.contactPerson}` : "Nobody named as the contact yet"}
+            {" · "}on record since {formatLongDate(supplier.createdAt)}
+          </>
+        }
+        actions={
+          <>
+            {canEdit && (
+              <Button variant="outline" onClick={() => onEdit(supplier.id)}>
+                <PencilSimple aria-hidden="true" />
+                Edit details
               </Button>
-            </div>
-          </Card>
-        </div>
+            )}
+            {dialable && (
+              <Button render={<a href={`tel:${dialable}`} />} nativeButton={false}>
+                <Phone aria-hidden="true" />
+                Call {supplier.contactPerson || supplier.name}
+              </Button>
+            )}
+          </>
+        }
+      />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>How to reach them</CardTitle>
-          </CardHeader>
-          <FactTable
-            rows={[
-              {
-                label: "Contact person",
-                value: supplier.contactPerson || null,
-                icon: <UserRound className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Phone",
-                value: supplier.contactNumber || null,
-                icon: <Phone className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Email",
-                value: supplier.email || null,
-                icon: <AtSign className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "Address",
-                value: supplier.address || null,
-                icon: <MapPin className="h-4.5 w-4.5" />,
-              },
-              {
-                label: "On record since",
-                value: formatLongDate(supplier.createdAt),
-                icon: <Calendar className="h-4.5 w-4.5" />,
-              },
-            ]}
-          />
-        </Card>
+      <StatCards label="Their numbers">
+        <StatCard label="Supplier orders" value={purchaseOrders.length} caption={`${stillComing} not received yet`} />
+        <StatCard label="Materials they supply" value={supplied.length} caption="From their orders" />
+        <StatCard
+          label="Claims to settle"
+          value={claimsNeedingReview}
+          badge={claimsNeedingReview > 0 ? <Badge variant="warning" dot>Needs review</Badge> : null}
+          caption={claimsNeedingReview > 0 ? "Under Purchasing" : "Nothing open"}
+        />
+      </StatCards>
+
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <SectionCard
+          title="Raw material purchases"
+          action={
+            <Button variant="outline" size="sm" onClick={onOpenPurchases}>
+              <Truck aria-hidden="true" />
+              Open Purchasing
+            </Button>
+          }
+          bodyClassName="p-0"
+        >
+          {supplied.length === 0 ? (
+            <EmptySlot>Nothing ordered from {supplier.name} yet.</EmptySlot>
+          ) : (
+            <ul className="m-0 list-none p-0">
+              {supplied.map(({ material, ordered, usable, lastArrived }) => (
+                <li key={material.id} className="flex min-h-10 flex-wrap items-center justify-between gap-x-3 gap-y-0.5 border-b border-row-divider px-4 py-2 text-13 last:border-b-0">
+                  <span className="font-medium">{material.name}</span>
+                  <span className="text-muted-fg">
+                    {units(ordered, material.unit)} ordered · {units(usable, material.unit)} received usable
+                    {lastArrived ? ` · last arrived ${formatShortDate(lastArrived)}` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
+        <SectionCard title="How to reach them">
+          <dl className="m-0 flex flex-col gap-3 px-4 pb-4">
+            <Fact label="Contact person">{supplier.contactPerson || "Not given"}</Fact>
+            <Fact label="Phone">{supplier.contactNumber || "Not given"}</Fact>
+            <Fact label="Email">{supplier.email || "Not given"}</Fact>
+            <Fact label="Address">{supplier.address || "Not given"}</Fact>
+            <Fact label="On record since">{formatLongDate(supplier.createdAt)}</Fact>
+          </dl>
+        </SectionCard>
       </div>
 
       {/* ---- the only place a supplier can be removed ---- */}
@@ -240,7 +205,7 @@ export default function SupplierDetailPage({
         <DangerBlock
           title={blocked ? 'This supplier stays on file' : hasHistory ? 'Stop using this supplier' : 'Remove this supplier for good'}
           action={
-            <Button variant="danger" size="lg" disabled={blocked} onClick={() => setConfirming(true)}>
+            <Button variant="destructive-outline" disabled={blocked} onClick={() => setConfirming(true)}>
               Remove {supplier.name}
             </Button>
           }
@@ -267,9 +232,7 @@ export default function SupplierDetailPage({
               person, phone number and address. Orders and stock records are not touched:
               this supplier has no purchasing history, so nothing else in the system points
               at them. This cannot be undone.
-              <br />
-              <br />
-              If you have simply stopped buying from them, leaving the record alone costs
+              {" "}If you have simply stopped buying from them, leaving the record alone costs
               nothing and keeps their number to hand if you go back.
             </>
           )}
@@ -296,6 +259,6 @@ export default function SupplierDetailPage({
         busy={working}
         onConfirm={runDelete}
       />
-    </div>
+    </Page>
   );
 }

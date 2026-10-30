@@ -3,506 +3,296 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   shadcn/ui token layer.
+   Theme tokens, light and dark.
 
-   The handful of variables the generated primitives in components/ui
-   reference, bound to the overhaul's palette (see tailwind.config.js) so a
-   Button, Dialog or Select inherits cobalt rather than shadcn's slate.
+   Ported one for one from design/admin-dashboard/theme.css. Every colour in
+   the app resolves through these names (tailwind.config.js maps them), so the
+   `html.dark` block below is the whole dark theme: no screen writes `dark:`.
 
-   HSL triplets without the hsl() wrapper is shadcn's convention — it lets a
-   component write `hsl(var(--ring) / 0.4)` for an alpha variant.
+   About 80% of the interface is neutral zinc. --primary is spent only on the
+   one primary button per view, the active nav item, the focus ring, links and
+   selected checkboxes, radios and switches. Status colours appear only inside
+   small soft badges.
    --------------------------------------------------------------------------- */
 :root {
-  --radius: 10px;               /* the button radius from the handoff */
-  --border: 212 43% 12% / 12%;  /* #111d2b1f — the default card hairline */
-  --input:  212 43% 12% / 18%;  /* #111d2b2e — the input border */
-  --ring:   214 82% 43%;        /* #1462c8 — cobalt, the one focus colour */
-
-  /* -------------------------------------------------------------------------
-     The theme-aware half of the palette.
-
-     Every token here means a ROLE, not a colour: `--c-ink` is "primary text",
-     `--c-paper-2` is "the recessed band". tailwind.config.js binds them so
-     `text-ink` and `bg-paper-2` resolve through these, and the `html.dark`
-     block below is the entire dark theme for them.
-
-     That indirection is the fix for what dark mode used to be: a `dark:` class
-     hand-written beside each light one, present on four screens and absent on
-     twenty-five. Because the shared primitives DID flip, the twenty-five did
-     not merely stay light — a Card painted its dark surface under page markup
-     still asking for near-black `text-ink`. Roles cannot drift that way; a
-     screen gets dark mode whether or not its author thought about it.
-
-     Space-separated channels, not hex, so Tailwind's `/40` opacity modifier
-     still composes (`bg-tint-cobalt/40` is real usage).
-     ------------------------------------------------------------------------- */
-  --c-paper:     244 242 236;  /* app canvas */
-  --c-paper-2:   250 249 245;  /* table headers, card footers, form bands */
-  --c-surface:   255 255 255;  /* card, dialog and field fill */
-  --c-ink:        17  29  43;  /* primary text, selected chip fill */
-  --c-ink-2:      50  64  84;  /* body text inside tinted callouts */
-  --c-muted:      75  87 104;  /* secondary text, icon default */
-  --c-muted-2:   138 147 161;  /* placeholder, disabled */
-
-  /* Foreground-only relatives of the fixed hues. See tailwind.config.js. */
-  --c-cobalt-deep: 14  75 156;
-  --c-clay-deep:  138  67  24;
-  --c-amber-icon: 138  80   0;
-  --c-amber-text: 107  63   0;
-  --c-red-text:   125  37  33;
-
-  --c-tint-cobalt:  232 241 253;
-  --c-tint-clay:    253 239 230;
-  --c-tint-green:   230 242 236;
-  --c-tint-amber:   253 243 228;
-  --c-tint-red:     251 236 235;
-  --c-tint-purple:  239 234 248;
-  --c-tint-neutral: 240 238 232;
-
-  /* The confirm colour the "saved" wash is mixed from. It is a role rather than
-     a tint because it is painted at low alpha OVER a card instead of behind
-     content, so it needs the saturated hue, not the near-white wash of
-     `tint-green`. Light theme: Confirm Green. */
-  --c-landed: 15 107 70;
-
-  /* Borders carry their alpha pre-mixed — the alpha IS the token, and nothing
-     writes `border-hair/50`. On paper they are ink; on a dark surface an
-     ink-alpha hairline is invisible, which is what left every card edgeless. */
-  --c-hair:   rgba(17, 29, 43, 0.07);  /* row dividers, internal rules */
-  --c-hair2:  rgba(17, 29, 43, 0.08);
-  --c-card:   rgba(17, 29, 43, 0.12);  /* the default card border */
-  --c-chip:   rgba(17, 29, 43, 0.15);  /* secondary button / chip, at 1.5px */
-  --c-chip2:  rgba(17, 29, 43, 0.16);
-  --c-field:  rgba(17, 29, 43, 0.18);  /* input, at 1.5px */
-  --c-sketch: rgba(17, 29, 43, 0.20);  /* image placeholder outline */
-
-  /* Overlays — a wash of ink over whatever is underneath. */
-  --c-wash:   rgba(17, 29, 43, 0.03);  /* control hover */
-  --c-wash-2: rgba(17, 29, 43, 0.02);  /* row hover */
-  --c-rule:   rgba(17, 29, 43, 0.08);  /* separator fills, tracks, skeletons */
-
-  /* Type is fixed px throughout, per the handoff: every size in it is an
-     intended value, and the hard floor of 16px for anything read as a
-     sentence only means something if a viewport-driven clamp cannot scale it
-     under that. The fluid `clamp(14px, 1vw + 12px, 18px)` root this file used
-     to carry is therefore gone — on a narrow phone it pushed body copy to
-     14px, which is exactly what rule 1 forbids. Accessibility is served by
-     the two dashboard views (standard / large text) instead, which is a
-     choice the user makes rather than a function of their screen width. */
-  font-size: 16px;
-
-  font-family: Manrope, system-ui, -apple-system, 'Segoe UI', sans-serif;
   color-scheme: light;
-  background-color: rgb(var(--c-paper));
+  --background: #EDF2FB;
+  --card: #ffffff;
+  --surface-2: #fafafa;
+  --muted: #f4f4f5;
+  --muted-strong: #e4e4e7;
+  --border: #d4d4d8;
+  --border-subtle: #e4e4e7;
+  --row-divider: #f4f4f5;
+  --input-strong: #a1a1aa;
+  --column: #dfe7f5;
+  --inverse: #18181b;
+  --inverse-fg: #fafafa;
+  --inverse-strong: #09090b;
+  --strong-bg: #3f3f46;
+
+  --foreground: #09090b;
+  --ink: #18181b;
+  --fg-2: #3f3f46;
+  --fg-3: #52525b;
+  --muted-fg: #71717a;
+  --muted-2: #a1a1aa;
+
+  --primary: #004E89;
+  --on-primary: #ffffff;
+  --primary-text: #004E89;
+  --primary-hover: #003a66;
+  --primary-press: #003a66;
+
+  --success: #15803d;  --success-bg: #f0fdf4; --success-fg: #15803d; --success-bd: #dcfce7;
+  --warning: #b45309;  --warning-bg: #fffbeb; --warning-fg: #b45309; --warning-bd: #fef3c7;
+  --danger: #b91c1c;   --danger-bg: #fef2f2;  --danger-fg: #b91c1c;  --danger-bd: #fee2e2; --danger-bd-strong: #fecaca;
+
+  --row-hover: rgba(9, 9, 11, 0.025);
+  --thumb: #ffffff;
+  --overlay: rgba(9, 9, 11, 0.5);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 320ms;
+
+  font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
+  background-color: var(--surface-2);
 }
 
-/* The dark theme, in full. Warm-neutral darks, never pure black.
-
-   Only the ROLES are restated — the fixed hues (cobalt, clay, green, amber,
-   red, purple) keep their values, because each of those is a fill as often as
-   it is a foreground and `bg-cobalt text-white` has to stay a saturated
-   button. Where one of them genuinely has to be read as text on a dark
-   surface, tones.js pairs it with a `dk-` value explicitly. */
+/* Dark: zinc greys, one lifted blue, status tints kept quiet. */
 html.dark {
   color-scheme: dark;
+  --background: #09090b;
+  --card: #18181b;
+  --surface-2: #111113;
+  --muted: #27272a;
+  --muted-strong: #3f3f46;
+  --border: #2e2e33;
+  --border-subtle: #27272a;
+  --row-divider: #232327;
+  --input-strong: #52525b;
+  --column: #111113;
+  --inverse: #f4f4f5;
+  --inverse-fg: #09090b;
+  --inverse-strong: #fafafa;
+  --strong-bg: #52525b;
 
-  --border: 0 0% 100% / 9%;
-  --input:  0 0% 100% / 14%;
-  --ring:   211 76% 57%;        /* #3b8ae5 — cobalt, lifted for the dark canvas */
+  --foreground: #f4f4f5;
+  --ink: #e4e4e7;
+  --fg-2: #d4d4d8;
+  --fg-3: #b4b4bb;
+  --muted-fg: #a1a1aa;
+  --muted-2: #71717a;
 
-  --c-paper:     18  22  28;   /* dk-canvas  */
-  --c-paper-2:   32  39  47;   /* dk-header  */
-  --c-surface:   26  32  41;   /* dk-surface */
-  --c-ink:      238 241 245;   /* dk-text    */
-  --c-ink-2:    201 209 218;   /* dk-text-2  */
-  --c-muted:    201 209 218;   /* dk-text-2 — the one value `text-muted` takes
-                                  in dark. It used to take two: most screens
-                                  wrote `text-muted dark:text-dk-text-2` and a
-                                  few wrote `-text-3`, so the same role landed
-                                  two different greys depending on the file. */
-  --c-muted-2:  127 136 148;
+  --primary: #2878BE;
+  --on-primary: #ffffff;
+  --primary-text: #6aa8de;
+  --primary-hover: #93c0e8;
+  --primary-press: #1f63a0;
 
-  --c-cobalt-deep:  59 138 229;
-  --c-clay-deep:   224 138  82;
-  --c-amber-icon:  224 160  74;
-  --c-amber-text:  240 190 116;
-  --c-red-text:    240 155 142;
+  --success: #16a34a;  --success-bg: #13241a; --success-fg: #4ade80; --success-bd: #1e3a27;
+  --warning: #d97706;  --warning-bg: #2a2010; --warning-fg: #fbbf24; --warning-bd: #3d2f14;
+  --danger: #dc2626;   --danger-bg: #2a1414;  --danger-fg: #f87171;  --danger-bd: #4a1f1f; --danger-bd-strong: #5c2525;
 
-  /* Tints collapse to the one dark chip surface, except the two the dark
-     screens already tinted by hand — a red or amber state has to stay legible
-     as a state, not flatten into every other chip. */
-  --c-tint-cobalt:   37  44  53;
-  --c-tint-clay:     37  44  53;
-  --c-tint-green:    37  44  53;
-  --c-tint-purple:   37  44  53;
-  --c-tint-neutral:  37  44  53;
-  --c-tint-amber:    42  33  19;
-  --c-tint-red:      43  23  23;
-
-  /* Dark theme: the dk ramp's green, which holds against a near-black card
-     where the light theme's deeper green reads as a smudge. */
-  --c-landed: 77 187 140;
-
-  --c-hair:   rgba(255, 255, 255, 0.07);
-  --c-hair2:  rgba(255, 255, 255, 0.07);
-  --c-card:   rgba(255, 255, 255, 0.09);
-  --c-chip:   rgba(255, 255, 255, 0.14);
-  --c-chip2:  rgba(255, 255, 255, 0.18);
-  --c-field:  rgba(255, 255, 255, 0.14);
-  --c-sketch: rgba(255, 255, 255, 0.22);
-
-  --c-wash:   rgba(255, 255, 255, 0.06);
-  --c-wash-2: rgba(255, 255, 255, 0.03);
-  --c-rule:   rgba(255, 255, 255, 0.09);
+  --row-hover: rgba(255, 255, 255, 0.035);
+  --thumb: #fafafa;
+  --overlay: rgba(0, 0, 0, 0.66);
 }
+
+html.dark img { filter: brightness(0.92); }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  /* Through the tokens, so the canvas cannot drift from `bg-paper`. */
-  background: rgb(var(--c-paper));
-  color: rgb(var(--c-ink));
+  background: var(--surface-2);
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 20px;
+  /* Figures are compared down a column: stock counts, prices, order ids. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Every number in this system is compared down a column — stock counts, prices,
-   line totals, order ids. Proportional digits make those columns ragged. */
-body {
-  font-variant-numeric: tabular-nums;
-}
+/* Text links are one of the few places the brand blue goes. */
+a { color: var(--primary-text); }
 
-/* ---------------------------------------------------------------------------
-   Scroll-shadow cue for a horizontally-scrollable table — see Table in
-   ui/table.jsx. The tablet-width icon-rail band (834-1279px) is narrower
-   than several tables' minWidth, so the ONLY interactive control in a row
-   (an "Open" button) could sit scrolled off-screen with nothing on screen
-   suggesting a sideways drag would reveal it.
-
-   CSS-only, no JS: two gradients scroll with the table and fade themselves
-   out once an edge is actually reached (background-attachment: local), two
-   more stay pinned to paint the shadow itself (background-attachment:
-   scroll). Reuses --c-surface (what it fades into) and the existing
-   --c-chip2 border-strength alpha rather than inventing a one-off token.
-   --------------------------------------------------------------------------- */
-.scroll-shadow-x {
-  background:
-    linear-gradient(to right, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) left,
-    linear-gradient(to left, rgb(var(--c-surface)) 30%, rgb(var(--c-surface) / 0)) right,
-    linear-gradient(to right, var(--c-chip2), transparent) left,
-    linear-gradient(to left, var(--c-chip2), transparent) right;
-  background-repeat: no-repeat;
-  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
-  background-attachment: local, local, scroll, scroll;
-}
-
-/* ---------------------------------------------------------------------------
-   Focus.
-
-   Rule 4 of the six: "Focus rings visible, not hinted." This is a global
-   `:focus-visible` rather than something each control opts into, because the
-   failure mode is silent — a control that forgets it looks fine until someone
-   tries to use the keyboard. Anything that needs a different ring colour
-   overrides it locally; nothing should be removing it.
-   --------------------------------------------------------------------------- */
+/* Focus: the ring is 2px of --primary, offset 2px, on every control. */
 :focus-visible {
-  outline: 2px solid #1462c8;
-  outline-offset: 1px;
-  box-shadow: 0 0 0 4px #1462c826;
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-html.dark :focus-visible {
-  outline-color: #3b8ae5;
-  box-shadow: 0 0 0 4px #3b8ae533;
+/* Text fields: focused, the edge turns 2px --primary with a soft halo, as on
+   the dialog boards, instead of the offset outline buttons get. */
+.lsb-field:focus, .lsb-field:focus-visible, .lsb-field[data-popup-open] {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary), 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
-::selection {
-  background: #1462c828;
-}
+::selection { background: color-mix(in srgb, var(--primary) 18%, transparent); }
 
-/* Scrollbars, matched to the paper canvas rather than the browser default. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #111d2b26; border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: #111d2b3d; }
-html.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); }
-html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
+::-webkit-scrollbar-thumb { background: var(--muted-strong); border-radius: 9999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--input-strong); }
 
-/* Room for the phone's home indicator under the bottom tab bar and the sticky
-   list CTA. */
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
-/* ---- motion ---------------------------------------------------------------
- *
- * There are exactly three authored movements in this app, and each one is
- * answering a question somebody actually asked.
- *
- *   lsb-rise    "this panel is new" — a screen or a computed answer arriving.
- *   lsb-land    "your entry landed" — see below.
- *   lsb-fade    the reduced-motion stand-in for either.
- *
- * Everything else is a 120–200ms colour transition living on the component
- * that owns it. Nothing loops, nothing runs on scroll, nothing waits for the
- * viewport. The scene is a phone in somebody's hand on a workshop floor, so
- * movement is transform and opacity only — no blur, no filter, no shadow
- * animation, nothing that asks a cheap GPU for a favour.
- *
- * WIDER SCREENS ARE NOT FASTER MACHINES. The office desktops are as old as the
- * floor tablets, so no width gets a backdrop filter. The one extra permitted
- * above 1280px is a static shadow, paid for once at paint. An effect that has
- * to be recomputed every frame does not get in at any width.
- */
+/* ---------------------------------------------------------------------------
+   Motion, from theme.css and the Motion board.
 
-@keyframes lsb-rise {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+   fast 120ms (hover, press, colour) · base 180ms (dialogs, menus) · slow 320ms
+   (page sections). Nothing loops, nothing takes longer than 320ms except the
+   dashboard count-up, and reduced motion cuts all of it.
+   --------------------------------------------------------------------------- */
+@keyframes lsb-fade   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lsb-pop    { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes lsb-drop   { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes lsb-rise   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-slide  { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-tip    { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-sheet  { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes lsb-dot    { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes lsb-draw   { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+@keyframes lsb-turn   { from { opacity: 0; transform: rotate(-90deg) scale(0.6); } to { opacity: 1; transform: none; } }
+
+/* Dialogs: the panel pops, the backdrop fades. */
+.lsb-pop  { animation: lsb-pop var(--dur-base) var(--ease-out) both; }
+.lsb-fade { animation: lsb-fade var(--dur-base) ease-out both; }
+/* Menus, listboxes and popovers drop in from their trigger. */
+.lsb-drop { animation: lsb-drop 140ms var(--ease-out) both; transform-origin: var(--transform-origin, top); }
+/* Tooltips slide out of the collapsed sidebar. */
+.lsb-tip  { animation: lsb-tip 150ms var(--ease-out) both; }
+/* The mobile navigation sheet. */
+.lsb-sheet { animation: lsb-sheet var(--dur-base) var(--ease-out) both; }
+/* Toasts slide in from the right. */
+.lsb-toast { animation: lsb-slide 260ms var(--ease-out) both; }
+
+/* A page's sections rise in, one after another, once per visit. */
+.lsb-page > * { animation: lsb-rise var(--dur-slow) var(--ease-out) both; }
+.lsb-page > *:nth-child(2) { animation-delay: 40ms; }
+.lsb-page > *:nth-child(3) { animation-delay: 80ms; }
+.lsb-page > *:nth-child(4) { animation-delay: 120ms; }
+.lsb-page > *:nth-child(5) { animation-delay: 160ms; }
+.lsb-page > *:nth-child(n+6) { animation-delay: 200ms; }
+
+/* Kanban cards land softly when they move column. */
+.lsb-card-in { animation: lsb-rise 220ms var(--ease-out) both; }
+
+/* Checkbox tick draws itself; radio dot springs; switch thumb springs. */
+[role="checkbox"][aria-checked="true"] svg path { stroke-dasharray: 260; animation: lsb-draw 260ms var(--ease-out) both; }
+[role="radio"][aria-checked="true"] [data-radio-dot] { animation: lsb-dot 220ms var(--ease-spring) both; }
+[role="switch"] { transition: background-color 200ms ease; }
+[role="switch"] > [data-switch-thumb] { transition: transform 240ms var(--ease-spring); }
+
+/* Controls respond quietly: colour eases, a press dips 2%. */
+button, a, input, textarea, select {
+  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform 100ms ease;
+}
+button:not(:disabled):active { transform: scale(0.98); }
+
+/* Rows tint on hover without fighting their own background. */
+table tbody tr:hover { box-shadow: inset 0 0 0 9999px var(--row-hover); }
+
+/* Theme switch: everything crossfades for a moment. */
+html.theme-anim, html.theme-anim * {
+  transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, fill 240ms ease, stroke 240ms ease !important;
 }
 
-@keyframes lsb-fade {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+/* Theme toggle: the new icon turns in. */
+.theme-icon { display: inline-flex; align-items: center; justify-content: center; animation: lsb-turn 300ms var(--ease-spring) both; }
+
+/* Segmented switches: one highlight slides between the options. The page sets
+   --seg-count and --seg-index; the indicator is a sibling of the buttons. */
+.seg { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.seg > button { position: relative; z-index: 1; }
+.seg > .seg-ind {
+  position: absolute; top: var(--seg-p, 2px); bottom: var(--seg-p, 2px); left: var(--seg-p, 2px);
+  width: calc((100% - 2 * var(--seg-p, 2px) - (var(--seg-count, 2) - 1) * var(--seg-gap, 2px)) / var(--seg-count, 2));
+  border-radius: var(--seg-r, 4px);
+  background: var(--card); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transform: translateX(calc(var(--seg-index, 0) * (100% + var(--seg-gap, 2px))));
+  transition: transform 260ms var(--ease-spring);
 }
 
-.lsb-rise { animation: lsb-rise 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-
-/* THE SIGN-IN SCREEN'S ONE AUTHORED MOMENT (layout/AuthLayout.jsx).
- *
- * The single exception to "nothing loops": the workshop photographs on the
- * sign-in panel cross-fade and drift. It is earned there and nowhere else --
- * it is the one screen with nothing to get on with until somebody types, it
- * is shown only at 1024px and up, and it is still transform and opacity only.
- * The rotation stops when the tab is hidden, when somebody picks a
- * photograph, and never starts under reduced motion.
- *
- *   lsb-drift        a photograph's slow settle, longer than its turn on
- *                    screen so it is still moving while it fades out.
- *   lsb-photos-in    the panel's photographs arriving on first paint.
- *   lsb-photo-timer  the fill in the bar under the current photograph.
- *   lsb-auth-enter   the form's parts arriving one after another, once.
- *   lsb-auth-late    the panel's name and tagline, after the photograph.
- *
- * The entrance is 520ms with a 55ms step, about 0.8s end to end: long
- * enough to read as one arrival, short enough that nobody waits on it.
- */
-@keyframes lsb-drift {
-  from { transform: scale(1.09); }
-  to   { transform: scale(1); }
+/* Roles list: the selected fill slides to the picked row. */
+.roles-ind {
+  position: absolute; top: 4px; left: 4px; right: 4px; height: 52px; border-radius: 6px;
+  background: var(--primary); transition: transform 260ms var(--ease-spring);
 }
-.lsb-drift { animation: lsb-drift 9s cubic-bezier(0.25, 0.1, 0.25, 1) forwards; }
 
-.lsb-photos-in { animation: lsb-fade 900ms ease-out both; }
-
-@keyframes lsb-photo-timer {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
+/* The sign-in photo panel (Login board): the workshop photographs under a
+   deep-blue wash, heavy at the top and foot where the type sits. */
+.lsb-panel { --brand-deep: #00294a; background: var(--brand-deep); }
+.lsb-panel-wash {
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--brand-deep) 92%, transparent) 0%,
+    color-mix(in srgb, var(--brand-deep) 45%, transparent) 22%,
+    color-mix(in srgb, var(--brand-deep) 15%, transparent) 46%,
+    color-mix(in srgb, var(--brand-deep) 55%, transparent) 68%,
+    color-mix(in srgb, var(--brand-deep) 96%, transparent) 100%);
 }
+.lsb-panel-caption { color: rgba(255, 255, 255, 0.75); }
+.lsb-panel-track { background: rgba(255, 255, 255, 0.28); }
+.lsb-panel :focus-visible { outline-color: var(--card); }
+@keyframes lsb-photo-timer { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .lsb-photo-timer { animation: lsb-photo-timer linear forwards; }
 
-@keyframes lsb-auth-rise {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.lsb-auth-enter > *,
-.lsb-auth-late {
-  animation: lsb-auth-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.lsb-auth-enter > :nth-child(2) { animation-delay: 55ms; }
-.lsb-auth-enter > :nth-child(3) { animation-delay: 110ms; }
-.lsb-auth-enter > :nth-child(4) { animation-delay: 165ms; }
-.lsb-auth-enter > :nth-child(5) { animation-delay: 220ms; }
-.lsb-auth-enter > :nth-child(n + 6) { animation-delay: 275ms; }
-.lsb-auth-late { animation-delay: 200ms; }
-.lsb-auth-late + .lsb-auth-late { animation-delay: 340ms; }
-
-/* THE ENTRY LANDING.
- *
- * This system exists because a paper ledger never told anybody their entry
- * went in. A worker counted 48 sheets off a truck, wrote it in a book, and
- * found out three days later whether the number was believed. So when a write
- * comes back saved, the record it changed says so itself: a confirm-green wash
- * blooms over that one card and clears, while the stock bar underneath slides
- * to its new length. One card, once, 900ms, and then the screen is quiet
- * again.
- *
- * THE TOAST IS NOT THIS. A toast is the system speaking, in the corner, about
- * a record — it names what happened but it cannot point. On a products list of
- * 148 rows, or a deliveries board of four columns, "Delivery #2041 is now on
- * the road" still leaves somebody hunting for which card moved. The landing
- * mark is the record speaking about itself, in place. The two are doing
- * different jobs rather than saying the same thing twice.
- *
- * It is a separate overlay element rather than a class on the card because the
- * card must NOT remount — remounting it would restart the stock bar's width
- * transition from zero, and that bar moving from its old length to its new one
- * is half the point. React gives the overlay a fresh key per change, so the
- * animation runs exactly once per saved write and cannot get stuck on.
- */
-/* Blooms, HOLDS, then clears. The first version ran a decelerating curve from
-   opacity 1 to 0, which front-loads the change: it was almost gone within
-   200ms and spent the other 700 invisible, so the confirmation was over before
-   anybody standing at a bench had looked up. The hold is the part that does
-   the work. */
-@keyframes lsb-land {
-  0%   { opacity: 0; }
-  10%  { opacity: 1; }
-  45%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
+/* The entry landing: when a write comes back saved, the record it changed
+   says so in place with one quiet success wash. */
+@keyframes lsb-land { 0% { opacity: 0; } 10% { opacity: 1; } 45% { opacity: 1; } 100% { opacity: 0; } }
 .lsb-landed {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  border-radius: inherit;
-  /* A WASH, NOT A LID. This sits on top of the card's own content, so
-     `tint-green` is the wrong paint for it: that token is an opaque near-white
-     green, and at full strength it simply hid the record it was meant to be
-     confirming. What reads as "saved" without costing a word of legibility is
-     the confirm hue at low alpha plus the ring — and the ring is the part that
-     actually carries. Both come from `--c-landed`, which flips with the theme
-     like every other role here, so there is no `html.dark` rule to forget. */
-  background: rgb(var(--c-landed) / 0.11);
-  box-shadow: inset 0 0 0 2px rgb(var(--c-landed) / 0.5);
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; border-radius: inherit;
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  box-shadow: inset 0 0 0 1px var(--success-bd);
   animation: lsb-land 900ms ease-out forwards;
 }
-
-/* THE SAME NEWS, IN A TABLE ROW.
- *
- * A <tr> cannot hold the overlay above — a stray <span> between rows is not
- * valid table markup, and a row has no positioning context to hang one off
- * anyway. So a row says it in the one channel it does own: its background.
- *
- * It loses the ring, and does not need it. A card floats on the canvas and has
- * to draw its own edge to be picked out; a row is already fenced top and bottom
- * by the table's hairlines, so the wash alone reads as "this line, not the one
- * above it". The wash is a step stronger than the card's — 0.16 against 0.11 —
- * because it is the only channel carrying the message here, and because it has
- * to beat the row hover it is sitting under.
- *
- * Replaying it needs a remount, since an animation does not restart on an
- * element that already carries its class. The row's key carries the change
- * stamp for exactly that reason; shared/Landed.jsx builds both halves together
- * so a caller cannot take the class without the key and quietly get a mark
- * that fires once and never again.
- */
 @keyframes lsb-land-row {
-  0%   { background-color: rgb(var(--c-landed) / 0); }
-  10%  { background-color: rgb(var(--c-landed) / 0.16); }
-  45%  { background-color: rgb(var(--c-landed) / 0.16); }
-  100% { background-color: rgb(var(--c-landed) / 0); }
+  0% { background-color: transparent; }
+  10%, 45% { background-color: color-mix(in srgb, var(--success) 12%, transparent); }
+  100% { background-color: transparent; }
 }
-
 .lsb-landed-row { animation: lsb-land-row 900ms ease-out forwards; }
 
-/* The desktop half of the landing, and most of what the wider breakpoint buys.
- * An office screen is bigger, further away, and holding more rows around the
- * one that changed — an 11% flat tint at that distance is the easiest thing on
- * the page to miss. The inner glow makes the card read as LIT from its own
- * edges rather than tinted, which is what survives the extra distance.
- *
- * It is a static shadow on an element whose animation is still pure opacity,
- * so it is rasterised once and then composited: the same per-frame cost as the
- * tablet version, which is the only reason it is allowed at all. */
-@media (min-width: 1280px) {
-  .lsb-landed {
-    box-shadow:
-      inset 0 0 0 2px rgb(var(--c-landed) / 0.5),
-      inset 0 0 28px -6px rgb(var(--c-landed) / 0.4);
-  }
-}
-
-/* REDUCED MOTION IS LESS MOVEMENT, NOT A DEAD INTERFACE.
- *
- * This block used to flatten every transition and animation in the app to 1ms,
- * which took the hover wash, the focus ring and the landing confirmation down
- * with the movement. Somebody who has asked their phone for less motion still
- * needs to see that their tap registered — arguably needs it more.
- *
- * So what goes is TRAVEL. `transition-property` is narrowed to the properties
- * that do not move anything, which turns any transform or filter transition in
- * the app into an instant change without having to find them all; the rise
- * becomes a plain fade; the landing wash stays, because it is colour. The
- * loading spinner is deliberately left alone: a spinner that stops reads as a
- * frozen app, and a 24px rotation is not what this preference is protecting
- * anyone from.
- *
- * Both landing marks come through this untouched, and that is a decision
- * rather than an oversight: neither one moves. `lsb-land` animates opacity and
- * `lsb-land-row` animates a background colour, which is the same category as
- * the hover wash and the focus ring. Somebody who asked for less motion still
- * gets told their entry went in.
- */
+/* Reduced motion keeps feedback, drops travel. */
 @media (prefers-reduced-motion: reduce) {
-  .lsb-rise { animation-name: lsb-fade; }
-  /* The sign-in arrival keeps its fade and loses its travel; the photograph
-     does not drift (its rotation never starts either -- see AuthLayout). */
-  .lsb-auth-enter > *, .lsb-auth-late { animation-name: lsb-fade; }
-  .lsb-drift { animation: none; }
-  /* The one genuine loop in the app: the loading skeleton's pulse. It rests. */
-  .animate-pulse { animation: none !important; }
-
   *, *::before, *::after {
-    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
 }
 
 /* ---- the printed order slip ------------------------------------------------
  *
- * See components/orders/OrderSlip.jsx for what this document is and why it is
- * not the order screen with its furniture hidden. This half is the medium: a
- * sheet of A4 in an office inkjet, read at arm's length and then filed or
- * handed over.
- *
- * PAPER IS NOT A SMALL SCREEN, and three of this system's rules change shape
- * when they cross over:
- *
- *   TYPE. The 16px floor exists so a screen can be read from a standing
- *   position at a counter. A held sheet is 35cm from the eye rather than 60cm+,
- *   where 11pt subtends a larger angle than 16px does — so 11pt body here IS
- *   the floor, honoured in what it was for rather than in its number. Nothing
- *   drops below 9pt, and what does is a tracked uppercase signpost or a footer
- *   line, which is the same exception the screen already names.
- *
- *   COLOUR. Ink costs money and most offices print mono. So the palette is
- *   spent once — navy on the business's own name and the rule under it — and
- *   every other distinction is carried by weight, rule and space, which survive
- *   a greyscale cartridge intact. There are no filled bands: a header band is a
- *   rule here, not a block of toner.
- *
- *   DEPTH. There is none. Shadow does not exist on paper, and a page that tries
- *   to imply it reads as a screenshot of something else, which is the exact
- *   thing this replaced.
+ * See components/orders/OrderSlip.jsx. A sheet of A4 from an office inkjet,
+ * read at arm's length: neutral ink, one brand rule under the letterhead, and
+ * every other distinction carried by weight, rule and space so it survives a
+ * mono cartridge.
  * --------------------------------------------------------------------------- */
-
-/* Off-screen entirely. It exists in the DOM only so the printer can find it. */
 .slip { display: none; }
 
 @media print {
-  /* A4, with margins wide enough to survive a printer's unprintable edge and
-     to leave a thumb's worth of room beside the item table. */
-  @page {
-    size: A4;
-    margin: 16mm 15mm;
-  }
+  @page { size: A4; margin: 16mm 15mm; }
 
-  /* The application, gone in one line — which is the whole reason the slip is
-     portalled to <body> rather than nested inside the page that opened it. */
   #root { display: none !important; }
 
-  html, body {
-    background: #fff;
-    margin: 0;
-    padding: 0;
-  }
+  html, body { background: #fff; margin: 0; padding: 0; }
 
   .slip {
     display: block;
-    color: #111d2b;
-    font-family: Manrope, system-ui, -apple-system, 'Segoe UI', sans-serif;
-    font-size: 11pt;
+    color: #09090b;
+    font-family: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 10.5pt;
     line-height: 1.45;
     font-variant-numeric: tabular-nums;
     -webkit-print-color-adjust: exact;
@@ -511,237 +301,80 @@ html.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.22); }
 
   .slip p { margin: 0; }
 
-  /* ---- letterhead ---- */
-  .slip-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12mm;
-  }
-
-  .slip-brand {
-    font-size: 20pt;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    color: #0e2f5c;
-  }
-
-  .slip-trade {
-    padding-top: 1.5mm;
-    font-size: 9.5pt;
-    color: #4b5768;
-  }
-
+  .slip-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12mm; }
+  .slip-brand { font-size: 18pt; font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; }
+  .slip-trade { padding-top: 1.5mm; font-size: 9.5pt; color: #52525b; }
   .slip-head-right { text-align: right; }
+  .slip-doc { font-size: 9pt; font-weight: 500; color: #71717a; }
+  .slip-number { font-size: 17pt; font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; }
+  .slip-written { padding-top: 1mm; font-size: 9.5pt; color: #52525b; }
+  .slip-standing { display: inline-block; margin-top: 2mm; font-size: 9pt; font-weight: 500; color: #52525b; }
+  .slip-standing-off { padding: 1mm 2.5mm; border: 0.3mm solid #b91c1c; color: #b91c1c; }
+  .slip-rule { height: 0.8mm; margin: 4mm 0 6mm; background: #004E89; }
 
-  /* The tracked uppercase signpost, read once — the one place type is allowed
-     below the body size, exactly as on screen. */
-  .slip-doc {
-    font-size: 9pt;
-    font-weight: 800;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #4b5768;
-  }
-
-  .slip-number {
-    font-size: 19pt;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-  }
-
-  .slip-written {
-    padding-top: 1mm;
-    font-size: 9.5pt;
-    color: #4b5768;
-  }
-
-  /* Where the order stands. Ordinary standings are a quiet tracked caption; a
-     called-off order is boxed in the alert red, because it is the one thing on
-     this page somebody must not miss and a greyscale printer flattens colour
-     alone into nothing. The border is what survives the mono cartridge. */
-  .slip-standing {
-    display: inline-block;
-    margin-top: 2mm;
-    font-size: 8.5pt;
-    font-weight: 800;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #4b5768;
-  }
-
-  .slip-standing-off {
-    padding: 1mm 2.5mm;
-    border: 0.4mm solid #a8332f;
-    color: #a8332f;
-  }
-
-  /* The one confident mark on the page. Everything below it is quiet. */
-  .slip-rule {
-    height: 1.2mm;
-    margin: 4mm 0 6mm;
-    background: #0e2f5c;
-  }
-
-  /* ---- who, where, when ---- */
-  .slip-parties {
-    display: flex;
-    gap: 8mm;
-    padding-bottom: 7mm;
-  }
-
-  /* Two columns, not three, and the customer gets the wider one: an address is
-     the longest thing on this page and was breaking over three lines inside a
-     third of the sheet. */
+  .slip-parties { display: flex; gap: 8mm; padding-bottom: 7mm; }
   .slip-party { flex: 1 1 0; min-width: 0; }
   .slip-party:first-child { flex: 1.2 1 0; }
+  .slip-party-title { padding-bottom: 1.5mm; font-size: 9pt; font-weight: 500; color: #71717a; }
+  .slip-line { font-size: 10.5pt; line-height: 1.4; }
+  .slip-line strong { font-weight: 600; }
 
-  .slip-party-title {
-    padding-bottom: 1.5mm;
-    font-size: 8.5pt;
-    font-weight: 800;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: #4b5768;
-  }
-
-  .slip-line {
-    font-size: 10.5pt;
-    line-height: 1.4;
-  }
-
-  .slip-line strong { font-weight: 800; }
-
-  /* ---- what was ordered ---- */
-  .slip-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-
-  /* The one thing a printed table must do and a screen one never has to: carry
-     its own column headings onto the second sheet. */
+  .slip-table { width: 100%; border-collapse: collapse; }
   .slip-table thead { display: table-header-group; }
   .slip-table tr { break-inside: avoid; }
-
   .slip-table th {
-    padding: 0 0 2mm;
-    border-bottom: 0.6mm solid #111d2b;
-    font-size: 8.5pt;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    text-align: left;
-    color: #111d2b;
+    padding: 0 0 2mm; border-bottom: 0.3mm solid #09090b;
+    font-size: 9pt; font-weight: 500; text-align: left; color: #52525b;
   }
-
-  .slip-table td {
-    padding: 2.6mm 0;
-    border-bottom: 0.2mm solid rgba(17, 29, 43, 0.18);
-    font-size: 10.5pt;
-    vertical-align: top;
-  }
-
-  /* Padding, not just width. Butted up against each other these read as one
-     phrase -- "HOW MANY EACH" -- rather than as two column headings, and the
-     figures under them ran together the same way. */
+  .slip-table td { padding: 2.4mm 0; border-bottom: 0.2mm solid #e4e4e7; font-size: 10.5pt; vertical-align: top; }
   .slip-th-qty, .slip-td-qty { width: 28mm; padding-left: 8mm; text-align: right; }
   .slip-th-money, .slip-td-money { width: 34mm; padding-left: 8mm; text-align: right; }
-  .slip-td-money, .slip-td-qty { font-variant-numeric: tabular-nums; }
 
-  /* ---- what it comes to ---- */
-  .slip-totals {
-    display: flex;
-    justify-content: flex-end;
-    padding-top: 5mm;
-    break-inside: avoid;
+  /* RUN SHEET (RunSheet.jsx). The driver's round rather than a customer's
+     document: grouped by whose truck it is on, with a box to tick per stop.
+     A group is kept off a page break so no driver's block is split in two. */
+  .sheet-group { padding-top: 7mm; break-inside: avoid; }
+  .sheet-group:first-of-type { padding-top: 0; }
+  .sheet-driver { display: flex; align-items: baseline; justify-content: space-between; padding-bottom: 2mm; }
+  .sheet-driver-name { font-size: 12pt; font-weight: 600; letter-spacing: -0.01em; }
+  .sheet-driver-count { font-size: 9pt; font-weight: 500; color: #71717a; }
+
+  .run-th-no, .run-td-no { width: 24mm; }
+  .run-th-items, .run-td-items { width: 16mm; text-align: right; }
+  .run-th-due, .run-td-due { width: 30mm; padding-left: 6mm; }
+  .run-th-done, .run-td-done { width: 16mm; text-align: center; }
+
+  .run-order { display: block; font-size: 8.5pt; color: #71717a; }
+  .run-customer { display: block; font-weight: 500; }
+  .run-where { display: block; font-size: 9.5pt; color: #52525b; }
+  .run-stage { display: block; font-size: 8.5pt; color: #71717a; }
+
+  /* Ticked with a pen in the cab. 0.3mm matches the table's header rule, so
+     the box reads as part of the ruling rather than as a printed glyph. */
+  .run-tick {
+    display: inline-block; width: 4.5mm; height: 4.5mm;
+    border: 0.3mm solid #09090b; border-radius: 0.6mm;
   }
 
-  .slip-totals dl {
-    width: 78mm;
-    margin: 0;
-  }
+  .slip-totals { display: flex; justify-content: flex-end; padding-top: 5mm; break-inside: avoid; }
+  .slip-totals dl { width: 78mm; margin: 0; }
+  .slip-totals div { display: flex; justify-content: space-between; gap: 6mm; padding: 1.4mm 0; }
+  .slip-totals dt { font-size: 10.5pt; color: #3f3f46; }
+  .slip-totals dd { margin: 0; font-size: 10.5pt; font-weight: 500; }
+  .slip-total-row { margin-top: 1.5mm; border-top: 0.3mm solid #09090b; padding-top: 2.5mm !important; }
+  .slip-total-row dt { font-size: 11pt !important; font-weight: 600; color: #09090b !important; }
+  .slip-total-row dd { font-size: 13pt !important; font-weight: 600; }
 
-  .slip-totals div {
-    display: flex;
-    justify-content: space-between;
-    gap: 6mm;
-    padding: 1.4mm 0;
-  }
+  .slip-notes { margin-top: 6mm; padding-top: 3mm; border-top: 0.2mm solid #e4e4e7; break-inside: avoid; }
+  .slip-notes p { padding-bottom: 1.2mm; font-size: 9.5pt; color: #3f3f46; }
 
-  .slip-totals dt { font-size: 10.5pt; color: #324054; }
-  .slip-totals dd { margin: 0; font-size: 10.5pt; font-weight: 700; }
-
-  /* The figure read aloud to a customer. It gets the page's second rule and the
-     only other size jump, because it is the one number anybody looks for. */
-  .slip-total-row {
-    margin-top: 1.5mm;
-    border-top: 0.5mm solid #111d2b;
-    padding-top: 2.5mm !important;
-  }
-
-  .slip-total-row dt {
-    font-size: 12pt !important;
-    font-weight: 800;
-    color: #111d2b !important;
-  }
-
-  .slip-total-row dd { font-size: 14pt !important; font-weight: 800; }
-
-  /* ---- anything that changed after the fact ---- */
-  .slip-notes {
-    margin-top: 6mm;
-    padding-top: 3mm;
-    border-top: 0.2mm solid rgba(17, 29, 43, 0.18);
-    break-inside: avoid;
-  }
-
-  .slip-notes p {
-    padding-bottom: 1.2mm;
-    font-size: 9.5pt;
-    color: #324054;
-  }
-
-  /* ---- signatures ---- */
-  .slip-sign {
-    display: flex;
-    gap: 14mm;
-    padding-top: 16mm;
-    break-inside: avoid;
-  }
-
+  .slip-sign { display: flex; gap: 14mm; padding-top: 16mm; break-inside: avoid; }
   .slip-sign > div { flex: 1 1 0; }
+  .slip-sign-line { height: 0; border-top: 0.3mm solid #09090b; }
+  .slip-sign p { padding-top: 1.5mm; font-size: 9pt; font-weight: 500; color: #71717a; }
 
-  .slip-sign-line {
-    height: 0;
-    border-top: 0.3mm solid #111d2b;
-  }
-
-  .slip-sign p {
-    padding-top: 1.5mm;
-    font-size: 8.5pt;
-    font-weight: 800;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #4b5768;
-  }
-
-  /* ---- the honest footer ---- */
-  .slip-foot {
-    margin-top: 10mm;
-    padding-top: 3mm;
-    border-top: 0.2mm solid rgba(17, 29, 43, 0.18);
-    break-inside: avoid;
-  }
-
-  .slip-foot p {
-    font-size: 9pt;
-    line-height: 1.45;
-    color: #4b5768;
-  }
-
-  .slip-foot strong { font-weight: 800; color: #111d2b; }
-
+  .slip-foot { margin-top: 10mm; padding-top: 3mm; border-top: 0.2mm solid #e4e4e7; break-inside: avoid; }
+  .slip-foot p { font-size: 9pt; line-height: 1.45; color: #52525b; }
+  .slip-foot strong { font-weight: 600; color: #09090b; }
   .slip-foot p + p { padding-top: 1.5mm; }
 }

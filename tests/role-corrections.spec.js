@@ -23,24 +23,31 @@ async function setup(page, baseURL, as, configure) {
   return tables;
 }
 
-const ALL = ['Start production', 'Send to quality check', 'Finish batch & quality check', 'Back to planned',
-  'Back to in production', 'Change details', 'Cancel batch', 'Re-open batch', 'Delete batch'];
+// The design's batch table shows each stage's next step as the row's one
+// button ("Start making", "Send to check", "Count and finish") and puts the
+// corrections behind the row's "More for <batch>" menu.
+const PRIMARY = ['Start making', 'Send to check', 'Count and finish'];
+const MENU = ['Back to planned', 'Back to in production', 'Change details', 'Cancel batch', 'Re-open batch', 'Delete batch'];
+
+async function openMore(page) {
+  await page.getByRole('main').getByRole('button', { name: `More for ${BATCH.batch_code}` }).click();
+}
 
 const EXPECTED = {
   Queued: {
-    [PRODUCTION]: ['Start production', 'Cancel batch'],
-    [MANAGER]: ['Start production', 'Change details', 'Cancel batch'],
-    [ADMIN]: ['Start production', 'Change details', 'Cancel batch', 'Delete batch'],
+    [PRODUCTION]: ['Start making', 'Cancel batch'],
+    [MANAGER]: ['Start making', 'Change details', 'Cancel batch'],
+    [ADMIN]: ['Start making', 'Change details', 'Cancel batch', 'Delete batch'],
   },
   'In Progress': {
-    [PRODUCTION]: ['Send to quality check', 'Back to planned'],
-    [MANAGER]: ['Send to quality check', 'Back to planned', 'Change details', 'Cancel batch'],
-    [ADMIN]: ['Send to quality check', 'Back to planned', 'Change details', 'Cancel batch'],
+    [PRODUCTION]: ['Send to check', 'Back to planned'],
+    [MANAGER]: ['Send to check', 'Back to planned', 'Change details', 'Cancel batch'],
+    [ADMIN]: ['Send to check', 'Back to planned', 'Change details', 'Cancel batch'],
   },
   'Quality Check': {
-    [PRODUCTION]: ['Finish batch & quality check', 'Back to in production'],
-    [MANAGER]: ['Finish batch & quality check', 'Back to in production', 'Change details', 'Cancel batch'],
-    [ADMIN]: ['Finish batch & quality check', 'Back to in production', 'Change details', 'Cancel batch'],
+    [PRODUCTION]: ['Count and finish', 'Back to in production'],
+    [MANAGER]: ['Count and finish', 'Back to in production', 'Change details', 'Cancel batch'],
+    [ADMIN]: ['Count and finish', 'Back to in production', 'Change details', 'Cancel batch'],
   },
   Completed: { [PRODUCTION]: [], [MANAGER]: [], [ADMIN]: ['Re-open batch'] },
   Cancelled: { [PRODUCTION]: [], [MANAGER]: [], [ADMIN]: ['Delete batch'] },
@@ -51,10 +58,19 @@ for (const [status, byRole] of Object.entries(EXPECTED)) {
     test(`a ${status} batch offers ${as.split('@')[0]} exactly: ${offered.join(', ') || 'nothing'}`, async ({ page, baseURL }) => {
       await setup(page, baseURL, as, (tables) => tables.production_batches.push({ ...BATCH, status, good_output_qty: status === 'Completed' ? 95 : 0 }));
       await page.goto(`${baseURL}/production`);
-      await page.getByRole('radio', { name: /All batches/ }).click();
+      await page.getByRole('button', { name: /All batches/ }).click();
       await expect(page.getByRole('main').getByText(BATCH.batch_code)).toBeVisible();
-      for (const name of ALL) {
+      for (const name of PRIMARY) {
         await expect(page.getByRole('main').getByRole('button', { name, exact: true }), name).toHaveCount(offered.includes(name) ? 1 : 0);
+      }
+      const more = page.getByRole('main').getByRole('button', { name: `More for ${BATCH.batch_code}` });
+      if (!offered.some((name) => MENU.includes(name))) {
+        await expect(more).toHaveCount(0);
+        return;
+      }
+      await more.click();
+      for (const name of MENU) {
+        await expect(page.getByRole('menuitem', { name, exact: true }), name).toHaveCount(offered.includes(name) ? 1 : 0);
       }
     });
   }
@@ -70,11 +86,12 @@ test('an administrator re-opens a finished batch, saying what was wrong', async 
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(batch) });
   });
   await page.goto(`${baseURL}/production`);
-  await page.getByRole('radio', { name: /All batches/ }).click();
-  await page.getByRole('button', { name: 'Re-open batch', exact: true }).click();
+  await page.getByRole('button', { name: /All batches/ }).click();
+  await openMore(page);
+  await page.getByRole('menuitem', { name: 'Re-open batch', exact: true }).click();
 
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('The 95 good pieces come back off Products & stock');
+  await expect(dialog).toContainText('The 95 good pieces come back off Inventory');
   await dialog.getByRole('button', { name: 'Re-open batch' }).click();
   await expect(dialog.getByText('Write why, so the activity log explains it.').first()).toBeVisible();
   expect(command).toBeUndefined();
@@ -85,7 +102,7 @@ test('an administrator re-opens a finished batch, saying what was wrong', async 
   expect(command.p_action).toBe('reopen_batch');
   expect(command.p_data).toMatchObject({ id: 1001, reason: 'Counted 95 good, there were 90' });
   await expect(page.getByText(`${BATCH.batch_code} is back at quality check.`)).toBeVisible();
-  await expect(page.getByRole('main').getByRole('button', { name: 'Finish batch & quality check', exact: true })).toBeVisible();
+  await expect(page.getByRole('main').getByRole('button', { name: 'Count and finish', exact: true })).toBeVisible();
 });
 
 test('a manager changes a batch already in production', async ({ page, baseURL }) => {
@@ -97,19 +114,20 @@ test('a manager changes a batch already in production', async ({ page, baseURL }
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify(tables.production_batches[0]) });
   });
   await page.goto(`${baseURL}/production`);
-  await page.getByRole('button', { name: 'Change details', exact: true }).click();
+  await openMore(page);
+  await page.getByRole('menuitem', { name: 'Change details', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Target pieces').fill('120');
+  await dialog.getByLabel('How many').fill('120');
   await dialog.getByLabel('Material to set aside').fill('49');
-  await dialog.getByRole('button', { name: 'Save the changes' }).click();
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toContainText('Only 48 sheets');
   expect(command).toBeUndefined();
   await dialog.getByLabel('Material to set aside').fill('48');
-  await dialog.getByRole('button', { name: 'Save the changes' }).click();
+  await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toHaveCount(0);
   expect(command.p_action).toBe('edit_batch');
   expect(command.p_data).toMatchObject({ id: 1001, output_qty: '120', material_qty: '48', assigned_staff_id: 3 });
-  await expect(page.getByRole('main')).toContainText('Target 120 pieces');
+  await expect(page.getByRole('main').getByRole('row', { name: new RegExp(BATCH.batch_code) })).toContainText('120');
 });
 
 test('a batch deleted by an administrator leaves the list', async ({ page, baseURL }) => {
@@ -119,7 +137,8 @@ test('a batch deleted by an administrator leaves the list', async ({ page, baseU
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: BATCH.id, deleted: true, batch_code: BATCH.batch_code }) });
   });
   await page.goto(`${baseURL}/production`);
-  await page.getByRole('button', { name: 'Delete batch', exact: true }).click();
+  await openMore(page);
+  await page.getByRole('menuitem', { name: 'Delete batch', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Why is it being deleted?').fill('Entered twice');
   await dialog.getByRole('button', { name: 'Delete batch' }).click();
@@ -134,15 +153,17 @@ const orderOnTheWay = (t) => t.raw_material_orders.push({ id: 801, supplier_id: 
 test('a manager can cancel a supplier order on the way, but not delete it', async ({ page, baseURL }) => {
   await setup(page, baseURL, MANAGER, orderOnTheWay);
   await page.goto(`${baseURL}/raw-material-orders`);
-  await expect(page.getByRole('button', { name: 'Cancel order', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete order', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'More for order 801' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Cancel order', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Delete order', exact: true })).toHaveCount(0);
 });
 
 test('an administrator can delete a supplier order that never arrived', async ({ page, baseURL }) => {
   await setup(page, baseURL, ADMIN, orderOnTheWay);
   await page.goto(`${baseURL}/raw-material-orders`);
-  await expect(page.getByRole('button', { name: 'Cancel order', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Delete order', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'More for order 801' }).click();
+  await expect(page.getByRole('menuitem', { name: 'Cancel order', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Delete order', exact: true })).toBeVisible();
 });
 
 test('a manager removes a recipe', async ({ page, baseURL }) => {
@@ -154,6 +175,8 @@ test('a manager removes a recipe', async ({ page, baseURL }) => {
     await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: 901, deleted: true }) });
   });
   await page.goto(`${baseURL}/production`);
+  // Recipes sit under the make list in the design's Batches screen.
+  await page.getByRole('button', { name: 'Make list' }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Confirm this step' }).click();
   expect(command).toMatchObject({ p_action: 'delete_recipe', p_data: { id: 901 } });

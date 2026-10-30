@@ -20,10 +20,14 @@ const BY_VIEW = {
   'order-form': CUSTOMER_FACTS,
   'order-edit': CUSTOMER_FACTS,
   'order-detail': ['customers'],
-  suppliers: ['suppliers'],
+  // The Suppliers screen's on-time, lead-time and spend figures.
+  suppliers: ['suppliers', 'materialOrders', 'rawMaterials'],
   'supplier-detail': ['suppliers', 'materialOrders', 'rawMaterials'],
   activity: ['activity'],
-  products: ['categories'],
+  // The Inventory screen's "Raw materials to order" card.
+  products: ['categories', 'rawMaterials', 'batches'],
+  // The Product detail screen's recipe and batches.
+  'product-detail': ['batches', 'recipes', 'rawMaterials'],
   'product-form': ['categories'],
   'raw-materials': ['suppliers', ...WORKSHOP],
   'raw-material-detail': ['suppliers', ...WORKSHOP],
@@ -58,4 +62,6 @@ export const DIALOG_NEEDS = {
   customer: ['customers'],
   supplier: ['suppliers'],
   startBatch: WORKSHOP,
+  addProduct: ['categories'],
+  newOrder: CUSTOMER_FACTS,
 };

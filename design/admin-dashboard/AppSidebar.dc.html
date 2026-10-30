@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>App sidebar</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<aside aria-label="Main navigation" style="position: relative; box-sizing: border-box; width: {{w}}px; min-height: {{h}}px; display: flex; flex-direction: column; background: {{c.sidebar}}; color: {{c.fg}}; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<!-- SidebarHeader: workspace switcher -->
+<div style="padding: 8px;">
+<button type="button" aria-haspopup="menu" aria-label="Workspace: LSB Handicrafts" style="display: flex; align-items: center; gap: 8px; width: 100%; height: {{lgH}}px; padding: {{lgPad}}; justify-content: {{justify}}; box-sizing: border-box; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;">
+<span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 6px; background: {{c.logoBg}}; color: {{c.logoFg}}; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; letter-spacing: 0.02em;">LSB</span>
+<span style="display: {{textD}}; flex-direction: column; flex: 1; min-width: 0;">
+<span style="font-size: 14px; line-height: 18px; font-weight: 600; color: {{c.strong}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">LSB Handicrafts</span>
+<span style="font-size: 12px; line-height: 16px; color: {{c.muted}}; white-space: nowrap;">Management system</span>
+</span>
+<span style="display: {{textD}}; color: {{c.muted}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></span>
+</button>
+</div>
+
+<!-- SidebarContent -->
+<div style="flex: 1; display: flex; flex-direction: column; padding: 0 8px;">
+
+<div role="group" aria-label="Overview" style="padding: 4px 0;">
+<div style="display: {{textD}}; height: 32px; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 500; color: {{c.muted}};">Overview</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+<li>
+<a href="Main.dc.html" aria-label="Dashboard" aria-current="{{nav.dashboard.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.dashboard.color}}; background: {{nav.dashboard.bg}}; font-weight: {{nav.dashboard.fw}};">
+<span aria-hidden="true" style="display: {{nav.dashboard.ind}}; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: {{c.primary}};"></span>
+<span style="display: {{nav.dashboard.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="72" height="72" rx="8"></rect><rect x="144" y="40" width="72" height="72" rx="8"></rect><rect x="40" y="144" width="72" height="72" rx="8"></rect><rect x="144" y="144" width="72" height="72" rx="8"></rect></svg></span>
+<span style="display: {{nav.dashboard.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><rect x="32" y="32" width="88" height="88" rx="12"></rect><rect x="136" y="32" width="88" height="88" rx="12"></rect><rect x="32" y="136" width="88" height="88" rx="12"></rect><rect x="136" y="136" width="88" height="88" rx="12"></rect></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Dashboard</span>
+</a>
+</li>
+</ul>
+</div>
+
+<div role="group" aria-label="Operations" style="padding: 4px 0;">
+<div style="display: {{textD}}; height: 32px; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 500; color: {{c.muted}};">Operations</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+<li>
+<a href="Orders.dc.html" aria-label="Orders, 12 open" aria-current="{{nav.orders.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.orders.color}}; background: {{nav.orders.bg}}; font-weight: {{nav.orders.fw}};">
+<span style="display: {{nav.orders.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M72 104h112M72 136h112M32 208V56a8 8 0 0 1 8-8h176a8 8 0 0 1 8 8v152l-32-16-32 16-32-16-32 16-32-16Z"></path></svg></span>
+<span style="display: {{nav.orders.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" aria-hidden="true"><path d="M32 208V56a8 8 0 0 1 8-8h176a8 8 0 0 1 8 8v152l-32-16-32 16-32-16-32 16-32-16Z" fill="currentColor"></path><path d="M72 104h112M72 136h112" fill="none" stroke-width="16" stroke-linecap="round" style="stroke: {{nav.orders.bg}}"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Orders</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.orders.badge}};">12</span>
+</a>
+</li>
+<li>
+<a href="Stock.dc.html" aria-label="Inventory, 7 running low" aria-current="{{nav.inventory.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.inventory.color}}; background: {{nav.inventory.bg}}; font-weight: {{nav.inventory.fw}};">
+<span style="display: {{nav.inventory.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 129.09V232M32.7 76.92 128 129.09l95.3-52.17M219.84 182.84l-88 48.18a8 8 0 0 1-7.68 0l-88-48.18a8 8 0 0 1-4.16-7V80.18a8 8 0 0 1 4.16-7l88-48.18a8 8 0 0 1 7.68 0l88 48.18a8 8 0 0 1 4.16 7v95.64a8 8 0 0 1-4.16 7Z"></path></svg></span>
+<span style="display: {{nav.inventory.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" aria-hidden="true"><path d="M223.68 66.15 135.68 18a15.88 15.88 0 0 0-15.36 0l-88 48.17A16 16 0 0 0 24 80.18v95.64a16 16 0 0 0 8.32 14l88 48.17a15.88 15.88 0 0 0 15.36 0l88-48.17a16 16 0 0 0 8.32-14V80.18a16 16 0 0 0-8.32-14.03Z" fill="currentColor"></path><path d="M128 129.09V232M32.7 76.92 128 129.09l95.3-52.17" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" style="stroke: {{nav.inventory.bg}}"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Inventory</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.inventory.badge}};">7</span>
+</a>
+</li>
+<li>
+<a href="Deliveries.dc.html" aria-label="Deliveries, 9 open" aria-current="{{nav.deliveries.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.deliveries.color}}; background: {{nav.deliveries.bg}}; font-weight: {{nav.deliveries.fw}};">
+<span style="display: {{nav.deliveries.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 56h152v104H16ZM168 88h44l28 40v32h-72"></path><circle cx="64" cy="188" r="20"></circle><circle cx="196" cy="188" r="20"></circle></svg></span>
+<span style="display: {{nav.deliveries.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="currentColor" stroke="currentColor" stroke-width="16" stroke-linejoin="round" aria-hidden="true"><path d="M16 56h152v104H16ZM168 88h44l28 40v32h-72Z"></path><circle cx="64" cy="188" r="20"></circle><circle cx="196" cy="188" r="20"></circle></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Deliveries</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.deliveries.badge}};">9</span>
+</a>
+</li>
+<li>
+<button type="button" aria-label="Production, 5 unfinished batches" aria-expanded="{{prodOpen}}" aria-controls="production-sub" onClick="{{toggleProd}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border: 0; border-radius: 6px; color: {{nav.production.color}}; background: {{nav.production.bg}}; font: inherit; font-weight: {{nav.production.fw}}; text-align: left; cursor: pointer;">
+<span style="display: {{nav.production.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 216l96-96"></path><path d="M112 96l48-48 56 56-48 48Z"></path></svg></span>
+<span style="display: {{nav.production.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" stroke="currentColor" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 216l96-96" fill="none"></path><path d="M112 96l48-48 56 56-48 48Z" fill="currentColor"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Production</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.production.badge}};">5</span>
+<span style="display: {{textBlockD}}; line-height: 0; color: {{c.muted}}; transform: {{prodCaret}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></span>
+</button>
+<ul id="production-sub" style="display: {{prodSubD}}; flex-direction: column; gap: 2px; list-style: none; margin: 2px 0 0 14px; padding: 2px 0 2px 10px; border-left: 1px solid {{c.border}};">
+<li><a href="Production.dc.html" aria-current="{{psub.batches.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{psub.batches.color}}; background: {{psub.batches.bg}}; font-weight: {{psub.batches.fw}}; text-decoration: none;">Batches</a></li>
+<li><a href="RawMaterials.dc.html" aria-current="{{psub.materials.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{psub.materials.color}}; background: {{psub.materials.bg}}; font-weight: {{psub.materials.fw}}; text-decoration: none;">Raw materials</a></li>
+<li><a href="Purchasing.dc.html" aria-current="{{psub.purchasing.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{psub.purchasing.color}}; background: {{psub.purchasing.bg}}; font-weight: {{psub.purchasing.fw}}; text-decoration: none;">Purchasing</a></li>
+<li><a href="ProductionReport.dc.html" aria-current="{{psub.report.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{psub.report.color}}; background: {{psub.report.bg}}; font-weight: {{psub.report.fw}}; text-decoration: none;">Production report</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+<div role="group" aria-label="People" style="padding: 4px 0;">
+<div style="display: {{textD}}; height: 32px; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 500; color: {{c.muted}};">People</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+<li>
+<a href="Users.dc.html" aria-label="User Management, 42 accounts" aria-current="{{nav.users.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.users.color}}; background: {{nav.users.bg}}; font-weight: {{nav.users.fw}};">
+<span aria-hidden="true" style="display: {{nav.users.ind}}; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: {{c.primary}};"></span>
+<span style="display: {{nav.users.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="84" cy="108" r="52"></circle><path d="M10.23 200a88 88 0 0 1 147.54 0M172 160a87.93 87.93 0 0 1 73.77 40M152.69 59.7A52 52 0 1 1 172 160"></path></svg></span>
+<span style="display: {{nav.users.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" aria-hidden="true"><circle cx="84" cy="108" r="60" fill="currentColor"></circle><path d="M6 208a92 92 0 0 1 156 0Z" fill="currentColor"></path><path d="M172 160a87.93 87.93 0 0 1 73.77 40M152.69 59.7A52 52 0 1 1 172 160" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">User Management</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.users.badge}};">42</span>
+</a>
+</li>
+<li>
+<a href="Staff.dc.html" aria-label="Staff Directory, 24 people" aria-current="{{nav.staff.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.staff.color}}; background: {{nav.staff.bg}}; font-weight: {{nav.staff.fw}};">
+<span aria-hidden="true" style="display: {{nav.staff.ind}}; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: {{c.primary}};"></span>
+<span style="display: {{nav.staff.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="24" y="48" width="208" height="160" rx="8"></rect><path d="M152 112h48M152 144h48"></path><circle cx="96" cy="120" r="24"></circle><path d="M64 168c3.55-13.8 17.09-24 32-24s28.46 10.19 32 24"></path></svg></span>
+<span style="display: {{nav.staff.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" aria-hidden="true"><rect x="16" y="40" width="224" height="176" rx="16" fill="currentColor"></rect><path d="M152 112h48M152 144h48" fill="none" stroke-width="16" stroke-linecap="round" style="stroke: {{nav.staff.bg}}"></path><circle cx="96" cy="120" r="24" style="fill: {{nav.staff.bg}}"></circle><path d="M60 172c4-16 19-28 36-28s32 12 36 28Z" style="fill: {{nav.staff.bg}}"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Staff Directory</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.staff.badge}};">24</span>
+</a>
+</li>
+</ul>
+</div>
+
+<div role="group" aria-label="Contacts" style="padding: 4px 0;">
+<div style="display: {{textD}}; height: 32px; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 500; color: {{c.muted}};">Contacts</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+<li>
+<a href="Customers.dc.html" aria-label="Customers, 86" aria-current="{{nav.customers.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.customers.color}}; background: {{nav.customers.bg}}; font-weight: {{nav.customers.fw}};">
+<span style="display: {{nav.customers.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 112v96h176v-96"></path><path d="M24 96 48 40h160l24 56Z"></path><path d="M104 208v-56h48v56"></path></svg></span>
+<span style="display: {{nav.customers.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 112v96h176v-96Z" fill="currentColor"></path><path d="M24 96 48 40h160l24 56Z" fill="currentColor"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Customers</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.customers.badge}};">86</span>
+</a>
+</li>
+<li>
+<a href="Suppliers.dc.html" aria-label="Suppliers, 6" aria-current="{{nav.suppliers.current}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border-radius: 6px; text-decoration: none; color: {{nav.suppliers.color}}; background: {{nav.suppliers.bg}}; font-weight: {{nav.suppliers.fw}};">
+<span style="display: {{nav.suppliers.line}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 208V96l64 40V96l64 40V96l64 40v72Z"></path><path d="M24 208h208"></path></svg></span>
+<span style="display: {{nav.suppliers.fill}}; line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 208V96l64 40V96l64 40V96l64 40v72Z" fill="currentColor"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Suppliers</span>
+<span aria-hidden="true" style="display: {{textBlockD}}; min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 6px; font-size: 12px; line-height: 20px; font-weight: 500; text-align: center; color: {{nav.suppliers.badge}};">6</span>
+</a>
+</li>
+</ul>
+</div>
+
+<div role="group" aria-label="System" style="padding: 4px 0;">
+<div style="display: {{textD}}; height: 32px; align-items: center; padding: 0 8px; font-size: 12px; font-weight: 500; color: {{c.muted}};">System</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px;">
+<li>
+<button type="button" aria-label="Settings" aria-expanded="{{settingsOpen}}" aria-controls="settings-sub" onClick="{{toggleSettings}}" style="position: relative; display: flex; align-items: center; gap: 8px; height: 32px; width: {{itemW}}; padding: {{itemPad}}; justify-content: {{justify}}; box-sizing: border-box; border: 0; border-radius: 6px; background: {{nav.settings.bg}}; color: {{nav.settings.color}}; font: inherit; font-weight: {{nav.settings.fw}}; text-align: left; cursor: pointer;">
+<span aria-hidden="true" style="display: {{nav.settings.ind}}; position: absolute; left: 0; top: 7px; bottom: 7px; width: 2px; border-radius: 2px; background: {{c.primary}};"></span>
+<span style="line-height: 0;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="128" cy="128" r="32" stroke-width="16"></circle><circle cx="128" cy="128" r="72" stroke-width="16"></circle><path d="M208 128h20M184.57 184.57l14.14 14.14M128 208v20M71.43 184.57l-14.14 14.14M48 128H28M71.43 71.43 57.29 57.29M128 48V28M184.57 71.43l14.14-14.14" stroke-width="24" stroke-linecap="butt"></path></svg></span>
+<span style="display: {{textD}}; flex: 1; white-space: nowrap;">Settings</span>
+<span style="display: {{textBlockD}}; line-height: 0; color: {{c.muted}}; transform: {{caretRot}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></span>
+</button>
+<ul id="settings-sub" style="display: {{subD}}; flex-direction: column; gap: 2px; list-style: none; margin: 2px 0 0 14px; padding: 2px 0 2px 10px; border-left: 1px solid {{c.border}};">
+<li><a href="SettingsGeneral.dc.html" aria-current="{{sub.general.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{sub.general.color}}; background: {{sub.general.bg}}; font-weight: {{sub.general.fw}}; text-decoration: none;">General</a></li>
+<li><a href="SettingsRoles.dc.html" aria-current="{{sub.roles.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{sub.roles.color}}; background: {{sub.roles.bg}}; font-weight: {{sub.roles.fw}}; text-decoration: none;">Roles and permissions</a></li>
+<li><a href="SettingsNotifications.dc.html" aria-current="{{sub.notifications.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{sub.notifications.color}}; background: {{sub.notifications.bg}}; font-weight: {{sub.notifications.fw}}; text-decoration: none;">Notifications</a></li>
+<li><a href="SettingsActivity.dc.html" aria-current="{{sub.activity.current}}" style="display: flex; align-items: center; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 13px; color: {{sub.activity.color}}; background: {{sub.activity.bg}}; font-weight: {{sub.activity.fw}}; text-decoration: none;">Activity log</a></li>
+</ul>
+</li>
+</ul>
+</div>
+
+</div>
+
+<!-- SidebarFooter: account -->
+<div style="position: relative; padding: 8px;">
+<button type="button" aria-haspopup="menu" aria-expanded="{{userMenuOpen}}" aria-label="Account menu for Maria Santos" onClick="{{toggleUserMenu}}" style="display: flex; align-items: center; gap: 8px; width: 100%; height: {{lgH}}px; padding: {{lgPad}}; justify-content: {{justify}}; box-sizing: border-box; border: 0; border-radius: 6px; background: {{userBtnBg}}; color: inherit; font: inherit; text-align: left; cursor: pointer;">
+<span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 6px; background: {{c.avatarBg}}; color: {{c.strong}}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500;">MS</span>
+<span style="display: {{textD}}; flex-direction: column; flex: 1; min-width: 0;">
+<span style="font-size: 14px; line-height: 18px; font-weight: 500; color: {{c.strong}}; white-space: nowrap;">Maria Santos</span>
+<span style="font-size: 12px; line-height: 16px; color: {{c.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">maria@lsbhandicrafts.ph</span>
+</span>
+<span style="display: {{textBlockD}}; line-height: 0; color: {{c.muted}};"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></span>
+</button>
+<div role="menu" aria-label="Account" style="display: {{userMenuD}}; position: absolute; left: {{menuLeft}}; bottom: 8px; z-index: 40; width: 224px; padding: 4px; box-sizing: border-box; background: {{c.popover}}; color: {{c.strong}}; border: 1px solid {{c.border}}; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+<div style="display: flex; align-items: center; gap: 8px; padding: 6px 8px;">
+<span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 6px; background: {{c.avatarBg}}; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500;">MS</span>
+<span style="display: flex; flex-direction: column; min-width: 0;"><span style="font-size: 14px; line-height: 18px; font-weight: 500;">Maria Santos</span><span style="font-size: 12px; line-height: 16px; color: {{c.muted}};">Admin</span></span>
+</div>
+<div role="separator" style="height: 1px; margin: 4px -4px; background: {{c.border}};"></div>
+<a role="menuitem" href="MyProfile.dc.html" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 4px; color: inherit; text-decoration: none; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: {{c.muted}}"><circle cx="128" cy="96" r="64"></circle><path d="M32 216c19.37-33.47 54.55-56 96-56s76.63 22.53 96 56"></path></svg>Profile</a>
+<div role="separator" style="height: 1px; margin: 4px -4px; background: {{c.border}};"></div>
+<a role="menuitem" href="Login.dc.html" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px; border-radius: 4px; color: inherit; text-decoration: none; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: {{c.muted}}"><path d="M112 216H48a8 8 0 0 1-8-8V48a8 8 0 0 1 8-8h64M112 128h104M176 88l40 40-40 40"></path></svg>Log out</a>
+</div>
+</div>
+
+<!-- Tooltip (collapsed state) -->
+<div role="tooltip" style="display: {{tooltipD}}; position: absolute; left: 52px; top: 236px; z-index: 40; padding: 6px 10px; border-radius: 6px; background: {{c.tooltipBg}}; color: {{c.tooltipFg}}; font-size: 12px; line-height: 16px; white-space: nowrap;">User Management</div>
+
+<!-- SidebarRail -->
+<button type="button" aria-label="Toggle sidebar" title="Toggle sidebar (Ctrl+B)" onClick="{{onRail}}" style="position: absolute; top: 0; bottom: 0; right: -8px; width: 16px; padding: 0; border: 0; background: transparent; cursor: ew-resize; z-index: 5;"></button>
+</aside>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["dashboard","orders","inventory","deliveries","production","users","staff","customers","suppliers","settings"],"default":"dashboard"},"psub":{"editor":"enum","options":["batches","materials","purchasing","report"],"default":"batches"},"sub":{"editor":"enum","options":["general","roles","notifications","activity"],"default":"general"},"collapsed":{"editor":"boolean","default":false},"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"settingsOpen":{"editor":"boolean","default":false},"userMenu":{"editor":"boolean","default":false},"tooltip":{"editor":"boolean","default":false},"h":{"editor":"int","default":880,"min":400,"max":2000},"onToggle":{"editor":null},"$preview":{"width":240,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const dark = p.theme === 'dark';
+    const collapsed = p.collapsed === true || p.collapsed === 'true';
+    const active = p.active ?? 'dashboard';
+    const prodOpen = s.prodOpen ?? (active === 'production');
+    const settingsOpen = s.settingsOpen ?? (p.settingsOpen === true || p.settingsOpen === 'true' || active === 'settings');
+    const userMenuOpen = s.userMenu ?? (p.userMenu === true || p.userMenu === 'true');
+    const tooltip = p.tooltip === true || p.tooltip === 'true';
+    const c = dark ? {
+      sidebar: '#18181b', fg: '#d4d4d8', strong: '#fafafa', muted: '#a1a1aa', accent: '#27272a', accentFg: '#fafafa',
+      border: '#27272a', primary: '#2878BE', logoBg: '#fafafa', logoFg: '#18181b', avatarBg: '#3f3f46',
+      popover: '#18181b', tooltipBg: '#fafafa', tooltipFg: '#09090b'
+    } : {
+      sidebar: 'var(--surface-2, #fafafa)', fg: 'var(--fg-2, #3f3f46)', strong: 'var(--foreground, #09090b)', muted: 'var(--muted-fg, #71717a)', accent: 'var(--muted, #f4f4f5)', accentFg: 'var(--foreground, #09090b)',
+      border: 'var(--border-subtle, #e4e4e7)', primary: 'var(--primary, #004E89)', logoBg: 'var(--inverse, #18181b)', logoFg: 'var(--inverse-fg, #fafafa)', avatarBg: 'var(--muted-strong, #e4e4e7)',
+      popover: 'var(--card, #ffffff)', tooltipBg: 'var(--inverse, #18181b)', tooltipFg: 'var(--inverse-fg, #fafafa)'
+    };
+    const item = (k) => {
+      const on = active === k;
+      return {
+        bg: on ? c.primary : 'transparent',
+        color: on ? 'var(--on-primary, #ffffff)' : c.fg,
+        badge: on ? 'rgba(255,255,255,0.85)' : c.muted,
+        fw: on ? '500' : '400',
+        ind: 'none',
+        fill: on ? 'block' : 'none',
+        line: on ? 'none' : 'block',
+        current: on ? 'page' : undefined
+      };
+    };
+    const h = parseInt(p.h, 10) || 880;
+    return {
+      c,
+      h,
+      nav: {
+        dashboard: item('dashboard'), orders: item('orders'), inventory: item('inventory'), deliveries: item('deliveries'),
+        production: collapsed ? item('production') : { ...item('none'), badge: c.muted, fw: active === 'production' ? '500' : '400', color: active === 'production' ? c.strong : c.fg },
+        users: item('users'), staff: item('staff'), customers: item('customers'), suppliers: item('suppliers'),
+        // The parent only fills when collapsed; open, the sub-item carries the selection.
+        settings: collapsed ? item('settings') : { ...item('none'), fw: active === 'settings' ? '500' : '400', color: active === 'settings' ? c.strong : c.fg }
+      },
+      prodOpen,
+      prodSubD: prodOpen && !collapsed ? 'flex' : 'none',
+      prodCaret: prodOpen ? 'rotate(90deg)' : 'none',
+      toggleProd: () => this.setState({ prodOpen: !prodOpen }),
+      psub: ['batches', 'materials', 'purchasing', 'report'].reduce((acc, k) => {
+        const on = active === 'production' && (p.psub ?? 'batches') === k;
+        acc[k] = { bg: on ? c.primary : 'transparent', color: on ? 'var(--on-primary, #ffffff)' : c.fg, fw: on ? '500' : '400', current: on ? 'page' : undefined };
+        return acc;
+      }, {}),
+      sub: ['general', 'roles', 'notifications', 'activity'].reduce((acc, k) => {
+        const on = active === 'settings' && (p.sub ?? 'general') === k;
+        acc[k] = { bg: on ? c.primary : 'transparent', color: on ? 'var(--on-primary, #ffffff)' : c.fg, fw: on ? '500' : '400', current: on ? 'page' : undefined };
+        return acc;
+      }, {}),
+      w: collapsed ? 48 : 240,
+      textD: collapsed ? 'none' : 'flex',
+      textBlockD: collapsed ? 'none' : 'block',
+      justify: collapsed ? 'center' : 'flex-start',
+      itemPad: collapsed ? '0' : '0 8px',
+      itemW: collapsed ? '32px' : '100%',
+      lgH: collapsed ? 32 : 48,
+      lgPad: collapsed ? '0' : '0 8px',
+      subD: settingsOpen && !collapsed ? 'flex' : 'none',
+      caretRot: settingsOpen ? 'rotate(90deg)' : 'none',
+      settingsOpen,
+      userMenuOpen,
+      userMenuD: userMenuOpen ? 'block' : 'none',
+      userBtnBg: userMenuOpen ? c.accent : 'transparent',
+      menuLeft: collapsed ? '52px' : '244px',
+      tooltipD: collapsed && tooltip ? 'block' : 'none',
+      toggleSettings: () => this.setState({ settingsOpen: !settingsOpen }),
+      toggleUserMenu: () => this.setState({ userMenu: !userMenuOpen }),
+      onRail: () => { if (typeof p.onToggle === 'function') p.onToggle(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

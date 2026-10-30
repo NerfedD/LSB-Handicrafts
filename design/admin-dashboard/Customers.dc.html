@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Customers</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1040px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="customers" collapsed="{{collapsed}}" h="1040" on-toggle="{{toggleNav}}" hint-size="240px,1040px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Contacts" page="Customers" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 112v96h176v-96"></path><path d="M24 96 48 40h160l24 56Z"></path><path d="M104 208v-56h48v56"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Customers</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Shops, schools, churches and people who order from the workshop.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" onClick="{{openCustomer}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 144V32M216 144v64a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8v-64M168 104l-40 40-40-40"></path></svg>Export</button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add customer</button>
+</div>
+</header>
+
+<section aria-label="Customer totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; gap: 1px; background: var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Customers</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">86</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Ordered in October</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">31</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Still to collect</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">₱42,350.00</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">New in October</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">5</div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<div style="position: relative; flex: 0 1 280px; min-width: 180px;">
+<label for="cu-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search customers</label>
+<span style="position: absolute; left: 10px; top: 8px; line-height: 0; color: var(--muted-fg, #71717a); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<input id="cu-search" type="search" placeholder="Search name, contact or phone" value="{{query}}" onChange="{{onQuery}}" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div role="group" aria-label="Show" style="display: inline-flex; gap: 4px; flex-wrap: wrap;">
+<sc-for list="{{chips}}" as="ch" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{ch.on}}" onClick="{{ch.pick}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid {{ch.bd}}; border-radius: 6px; background: {{ch.bg}}; font-size: 13px; font-weight: 500; cursor: pointer;">{{ch.label}}<span style="font-size: 12px; color: var(--muted-fg, #71717a);">{{ch.count}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+<section aria-label="Customers" style="flex: 999 1 620px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div role="table" aria-label="Customers" style="min-width: 780px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(200px, 1.6fr) 140px 100px 70px 100px 120px 44px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Customer</div>
+<div role="columnheader" style="padding: 0 8px;">Contact</div>
+<div role="columnheader" style="padding: 0 8px;">Area</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Orders</div>
+<div role="columnheader" style="padding: 0 8px;">Last order</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">To collect</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Open</span></div>
+</div>
+<sc-for list="{{rows}}" as="c" hint-placeholder-count="10">
+<div role="row" aria-selected="{{c.selected}}" style="display: grid; grid-template-columns: minmax(200px, 1.6fr) 140px 100px 70px 100px 120px 44px; align-items: center; height: 40px; border-bottom: 1px solid var(--row-divider, #f4f4f5); background: {{c.rowBg}};">
+<div role="cell" style="padding: 0 8px 0 16px; display: flex; align-items: center; gap: 8px; min-width: 0;"><span aria-hidden="true" style="flex: none; width: 24px; height: 24px; border-radius: 6px; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">{{c.initials}}</span><span style="min-width: 0;"><button type="button" onClick="{{c.open}}" style="display: block; max-width: 100%; padding: 0; border: 0; background: transparent; font-weight: 500; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;">{{c.name}}</button><span style="display: block; font-size: 11px; line-height: 14px; color: var(--muted-fg, #71717a);">{{c.kind}}</span></span></div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{c.contact}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46);">{{c.area}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{c.orders}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--muted-fg, #71717a); white-space: nowrap;">{{c.last}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">
+<sc-if value="{{c.owes}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;">{{c.balance}}</span></sc-if>
+<sc-if value="{{c.clear}}" hint-placeholder-val="{{true}}"><span style="color: var(--muted-2, #a1a1aa);">—</span></sc-if>
+</div>
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" aria-label="Open {{c.name}}" onClick="{{c.open}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></button></div>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; font-size: 13px; color: var(--muted-fg, #71717a);"><span>Showing {{count}} of 86</span><span style="color: var(--foreground, #09090b); font-weight: 500;">Page 1 of 9</span></div>
+</section>
+
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{true}}">
+<aside aria-labelledby="cu-detail" style="flex: 1 1 320px; max-width: 400px; min-width: 280px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; gap: 10px; padding: 14px 12px 12px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<span aria-hidden="true" style="flex: none; width: 36px; height: 36px; border-radius: 8px; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center;">{{sel.initials}}</span>
+<div style="flex: 1; min-width: 0;"><h2 id="cu-detail" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600;">{{sel.name}}</h2><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{sel.kind}} · customer since {{sel.since}}</div></div>
+<button type="button" aria-label="Close details" onClick="{{closeSel}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+</div>
+
+<dl style="margin: 0; padding: 10px 16px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; line-height: 18px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<dt style="color: var(--muted-fg, #71717a);">Contact</dt><dd style="margin: 0;">{{sel.contact}}</dd>
+<dt style="color: var(--muted-fg, #71717a);">Phone</dt><dd style="margin: 0;"><a href="#" style="text-decoration: none;">{{sel.phone}}</a></dd>
+<dt style="color: var(--muted-fg, #71717a);">Email</dt><dd style="margin: 0; overflow: hidden; text-overflow: ellipsis;"><a href="#" style="text-decoration: none;">{{sel.email}}</a></dd>
+<dt style="color: var(--muted-fg, #71717a);">Deliver to</dt><dd style="margin: 0;">{{sel.address}}</dd>
+</dl>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; border-right: 1px solid var(--row-divider, #f4f4f5);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">This year</div><div style="font-size: 16px; line-height: 24px; font-weight: 600;">{{sel.year}}</div></div>
+<div style="padding: 10px 16px; border-right: 1px solid var(--row-divider, #f4f4f5);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Orders</div><div style="font-size: 16px; line-height: 24px; font-weight: 600;">{{sel.orders}}</div></div>
+<div style="padding: 10px 16px;"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">To collect</div><div style="font-size: 16px; line-height: 24px; font-weight: 600; color: {{sel.balanceColor}};">{{sel.balanceText}}</div></div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<button type="button" onClick="{{openOrder}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">New order</button>
+<sc-if value="{{sel.owes}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{openPayment}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Record payment</button></sc-if>
+<button type="button" onClick="{{editCustomer}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer;">Edit details</button>
+</div>
+
+<div style="padding: 12px 16px 4px; display: flex; justify-content: space-between; align-items: baseline;"><h3 style="margin: 0; font-size: 13px; font-weight: 600;">Recent orders</h3><a href="#" style="font-size: 13px; font-weight: 500; text-decoration: none;">All orders</a></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 8px; font-size: 13px; line-height: 18px;">
+<sc-for list="{{sel.recent}}" as="o" hint-placeholder-count="3">
+<li style="display: grid; grid-template-columns: 56px 1fr auto; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);"><a href="OrderDetail.dc.html" style="text-decoration: none;">#{{o.id}}</a></span><span style="display: flex; align-items: center; gap: 6px; min-width: 0;"><span style="color: var(--muted-fg, #71717a);">{{o.date}}</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{o.st.bd}}; background: {{o.st.bg}}; color: {{o.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;">{{o.st.label}}</span></span><span style="font-weight: 500;">{{o.total}}</span></li>
+</sc-for>
+</ul>
+
+<div style="padding: 8px 16px 14px;"><h3 style="margin: 0 0 4px; font-size: 13px; font-weight: 600;">Notes for the team</h3><p style="margin: 0; padding: 8px 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); font-size: 13px; line-height: 18px; color: var(--fg-2, #3f3f46);">{{sel.note}}</p></div>
+</aside>
+</sc-if>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgCustomer}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="AddCustomerDialog" on-close="{{closeDlg}}" mode="{{custMode}}" hint-size="520px,640px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgPayment}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="RecordPaymentDialog" on-close="{{closeDlg}}" hint-size="480px,600px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgOrder}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="NewOrderDialog" on-close="{{closeDlg}}" hint-size="640px,720px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="customers" h="1040" hint-size="240px,1040px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const query = s.query ?? '';
+    const q = query.trim().toLowerCase();
+    const filter = s.filter ?? 'all';
+    const selKey = s.sel === undefined ? 'bps' : s.sel;
+    const peso = (n) => '₱' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const OST = {
+      pending: { label: 'Pending', bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)' },
+      ready: { label: 'Ready to go', bg: 'var(--muted, #f4f4f5)', fg: 'var(--ink, #18181b)', bd: 'var(--border, #d4d4d8)' },
+      done: { label: 'Delivered', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' },
+      cancelled: { label: 'Cancelled', bg: 'var(--card, #ffffff)', fg: 'var(--muted-fg, #71717a)', bd: 'var(--border, #d4d4d8)' }
+    };
+    const all = [
+      { key: 'bps', name: 'Bautista Party Supplies', kind: 'Party supply shop', contact: 'Rhea Bautista', phone: '0917 555 0142', email: 'orders@bautistaparty.ph', area: 'Matina', address: 'Stall 12, Matina Town Square, Davao City', orders: 24, last: 'Today', balance: 6200, year: 148600, since: '2019',
+        note: 'Deliver before 10 AM. Use the back gate on MacArthur Highway; the front is closed to trucks.',
+        recent: [[2051, 'Today', 'ready', 4120], [2048, 'Today', 'pending', 4080], [2033, 'Oct 9', 'done', 3950]] },
+      { key: 'crg', name: 'Casa Regalo Gifts', kind: 'Gift shop', contact: 'Jessa Uy', phone: '0918 222 4410', email: 'jessa@casaregalo.ph', area: 'Buhangin', address: 'J.P. Laurel Ave, Buhangin, Davao City', orders: 17, last: 'Today', balance: 0, year: 96200, since: '2021',
+        note: 'Pays in full on pick-up. Likes a call before delivery.',
+        recent: [[2052, 'Today', 'ready', 5400], [2039, 'Oct 27', 'cancelled', 2200], [2030, 'Oct 6', 'done', 8100]] },
+      { key: 'sjp', name: 'St. Jude Parish', kind: 'Church', contact: 'Fr. Ramon Lim', phone: '0920 781 3302', email: 'office@stjudetoril.ph', area: 'Toril', address: 'Poblacion, Toril, Davao City', orders: 6, last: 'Oct 25', balance: 18500, year: 41300, since: '2023',
+        note: 'Stage backdrop for the fiesta. Half paid; the rest is due on delivery.',
+        recent: [[2050, 'Oct 25', 'pending', 37000]] },
+      { key: 'mec', name: 'Mintal Events Co.', kind: 'Events company', contact: 'Paula Garcia', phone: '0917 640 0019', email: 'paula@mintalevents.ph', area: 'Mintal', address: 'Mintal, Davao City', orders: 11, last: 'Oct 24', balance: 9650, year: 72400, since: '2022', note: 'Orders in bulk for weddings. Ask about colours before cutting.',
+        recent: [[2049, 'Oct 24', 'pending', 9650]] },
+      { key: 'aes', name: 'Agdao Elementary School', kind: 'School', contact: 'Mrs. Lorna Cruz', phone: '(082) 226 1188', email: 'aes.supply@deped.gov.ph', area: 'Agdao', address: 'Agdao, Davao City', orders: 4, last: 'Oct 22', balance: 8000, year: 21600, since: '2024', note: 'Needs an official receipt with the school name for every order.',
+        recent: [[2044, 'Oct 22', 'ready', 8000]] },
+      { key: 'smd', name: 'SM Lanang Display Team', kind: 'Mall', contact: 'Jay Morales', phone: '0917 330 5521', email: 'displays@smlanang.ph', area: 'Lanang', address: 'SM Lanang Premier, Davao City', orders: 9, last: 'Oct 20', balance: 0, year: 186000, since: '2020', note: 'Deliver to the loading dock, basement 2. Bring an ID for the guard.',
+        recent: [[2046, 'Oct 20', 'ready', 24500]] },
+      { key: 'rcs', name: 'Rizal Crafts Supply', kind: 'Craft store', contact: 'Ben Rizal', phone: '0919 115 7720', email: 'rizalcrafts@gmail.com', area: 'Poblacion', address: 'San Pedro St, Poblacion, Davao City', orders: 31, last: 'Oct 19', balance: 0, year: 132700, since: '2018', note: 'Regular weekly order of styro balls.',
+        recent: [[2045, 'Oct 19', 'ready', 3100], [2041, 'Oct 15', 'done', 2900]] },
+      { key: 'kfs', name: 'Kultura Filipino Store', kind: 'Souvenir shop', contact: 'Ana Tan', phone: '0917 908 4411', email: 'kultura.davao@gmail.com', area: 'Poblacion', address: 'Claveria St, Poblacion, Davao City', orders: 7, last: 'Oct 15', balance: 0, year: 18900, since: '2022', note: '—',
+        recent: [[2042, 'Oct 15', 'done', 2400]] },
+      { key: 'lws', name: 'Lanang Wedding Studio', kind: 'Events company', contact: 'Mia Dizon', phone: '0918 777 2045', email: 'hello@lanangweddings.ph', area: 'Lanang', address: 'Lanang, Davao City', orders: 3, last: 'Oct 14', balance: 0, year: 12500, since: '2025', note: 'New customer. Prefers Messenger for quotes.',
+        recent: [[2047, 'Oct 14', 'pending', 4300]] },
+      { key: 'jdc', name: 'Juan dela Cruz', kind: 'Person', contact: 'Juan dela Cruz', phone: '0927 444 1903', email: '—', area: 'Matina', address: 'Matina Aplaya, Davao City', orders: 2, last: 'Jul 3', balance: 0, year: 1650, since: '2026', note: 'Birthday party cutouts. Picked up both times.',
+        recent: [[1977, 'Jul 3', 'done', 850]] }
+    ];
+    const initials = (n) => n.split(' ').filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).slice(0, 2).join('');
+    const visible = all.filter((c) =>
+      (filter === 'all' || (filter === 'owes' && c.balance > 0) || (filter === 'quiet' && c.last.startsWith('Jul'))) &&
+      (!q || (c.name + ' ' + c.contact + ' ' + c.phone).toLowerCase().includes(q)));
+    const rows = visible.map((c) => ({
+      ...c,
+      initials: initials(c.name),
+      selected: c.key === selKey,
+      rowBg: c.key === selKey ? 'var(--muted, #f4f4f5)' : 'var(--card, #ffffff)',
+      owes: c.balance > 0, clear: c.balance === 0,
+      balance: peso(c.balance),
+      open: () => this.setState({ sel: c.key })
+    }));
+    const p = all.find((c) => c.key === selKey);
+    const sel = p ? {
+      ...p,
+      initials: initials(p.name),
+      year: '₱' + Math.round(p.year / 1000) + 'k',
+      owes: p.balance > 0,
+      balanceText: p.balance > 0 ? peso(p.balance) : 'Nothing',
+      balanceColor: p.balance > 0 ? 'var(--warning-fg, #b45309)' : 'var(--foreground, #09090b)',
+      recent: p.recent.map(([id, date, st, total]) => ({ id, date, st: OST[st], total: peso(total) }))
+    } : { recent: [] };
+    const chipOn = { bg: 'var(--muted, #f4f4f5)', bd: 'var(--input-strong, #a1a1aa)' };
+    const chipOff = { bg: 'var(--card, #ffffff)', bd: 'var(--border, #d4d4d8)' };
+    const chips = [['all', 'All', 86], ['owes', 'Still to collect', all.filter((c) => c.balance > 0).length], ['quiet', 'No order in 90 days', 12]]
+      .map(([v, label, count]) => ({ label, count, on: v === filter, ...(v === filter ? chipOn : chipOff), pick: () => this.setState({ filter: v }) }));
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      query,
+      chips,
+      rows,
+      count: rows.length,
+      hasSel: !!p,
+      sel,
+      closeSel: () => this.setState({ sel: null }),
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgCustomer: s.dlg === 'customer',
+      dlgPayment: s.dlg === 'payment',
+      dlgOrder: s.dlg === 'order',
+      custMode: s.custMode ?? 'add',
+      openCustomer: () => this.setState({ dlg: 'customer', custMode: 'add' }),
+      editCustomer: () => this.setState({ dlg: 'customer', custMode: 'edit' }),
+      openPayment: () => this.setState({ dlg: 'payment' }),
+      openOrder: () => this.setState({ dlg: 'order' })
+    };
+  }
+}
+</script>
+</body>
+</html>

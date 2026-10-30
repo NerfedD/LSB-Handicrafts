@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { Pencil, Plus, Trash2 } from '../icons';
+import { PencilSimple, Plus, Trash } from '../icons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -70,61 +70,61 @@ export default function CategoriesDialog({ categories = [], isLoaded = true, inv
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open && !working) onClose(); }}>
-      <DialogContent className="max-w-[620px] text-[16px]" showClose={!working}>
+      <DialogContent size="md" showClose={!working}>
         <DialogHeader>
           <DialogTitle>Product categories</DialogTitle>
-          <DialogDescription className="text-[16px]">
+          <DialogDescription>
             Products are grouped by these. Each name appears once, whatever capitals it is typed with.
           </DialogDescription>
         </DialogHeader>
-        <DialogBody>
+        <DialogBody className="flex flex-col gap-3.5">
           <FormError message={error} />
-          {message && <p role="status" className="mb-3 rounded-field border border-green/25 bg-tint-green p-3.5 text-[15.5px] font-bold text-green dark:text-dk-green">{message}</p>}
+          {message && <p role="status" className="m-0 rounded-md border border-success-bd bg-success-bg px-3 py-2 text-13 text-success-fg">{message}</p>}
 
-          <form onSubmit={add} noValidate className="flex flex-col gap-2.5 pb-4 tab:flex-row tab:items-end">
-            <label className="flex min-w-0 flex-1 flex-col gap-2 text-[16px] font-bold text-ink">
+          <form onSubmit={add} noValidate className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="flex min-w-0 flex-1 flex-col gap-1.5 text-sm font-medium">
               New category
               <Input value={adding} maxLength={60} disabled={working} onChange={(e) => { setAdding(e.target.value); setError(null); }} placeholder="Wall art" />
             </label>
-            <Button type="submit" variant="cobalt" size="lg" disabled={working}>
-              <Plus className="h-5 w-5" />Add category
+            <Button type="submit" disabled={working}>
+              <Plus />Add category
             </Button>
           </form>
 
           {!isLoaded ? (
-            <p className="py-6 text-[15.5px] text-muted">Loading the categories…</p>
+            <p className="m-0 py-4 text-13 text-muted-fg">Loading the categories…</p>
           ) : sorted.length === 0 ? (
-            <p className="py-6 text-[15.5px] text-muted">No categories yet. Add one above, or choose "Add a new category…" when adding a product.</p>
+            <p className="m-0 py-4 text-13 text-muted-fg">No categories yet. Add one above, or choose "Add a new category…" when adding a product.</p>
           ) : (
-            <ul className="divide-y divide-hair border-y border-hair">
+            <ul className="m-0 list-none overflow-hidden rounded-md border border-border p-0">
               {sorted.map((category) => {
                 const count = uses(category.name);
                 const isEditing = editing?.id === category.id;
                 return (
-                  <li key={category.id} className="flex min-h-15.5 flex-wrap items-center justify-between gap-3 py-3">
+                  <li key={category.id} className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-row-divider px-3 py-1.5 last:border-b-0">
                     {isEditing ? (
-                      <form onSubmit={rename} noValidate className="flex w-full flex-col gap-2.5 tab:flex-row tab:items-center">
+                      <form onSubmit={rename} noValidate className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
                         <Input aria-label={`New name for ${category.name}`} autoFocus value={editing.name} maxLength={60} disabled={working}
                           onChange={(e) => { setEditing({ ...editing, name: e.target.value }); setError(null); }} className="min-w-0 flex-1" />
                         <div className="flex gap-2">
-                          <Button type="submit" variant="cobalt" disabled={working}>Save name</Button>
-                          <Button variant="outline" disabled={working} onClick={() => setEditing(null)}>Cancel</Button>
+                          <Button variant="outline" size="sm" disabled={working} onClick={() => setEditing(null)}>Cancel</Button>
+                          <Button type="submit" size="sm" disabled={working}>Save name</Button>
                         </div>
                       </form>
                     ) : (
                       <>
-                        <span className="min-w-0">
-                          <span className="block font-bold text-ink">{category.name}</span>
-                          <span className="block text-[15px] text-muted">{count === 0 ? 'No products' : count === 1 ? '1 product' : `${count} products`}</span>
+                        <span className="min-w-0 text-13">
+                          <span className="block font-medium">{category.name}</span>
+                          <span className="block text-muted-fg">{count === 0 ? 'No products' : count === 1 ? '1 product' : `${count} products`}</span>
                         </span>
-                        <span className="flex gap-2">
-                          <Button variant="outline" size="sm" disabled={working} onClick={() => { setEditing({ id: category.id, name: category.name }); setError(null); setMessage(null); }}>
-                            <Pencil className="h-4.5 w-4.5" />Rename
+                        <span className="flex gap-1.5">
+                          <Button variant="ghost" size="sm" disabled={working} onClick={() => { setEditing({ id: category.id, name: category.name }); setError(null); setMessage(null); }}>
+                            <PencilSimple />Rename
                           </Button>
-                          <Button variant="outline" size="sm" disabled={working || count > 0}
+                          <Button variant="ghost" size="sm" disabled={working || count > 0}
                             title={count > 0 ? 'Move its products to another category first.' : undefined}
                             onClick={() => run('remove', { id: category.id }, () => setMessage(`"${category.name}" was removed.`))}>
-                            <Trash2 className="h-4.5 w-4.5" />Remove
+                            <Trash />Remove
                           </Button>
                         </span>
                       </>
@@ -134,10 +134,10 @@ export default function CategoriesDialog({ categories = [], isLoaded = true, inv
               })}
             </ul>
           )}
-          <p className="pt-3 text-[15px] text-muted">A category with products in it cannot be removed. Rename it, or move its products to another category first.</p>
+          <p className="m-0 text-13 text-muted-fg">A category with products in it cannot be removed. Rename it, or move its products to another category first.</p>
         </DialogBody>
-        <DialogFooter className="justify-end">
-          <Button variant="outline" size="lg" disabled={working} onClick={onClose}>Done</Button>
+        <DialogFooter>
+          <Button variant="outline" disabled={working} onClick={onClose}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

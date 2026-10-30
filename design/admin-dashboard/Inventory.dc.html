@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component inventory</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0;background:var(--card, #ffffff)}</style>
+</helmet>
+<div style="width: 1280px; height: 1180px; box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; gap: 20px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+
+<div>
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Component inventory</h1>
+<p style="margin: 2px 0 0; font-size: 13px; color: var(--muted-fg, #71717a);">shadcn/ui on Base UI, New York style. Compose with the <code style="font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 1px 4px; border-radius: 4px; background: var(--muted, #f4f4f5);">render</code> prop, never <code style="font-family: ui-monospace, Menlo, monospace; font-size: 12px; padding: 1px 4px; border-radius: 4px; background: var(--muted, #f4f4f5);">asChild</code>. Icons are Phosphor, regular weight, and fill weight only on the active nav item.</p>
+</div>
+
+<div style="display: flex; gap: 24px; align-items: flex-start;">
+
+<section style="flex: 1; min-width: 0; border: 1px solid var(--border-subtle, #e4e4e7); border-radius: 8px; overflow: hidden;">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 18px;">
+<thead>
+<tr style="height: 36px; border-bottom: 1px solid var(--border-subtle, #e4e4e7); background: var(--surface-2, #fafafa);">
+<th scope="col" style="text-align: left; padding: 0 12px; font-weight: 500; color: var(--muted-fg, #71717a); width: 300px;">Component and parts</th>
+<th scope="col" style="text-align: left; padding: 0 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Where it is used</th>
+</tr>
+</thead>
+<tbody>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Sidebar</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; line-height: 16px; color: var(--muted-fg, #71717a);">SidebarProvider · Sidebar · SidebarHeader · SidebarContent · SidebarGroup · SidebarGroupLabel · SidebarMenu · SidebarMenuItem · SidebarMenuButton · SidebarMenuBadge · SidebarMenuSub · SidebarMenuSubItem · SidebarMenuSubButton · SidebarFooter · SidebarRail · SidebarInset · SidebarTrigger</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">App shell on every signed-in screen. variant="inset", collapsible="icon", width 15rem. isActive marks the page. Badges show 42 accounts and 24 people. Settings opens a sub-menu. Below 768px the sidebar opens as a Sheet.</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Collapsible</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Collapsible · CollapsibleTrigger · CollapsibleContent</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">The System › Settings group</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Tooltip</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">TooltipProvider · Tooltip · TooltipTrigger · TooltipContent</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Nav icons when the sidebar is collapsed (SidebarMenuButton tooltip prop)</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Sheet</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Sheet · SheetContent (side="left")</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">The sidebar on mobile. Sidebar renders it by itself</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">DropdownMenu</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">DropdownMenu · Trigger · Content · Label · Item · Separator</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Workspace switcher, account menu (Profile, Log out), table row actions in User Management and Staff Directory</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Breadcrumb</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Breadcrumb · List · Item · Link · Separator · Page</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Top bar, on every signed-in screen</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Separator</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Top bar (vertical, between trigger and breadcrumb), menus, command list</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Command</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">CommandDialog · Input · List · Group · Item · Shortcut · Separator</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">⌘K / Ctrl+K search to jump to pages and run actions</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Kbd</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">⌘K hint in the search trigger and the command footer</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Button</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">default · outline · ghost · size sm / icon</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Each view has one default (blue) button: Sign in, New order, Add user, Add staff member. Every other button is outline or ghost</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Card</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Card · Header · Title · Description · Content · Footer</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Login, stat cards, chart, stock list, activity, table shell, staff cards</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Input · Label</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Login fields, table search, Add user form</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Checkbox</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">"Keep me signed in", row selection and select-all (indeterminate) in User Management</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Select</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Role filter, Department filter, rows per page, Role and Department in Add user</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Table</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Table · Header · Body · Row · Head · Cell (+ TanStack Table)</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Recent activity, users, staff table view. h-9 rows, 13px text</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Badge</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">secondary · outline · soft success / warning / destructive</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Statuses (each with a dot and a word), stat-card changes, departments</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Avatar</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Avatar · AvatarImage · AvatarFallback</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Sidebar footer, account menu, table rows (24px), staff cards (40px)</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Dialog</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">Dialog · Content · Header · Title · Description · Footer · Close</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Add user</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">RadioGroup</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">RadioGroup · RadioGroupItem</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Kind cards and "Sold" in Add product, "Counted in" in Add raw material. The selected item gets a var(--primary-text, #004E89) ring and dot</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Switch</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">"Send the invite now" in Add user</td></tr>
+<tr style="border-bottom: 1px solid var(--row-divider, #f4f4f5);"><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">ToggleGroup</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Staff Directory Table / Cards view, Orders / Revenue on the chart. The pressed item is neutral, not blue</td></tr>
+<tr><td style="padding: 8px 12px; vertical-align: top;"><div style="font-weight: 500;">Chart</div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-fg, #71717a);">ChartContainer · ChartTooltip · ChartLegend (Recharts)</div></td><td style="padding: 8px 12px; vertical-align: top; color: var(--fg-2, #3f3f46);">Orders per week. --chart-1 is var(--primary-text, #004E89) for the main series, the comparison is zinc-400 dashed</td></tr>
+</tbody>
+</table>
+</section>
+
+<aside style="width: 380px; flex: none; display: flex; flex-direction: column; gap: 16px;">
+<section style="border: 1px solid var(--border-subtle, #e4e4e7); border-radius: 8px; overflow: hidden;">
+<div style="height: 36px; display: flex; align-items: center; padding: 0 12px; border-bottom: 1px solid var(--border-subtle, #e4e4e7); background: var(--surface-2, #fafafa);"><h2 style="margin: 0; font-size: 14px; font-weight: 600;">Page sections</h2></div>
+<div style="padding: 4px 0; font-size: 13px; line-height: 18px;">
+<div style="padding: 8px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div style="font-weight: 500;">PageHeader</div><div style="color: var(--muted-fg, #71717a);">20px icon in a bordered box, title, description, actions on the right with at most one primary</div></div>
+<div style="padding: 8px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div style="font-weight: 500;">StatCards</div><div style="color: var(--muted-fg, #71717a);">Card ×4 in an auto-fit grid: label, 16px icon, value, Badge with the change</div></div>
+<div style="padding: 8px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div style="font-weight: 500;">FilterBar</div><div style="color: var(--muted-fg, #71717a);">Input with a search icon, Select filters, bulk actions when rows are selected, ToggleGroup for the view</div></div>
+<div style="padding: 8px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div style="font-weight: 500;">DataTable</div><div style="color: var(--muted-fg, #71717a);">Card › Table with Checkbox, Avatar, Badge, row DropdownMenu and a pagination footer</div></div>
+<div style="padding: 8px 12px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div style="font-weight: 500;">EmptyState</div><div style="color: var(--muted-fg, #71717a);">Icon, title, one line of help, one outline button that clears the filters</div></div>
+<div style="padding: 8px 12px;"><div style="font-weight: 500;">TopBar</div><div style="color: var(--muted-fg, #71717a);">h-12: SidebarTrigger, vertical Separator, Breadcrumb, Command trigger with Kbd</div></div>
+</div>
+</section>
+
+<section style="border: 1px solid var(--border-subtle, #e4e4e7); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; gap: 8px;">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600;">Phosphor icons in use</h2>
+<p style="margin: 0; color: var(--muted-fg, #71717a); font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 18px;">SquaresFour · Users · IdentificationCard · Gear · CaretUpDown · CaretRight · CaretDown · CaretLeft · SidebarSimple · MagnifyingGlass · Plus · DownloadSimple · CalendarBlank · Receipt · Money · Package · DotsThree · PencilSimple · Lock · Prohibit · User · SignOut · Envelope · List · Check · Minus · X</p>
+</section>
+
+<section style="border: 1px solid var(--border-subtle, #e4e4e7); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 18px; display: flex; flex-direction: column; gap: 6px;">
+<h2 style="margin: 0; font-size: 14px; font-weight: 600;">Install</h2>
+<code style="display: block; padding: 8px 10px; border-radius: 6px; background: var(--muted, #f4f4f5); font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 18px; color: var(--ink, #18181b); white-space: pre-wrap;">npx shadcn@latest add sidebar dropdown-menu collapsible tooltip breadcrumb command kbd card input label checkbox select table badge avatar dialog switch toggle-group chart</code>
+<code style="display: block; padding: 8px 10px; border-radius: 6px; background: var(--muted, #f4f4f5); font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 18px; color: var(--ink, #18181b);">npm i @phosphor-icons/react</code>
+</section>
+</aside>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

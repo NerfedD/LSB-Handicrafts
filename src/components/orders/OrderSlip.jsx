@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { normalizeItems } from "../../utils/orderItems";
 import { orderTotals, lastPriceAdjustment } from "../../utils/orders";
 import { formatPeso, formatLongDate } from "../../utils/profileFormat";
-import { OFFICE_PHONE, OFFICE_PHONE_IS_PLACEHOLDER } from "../../utils/office";
+import { letterheadOf, vatInside } from "../../utils/office";
 import { orderLabel, priceReasonLabel, refundReasonLabel } from "../../utils/copy";
 import { ORDER_STATUS } from "../../utils/constants";
 
@@ -11,7 +11,7 @@ import { ORDER_STATUS } from "../../utils/constants";
  * The printed order slip.
  *
  * THE ONLY THING A CUSTOMER EVER SEES. Every other screen in this system is
- * internal — staff, stock, margins, who owes what. This one piece of paper
+ * internal — staff, stock, margins, who owes what. This one printed sheet
  * leaves the building, so it is the business's face rather than a view of the
  * app, and it is designed as a document rather than as the order screen with
  * its furniture hidden.
@@ -52,7 +52,7 @@ function Line({ children }) {
   return <p className="slip-line">{children}</p>;
 }
 
-export default function OrderSlip({ order, customer, delivery, deliveries = [] }) {
+export default function OrderSlip({ order, customer, delivery, deliveries = [], settings = null, paid = 0 }) {
   if (!order) return null;
 
   const items = normalizeItems(order.items);
@@ -63,22 +63,21 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
   const refunded = Number(totals.refunded) || 0;
   const showBreakdown = totals.delivery > 0 || totals.items !== totals.total;
   const cancelled = order.status === ORDER_STATUS.CANCELLED;
+  const head = letterheadOf(settings);
+  const received = Number(paid) || 0;
+  const stillOwed = Math.max(0, Math.round((totals.net - received) * 100) / 100);
 
   return createPortal(
     <article className="slip" aria-hidden="true">
-      {/* Letterhead. The name and the phone are the only two things about this
-          business the system actually knows; nothing else is asserted. */}
+      {/* Letterhead, from Settings · General (letterheadOf). A phone that is
+          still the mockup placeholder is left off: on a page handed to a
+          customer it is a wrong number. */}
       <header className="slip-head">
         <div>
-          <p className="slip-brand">LSB Handicrafts</p>
-          <p className="slip-trade">Styrofoam decor · Davao City</p>
-          {/* The office number is a mockup placeholder until somebody sets
-              VITE_OFFICE_PHONE. On an internal screen that is a harmless
-              stand-in; on a page handed to a customer it is a wrong number, so
-              the line is simply absent until the real one exists. */}
-          {OFFICE_PHONE_IS_PLACEHOLDER ? null : (
-            <p className="slip-trade">{OFFICE_PHONE}</p>
-          )}
+          <p className="slip-brand">{head.name}</p>
+          <p className="slip-trade">{head.trade}</p>
+          {head.phone ? <p className="slip-trade">{head.phone}</p> : null}
+          {head.tin ? <p className="slip-trade">TIN {head.tin}</p> : null}
         </div>
         {/* Number and date together, top right, which is where anybody who has
             handled an invoice looks for them. They were a third column down in
@@ -172,18 +171,36 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
             <dt>Total to pay</dt>
             <dd>{formatPeso(totals.total)}</dd>
           </div>
+          {settings?.vatRegistered && !cancelled ? (
+            <div>
+              <dt>VAT (12%) included</dt>
+              <dd>{formatPeso(vatInside(totals.total))}</dd>
+            </div>
+          ) : null}
           {refunded > 0 && (
-            <>
-              <div>
-                <dt>Given back</dt>
-                <dd>−{formatPeso(refunded)}</dd>
-              </div>
-              <div className="slip-total-row">
-                <dt>What they still owe</dt>
-                <dd>{formatPeso(totals.net)}</dd>
-              </div>
-            </>
+            <div>
+              <dt>Given back</dt>
+              <dd>−{formatPeso(refunded)}</dd>
+            </div>
           )}
+          {received > 0 && (
+            <div>
+              <dt>Paid</dt>
+              <dd>−{formatPeso(received)}</dd>
+            </div>
+          )}
+          {(refunded > 0 || received > 0) && !cancelled && (
+            <div className="slip-total-row">
+              <dt>What they still owe</dt>
+              <dd>{formatPeso(stillOwed)}</dd>
+            </div>
+          )}
+          {order.paymentTermDays && !cancelled ? (
+            <div>
+              <dt>Payment terms</dt>
+              <dd>{order.paymentTermDays} days from delivery</dd>
+            </div>
+          ) : null}
         </dl>
       </section>
 
@@ -227,7 +244,7 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [] }
       <footer className="slip-foot">
         <p>
           <strong>This is not an official receipt.</strong> It is a record of what
-          was ordered, so both sides are working from the same paper.
+          was ordered, so both sides are working from the same sheet.
         </p>
         <p>Printed {formatLongDate(new Date().toISOString())}</p>
       </footer>

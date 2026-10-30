@@ -3,9 +3,8 @@ import { localDateIso, promisedDateProblem } from "../../utils/dates";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useMemo, useState } from "react";
 
-import { Gift, Plus, Save, Trash2, TriangleAlert } from "../icons";
+import { Gift, Plus, Trash, Warning } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -16,7 +15,10 @@ import {
 } from "@/components/ui/select";
 import Callout from "../shared/Callout";
 import { EmptySlot } from "../shared/PageStates";
-import { Field, FormBand, FormFooter, Row } from "../shared/forms";
+import { Field, RadioRow, Row } from "../shared/forms";
+import { Avatar } from "../shared/Chip";
+import { TextLink } from "../shared/page";
+import FormFrame from "../shared/FormFrame";
 import { Checkbox } from "../shared/AuthField";
 import { LINE_KIND } from "../../utils/constants";
 import { customerSummary, DEFAULT_LOYALTY, loyaltyDiscount } from "../../utils/customers";
@@ -24,11 +26,16 @@ import { normalizeItems, orderTotal } from "../../utils/orderItems";
 import { roundMoney } from "../../utils/money";
 import { moneyProblem, nameProblem } from "../../utils/validation";
 import { formatPeso } from "../../utils/profileFormat";
+import { needsReference, PAYMENT_METHODS, TERM_OPTIONS } from "../../utils/payments";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
 
 /**
- * Write a new order.
+ * Write a new order (the NewOrderDialog board), or rewrite one.
+ *
+ * WRITING ONE IS A DIALOG over the Orders list, like the other Add actions;
+ * REWRITING one is a screen reached from the order. FormFrame draws one or
+ * the other around the same fields.
  *
  * NOT ONE OF THE 25 DESIGNED SCREENS. The handoff shows "Write a new order" as
  * a call to action on three dashboards and on the orders list, but it does not
@@ -157,6 +164,12 @@ export default function OrderFormPage({
   saving = false,
   onSave,
   onCancel,
+  /** Draw it as a dialog over the current screen rather than as a screen. */
+  asDialog = false,
+  /** Settings · General: the usual delivery fee and the order total it is waived from. */
+  settings = null,
+  /** Whether this person may take a down payment as the order is written (recordPayments). */
+  canTakePayment = false,
 }) {
   const isEdit = mode === "edit";
   const [customerName, setCustomerName] = useState(
@@ -174,6 +187,16 @@ export default function OrderFormPage({
   const [deliveryCharge, setDeliveryCharge] = useState(
     isEdit && delivery?.amount ? String(delivery.amount) : ""
   );
+  // HOW IT IS PAID depends on how it leaves the shop. A delivered order is on
+  // terms -- 30 or 60 days from delivery, nothing paid down -- starting from
+  // the customer's usual term. A pick-up order is paid at the shop, in full or
+  // in part, and whatever is paid as it is written is recorded straight away
+  // (App's saveOrder), so it lands on the order like any other payment.
+  const [termChoice, setTermChoice] = useState(null);
+  const [downAmount, setDownAmount] = useState("");
+  const [downMethod, setDownMethod] = useState("cash");
+  const [downReference, setDownReference] = useState("");
+  const [downProblem, setDownProblem] = useState(null);
   const [error, setError] = useState(null);
   // Problems shown beside the field they belong to: the customer, and each
   // line's price by line key.
@@ -219,6 +242,9 @@ export default function OrderFormPage({
     : named.length === 1 ? named[0].id : null;
   const linked = customers.find((one) => one.id === customerId);
 
+  const term = termChoice ?? (isEdit ? order?.paymentTermDays ?? 30 : linked?.paymentTermDays ?? 30);
+  const onDelivery = address.trim() !== "";
+
   const [useReward, setUseReward] = useState(true);
   const earned = linked ? customerSummary(linked, customerStats, loyalty) : null;
   const offerReward = Boolean(earned?.rewardEligible);
@@ -226,7 +252,20 @@ export default function OrderFormPage({
   // the rules have moved since; the database re-checks only a changed amount.
   const keptDiscount = isEdit && !offerReward ? Number(order?.discountAmount) || 0 : 0;
   const discount = offerReward && useReward ? loyaltyDiscount(itemsTotal, loyalty) : keptDiscount;
-  const total = Math.max(0, roundMoney(itemsTotal + (Number(deliveryCharge) || 0) - discount));
+  // A new order left blank takes the usual fee from Settings, or nothing once
+  // the items reach the free-delivery amount. Typing a number -- 0 included --
+  // always wins, and an order being edited keeps what it was written with.
+  const usualCharge = !isEdit && settings?.deliveryFee != null
+    ? (settings.freeDeliveryFrom && itemsTotal >= settings.freeDeliveryFrom ? 0 : settings.deliveryFee)
+    : null;
+  const charge = deliveryCharge === "" ? (usualCharge ?? 0) : Number(deliveryCharge) || 0;
+  const total = Math.max(0, roundMoney(itemsTotal + (address.trim() ? charge : 0) - discount));
+  let chargeHint = "Empty if free.";
+  if (usualCharge === 0) chargeHint = `Free: the items come to ${formatPeso(settings.freeDeliveryFrom)} or more.`;
+  else if (usualCharge != null) {
+    const from = settings?.freeDeliveryFrom ? `, free from ${formatPeso(settings.freeDeliveryFrom)}` : "";
+    chargeHint = `Empty for the usual ${formatPeso(usualCharge)}${from}. 0 for free.`;
+  }
 
   function setLine(key, changes) {
     setLines((previous) =>
@@ -351,6 +390,26 @@ export default function OrderFormPage({
       return;
     }
 
+    // Money paid now is checked like any payment, against the order's total.
+    // Only a pick-up order takes any: a delivered one is paid on its terms.
+    let downPayment = null;
+    if (!isEdit && canTakePayment && !onDelivery && String(downAmount).trim() !== "") {
+      const value = Number(downAmount);
+      let problem = null;
+      if (!Number.isFinite(value) || value <= 0) problem = "Put in the amount paid, or leave it empty.";
+      else if (roundMoney(value) !== value) problem = "Use at most two decimal places.";
+      else if (value > total) problem = `That is more than the order comes to (${formatPeso(total)}).`;
+      else if (needsReference(downMethod) && !downReference.trim()) {
+        problem = downMethod === "check" ? "Put in the check number." : "Put in the reference number from the receipt.";
+      }
+      setDownProblem(problem);
+      if (problem) {
+        fail(problem);
+        return;
+      }
+      downPayment = { amount: value, method: downMethod, reference: needsReference(downMethod) ? downReference.trim() : null };
+    }
+
     try {
     const result = await onSave({
       customerName: customerName.trim(),
@@ -409,9 +468,11 @@ export default function OrderFormPage({
             location: address.trim(),
             dueOn: dueOn || null,
             driver: driver.trim() || null,
-            amount: Number(deliveryCharge) || 0,
+            amount: charge,
           }
         : null,
+      paymentTermDays: onDelivery ? term : null,
+      downPayment,
     });
     if (!result?.ok) fail(result?.message || 'The order was not saved. Check the details and retry.');
     } catch {
@@ -419,19 +480,48 @@ export default function OrderFormPage({
     }
   }
 
-  return (
-    <form onSubmit={handleSubmit} noValidate className="mx-auto w-full max-w-[820px]">
-      <Card>
-        <FormBand step={1} title="Who is it for?">
-          <FormError message={error} />
+  const cell = "border-b border-row-divider px-2 py-2 align-top first:pl-3 last:pr-3";
 
-          <Field
-            label="Customer"
-            required
-            error={customerProblem}
-            hint="Start typing to find someone already on the books, or write a new name."
-          >
-            {(props) => (
+  return (
+    <FormFrame
+      asDialog={asDialog}
+      size="xl"
+      back={{ label: isEdit ? "Back to the order" : "Back to Orders", onClick: onCancel }}
+      title={isEdit ? `Edit order #${order?.id ?? ""}` : "New order"}
+      description="Stock is set aside when you create the order. Nothing leaves the shelf until it is delivered."
+      sectionTitle={isEdit ? "Order details" : "Order"}
+      className="w-full max-w-[720px]"
+      saving={saving}
+      onSubmit={handleSubmit}
+      onCancel={onCancel}
+      footer={
+        <>
+          <Button variant="outline" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={saving}>
+            {saving
+              ? "Saving…"
+              : deliveryDoubt
+                ? isEdit
+                  ? "Save it anyway"
+                  : "Create it anyway"
+                : isEdit
+                  ? "Save changes"
+                  : "Create order"}
+          </Button>
+        </>
+      }
+    >
+      <FormError message={error} />
+
+      <Field
+        label="Customer"
+        required
+        error={customerProblem}
+        hint={linked ? undefined : "Start typing to find someone already on the books, or write a new name."}
+      >
+        {(props) => (
               <>
                 <Input
                   {...props}
@@ -452,63 +542,67 @@ export default function OrderFormPage({
                   ))}
                 </datalist>
               </>
-            )}
-          </Field>
-        </FormBand>
+        )}
+      </Field>
+      {linked ? (
+        <div className="-mt-1.5 flex items-center gap-2.5 rounded-md border border-border px-3 py-2 text-13">
+          <Avatar name={linked.name} size="sm" photo={false} />
+          <span className="min-w-0 truncate">
+            <span className="font-medium">{linked.name}</span>
+            <span className="text-muted-fg">
+              {[linked.address, linked.contactNumber, earned ? `${earned.openCount} open ${earned.openCount === 1 ? "order" : "orders"}` : null]
+                .filter(Boolean)
+                .map((part) => ` · ${part}`)
+                .join("")}
+            </span>
+          </span>
+        </div>
+      ) : null}
 
-        <FormBand step={2} title="What do they want?" tinted>
-          <div className="flex flex-col gap-3">
-            {lines.map((line) => {
-              const match = shelf.find(
-                ({ product }) => String(product.id) === String(line.productId)
-              );
-              return (
-                <div
-                  key={line.key}
-                  className="rounded-field border border-card bg-surface p-4"
-                >
-                  {/* One question at a time, per rule 5 — the same reason the
-                      rest of this form is a single column, not a grid. */}
-                  <div className="flex flex-col gap-3.5">
-                    {line.custom ? (
-                      <>
-                        <Field label="What is it" hint="A name a customer would recognise.">
-                          {(props) => (
-                            <Input
-                              {...props}
-                              value={line.name}
-                              onChange={(event) =>
-                                setLine(line.key, { name: event.target.value })
-                              }
-                              placeholder="Carved rose centrepiece"
-                            />
-                          )}
-                        </Field>
-
-                        <Field
-                          label="Details"
-                          hint="Size, shape, or whatever makes this one custom — it's the only record of why the price is what it is."
-                        >
-                          {(props) => (
-                            <Input
-                              {...props}
-                              value={line.notes}
-                              onChange={(event) =>
-                                setLine(line.key, { notes: event.target.value })
-                              }
-                              placeholder="18 inch, gold trim, matches the sample photo"
-                            />
-                          )}
-                        </Field>
-                      </>
-                    ) : (
-                      <Field label="Item">
-                        {(props) => (
+      <div className="flex flex-col gap-1.5">
+        <p className="m-0 text-sm font-medium">Items</p>
+        <div className="overflow-x-auto rounded-md border border-border">
+          <table className="w-full min-w-[560px] border-collapse text-13">
+            <thead>
+              <tr className="bg-surface-2 text-left text-xs text-muted-fg">
+                <th scope="col" className="h-8 px-2 pl-3 font-medium">Product</th>
+                <th scope="col" className="h-8 w-20 px-2 font-medium">Qty</th>
+                <th scope="col" className="h-8 w-28 px-2 font-medium">Price</th>
+                <th scope="col" className="h-8 w-28 px-2 text-right font-medium">Total</th>
+                <th scope="col" className="h-8 w-10 px-2 pr-3"><span className="sr-only">Remove</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((line) => {
+                const match = shelf.find(
+                  ({ product }) => String(product.id) === String(line.productId)
+                );
+                return (
+                  <tr key={line.key}>
+                    <td className={cell}>
+                      <div className="flex min-w-0 flex-col gap-1.5">
+                        {line.custom ? (
+                              <>
+                                <Input
+                                  aria-label="What is it"
+                                  value={line.name}
+                                  onChange={(event) => setLine(line.key, { name: event.target.value })}
+                                  placeholder="Carved rose centrepiece"
+                                />
+                                <Input
+                                  aria-label="Details"
+                                  value={line.notes}
+                                  onChange={(event) => setLine(line.key, { notes: event.target.value })}
+                                  placeholder="Size, shape, colour: why the price is what it is"
+                                />
+                              </>
+                        ) : (
                           <Select
+                            items={shelf.map(({ product }) => ({ value: String(product.id), label: product.name }))}
                             value={String(line.productId)}
                             onValueChange={(next) => chooseProduct(line.key, next)}
                           >
-                            <SelectTrigger id={props.id}>
+                            <SelectTrigger aria-label="Item" className="w-full">
                               <SelectValue placeholder="Pick a product" />
                             </SelectTrigger>
                             <SelectContent>
@@ -521,252 +615,264 @@ export default function OrderFormPage({
                             </SelectContent>
                           </Select>
                         )}
-                      </Field>
-                    )}
-
-                    <Field label="How many">
-                      {(props) => (
-                        <Input
-                          {...props}
-                          type="number"
-                          inputMode="numeric"
-                          min="1"
-                          value={line.quantity}
-                          onChange={(event) =>
-                            setLine(line.key, { quantity: event.target.value })
-                          }
-                        />
-                      )}
-                    </Field>
-
-                    <Field
-                      label="Price each"
-                      error={priceProblems[line.key]}
-                      hint={
-                        match && Number(line.unitPrice) !== Number(line.listPrice)
-                          ? `List price is ${formatPeso(line.listPrice)}`
-                          : line.custom
-                            ? "Priced by hand — there is no list price to compare it to."
-                            : undefined
-                      }
-                    >
-                      {(props) => (
-                        <Input
-                          {...props}
-                          type="number"
-                          inputMode="decimal"
-                          step="0.01"
-                          min="0"
-                          value={line.unitPrice}
-                          onChange={(event) => {
-                            setLine(line.key, { unitPrice: event.target.value });
-                            setPriceProblems((previous) => ({ ...previous, [line.key]: undefined }));
-                          }}
-                        />
-                      )}
-                    </Field>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3.5">
-                    <span className="text-[15px] text-muted">
-                      {line.custom
-                        ? "Made by hand — nothing drawn from stock"
-                        : !match
-                          // Nothing picked yet: "not tracked" here stated a
-                          // fact about a product nobody had chosen.
-                          ? "Pick a product to see how many are on the shelf"
-                          : match.stock.tracked
-                            ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
-                            : "Stock not tracked for this one"}
-                    </span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[16.5px] font-bold tabular-nums">
-                        {formatPeso(roundMoney(Number(line.unitPrice) * Number(line.quantity || 0)))}
-                      </span>
+                        <span className="text-xs text-muted-fg">
+                          {line.custom
+                            ? "Made to order · priced by hand"
+                            : !match
+                              // Nothing picked yet: "not tracked" here stated a
+                              // fact about a product nobody had chosen.
+                              ? "Pick a product to see how many are on the shelf"
+                              : match.stock.tracked
+                                ? `${match.stock.available} on the shelf · ${stockLabel(match.stock.status)}`
+                                : "Stock not tracked for this one"}
+                          {match && Number(line.unitPrice) !== Number(line.listPrice)
+                            ? ` · list price ${formatPeso(line.listPrice)}`
+                            : ""}
+                        </span>
+                        <TextLink className="w-fit text-xs" onClick={() => toggleCustom(line.key)}>
+                          {line.custom ? "Pick from the catalogue instead" : "Not in the catalogue? Add it by hand"}
+                        </TextLink>
+                      </div>
+                    </td>
+                    <td className={cell}>
+                      <Input
+                        aria-label="How many"
+                        type="number"
+                        inputMode="numeric"
+                        min="1"
+                        value={line.quantity}
+                        onChange={(event) => setLine(line.key, { quantity: event.target.value })}
+                      />
+                    </td>
+                    <td className={cell}>
+                      <Input
+                        aria-label="Price each"
+                        aria-invalid={priceProblems[line.key] ? true : undefined}
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        min="0"
+                        value={line.unitPrice}
+                        onChange={(event) => {
+                          setLine(line.key, { unitPrice: event.target.value });
+                          setPriceProblems((previous) => ({ ...previous, [line.key]: undefined }));
+                        }}
+                      />
+                      {priceProblems[line.key] ? (
+                        <span role="alert" className="mt-1 block text-xs text-danger-fg">{priceProblems[line.key]}</span>
+                      ) : null}
+                    </td>
+                    <td className={`${cell} pt-3.5 text-right font-medium tabular-nums`}>
+                      {formatPeso(roundMoney(Number(line.unitPrice) * Number(line.quantity || 0)))}
+                    </td>
+                    <td className={cell}>
                       {lines.length > 1 && (
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setLines((previous) => previous.filter((l) => l.key !== line.key))
-                          }
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label="Remove"
+                          onClick={() => setLines((previous) => previous.filter((l) => l.key !== line.key))}
                         >
-                          <Trash2 className="h-4.5 w-4.5" />
-                          Remove
+                          <Trash />
                         </Button>
                       )}
-                    </div>
-                  </div>
-
-                  <div className="pt-3.5">
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto px-0 py-0"
-                      onClick={() => toggleCustom(line.key)}
-                    >
-                      {line.custom
-                        ? "Pick from the catalogue instead"
-                        : "Not in the catalogue? Add it by hand"}
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {lines.length === 0 && (
-              <EmptySlot className="py-6">Nothing on the order yet.</EmptySlot>
-            )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {lines.length === 0 && <EmptySlot>Nothing on the order yet.</EmptySlot>}
+          <div className="px-3 py-2">
+            <Button variant="ghost" size="sm" onClick={() => setLines((previous) => [...previous, emptyLine()])}>
+              <Plus />
+              Add another item
+            </Button>
           </div>
+        </div>
+      </div>
 
-          <Button
-            variant="outline"
-            size="lg"
-            onClick={() => setLines((previous) => [...previous, emptyLine()])}
-          >
-            <Plus className="h-5 w-5" />
-            Add another item
-          </Button>
+      {shortages.length > 0 && (
+        <Callout tone="amber" icon={<Warning />} title="More than we have on the shelf">
+          {shortages.map((shortage) => (
+            <span key={shortage.name} className="block">
+              {shortage.name}: only {shortage.have} free to sell, so {shortage.short} would
+              need making.
+            </span>
+          ))}
+          <span className="block pt-1">
+            You can still save the order. What is short shows as needed next under Batches.
+          </span>
+        </Callout>
+      )}
 
-          {shortages.length > 0 && (
-            <Callout tone="amber" icon={<TriangleAlert />} title="More than we have on the shelf">
-              {shortages.map((shortage) => (
-                <span key={shortage.name} className="block">
-                  {shortage.name}: only {shortage.have} free to sell, so {shortage.short} would
-                  need making.
-                </span>
-              ))}
-              <span className="block pt-1.5">
-                You can still save the order. What is short shows as needed next on the Production screen.
-              </span>
-            </Callout>
-          )}
-        </FormBand>
+      <Field
+        label="Where to"
+        warning={deliveryDoubt}
+        hint="Leave this empty if they are collecting. Put the district or city last."
+      >
+        {(props) => (
+          <Input
+            {...props}
+            value={address}
+            onChange={(event) => {
+              setAddress(event.target.value);
+              // Typing an address answers the question outright.
+              setDeliveryDoubt(null);
+              setAskedAboutDelivery(false);
+            }}
+            placeholder="12 Mabini St, Poblacion, Davao City"
+          />
+        )}
+      </Field>
 
-        <FormBand step={3} title="Is it going out?">
-          <Field
-            label="Where to"
-            warning={deliveryDoubt}
-            hint="Leave this empty if they are collecting. Put the district or city last."
-          >
+      {address.trim() && (
+        <Row className="sm:grid-cols-3">
+          <Field label="Promised for" error={dueError} hint="Today or later.">
             {(props) => (
               <Input
                 {...props}
-                value={address}
-                onChange={(event) => {
-                  setAddress(event.target.value);
-                  // Typing an address answers the question outright.
-                  setDeliveryDoubt(null);
-                  setAskedAboutDelivery(false);
-                }}
-                placeholder="12 Mabini St, Poblacion, Davao City"
+                type="date"
+                min={isEdit && delivery?.dueOn && delivery.dueOn < localDateIso() ? undefined : localDateIso()}
+                value={dueOn}
+                onChange={(event) => { setDueOn(event.target.value); setDueError(null); }}
               />
             )}
           </Field>
+          <Field label="Who is taking it" hint="Can be filled in later.">
+            {(props) => (
+              <Input
+                {...props}
+                value={driver}
+                onChange={(event) => setDriver(event.target.value)}
+                placeholder="Nobody yet"
+              />
+            )}
+          </Field>
+          <Field label="Delivery charge" hint={chargeHint}>
+            {(props) => (
+              <Input
+                {...props}
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={deliveryCharge}
+                onChange={(event) => setDeliveryCharge(event.target.value)}
+                placeholder={usualCharge == null ? "0.00" : usualCharge.toFixed(2)}
+              />
+            )}
+          </Field>
+        </Row>
+      )}
 
-          {address.trim() && (
-            <>
-              <Row>
-                <Field label="Promised for" error={dueError} hint="The day they expect it: today or later.">
-                  {(props) => (
-                    <Input
-                      {...props}
-                      type="date"
-                      min={isEdit && delivery?.dueOn && delivery.dueOn < localDateIso() ? undefined : localDateIso()}
-                      value={dueOn}
-                      onChange={(event) => { setDueOn(event.target.value); setDueError(null); }}
-                    />
-                  )}
-                </Field>
-                <Field label="Who is taking it" hint="Can be filled in later.">
-                  {(props) => (
-                    <Input
-                      {...props}
-                      value={driver}
-                      onChange={(event) => setDriver(event.target.value)}
-                      placeholder="Nobody yet"
-                    />
-                  )}
-                </Field>
-              </Row>
-
-              <Field label="Delivery charge" hint="Leave empty if delivery is free.">
-                {(props) => (
-                  <Input
-                    {...props}
-                    type="number"
-                    inputMode="decimal"
-                    step="0.01"
-                    min="0"
-                    value={deliveryCharge}
-                    onChange={(event) => setDeliveryCharge(event.target.value)}
-                    placeholder="0.00"
-                  />
-                )}
-              </Field>
-            </>
-          )}
-        </FormBand>
-
-        {offerReward && (
-          <div className="border-t border-hair bg-surface px-6.5 py-5">
-            <Callout
-              tone="green"
-              icon={<Gift />}
-              title={`${linked.name} has earned the loyalty reward`}
-            >
-              {earned.completedCount} finished orders. The reward is {loyalty.rewardPercent}% off the
-              items{useReward ? `: −${formatPeso(discount)} on this order.` : "."}
-              <span className="block pt-3">
-                <Checkbox
-                  id="apply-reward"
-                  checked={useReward}
-                  onChange={setUseReward}
-                  label="Apply it to this order"
-                />
-              </span>
-            </Callout>
-          </div>
-        )}
-        {keptDiscount > 0 && (
-          <div className="border-t border-hair bg-surface px-6.5 py-4 text-[15.5px] text-muted">
-            The loyalty reward agreed when this order was written stays on it: −{formatPeso(keptDiscount)}.
-          </div>
-        )}
-
-        {/* The total, at the size the order detail screen uses for it, so the
-            number somebody reads out to a customer looks the same in both
-            places. */}
-        <div className="flex items-baseline justify-between gap-6 border-t border-hair bg-surface px-6.5 py-5">
-          <span className="text-[16.5px] font-extrabold text-ink">Total to pay</span>
-          <span className="text-[28px] font-extrabold tracking-[-0.02em] tabular-nums text-ink">
-            {formatPeso(total)}
+      {offerReward && (
+        <Callout
+          tone="green"
+          icon={<Gift />}
+          title={`${linked.name} has earned the loyalty reward`}
+        >
+          {earned.completedCount} finished orders. The reward is {loyalty.rewardPercent}% off the
+          items{useReward ? `: −${formatPeso(discount)} on this order.` : "."}
+          <span className="block pt-2">
+            <Checkbox
+              id="apply-reward"
+              checked={useReward}
+              onChange={setUseReward}
+              label="Apply it to this order"
+            />
           </span>
-        </div>
+        </Callout>
+      )}
 
-        <FormFooter
-          left={
-            <Button variant="outline" size="lg" onClick={onCancel} disabled={saving}>
-              Cancel
-            </Button>
-          }
-          right={
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
-              <Save className="h-5 w-5" />
-              {saving
-                ? "Saving…"
-                : deliveryDoubt
-                  ? isEdit
-                    ? "Save it anyway"
-                    : "Create it anyway"
-                  : isEdit
-                    ? "Save the changes"
-                    : "Create order"}
-            </Button>
-          }
-        />
-      </Card>
-    </form>
+      {/* What is read out to the customer, line by line, then the total. */}
+      <dl className="m-0 flex flex-col gap-1.5 rounded-md bg-surface-2 px-3 py-2.5 text-13">
+        <div className="flex justify-between gap-6">
+          <dt className="text-muted-fg">Items</dt>
+          <dd className="m-0 tabular-nums">{formatPeso(itemsTotal)}</dd>
+        </div>
+        {charge > 0 && address.trim() ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">Delivery</dt>
+            <dd className="m-0 tabular-nums">{formatPeso(charge)}</dd>
+          </div>
+        ) : null}
+        {discount > 0 ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">{keptDiscount > 0 ? "Loyalty reward agreed when written" : "Loyalty reward"}</dt>
+            <dd className="m-0 tabular-nums">−{formatPeso(discount)}</dd>
+          </div>
+        ) : null}
+        <div className="mt-1 flex items-baseline justify-between gap-6 border-t border-border pt-2">
+          <dt className="font-medium">Total to pay</dt>
+          <dd className="m-0 text-base font-semibold tabular-nums">{formatPeso(total)}</dd>
+        </div>
+        {onDelivery ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">Payment</dt>
+            <dd className="m-0">Due {term} days after delivery</dd>
+          </div>
+        ) : Number(downAmount) > 0 && Number(downAmount) <= total ? (
+          <>
+            <div className="flex justify-between gap-6">
+              <dt className="text-muted-fg">Paid now</dt>
+              <dd className="m-0 tabular-nums">−{formatPeso(Number(downAmount))}</dd>
+            </div>
+            <div className="flex justify-between gap-6">
+              <dt className="font-medium">Still to pay at pick-up</dt>
+              <dd className="m-0 font-semibold tabular-nums">{formatPeso(roundMoney(total - Number(downAmount)))}</dd>
+            </div>
+          </>
+        ) : null}
+      </dl>
+
+      {onDelivery ? (
+        <Field
+          label="Payment terms"
+          hint={linked && !isEdit ? `Counted from the day it is delivered. ${linked.name}'s usual is ${linked.paymentTermDays ?? 30} days.` : "Counted from the day it is delivered. Nothing is paid down."}
+        >
+          {() => <RadioRow label="Payment terms" value={term} onChange={setTermChoice} options={TERM_OPTIONS} />}
+        </Field>
+      ) : null}
+
+      {/* A pick-up order is paid at the shop, in full or in part. Whatever is
+          paid as the order is written is recorded now. */}
+      {!isEdit && canTakePayment && !onDelivery ? (
+        <div className="flex flex-col gap-3.5 rounded-md border border-border p-3">
+          <Field label="Paid now" error={downProblem ?? undefined} hint="In full or in part. Leave empty if they pay when they pick it up.">
+            {(props) => (
+              <div className="relative">
+                <span aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">₱</span>
+                <Input
+                  {...props}
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  className="pl-6"
+                  value={downAmount}
+                  onChange={(event) => { setDownAmount(event.target.value); setDownProblem(null); }}
+                  placeholder="0.00"
+                />
+              </div>
+            )}
+          </Field>
+          {String(downAmount).trim() !== "" ? (
+            <Row>
+              <Field label="Paid by">
+                {() => <RadioRow label="Paid by" value={downMethod} onChange={setDownMethod} options={PAYMENT_METHODS} />}
+              </Field>
+              {needsReference(downMethod) ? (
+                <Field label="Reference number" required>
+                  {(props) => (
+                    <Input {...props} maxLength={80} value={downReference} onChange={(event) => { setDownReference(event.target.value); setDownProblem(null); }} />
+                  )}
+                </Field>
+              ) : null}
+            </Row>
+          ) : null}
+        </div>
+      ) : null}
+    </FormFrame>
   );
 }

@@ -1,4 +1,4 @@
-import { Box, Circle, Shapes, Square } from "../icons";
+import { Circle, Cube, Shapes, Square } from "../icons";
 import { PRODUCT_TYPE } from "../../utils/constants";
 
 /**
@@ -16,16 +16,11 @@ import { PRODUCT_TYPE } from "../../utils/constants";
 const BY_TYPE = {
   [PRODUCT_TYPE.BALL]: Circle,
   [PRODUCT_TYPE.SHEET]: Square,
-  [PRODUCT_TYPE.BLOCK]: Box,
+  [PRODUCT_TYPE.BLOCK]: Cube,
   [PRODUCT_TYPE.OTHER]: Shapes,
 };
 
 export function productIcon(productType, className = "h-5 w-5") {
   const Icon = BY_TYPE[productType] ?? Shapes;
   return <Icon className={className} />;
-}
-
-/** The same map, sized for the form's choice buttons. */
-export function productChoiceIcon(productType) {
-  return productIcon(productType, "h-5 w-5");
 }

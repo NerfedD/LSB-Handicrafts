@@ -3,7 +3,6 @@ import { guardForm, reportFormError } from "../../utils/formErrors";
 import { nameProblem } from "../../utils/validation";
 import { useState } from "react";
 
-import { Building2, UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,8 +14,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input, Textarea } from "@/components/ui/input";
-import { ChoiceButtons, Field } from "../shared/forms";
+import { Field, RadioRow, Row } from "../shared/forms";
 import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
+import { TERM_OPTIONS } from "../../utils/payments";
 
 /**
  * Add or edit a customer.
@@ -45,11 +45,11 @@ import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/pho
  * asks; the second goes through unchanged.
  */
 
-const EMPTY = { name: "", kind: "walk-in", contactNumber: "", email: "", address: "" };
+const EMPTY = { name: "", kind: "walk-in", contactNumber: "", email: "", address: "", paymentTermDays: 30 };
 
 const KINDS = [
-  { value: "walk-in", label: "Walk-in", icon: <UserRound className="h-5 w-5" /> },
-  { value: "business", label: "Business", icon: <Building2 className="h-5 w-5" /> },
+  { value: "walk-in", label: "Walk-in" },
+  { value: "business", label: "Business" },
 ];
 
 function validate(values) {
@@ -96,6 +96,7 @@ const seed = (customer, isEdit) =>
         contactNumber: localPhoneDigits(customer.contactNumber ?? ""),
         email: customer.email ?? "",
         address: customer.address ?? "",
+        paymentTermDays: customer.paymentTermDays ?? 30,
       }
     : EMPTY;
 
@@ -207,43 +208,42 @@ export default function CustomerFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent size="md">
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader>
-            <DialogTitle>{isEdit ? "Edit this customer" : "Add a customer"}</DialogTitle>
+            <DialogTitle>{isEdit ? "Edit customer" : "Add customer"}</DialogTitle>
             <DialogDescription>
-              The name and a phone number are all we really need. Everything else can be
-              filled in later.
+              Who orders, how to reach them, and where deliveries go.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody>
             <FormError message={saveError} />
-            <Field label="Their name" required error={errors.name} warning={warnings.name}>
+            <Field label="Customer name" required error={errors.name} warning={warnings.name}>
               {(props) => (
                 <Input
                   {...props}
                   value={values.name}
                   onChange={(event) => setField("name", event.target.value)}
-                  placeholder="Ana Reyes, or Reyes Events"
+                  placeholder="Shop, school or person"
                 />
               )}
             </Field>
 
-            <Field
-              label="What kind of customer"
-              hint="Businesses get grouped together so sales staff can plan calls."
-            >
-              <ChoiceButtons
-                label="What kind of customer"
+            <Field label="Kind" hint="Businesses are grouped together so sales staff can plan calls.">
+              <RadioRow
+                label="Kind"
+                className="flex-row flex-wrap gap-x-5"
                 options={KINDS}
                 value={values.kind}
                 onChange={(next) => setField("kind", next)}
               />
             </Field>
 
+            <Row>
+
             <Field
-              label="Phone number"
+              label="Phone"
               required
               error={errors.contactNumber}
               warning={warnings.contactNumber}
@@ -254,12 +254,12 @@ export default function CustomerFormDialog({
                   type="tel"
                   value={values.contactNumber}
                   onChange={(event) => setField("contactNumber", cleanPhoneInput(event.target.value))}
-                  placeholder="09171234503"
+                  placeholder="0917 000 0000"
                 />
               )}
             </Field>
 
-            <Field label="Email address" error={errors.email} hint="Only if they have one.">
+            <Field label={<>Email <span className="font-normal text-muted-fg">(optional)</span></>} error={errors.email}>
               {(props) => (
                 <Input
                   {...props}
@@ -271,8 +271,10 @@ export default function CustomerFormDialog({
               )}
             </Field>
 
+            </Row>
+
             <Field
-              label="Where they are"
+              label="Delivery address"
               error={errors.address}
               hint="Put the district or city last — it is what the area filter reads."
             >
@@ -285,13 +287,24 @@ export default function CustomerFormDialog({
                 />
               )}
             </Field>
+
+            <Field label="Payment terms" hint="How long they have to pay for a delivered order, from the day it arrives. A new order starts with this and can be changed.">
+              {() => (
+                <RadioRow
+                  label="Payment terms"
+                  value={values.paymentTermDays}
+                  onChange={(next) => setField("paymentTermDays", next)}
+                  options={TERM_OPTIONS}
+                />
+              )}
+            </Field>
           </DialogBody>
 
-          <DialogFooter className="justify-between">
-            <Button variant="outline" size="lg" disabled={saving} onClick={() => handleOpenChange(false)}>
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
+            <Button type="submit" disabled={saving}>
               {saving
                 ? "Saving…"
                 : Object.keys(warnings).some((field) => warnings[field])
@@ -299,8 +312,8 @@ export default function CustomerFormDialog({
                     ? "Save it anyway"
                     : "Add them anyway"
                   : isEdit
-                    ? "Save the changes"
-                    : "Add this customer"}
+                    ? "Save changes"
+                    : "Add customer"}
             </Button>
           </DialogFooter>
         </form>

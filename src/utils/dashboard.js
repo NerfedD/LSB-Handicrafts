@@ -126,7 +126,7 @@ export function attentionFor({ role, products, inventory, orders, deliveries, st
   if (role === "Admin" && lockedOut.length > 0) {
     items.push({
       key: "accounts",
-      tone: "cobalt",
+      tone: "info",
       icon: "UserX",
       title:
         lockedOut.length === 1
@@ -143,7 +143,7 @@ export function attentionFor({ role, products, inventory, orders, deliveries, st
   if (waiting.length > 0 && stale.length === 0 && items.length < 3) {
     items.push({
       key: "waiting",
-      tone: "cobalt",
+      tone: "info",
       icon: "ClipboardList",
       title: `${plural(waiting.length, "order is", "orders are")} still waiting`,
       body: "Nothing is overdue. This is simply what is in the queue today.",
@@ -181,7 +181,7 @@ export function followUpsFor({ orders, customerRows }) {
   if (lapsed.length > 0) {
     items.push({
       key: "lapsed",
-      tone: "clay",
+      tone: "progress",
       icon: "Phone",
       title: `${plural(lapsed.length, "customer has", "customers have")} not ordered in a year`,
       body: "They bought from us once and have not come back. This is a call list, not a filter.",
@@ -194,7 +194,7 @@ export function followUpsFor({ orders, customerRows }) {
   if (waiting.length > 0 && stale.length === 0) {
     items.push({
       key: "waiting",
-      tone: "cobalt",
+      tone: "info",
       icon: "ClipboardList",
       title: `${plural(waiting.length, "order is", "orders are")} in the queue`,
       body: "Nothing is overdue. This is what is being worked on today.",
@@ -282,33 +282,4 @@ export function makeList({ products, inventory, orders }) {
   // in the order productStock already sorted it.
   promoted.sort((a, b) => b.needed - a.needed);
   return [...promoted, ...rest];
-}
-
-/** Money taken this calendar month, across orders that were not cancelled. */
-export function takenThisMonth(orders = []) {
-  const start = new Date();
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-
-  return orders
-    .filter((order) => order.status !== ORDER_STATUS.CANCELLED)
-    .filter((order) => {
-      const at = order.createdAt ? new Date(order.createdAt).getTime() : null;
-      return at !== null && !Number.isNaN(at) && at >= start.getTime();
-    })
-    .reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0);
-}
-
-/**
- * The one-line summary under the greeting.
- *
- * "Three things need you today. Everything else is running normally." is the
- * question somebody opens a dashboard with — settle in, or carry on — and
- * answering it in one line is worth more than any of the numbers below it.
- */
-export function daySummary(attentionCount) {
-  if (attentionCount === 0) {
-    return "Nothing needs you right now. Everything is running normally.";
-  }
-  return `${attentionCount === 1 ? "One thing needs" : `${attentionCount} things need`} you today. Everything else is running normally.`;
 }

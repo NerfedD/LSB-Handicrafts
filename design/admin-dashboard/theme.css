@@ -1,0 +1,176 @@
+/* LSB admin theme: colour tokens (light + dark) and motion.
+   Every artboard links this after support.js. Inline styles read the
+   tokens as var(--token, <light hex>), so a missing file still renders light. */
+
+:root {
+  color-scheme: light;
+  --background: #F1FAEE;
+  --card: #ffffff;
+  --surface-2: #fafafa;
+  --muted: #f4f4f5;
+  --muted-strong: #e4e4e7;
+  --border: #d4d4d8;
+  --border-subtle: #e4e4e7;
+  --row-divider: #f4f4f5;
+  --input-strong: #a1a1aa;
+  --column: #e6f2e2;
+  --inverse: #18181b;
+  --inverse-fg: #fafafa;
+  --inverse-strong: #09090b;
+  --strong-bg: #3f3f46;
+
+  --foreground: #09090b;
+  --ink: #18181b;
+  --fg-2: #3f3f46;
+  --fg-3: #52525b;
+  --muted-fg: #71717a;
+  --muted-2: #a1a1aa;
+
+  --primary: #004E89;
+  --on-primary: #ffffff;
+  --primary-text: #004E89;
+  --primary-hover: #003a66;
+  --primary-press: #003a66;
+
+  --success: #15803d;  --success-bg: #f0fdf4; --success-fg: #15803d; --success-bd: #dcfce7;
+  --warning: #b45309;  --warning-bg: #fffbeb; --warning-fg: #b45309; --warning-bd: #fef3c7;
+  --danger: #b91c1c;   --danger-bg: #fef2f2;  --danger-fg: #b91c1c;  --danger-bd: #fee2e2; --danger-bd-strong: #fecaca;
+
+  --row-hover: rgba(9, 9, 11, 0.025);
+  --thumb: #ffffff;
+  --overlay: rgba(9, 9, 11, 0.5);
+
+  /* Motion tokens */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 320ms;
+}
+
+/* Dark: zinc greys, one lifted blue, status tints kept quiet. */
+html.dark, .dark {
+  color-scheme: dark;
+  --background: #09090b;
+  --card: #18181b;
+  --surface-2: #111113;
+  --muted: #27272a;
+  --muted-strong: #3f3f46;
+  --border: #2e2e33;
+  --border-subtle: #27272a;
+  --row-divider: #232327;
+  --input-strong: #52525b;
+  --column: #111113;
+  --inverse: #f4f4f5;
+  --inverse-fg: #09090b;
+  --inverse-strong: #fafafa;
+  --strong-bg: #52525b;
+
+  --foreground: #f4f4f5;
+  --ink: #e4e4e7;
+  --fg-2: #d4d4d8;
+  --fg-3: #b4b4bb;
+  --muted-fg: #a1a1aa;
+  --muted-2: #71717a;
+
+  --primary: #2878BE;
+  --on-primary: #ffffff;
+  --primary-text: #6aa8de;
+  --primary-hover: #93c0e8;
+  --primary-press: #1f63a0;
+
+  --success: #16a34a;  --success-bg: #13241a; --success-fg: #4ade80; --success-bd: #1e3a27;
+  --warning: #d97706;  --warning-bg: #2a2010; --warning-fg: #fbbf24; --warning-bd: #3d2f14;
+  --danger: #dc2626;   --danger-bg: #2a1414;  --danger-fg: #f87171;  --danger-bd: #4a1f1f; --danger-bd-strong: #5c2525;
+
+  --row-hover: rgba(255, 255, 255, 0.035);
+  --thumb: #fafafa;
+  --overlay: rgba(0, 0, 0, 0.66);
+}
+
+html.dark img { filter: brightness(0.92); }
+
+/* ---------- Motion (ideas from animate-ui.com, kept small) ---------- */
+
+@keyframes lsb-fade   { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lsb-pop    { from { opacity: 0; transform: translateY(6px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes lsb-drop   { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes lsb-rise   { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-slide  { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-tip    { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: none; } }
+@keyframes lsb-dot    { 0% { transform: scale(0); } 70% { transform: scale(1.25); } 100% { transform: scale(1); } }
+@keyframes lsb-draw   { from { stroke-dashoffset: 260; } to { stroke-dashoffset: 0; } }
+
+/* Dialogs: content pops, the backdrop fades. */
+[role="dialog"][aria-modal="true"], [role="alertdialog"] { animation: lsb-pop var(--dur-base) var(--ease-out) both; }
+button[aria-label="Close dialog"], button[aria-label="Close search"], button[aria-label="Close navigation"] { animation: lsb-fade var(--dur-base) ease-out both; }
+div[role="dialog"][aria-label="Navigation"] { animation: lsb-slide var(--dur-base) var(--ease-out) both; animation-name: lsb-tip; }
+
+/* Menus, listboxes and tooltips drop in from their trigger. */
+[role="menu"], [role="listbox"]:not([aria-label="Results"]) { animation: lsb-drop 140ms var(--ease-out) both; transform-origin: top; }
+[role="tooltip"] { animation: lsb-tip 150ms var(--ease-out) both; }
+
+/* Toasts slide in from the right. */
+[role="status"][style*="box-shadow"], [role="alert"][style*="box-shadow"] { animation: lsb-slide 260ms var(--ease-out) both; }
+
+/* A page's sections rise in, one after another, once. */
+.app-inset > div > * { animation: lsb-rise var(--dur-slow) var(--ease-out) both; }
+.app-inset > div > *:nth-child(2) { animation-delay: 40ms; }
+.app-inset > div > *:nth-child(3) { animation-delay: 80ms; }
+.app-inset > div > *:nth-child(4) { animation-delay: 120ms; }
+.app-inset > div > *:nth-child(5) { animation-delay: 160ms; }
+.app-inset > div > *:nth-child(n+6) { animation-delay: 200ms; }
+
+/* Kanban cards land softly when they move column. */
+[aria-label="Deliveries board"] article { animation: lsb-rise 220ms var(--ease-out) both; }
+
+/* Checkbox tick draws itself; radio dot springs; switch thumb springs. */
+[role="checkbox"][aria-checked="true"] svg path { stroke-dasharray: 260; animation: lsb-draw 260ms var(--ease-out) both; }
+[role="radio"][aria-checked="true"] > span[aria-hidden="true"] > span { animation: lsb-dot 220ms var(--ease-spring) both; }
+[role="switch"] { transition: background-color 200ms ease; }
+[role="switch"] > span { transition: left 240ms var(--ease-spring); }
+
+/* Controls respond quietly: colour eases, a press dips 2%. */
+button, a, input, textarea {
+  transition: background-color var(--dur-fast) ease, border-color var(--dur-fast) ease, color var(--dur-fast) ease, box-shadow var(--dur-fast) ease, transform 100ms ease;
+}
+button:not(:disabled):active { transform: scale(0.98); }
+
+/* Rows tint on hover without fighting their own background. */
+[role="table"] > [role="row"]:not(:first-child):hover,
+table tbody tr:hover { box-shadow: inset 0 0 0 9999px var(--row-hover); }
+
+/* Sidebar opens and closes, never jumps. */
+aside[aria-label="Main navigation"] { transition: width 200ms var(--ease-out); }
+
+/* Theme switch: everything crossfades for a moment. */
+html.theme-anim, html.theme-anim * {
+  transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, fill 240ms ease, stroke 240ms ease !important;
+}
+
+/* Reduced motion keeps feedback, drops travel. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; transition-duration: 1ms !important; }
+}
+
+/* Theme toggle: the new icon turns in. */
+@keyframes lsb-turn { from { opacity: 0; transform: rotate(-90deg) scale(0.6); } to { opacity: 1; transform: none; } }
+.theme-icon { align-items: center; justify-content: center; animation: lsb-turn 300ms var(--ease-spring) both; }
+
+/* Segmented switches: one highlight slides between two options. */
+.seg2 { position: relative; display: inline-grid !important; grid-template-columns: 1fr 1fr; }
+.seg2 > button { position: relative; z-index: 1; justify-content: center; background: transparent !important; box-shadow: none !important; }
+.seg2 > .seg-ind {
+  position: absolute; top: var(--seg-p, 2px); bottom: var(--seg-p, 2px); left: var(--seg-p, 2px);
+  width: calc(50% - var(--seg-p, 2px) - 1px); border-radius: var(--seg-r, 4px);
+  background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+  transition: transform 260ms var(--ease-spring);
+}
+.seg2[data-on]:not([data-on="false"]) > .seg-ind { transform: translateX(calc(100% + 2px)); }
+
+/* Roles list: the selected fill slides to the picked row. */
+.roles-ind {
+  position: absolute; top: 4px; left: 4px; right: 4px; height: 52px; border-radius: 6px;
+  background: var(--primary, #004E89); transition: transform 260ms var(--ease-spring);
+}
+.roles-nav button { position: relative; z-index: 1; background: transparent !important; }

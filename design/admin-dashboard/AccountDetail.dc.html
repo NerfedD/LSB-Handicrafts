@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ana Reyes · Account</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1240px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="users" collapsed="{{collapsed}}" h="1240" on-toggle="{{toggleNav}}" hint-size="240px,1240px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="User Management" page="Ana Reyes" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<a href="Users.dc.html" style="display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 13px; font-weight: 500; color: var(--fg-2, #3f3f46); text-decoration: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M160 208l-80-80 80-80"></path></svg>Back to User Management</a>
+
+<!-- Profile header -->
+<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<span aria-hidden="true" style="flex: none; width: 56px; height: 56px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 18px; font-weight: 500; display: flex; align-items: center; justify-content: center;">AR</span>
+<div style="flex: 1 1 280px; min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Ana Reyes</h1>
+<span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--card, #ffffff); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">{{roleName}}</span>
+<span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{access.bd}}; background: {{access.bg}}; color: {{access.fg}}; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>{{access.label}}</span>
+</div>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Sales associate · Sales · With LSB since March 2020 · Last signed in 12 minutes ago</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<sc-if value="{{dirty}}" hint-placeholder-val="{{false}}"><span style="font-size: 13px; color: var(--muted-fg, #71717a);">Unsaved changes</span></sc-if>
+<button type="button" onClick="{{discard}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer;">Discard</button>
+<button type="button" onClick="{{save}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Save changes</button>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+<!-- Main column -->
+<div style="flex: 2 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+
+<section aria-labelledby="ad-details" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="ad-details" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Their details</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Shown in the staff directory and on anything they record.</p></div>
+<div style="padding: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="ad-name" style="font-size: 14px; font-weight: 500;">Full name</label><input id="ad-name" type="text" defaultValue="Ana Reyes" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="ad-phone" style="font-size: 14px; font-weight: 500;">Mobile</label><input id="ad-phone" type="tel" defaultValue="0917 555 0123" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="ad-email" style="font-size: 14px; font-weight: 500;">Sign-in email</label><input id="ad-email" type="email" defaultValue="ana.reyes@lsbhandicrafts.ph" onChange="{{touch}}" aria-describedby="ad-email-hint" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><span id="ad-email-hint" style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Changing it sends a confirmation to the new address.</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="ad-pos" style="font-size: 14px; font-weight: 500;">Position</label><input id="ad-pos" type="text" defaultValue="Sales associate" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><span id="ad-dept-label" style="font-size: 14px; font-weight: 500;">Department</span><button type="button" aria-haspopup="listbox" aria-labelledby="ad-dept-label ad-dept-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="ad-dept-value">Sales</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button></div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;"><label for="ad-start" style="font-size: 14px; font-weight: 500;">Started on</label><input id="ad-start" type="text" defaultValue="Mar 2, 2020" onChange="{{touch}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</div>
+</section>
+
+<section aria-labelledby="ad-role" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px;"><div><h2 id="ad-role" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Role</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Decides which screens they can open.</p></div><a href="SettingsRoles.dc.html" style="font-size: 13px; font-weight: 500; text-decoration: none;">Compare roles</a></div>
+<div role="radiogroup" aria-labelledby="ad-role" style="padding: 8px;">
+<sc-for list="{{roles}}" as="r" hint-placeholder-count="5">
+<button type="button" role="radio" aria-checked="{{r.on}}" onClick="{{r.pick}}" style="display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 8px; border: 0; border-radius: 6px; background: {{r.rowBg}}; text-align: left; cursor: pointer;"><span aria-hidden="true" style="flex: none; margin-top: 2px; width: 16px; height: 16px; box-sizing: border-box; border-radius: 50%; border: 1px solid {{r.bd}}; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: inline-flex; align-items: center; justify-content: center;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{r.dot}};"></span></span><span><span style="display: block; font-size: 14px; font-weight: 500;">{{r.name}}</span><span style="display: block; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">{{r.desc}}</span></span></button>
+</sc-for>
+</div>
+</section>
+
+<section aria-labelledby="ad-signin" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="ad-signin" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Signing in</h2></div>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div><label for="ad-can" style="display: block; font-size: 14px; font-weight: 500;">Can sign in</label><span style="display: block; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">{{canHint}}</span></div>
+<button type="button" role="switch" id="ad-can" aria-checked="{{can}}" onClick="{{toggleCan}}" style="flex: none; position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{canTrack}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{canThumb}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px;">
+<dl style="margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 16px; font-size: 13px;"><dt style="color: var(--muted-fg, #71717a);">Last signed in</dt><dd style="margin: 0;">Today, 10:30 AM · Chrome on Windows</dd><dt style="color: var(--muted-fg, #71717a);">Password changed</dt><dd style="margin: 0;">Aug 14, 2026</dd></dl>
+<div style="display: flex; gap: 8px;">
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Send password reset</button>
+<button type="button" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Sign out everywhere</button>
+</div>
+</div>
+</section>
+
+<section aria-labelledby="ad-remove" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border: 1px solid var(--danger-bd-strong, #fecaca); border-radius: 8px; background: var(--card, #ffffff);">
+<div style="flex: 1 1 320px;"><h2 id="ad-remove" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Remove Ana's account</h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">The account stops working for good. Orders, deliveries and log entries keep Ana's name.</p></div>
+<button type="button" onClick="{{openRemove}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--danger-bd-strong, #fecaca); border-radius: 6px; background: var(--card, #ffffff); color: var(--danger-fg, #b91c1c); font-size: 14px; font-weight: 500; cursor: pointer;">Remove account</button>
+</section>
+</div>
+
+<!-- Side column -->
+<aside style="flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; gap: 16px;">
+<section aria-labelledby="ad-month" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 8px;"><h2 id="ad-month" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">October so far</h2></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--muted, #f4f4f5); border-top: 1px solid var(--row-divider, #f4f4f5);">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Orders taken</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">38</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Sales</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">₱96,420</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Customers added</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">5</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Cancelled</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">2</div></div>
+</div>
+</section>
+<section aria-labelledby="ad-act" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 6px; display: flex; justify-content: space-between; align-items: baseline;"><h2 id="ad-act" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Recent activity</h2><a href="SettingsActivity.dc.html" style="font-size: 13px; font-weight: 500; text-decoration: none;">Activity log</a></div>
+<ol style="list-style: none; margin: 0; padding: 0 16px 12px; font-size: 13px; line-height: 18px;">
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">10:42 AM</span><span>Created order #2048 for Bautista Party Supplies</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">8:47 AM</span><span>Cancelled order #2039</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Yesterday</span><span>Added customer Lanang Wedding Studio</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Oct 25</span><span>Created order #2044 for Agdao Elementary School</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0;"><span style="color: var(--muted-fg, #71717a);">Oct 24</span><span>Changed the price on quote #Q-118</span></li>
+</ol>
+</section>
+</aside>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgRemove}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="ConfirmDialog" on-close="{{closeDlg}}" title="Remove Ana Reyes’s account?" body="The account stops working for good and cannot be brought back. Orders, deliveries and log entries keep Ana’s name. To pause access instead, turn off Can sign in." verb="Remove account" keep="Keep it" confirm-text="Ana Reyes" hint-size="440px,280px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="users" h="1240" hint-size="240px,1240px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const role = s.role ?? 'sales';
+    const can = s.can ?? true;
+    const ROLES = [
+      ['admin', 'Admin', 'Everything, including settings and other accounts.'],
+      ['manager', 'Manager', 'Runs the floor: orders, stock, production, deliveries and reports.'],
+      ['sales', 'Sales Staff', 'Takes orders, looks after customers, sees stock.'],
+      ['production', 'Production Staff', 'Plans and finishes batches, counts raw materials.'],
+      ['delivery', 'Delivery Staff', 'Sees their runs and records what arrived.']
+    ];
+    const roles = ROLES.map(([k, name, desc]) => {
+      const on = k === role;
+      return {
+        name, desc, on,
+        bd: on ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)', dot: on ? 'var(--primary, #004E89)' : 'transparent', rowBg: on ? 'var(--muted, #f4f4f5)' : 'transparent',
+        pick: () => this.setState({ role: k, dirty: true })
+      };
+    });
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      dirty: !!s.dirty,
+      roles,
+      roleName: ROLES.find((r) => r[0] === role)[1],
+      can,
+      canTrack: can ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+      canThumb: can ? '16px' : '2px',
+      canHint: can ? 'Turn off to stop Ana signing in. Nothing Ana recorded is removed.' : 'Ana is signed out and cannot sign in until you turn this back on.',
+      access: can
+        ? { label: 'Can sign in', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' }
+        : { label: 'Suspended', bg: 'var(--danger-bg, #fef2f2)', fg: 'var(--danger-fg, #b91c1c)', bd: 'var(--danger-bd, #fee2e2)' },
+      toggleCan: () => this.setState({ can: !can, dirty: true }),
+      touch: () => this.setState({ dirty: true }),
+      save: () => this.setState({ dirty: false }),
+      discard: () => this.setState({ dirty: false, role: 'sales', can: true }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgRemove: s.dlg === 'remove',
+      openRemove: () => this.setState({ dlg: 'remove' })
+    };
+  }
+}
+</script>
+</body>
+</html>

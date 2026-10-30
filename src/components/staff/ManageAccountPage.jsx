@@ -1,99 +1,175 @@
+import { useState } from "react";
+
+import { FloppyDisk } from "../icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input, LockedInput } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { DangerBlock } from "../shared/Callout";
+import { Avatar } from "../shared/Chip";
+import ConfirmDialog from "../shared/ConfirmDialog";
+import { Field } from "../shared/forms";
+import { NotFoundState } from "../shared/PageStates";
+import { Page, PageHeader, TextLink } from "../shared/page";
+import StatusPill from "../shared/StatusPill";
+import { RoleChoices } from "./RoleChoices";
+import { supabase } from "../../lib/supabaseClient";
 import { guardForm } from "../../utils/formErrors";
 import { sameEmail } from "../../utils/email";
 import { nameProblem } from "../../utils/validation";
-import { useState } from "react";
-
-import { ArrowLeft, Save, UserCheck, UserCog, UserX } from "../icons";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import Callout, { DangerBlock } from "../shared/Callout";
-import { Avatar } from "../shared/Chip";
-import ConfirmDialog from "../shared/ConfirmDialog";
-import { Field, FormBand, FormFooter, LockedField } from "../shared/forms";
-import { NotFoundState } from "../shared/PageStates";
-import StatusPill from "../shared/StatusPill";
+import { ACTIVITY_KIND, timeLabel, whenLabel } from "../../utils/activityLog";
 import { roleLabel, signInState } from "../../utils/copy";
 import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
+import { formatShortDate } from "../../utils/profileFormat";
 
 /**
- * Manage one account — screen 2p.
+ * One account, drawn to the "12 · Account details (edit)" board:
  *
- * THE STATUS CALLOUT LEADS, and it says the thing an administrator opening a
- * blocked account most needs to hear: THEIR PASSWORD STILL WORKS. Without that
- * line the natural conclusion is that unblocking also means resetting a
- * password and telling somebody a new one, which is two unnecessary phone calls
- * per block.
+ *   Back to User Management → the profile header (avatar, name, role,
+ *   access; Discard, Save changes) → Their details → Role → Signing in →
+ *   removing the account, beside this month's activity and recent activity.
  *
- * THE EMAIL IS LOCKED AND SAYS WHY. It is how the person signs in, so changing
- * it here is not an edit to a detail — it would lock them out. A greyed box
- * with no explanation reads as a bug; a lock glyph plus one line reads as a
- * rule.
+ * Name, phone and role save together through the app's own handlers; the
+ * sign-in switch blocks or unblocks the account after a confirmation. The
+ * sign-in email cannot change here, and the app records no position or start
+ * date, so those fields are read-only.
  *
- * REMOVING AN ACCOUNT IS ITS OWN BLOCK AT THE BOTTOM. Rule 6, and the strongest
- * case for it in the app: it names the person, states exactly what happens AND
- * what survives ("orders and stock records they made stay exactly as they are"),
- * says it cannot be undone, and puts the button inside a red-outlined card of
- * its own. Never a bin icon beside "Edit" in a table row.
+ * "Send password reset" posts a reset link to the account's OWN email address,
+ * so an administrator can start the recovery without ever learning or setting
+ * the password themselves. "Sign out everywhere" ends every session of this
+ * account's login (public.sign_out_staff): no device of theirs can renew its
+ * access, though one already open keeps working until its token runs out, an
+ * hour at most. Blocking the account is what keeps somebody out for good.
  */
+const DEPARTMENT = { Admin: "Office", Manager: "Office", "Sales Staff": "Sales", "Production Staff": "Production", "Delivery Staff": "Delivery" };
+
+function Panel({ id, title, description, action, children }) {
+  return (
+    <section aria-labelledby={id} className="rounded-lg border border-border bg-card shadow-xs">
+      <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3.5">
+        <div className="min-w-0">
+          <h2 id={id} className="m-0 text-sm font-semibold">{title}</h2>
+          {description ? <p className="m-0 text-13 text-muted-fg">{description}</p> : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function ManageAccountPage({
   account,
+  activity = [],
   currentUserEmail,
   onBack,
-  onChangeRole,
+  onSaveRole,
   onStatusChange,
   onSaveDetails,
   onDelete,
+  onOpenActivity,
+  onCompareRoles,
+  /** Ends every session of this account's login; absent for your own account. */
+  onSignOutEverywhere,
 }) {
   const [name, setName] = useState(account?.name ?? "");
-  // The revision THIS SCREEN OPENED WITH, not the current one. App refreshes
-  // the staff list every 30 seconds, and saving here sends a whole row -- so
-  // taking the fresh revision would let this screen's stale `status` overwrite
-  // a block somebody else applied while it sat open. Captured once on mount.
   const [revision] = useState(account?.revision ?? 0);
-  // Same as the profile screen: normalised on the way in, and used as the
-  // baseline, so opening the page is not itself a change.
   const seededPhone = localPhoneDigits(account?.contactNumber ?? "");
   const [contactNumber, setContactNumber] = useState(seededPhone);
+  const [role, setRole] = useState(account?.role ?? "");
   const [saving, setSaving] = useState(false);
   const [phoneError, setPhoneError] = useState(null);
   const [nameError, setNameError] = useState(null);
   const [confirm, setConfirm] = useState(null); // "block" | "unblock" | "delete" | null
   const [working, setWorking] = useState(false);
+  const [now] = useState(() => Date.now());
+  // "idle" | "sending" | "sent" | "failed" -- a reset is a one-shot action with
+  // no record on the row, so its outcome lives here rather than in the account.
+  const [reset, setReset] = useState("idle");
+  // The same one-shot shape for ending their sessions.
+  const [ending, setEnding] = useState("idle");
+  const [endingMessage, setEndingMessage] = useState(null);
+
+  async function signOutEverywhere() {
+    if (!onSignOutEverywhere || ending === "working") return;
+    setEnding("working");
+    setEndingMessage(null);
+    try {
+      const result = await onSignOutEverywhere(account);
+      setEnding(result?.ok ? "done" : "failed");
+      setEndingMessage(result?.ok
+        ? result.ended > 0
+          ? `Signed out of ${result.ended === 1 ? "1 device" : `${result.ended} devices`}. A screen already open can keep working for up to an hour.`
+          : "They were not signed in anywhere."
+        : result?.message || "They are still signed in. Try again.");
+    } catch {
+      setEnding("failed");
+      setEndingMessage("We could not reach the system, so nothing was signed out.");
+    }
+  }
+
+  async function sendPasswordReset() {
+    if (reset === "sending" || reset === "sent" || !account?.email) return;
+    setReset("sending");
+    try {
+      // The link goes to the account holder's own inbox, never to the
+      // administrator who pressed this, so it cannot be used to take an
+      // account over -- it only saves a phone call to the person who is
+      // locked out. Same call the sign-in screen's "Forgot password" makes.
+      const { error } = await supabase.auth.resetPasswordForEmail(account.email, {
+        redirectTo: window.location.origin,
+      });
+      setReset(error ? "failed" : "sent");
+    } catch {
+      setReset("failed");
+    }
+  }
 
   if (!account) return <NotFoundState noun="account" onBack={onBack} />;
 
   const signIn = signInState(account);
   const isBlocked = account.status === "Blocked";
-  // Blocking is enforced at sign-in, so blocking your own account would lock
-  // you out on the next visit with no way back unless somebody else has access.
   const isSelf = sameEmail(account.email, currentUserEmail);
+  const roleLocked = isSelf || account.isSuperAdmin;
   const first = String(account.name || "This person").split(" ")[0];
+  const detailsChanged = name !== account.name || contactNumber !== seededPhone;
+  const roleChanged = Boolean(role) && role !== account.role;
+  const dirty = detailsChanged || roleChanged;
 
-  const changed = name !== account.name || contactNumber !== seededPhone;
+  const mine = activity.filter((entry) => entry.who === account.name);
+  const lastSignIn = mine.find((entry) => entry.kind === ACTIVITY_KIND.SIGN_IN);
+  const monthStart = new Date(now);
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const thisMonth = mine.filter((entry) => entry.at && new Date(entry.at).getTime() >= monthStart.getTime());
+  const countOf = (kind) => thisMonth.filter((entry) => entry.kind === kind).length;
+  const month = monthStart.toLocaleDateString("en-US", { month: "long" });
 
-  async function handleSaveDetails(event) {
-    event.preventDefault();
-    if (!guardForm(event.currentTarget)) return;
-
-    // This screen used to get its only phone check for free, from the
-    // `pattern` attribute guardForm reads. That attribute was wrong — it
-    // refused every number written with a space — and narrowing it to the shape
-    // rule means the digit count has to be asked for explicitly here, the way
-    // the other four phone fields already ask for it.
+  async function save(event) {
+    event?.preventDefault();
+    const form = document.getElementById("account-form");
+    if (form && !guardForm(form)) return;
     const problem = phoneProblem(contactNumber);
     setPhoneError(problem);
-    // 120 is the longest a staff name can be in the database (staff_name_len).
     const nameIssue = nameProblem(name, { label: "Their name", max: 120 });
     setNameError(nameIssue);
-    if (problem || nameIssue) return;
-
-    if (!changed || saving) return;
+    if (problem || nameIssue || !dirty || saving) return;
     setSaving(true);
-    await onSaveDetails?.({ name, contactNumber, revision });
+    // One write when both changed: the account carries a revision, and a
+    // second write against the same revision would be refused as stale.
+    const withRole = roleChanged && !roleLocked;
+    if (detailsChanged) await onSaveDetails?.({ name, contactNumber, ...(withRole ? { role } : {}), revision });
+    else if (withRole) await onSaveRole?.(role, revision);
     setSaving(false);
   }
+
+  const discard = () => {
+    setName(account.name ?? "");
+    setContactNumber(seededPhone);
+    setRole(account.role ?? "");
+    setNameError(null);
+    setPhoneError(null);
+  };
 
   async function runConfirm() {
     setWorking(true);
@@ -104,214 +180,210 @@ export default function ManageAccountPage({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button variant="ghost" size="sm" className="self-start px-2" onClick={onBack}>
-        <ArrowLeft className="h-5 w-5" />
-        All staff accounts
-      </Button>
-
-      {/* ---- who this is, and whether they can get in ---- */}
-      <Card className="p-5.5">
-        <div className="flex flex-wrap items-center gap-4">
-          <Avatar name={account.name} size="xl" />
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-[23px] font-extrabold tracking-[-0.02em] text-ink">
-              {account.name}
-            </h2>
-            <p className="pt-1 text-[15.5px] text-muted">{account.email}</p>
-          </div>
-          <StatusPill label={signIn.standalone} tone={signIn.tone} mark={signIn.icon} />
-        </div>
-      </Card>
-
-      {isBlocked && (
-        <Callout
-          tone="red"
-          icon={<UserX />}
-          title={`${first} cannot sign in right now`}
-          action={
-            <Button variant="green" size="lg" onClick={() => setConfirm("unblock")}>
-              <UserCheck className="h-5 w-5" />
-              Let {first} sign in again
+    <Page>
+      <PageHeader
+        back={{ label: "Back to User Management", onClick: onBack }}
+        leading={<Avatar name={account.name} size="lg" />}
+        title={account.name}
+        titleBadge={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{roleLabel(account.role)}</Badge>
+            <StatusPill label={signIn.label === "Yes" ? "Active" : signIn.label === "Blocked" ? "Suspended" : "Not set up"} tone={signIn.label === "Yes" ? "green" : signIn.label === "Blocked" ? "red" : "amber"} />
+            {isSelf ? <Badge variant="outline">You</Badge> : null}
+          </span>
+        }
+        description={`${roleLabel(account.role)} · ${DEPARTMENT[account.role] ?? "No department"} · ${account.email}${lastSignIn ? ` · Last signed in ${whenLabel(lastSignIn.at).toLowerCase()}` : ""}`}
+        actions={
+          <>
+            {dirty ? <Badge variant="warning">Unsaved changes</Badge> : null}
+            <Button variant="outline" onClick={discard} disabled={!dirty || saving}>Discard</Button>
+            <Button onClick={save} disabled={!dirty || saving}>
+              <FloppyDisk aria-hidden="true" />
+              {saving ? "Saving…" : "Save changes"}
             </Button>
-          }
-        >
-          {/* "Their password still works" is the load-bearing sentence. Without
-              it the natural assumption is that unblocking also means issuing a
-              new password, which is two unnecessary phone calls per block. */}
-          An administrator blocked this account.{" "}
-          <strong className="font-bold">Their password still works</strong> — unblocking is
-          all that is needed, and they will not have to be told anything new.
-        </Callout>
-      )}
+          </>
+        }
+      />
 
-      {!account.role && (
-        <Callout
-          tone="amber"
-          icon={<UserCog />}
-          title={`Nobody has said what ${first} does`}
-          action={
-            <Button variant="cobalt" size="lg" onClick={onChangeRole}>
-              Say what {first} does
-            </Button>
-          }
-        >
-          The password works, but with no job set there is nothing to let them into — so
-          signing in will fail with no explanation on their end.
-        </Callout>
-      )}
+      <div className="flex flex-col items-start gap-4 lg:flex-row">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+          <Panel id="ad-details" title="Their details" description="Shown in the staff directory and on anything they record.">
+            <form id="account-form" onSubmit={save} noValidate className="grid gap-3.5 px-4 py-4 sm:grid-cols-2">
+              <Field label="Full name" error={nameError}>
+                {(props) => <Input {...props} required maxLength={120} value={name} onChange={(event) => { setName(event.target.value); setNameError(null); }} autoComplete="name" />}
+              </Field>
+              <Field label="Mobile" error={phoneError}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    type="tel"
+                    value={contactNumber}
+                    onChange={(event) => { setContactNumber(cleanPhoneInput(event.target.value)); setPhoneError(null); }}
+                    autoComplete="tel"
+                  />
+                )}
+              </Field>
+              <Field label="Sign-in email" hint="It is how they sign in, so it cannot be changed here.">
+                {(props) => <LockedInput {...props} value={account.email ?? ""} />}
+              </Field>
+              <Field label="Position" hint="Follows from their role.">
+                {(props) => <LockedInput {...props} value={roleLabel(account.role)} />}
+              </Field>
+              <Field label="Department" hint="Follows from their role.">
+                {(props) => <LockedInput {...props} value={DEPARTMENT[account.role] ?? "Not set"} />}
+              </Field>
+              <Field label="Started on" hint="Not recorded in the system yet.">
+                {(props) => <Input {...props} disabled placeholder="Not recorded" />}
+              </Field>
+            </form>
+          </Panel>
 
-      {/* ---- their details ---- */}
-      <Card>
-        <form noValidate onSubmit={handleSaveDetails}>
-          <FormBand title="Their details">
-            <Field label="Full name" error={nameError}>
-              {(props) => (
-                <Input
-                  {...props}
-                  value={name}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                    setNameError(null);
-                  }}
-                />
-              )}
-            </Field>
+          <Panel
+            id="ad-role"
+            title="Role"
+            description={roleLocked ? (isSelf ? "Nobody changes their own role." : "Only the owner can change the owner's role.") : "Decides which screens they can open."}
+            action={onCompareRoles ? <TextLink onClick={onCompareRoles}>Compare roles</TextLink> : null}
+          >
+            <div className="px-4 py-3">
+              <RoleChoices label={`${first}'s role`} value={role} onChange={setRole} disabled={roleLocked} />
+            </div>
+          </Panel>
 
-            <LockedField
-              label="Email address"
-              value={account.email}
-              hint="Email cannot be changed here — it is how they sign in."
-            />
-
-            <Field
-              label="Phone number"
-              hint="So colleagues can reach them without asking around."
-              error={phoneError}
-            >
-              {(props) => (
-                <Input
-                  {...props}
-                  type="tel"
-                  value={contactNumber}
-                  onChange={(event) => {
-                    setContactNumber(cleanPhoneInput(event.target.value));
-                    setPhoneError(null);
-                  }}
-                  placeholder="09171234503"
-                />
-              )}
-            </Field>
-
-            <Field label="What they do" hint="This decides which screens they can open.">
-              {/* A bordered row, as in the handoff (2p): the role reads as the
-                  field's current value with its one way to change it at the
-                  far end, not as a loose word beside a small button. */}
-              <div className="flex min-h-15.5 flex-wrap items-center justify-between gap-3 rounded-field border-[1.5px] border-field px-4 py-2.5">
-                <span className="text-[16.5px] font-bold text-ink">
-                  {account.role ? roleLabel(account.role) : "Nothing set yet"}
+          <Panel id="ad-signin" title="Signing in">
+            <div className="flex items-start justify-between gap-4 px-4 py-3">
+              <div>
+                <label htmlFor="ad-can" className="block text-sm font-medium">Can sign in</label>
+                <span className="block text-13 text-muted-fg">
+                  {isBlocked
+                    ? "Suspended. Their password still works once this is turned back on."
+                    : !account.role
+                      ? "Their password works, but nothing opens until they have a role."
+                      : "Turn off to stop them signing in. Nothing they recorded is removed."}
                 </span>
-                {!isSelf && !account.isSuperAdmin && (
-                  <Button variant="outline" size="sm" onClick={onChangeRole}>
-                    <UserCog className="h-4.5 w-4.5" />
-                    Change this
-                  </Button>
-                )}
               </div>
-            </Field>
-          </FormBand>
-
-          <FormFooter
-            left={
-              <Button variant="outline" size="lg" onClick={onBack}>
-                Cancel
+              <Switch
+                id="ad-can"
+                aria-label="Can sign in"
+                checked={!isBlocked}
+                disabled={isSelf || account.isSuperAdmin}
+                onCheckedChange={(next) => setConfirm(next ? "unblock" : "block")}
+              />
+            </div>
+            <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-row-divider px-4 py-3 text-13">
+              <dt className="text-muted-fg">Last signed in</dt>
+              <dd className="m-0">{lastSignIn ? whenLabel(lastSignIn.at) : "Not in the activity log"}</dd>
+            </dl>
+            <div className="flex flex-wrap items-center gap-2 border-t border-row-divider px-4 py-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={sendPasswordReset}
+                disabled={!account.email || reset === "sending" || reset === "sent"}
+              >
+                {reset === "sending" ? "Sending…" : reset === "sent" ? "Reset link sent" : "Send password reset"}
               </Button>
-            }
-            right={
-              <>
-                {!isBlocked && !isSelf && !account.isSuperAdmin && (
-                  <Button variant="outline" size="lg" onClick={() => setConfirm("block")}>
-                    <UserX className="h-5 w-5" />
-                    Stop {first} signing in
-                  </Button>
-                )}
-                <Button type="submit" variant="cobalt" size="lg" disabled={!changed || saving}>
-                  <Save className="h-5 w-5" />
-                  {saving ? "Saving…" : "Save changes"}
+              {onSignOutEverywhere ? (
+                <Button variant="outline" size="sm" onClick={signOutEverywhere} disabled={ending === "working" || ending === "done"}>
+                  {ending === "working" ? "Signing out…" : ending === "done" ? "Signed out everywhere" : "Sign out everywhere"}
                 </Button>
-              </>
-            }
-          />
-        </form>
-      </Card>
+              ) : null}
+              {endingMessage ? (
+                <span className={ending === "failed" ? "text-13 text-danger-fg" : "text-13 text-muted-fg"}>{endingMessage}</span>
+              ) : null}
+              {reset === "sent" ? (
+                <span className="text-13 text-muted-fg">
+                  Sent to {account.email}. {first} can set a new password from that link; their current one keeps working until they do.
+                </span>
+              ) : null}
+              {reset === "failed" ? (
+                <span className="text-13 text-danger-fg">
+                  That did not send. Too many resets in a row are refused for a few minutes — wait, then try again.
+                </span>
+              ) : null}
+            </div>
+          </Panel>
 
-      {/* ---- the only place an account can be removed ---- */}
-      {!isSelf && !account.isSuperAdmin && (
-        <DangerBlock
-          title="Remove this account for good"
-          action={
-            <Button variant="danger" size="lg" onClick={() => setConfirm("delete")}>
-              Remove {account.name}
-            </Button>
-          }
-        >
-          {account.name} disappears from the staff list and their sign-in stops working.
-          Orders and stock records they made stay exactly as they are. This cannot be
-          undone.
-          <br />
-          <br />
-          If they have simply left for a while, stopping them signing in is the reversible
-          option and keeps the account ready for their return.
-        </DangerBlock>
-      )}
+          {!isSelf && !account.isSuperAdmin ? (
+            <DangerBlock
+              title={`Remove ${first}'s account`}
+              action={<Button variant="destructive-outline" onClick={() => setConfirm("delete")}>Remove account</Button>}
+            >
+              The account stops working for good. Orders, deliveries and log entries keep {first}&rsquo;s name.
+            </DangerBlock>
+          ) : null}
+        </div>
+
+        <aside className="flex w-full flex-col gap-4 lg:w-[320px] lg:shrink-0">
+          <section aria-labelledby="ad-month" className="rounded-lg border border-border bg-card shadow-xs">
+            <div className="px-4 pb-2 pt-3.5"><h2 id="ad-month" className="m-0 text-sm font-semibold">{month} so far</h2></div>
+            <div className="grid grid-cols-2 gap-px border-t border-row-divider bg-muted">
+              {[
+                ["Order changes", countOf(ACTIVITY_KIND.ORDER)],
+                ["Delivery moves", countOf(ACTIVITY_KIND.DELIVERY)],
+                ["Stock changes", countOf(ACTIVITY_KIND.STOCK)],
+                ["Customer changes", countOf(ACTIVITY_KIND.CUSTOMER)],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-card px-4 py-2.5">
+                  <div className="text-xs text-muted-fg">{label}</div>
+                  <div className="text-lg font-semibold">{value}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section aria-labelledby="ad-act" className="rounded-lg border border-border bg-card shadow-xs">
+            <div className="flex items-baseline justify-between px-4 pb-2 pt-3.5">
+              <h2 id="ad-act" className="m-0 text-sm font-semibold">Recent activity</h2>
+              {onOpenActivity ? <TextLink onClick={onOpenActivity}>Activity log</TextLink> : null}
+            </div>
+            {mine.length === 0 ? (
+              <p className="m-0 border-t border-row-divider px-4 py-3 text-13 text-muted-fg">Nothing recorded yet.</p>
+            ) : (
+              <ol className="m-0 list-none border-t border-row-divider px-4 py-2 text-13">
+                {mine.slice(0, 5).map((entry) => (
+                  <li key={entry.id} className="flex gap-3 py-1">
+                    <span className="w-16 shrink-0 text-muted-fg">
+                      {entry.at && new Date(entry.at).toDateString() === new Date().toDateString() ? timeLabel(entry.at) : formatShortDate(entry.at)}
+                    </span>
+                    <span className="min-w-0">{entry.what}</span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </aside>
+      </div>
 
       <ConfirmDialog
         open={confirm === "delete"}
         onOpenChange={(next) => !next && setConfirm(null)}
         title={`Remove ${account.name}?`}
-        consequences={
-          <>
-            {account.name} disappears from the staff list and can no longer sign in. Orders
-            and stock records they made stay exactly as they are. This cannot be undone.
-          </>
-        }
+        consequences={`${account.name} disappears from the staff list and can no longer sign in. Orders and stock records they made stay exactly as they are. This cannot be undone.`}
         confirmLabel="Yes, remove them"
         busy={working}
         onConfirm={runConfirm}
       />
-
       <ConfirmDialog
         open={confirm === "block"}
         onOpenChange={(next) => !next && setConfirm(null)}
         title={`Stop ${account.name} signing in?`}
-        consequences={
-          <>
-            They will not be able to get in until somebody unblocks them. Their password is
-            not changed and nothing they have made is affected, so this can be undone at any
-            time.
-          </>
-        }
-        confirmLabel="Yes, block them"
+        consequences={`${first} can’t sign in until someone turns it back on. Their password is not changed and nothing they recorded is removed.`}
+        confirmLabel="Yes, suspend"
+        keepLabel="Keep access"
         busy={working}
         onConfirm={runConfirm}
       />
-
       <ConfirmDialog
         open={confirm === "unblock"}
         onOpenChange={(next) => !next && setConfirm(null)}
         intent="forward"
         title={`Let ${account.name} sign in again?`}
-        consequences={
-          <>
-            They will be able to get in straight away with the password they already have.
-            Nothing needs to be sent to them.
-          </>
-        }
+        consequences="They will be able to get in straight away with the password they already have. Nothing needs to be sent to them."
         confirmLabel="Yes, let them in"
         keepLabel="Not yet"
         busy={working}
         onConfirm={runConfirm}
       />
-    </div>
+    </Page>
   );
 }

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signIn, stubSupabase } from './stubSupabase.js';
+import { openNav, signIn, stubSupabase } from './stubSupabase.js';
 
 // These test frontend recovery against simulated failures, not hosted RLS.
 for (const status of [400, 401, 403, 429, 500]) {
@@ -18,18 +18,18 @@ for (const status of [400, 401, 403, 429, 500]) {
       await route.fallback();
     });
     await page.goto(`${baseURL}/customers`);
-    await page.getByRole('button', { name: 'Add a customer', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Add customer', exact: true }).first().click();
     const dialog = page.getByRole('dialog');
     const name = `QA recovery ${status}`;
     await dialog.getByLabel(/name/i).fill(name);
     await dialog.locator('input[type="tel"]').fill('09171234567');
-    await dialog.getByRole('button', { name: 'Add this customer' }).click();
+    await dialog.getByRole('button', { name: 'Add customer' }).click();
     await expect(dialog.locator('[data-form-error]')).toBeVisible();
     await expect(dialog.getByLabel(/name/i)).toHaveValue(name);
-    await expect(dialog.getByRole('button', { name: 'Add this customer' })).toBeEnabled();
+    await expect(dialog.getByRole('button', { name: 'Add customer' })).toBeEnabled();
     expect(tables.customers.filter((row) => row.name === name)).toHaveLength(0);
     fail = false;
-    await dialog.getByRole('button', { name: 'Add this customer' }).click();
+    await dialog.getByRole('button', { name: 'Add customer' }).click();
     await expect(dialog).toHaveCount(0);
     expect(attempts).toBe(2);
     expect(tables.customers.filter((row) => row.name === name)).toHaveLength(1);
@@ -42,7 +42,7 @@ for (const width of [375, 768, 1440, 2560]) {
     await stubSupabase(page);
     await signIn(page, baseURL);
     await page.goto(`${baseURL}/products`);
-    await expect(page.getByRole('heading', { name: 'Products & stock', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Inventory', exact: true })).toBeVisible();
     const dimensions = await page.evaluate(() => ({
       scroll: document.documentElement.scrollWidth,
       client: document.documentElement.clientWidth,
@@ -70,7 +70,7 @@ for (const [table, label] of [['customers', 'customer'], ['suppliers', 'supplier
     const refreshed = page.waitForResponse((response) => response.url().includes(`/rest/v1/${table}`) && response.request().method() === 'GET');
     await page.clock.fastForward(61_000);
     await refreshed;
-    await dialog.getByRole('button', { name: 'Save the changes' }).click();
+    await dialog.getByRole('button', { name: 'Save changes' }).click();
     await expect(dialog.locator('[data-form-error]')).toContainText('record changed');
     await expect(dialog.locator('textarea')).toHaveValue('My unsaved address');
     expect(row.contact_number).toBe('09179876543');
@@ -79,7 +79,7 @@ for (const [table, label] of [['customers', 'customer'], ['suppliers', 'supplier
     await page.getByRole('button', { name: 'Edit details', exact: true }).click();
     await expect(page.getByRole('dialog').locator('input[type="tel"]')).toHaveValue('09179876543');
     await page.getByRole('dialog').locator('textarea').fill('My refreshed address');
-    await page.getByRole('dialog').getByRole('button', { name: 'Save the changes' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     expect(tables[table][0].address).toBe('My refreshed address');
     expect(tables[table][0].contact_number).toBe('09179876543');
@@ -91,13 +91,13 @@ test('BUG-001: an open product form refuses a newer catalogue revision', async (
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/products/1/edit`);
-  await page.getByLabel('Product name').fill('My stale draft');
+  await page.getByLabel(/^Name /).fill('My stale draft');
   const row = tables.products.find((product) => product.id === 1);
   row.name = 'Newer product name';
   row.revision = 1;
-  await page.getByRole('button', { name: 'Save the changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.locator('[data-form-error]')).toContainText('record changed');
-  await expect(page.getByLabel('Product name')).toHaveValue('My stale draft');
+  await expect(page.getByLabel(/^Name /)).toHaveValue('My stale draft');
   expect(row.name).toBe('Newer product name');
 });
 
@@ -105,11 +105,11 @@ test('BUG-001: a product edit cannot overwrite stock changed after the form open
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/products/1/edit`);
-  await expect(page.getByLabel('Product name')).toHaveValue('Styro Ball 4 inch');
+  await expect(page.getByLabel(/^Name /)).toHaveValue('Styro Ball 4 inch');
   const stock = tables.inventory.find((row) => row.sku === tables.products[0].item_code);
   stock.stock = 222;
   stock.revision = 1;
-  await page.getByRole('button', { name: 'Save the changes', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.locator('[data-form-error]')).toContainText('shelf count was not');
   await expect(page.locator('[data-form-error]')).toContainText('record changed');
   expect(tables.inventory.find((row) => row.id === stock.id).stock).toBe(222);
@@ -121,8 +121,8 @@ test('BUG-001: a product edit cannot overwrite stock changed after the form open
 test('BUG-005: a stale staff screen cannot undo a block it never saw', async ({ page, baseURL }) => {
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);
-  await page.getByRole('navigation').getByRole('button', { name: /^Staff & accounts/ }).click();
-  await page.getByRole('row', { name: /Juan Dela Cruz/ }).getByRole('button', { name: 'Manage' }).click();
+  await openNav(page, 'User Management');
+  await page.getByRole('table').getByRole('button', { name: 'Juan Dela Cruz', exact: true }).click();
   await expect(page.getByLabel('Full name')).toHaveValue('Juan Dela Cruz');
 
   // Another administrator blocks him while this screen sits open.
