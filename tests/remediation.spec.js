@@ -338,3 +338,21 @@ test('a delivery that arrives with nothing left owed finishes its order', async 
 
   expect(tables.orders.find((row) => row.id === 1042).status).toBe('Completed');
 });
+
+test('a collapsed sidebar is a rail of icon-only squares, with the names in tooltips', async ({ page, baseURL }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await stubSupabase(page); await signIn(page, baseURL);
+  await page.keyboard.press('Control+b');
+  const aside = page.getByRole('complementary', { name: 'Main navigation' });
+  await expect(aside).toHaveAttribute('data-state', 'collapsed');
+  const buttons = aside.getByRole('navigation', { name: 'Main' }).getByRole('button');
+  const count = await buttons.count();
+  expect(count).toBeGreaterThan(5);
+  for (let i = 0; i < count; i += 1) {
+    // No clipped label text beside the icon, and a square no wider than the rail allows.
+    await expect(buttons.nth(i)).toHaveText('');
+    expect((await buttons.nth(i).boundingBox()).width).toBeLessThanOrEqual(32);
+  }
+  await aside.getByRole('button', { name: /^Inventory/ }).hover();
+  await expect(page.getByText('Inventory', { exact: true })).toBeVisible();
+});

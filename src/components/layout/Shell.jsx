@@ -318,6 +318,9 @@ function NavParent({ parent, subItems, activeKey, count, onNavigate }) {
 }
 
 function SidebarLabel({ children }) {
+  // Collapsed to icons, the button's tooltip and aria-label carry the name.
+  const { collapsed } = useSidebar();
+  if (collapsed) return null;
   return <span className="min-w-0 flex-1 truncate whitespace-nowrap">{children}</span>;
 }
 
