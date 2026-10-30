@@ -2839,6 +2839,7 @@ export default function App() {
             }}
             onOpenActivity={() => navigate("activity")}
             onCompareRoles={() => navigate("settings-roles")}
+            viewerIsSuperAdmin={!!profile?.isSuperAdmin}
             // Not your own account (My profile ends your other sessions), and
             // the owner's only by the owner -- the database refuses the same.
             onSignOutEverywhere={

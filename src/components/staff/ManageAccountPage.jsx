@@ -71,6 +71,8 @@ export default function ManageAccountPage({
   onCompareRoles,
   /** Ends every session of this account's login; absent for your own account. */
   onSignOutEverywhere,
+  /** Whether the person looking is the owner. Only the owner changes the owner's row. */
+  viewerIsSuperAdmin = false,
 }) {
   const [name, setName] = useState(account?.name ?? "");
   const [revision] = useState(account?.revision ?? 0);
@@ -131,6 +133,10 @@ export default function ManageAccountPage({
   const isBlocked = account.status === "Blocked";
   const isSelf = sameEmail(account.email, currentUserEmail);
   const roleLocked = isSelf || account.isSuperAdmin;
+  // The owner account is the owner's alone: an ordinary administrator sees its
+  // details but cannot change them. The database refuses the same
+  // (staff_guard_self_update), so this only stops a Save that would fail.
+  const ownerLocked = account.isSuperAdmin && !viewerIsSuperAdmin;
   const first = String(account.name || "This person").split(" ")[0];
   const detailsChanged = name !== account.name || contactNumber !== seededPhone;
   const roleChanged = Boolean(role) && role !== account.role;
@@ -153,7 +159,7 @@ export default function ManageAccountPage({
     setPhoneError(problem);
     const nameIssue = nameProblem(name, { label: "Their name", max: 120 });
     setNameError(nameIssue);
-    if (problem || nameIssue || !dirty || saving) return;
+    if (ownerLocked || problem || nameIssue || !dirty || saving) return;
     setSaving(true);
     // One write when both changed: the account carries a revision, and a
     // second write against the same revision would be refused as stale.
@@ -195,12 +201,16 @@ export default function ManageAccountPage({
         description={`${roleLabel(account.role)} · ${DEPARTMENT[account.role] ?? "No department"} · ${account.email}${lastSignIn ? ` · Last signed in ${whenLabel(lastSignIn.at).toLowerCase()}` : ""}`}
         actions={
           <>
-            {dirty ? <Badge variant="warning">Unsaved changes</Badge> : null}
-            <Button variant="outline" onClick={discard} disabled={!dirty || saving}>Discard</Button>
-            <Button onClick={save} disabled={!dirty || saving}>
-              <FloppyDisk aria-hidden="true" />
-              {saving ? "Saving…" : "Save changes"}
-            </Button>
+            {ownerLocked ? null : (
+              <>
+                {dirty ? <Badge variant="warning">Unsaved changes</Badge> : null}
+                <Button variant="outline" onClick={discard} disabled={!dirty || saving}>Discard</Button>
+                <Button onClick={save} disabled={!dirty || saving}>
+                  <FloppyDisk aria-hidden="true" />
+                  {saving ? "Saving…" : "Save changes"}
+                </Button>
+              </>
+            )}
           </>
         }
       />
@@ -209,6 +219,17 @@ export default function ManageAccountPage({
         <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
           <Panel id="ad-details" title="Their details" description="Shown in the staff directory and on anything they record.">
             <form id="account-form" onSubmit={save} noValidate className="grid gap-3.5 px-4 py-4 sm:grid-cols-2">
+              {ownerLocked ? (
+                <>
+                  <Field label="Full name" hint="Only the owner can change the owner account.">
+                    {(props) => <LockedInput {...props} value={account.name ?? ""} />}
+                  </Field>
+                  <Field label="Mobile" hint="Only the owner can change the owner account.">
+                    {(props) => <LockedInput {...props} value={account.contactNumber || "Not recorded"} />}
+                  </Field>
+                </>
+              ) : (
+              <>
               <Field label="Full name" error={nameError}>
                 {(props) => <Input {...props} required maxLength={120} value={name} onChange={(event) => { setName(event.target.value); setNameError(null); }} autoComplete="name" />}
               </Field>
@@ -223,6 +244,8 @@ export default function ManageAccountPage({
                   />
                 )}
               </Field>
+              </>
+              )}
               <Field label="Sign-in email" hint="It is how they sign in, so it cannot be changed here.">
                 {(props) => <LockedInput {...props} value={account.email ?? ""} />}
               </Field>

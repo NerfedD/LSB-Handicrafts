@@ -199,3 +199,17 @@ test('a supplier with finished purchase history is kept on file as no longer use
   await expect(page.getByText(`${supplier.name} is in use again.`)).toBeVisible();
   expect(supplier.status).toBe('Active');
 });
+
+test("an ordinary administrator sees the owner's details but cannot change them", async ({ page, baseURL }) => {
+  const as = "second.admin@lsbhandicrafts.test";
+  const tables = await stubSupabase(page, { as });
+  tables.staff.push({ id: 990, name: "Second Admin", role: "Admin", status: "Active", email: as, is_super_admin: false, dashboard_view: "standard" });
+  await signIn(page, baseURL, as);
+  // Maria Santos (#1) is the owner.
+  await page.goto(`${baseURL}/staff/1`);
+  await expect(page.getByRole("heading", { level: 1, name: "Maria Santos" })).toBeVisible();
+  await expect(page.getByLabel("Full name")).toHaveAttribute("readonly", "");
+  await expect(page.getByLabel("Mobile")).toHaveAttribute("readonly", "");
+  await expect(page.getByText("Only the owner can change the owner account.").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save changes" })).toHaveCount(0);
+});
