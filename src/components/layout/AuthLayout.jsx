@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 
 import logo from "../../assets/Logo-128.png";
-import workshopStock from "../../assets/workshop-stock.jpg";
+import workshopStock from "../../assets/workshop-stock.webp";
 import workshopStore from "../../assets/workshop-store.webp";
-import workshopBench from "../../assets/workshop-bench.jpg";
+import workshopBench from "../../assets/workshop-bench.webp";
 import { cn } from "@/lib/utils";
 
 /**
@@ -63,6 +63,7 @@ function PhotoPanel() {
             src={photo.src}
             alt=""
             decoding="async"
+            loading="lazy"
             fetchPriority={index === 0 ? "high" : "low"}
             className={cn(
               "absolute inset-0 size-full object-cover transition-[opacity,transform] duration-[1400ms] ease-in-out",
@@ -152,7 +153,7 @@ export function AuthCard({ title, description, step, footer, width = 380, childr
   );
 }
 
-export function StepBar({ step, steps = 3 }) {
+function StepBar({ step, steps = 3 }) {
   return (
     <div role="img" aria-label={`Step ${step} of ${steps}`} className="mb-4 grid grid-cols-3 gap-1.5">
       {Array.from({ length: steps }).map((_, index) => (
