@@ -36,10 +36,10 @@ import { formatShortDate } from "../../utils/profileFormat";
  *
  * "Send password reset" posts a reset link to the account's OWN email address,
  * so an administrator can start the recovery without ever learning or setting
- * the password themselves. "Sign out everywhere" stays disabled: signOut only
- * ever ends the CALLER's own sessions, so ending somebody else's needs the
- * service key through an Edge Function, which supabase/functions/admin-accounts
- * does not do yet.
+ * the password themselves. "Sign out everywhere" ends every session of this
+ * account's login (public.sign_out_staff): no device of theirs can renew its
+ * access, though one already open keeps working until its token runs out, an
+ * hour at most. Blocking the account is what keeps somebody out for good.
  */
 const DEPARTMENT = { Admin: "Office", Manager: "Office", "Sales Staff": "Sales", "Production Staff": "Production", "Delivery Staff": "Delivery" };
 
@@ -69,6 +69,8 @@ export default function ManageAccountPage({
   onDelete,
   onOpenActivity,
   onCompareRoles,
+  /** Ends every session of this account's login; absent for your own account. */
+  onSignOutEverywhere,
 }) {
   const [name, setName] = useState(account?.name ?? "");
   const [revision] = useState(account?.revision ?? 0);
@@ -84,6 +86,27 @@ export default function ManageAccountPage({
   // "idle" | "sending" | "sent" | "failed" -- a reset is a one-shot action with
   // no record on the row, so its outcome lives here rather than in the account.
   const [reset, setReset] = useState("idle");
+  // The same one-shot shape for ending their sessions.
+  const [ending, setEnding] = useState("idle");
+  const [endingMessage, setEndingMessage] = useState(null);
+
+  async function signOutEverywhere() {
+    if (!onSignOutEverywhere || ending === "working") return;
+    setEnding("working");
+    setEndingMessage(null);
+    try {
+      const result = await onSignOutEverywhere(account);
+      setEnding(result?.ok ? "done" : "failed");
+      setEndingMessage(result?.ok
+        ? result.ended > 0
+          ? `Signed out of ${result.ended === 1 ? "1 device" : `${result.ended} devices`}. A screen already open can keep working for up to an hour.`
+          : "They were not signed in anywhere."
+        : result?.message || "They are still signed in. Try again.");
+    } catch {
+      setEnding("failed");
+      setEndingMessage("We could not reach the system, so nothing was signed out.");
+    }
+  }
 
   async function sendPasswordReset() {
     if (reset === "sending" || reset === "sent" || !account?.email) return;
@@ -259,14 +282,14 @@ export default function ManageAccountPage({
               >
                 {reset === "sending" ? "Sending…" : reset === "sent" ? "Reset link sent" : "Send password reset"}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled
-                title="Ending someone else's sessions needs the admin service key, which a browser never holds"
-              >
-                Sign out everywhere
-              </Button>
+              {onSignOutEverywhere ? (
+                <Button variant="outline" size="sm" onClick={signOutEverywhere} disabled={ending === "working" || ending === "done"}>
+                  {ending === "working" ? "Signing out…" : ending === "done" ? "Signed out everywhere" : "Sign out everywhere"}
+                </Button>
+              ) : null}
+              {endingMessage ? (
+                <span className={ending === "failed" ? "text-13 text-danger-fg" : "text-13 text-muted-fg"}>{endingMessage}</span>
+              ) : null}
               {reset === "sent" ? (
                 <span className="text-13 text-muted-fg">
                   Sent to {account.email}. {first} can set a new password from that link; their current one keeps working until they do.

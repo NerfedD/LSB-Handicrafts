@@ -11,6 +11,8 @@ import { Page, PageHeader, TextLink } from "../shared/page";
 import StatusPill from "../shared/StatusPill";
 import StageBadge from "../deliveries/StageBadge";
 import { STAGE_LOOK } from "../deliveries/stageLook";
+import OrderPayments from "./OrderPayments";
+import { dueDateOf } from "../../utils/payments";
 import OrderSlip from "./OrderSlip";
 import { cn } from "@/lib/utils";
 import { DELIVERY_STAGE, ORDER_STATUS } from "../../utils/constants";
@@ -33,6 +35,7 @@ import {
   hasBackorder,
   isBackorderDelivery,
   lastPriceAdjustment,
+  orderNetTotal,
   orderTotals,
   returnHistory,
 } from "../../utils/orders";
@@ -117,6 +120,15 @@ export default function OrderDetailPage({
   onOpenDelivery,
   onOpenCustomer,
   busy = false,
+  /** What has been paid on this order (order_paid), and its payments on demand. */
+  paid = 0,
+  owedAmount = 0,
+  loadPayments,
+  paymentsVersion = 0,
+  onRecordPayment,
+  onRemovePayment,
+  /** The business's own settings, for the printed slip. */
+  settings = null,
 }) {
   const [reopening, setReopening] = useState(false);
   const [callingOff, setCallingOff] = useState(false);
@@ -145,7 +157,7 @@ export default function OrderDetailPage({
 
   return (
     <Page>
-      <OrderSlip order={order} customer={customer} delivery={delivery} deliveries={deliveries} />
+      <OrderSlip order={order} customer={customer} delivery={delivery} deliveries={deliveries} settings={settings} paid={paid} />
 
       <PageHeader
         back={{ label: "Back to Orders", onClick: onBack }}
@@ -308,12 +320,24 @@ export default function OrderDetailPage({
           <Panel
             id="od-pay"
             title="Payments"
-            action={<Button variant="outline" size="sm" disabled title="Payments are not recorded in the system yet">Record payment</Button>}
+            action={onRecordPayment && !isCancelled && owedAmount > 0 ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={onRecordPayment}>Record payment</Button>
+            ) : null}
           >
-            {returns.length === 0 ? (
-              <p className="m-0 px-4 py-3 text-13 text-muted-fg">No money has been given back on this order.</p>
-            ) : (
-              <ul className="m-0 list-none p-0">
+            <OrderPayments
+              orderId={order.id}
+              netTotal={orderNetTotal(order)}
+              paid={paid}
+              owed={owedAmount}
+              cancelled={isCancelled}
+              termDays={order.paymentTermDays}
+              dueOn={dueDateOf(order)}
+              loadPayments={loadPayments}
+              version={paymentsVersion}
+              onRemove={onRemovePayment}
+            />
+            {returns.length === 0 ? null : (
+              <ul className="m-0 list-none border-t border-border p-0" aria-label="Money given back">
                 {returns.map((entry, index) => (
                   <li key={entry.id ?? index} className="flex flex-col gap-0.5 border-b border-row-divider px-4 py-2.5 text-13 last:border-b-0">
                     <span className="flex flex-wrap items-baseline justify-between gap-2">

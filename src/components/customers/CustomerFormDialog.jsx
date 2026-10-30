@@ -16,6 +16,7 @@ import {
 import { Input, Textarea } from "@/components/ui/input";
 import { Field, RadioRow, Row } from "../shared/forms";
 import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
+import { TERM_OPTIONS } from "../../utils/payments";
 
 /**
  * Add or edit a customer.
@@ -44,7 +45,7 @@ import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/pho
  * asks; the second goes through unchanged.
  */
 
-const EMPTY = { name: "", kind: "walk-in", contactNumber: "", email: "", address: "" };
+const EMPTY = { name: "", kind: "walk-in", contactNumber: "", email: "", address: "", paymentTermDays: 30 };
 
 const KINDS = [
   { value: "walk-in", label: "Walk-in" },
@@ -95,6 +96,7 @@ const seed = (customer, isEdit) =>
         contactNumber: localPhoneDigits(customer.contactNumber ?? ""),
         email: customer.email ?? "",
         address: customer.address ?? "",
+        paymentTermDays: customer.paymentTermDays ?? 30,
       }
     : EMPTY;
 
@@ -282,6 +284,17 @@ export default function CustomerFormDialog({
                   value={values.address}
                   onChange={(event) => setField("address", event.target.value)}
                   placeholder="12 Mabini St, Poblacion, Davao City"
+                />
+              )}
+            </Field>
+
+            <Field label="Payment terms" hint="How long they have to pay for a delivered order, from the day it arrives. A new order starts with this and can be changed.">
+              {() => (
+                <RadioRow
+                  label="Payment terms"
+                  value={values.paymentTermDays}
+                  onChange={(next) => setField("paymentTermDays", next)}
+                  options={TERM_OPTIONS}
                 />
               )}
             </Field>

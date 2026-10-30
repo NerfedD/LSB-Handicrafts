@@ -33,3 +33,22 @@ const digitsOf = (value) => String(value ?? "").replace(/\D/g, "");
 
 export const OFFICE_PHONE_IS_PLACEHOLDER =
   digitsOf(OFFICE_PHONE) === digitsOf(PLACEHOLDER);
+
+/**
+ * What a printed slip puts at its head: the business's own settings when an
+ * administrator has filled them in (Settings · General), and otherwise what
+ * the app knew before there were settings. The phone falls back to
+ * VITE_OFFICE_PHONE, and is left off rather than printed as the placeholder.
+ */
+export function letterheadOf(settings) {
+  const phone = settings?.phone?.trim() || (OFFICE_PHONE_IS_PLACEHOLDER ? null : OFFICE_PHONE);
+  return {
+    name: settings?.businessName?.trim() || "LSB Handicrafts",
+    trade: settings?.address?.trim() || "Styrofoam decor · Davao City",
+    phone,
+    tin: settings?.tin?.trim() || null,
+  };
+}
+
+/** The VAT already inside a VAT-inclusive amount, at the Philippine 12%. */
+export const vatInside = (amount) => Math.round((Number(amount) || 0) * 12 / 112 * 100) / 100;

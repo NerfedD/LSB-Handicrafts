@@ -97,7 +97,7 @@ export default function CustomerDetailPage({
     <Page>
       <PageHeader
         back={{ label: "Back to Customers", onClick: onBack }}
-        leading={<Avatar name={customer.name} size="lg" />}
+        leading={<Avatar name={customer.name} size="lg" photo={false} />}
         title={customer.name}
         titleBadge={
           <Badge variant="secondary">{summary.isBusiness ? "Business" : "Walk-in"}</Badge>

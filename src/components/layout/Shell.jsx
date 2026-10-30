@@ -54,6 +54,8 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { initialsOf } from "@/components/ui/avatar";
+import { useStaffPhoto } from "../shared/staffPhotos";
+import NotificationBell from "./NotificationBell";
 import { cn } from "@/lib/utils";
 import CommandMenu from "./CommandMenu";
 import { canAccess } from "../../utils/permissions";
@@ -83,6 +85,8 @@ export default function Shell({
   navCounts = {},
   /** What the command menu's actions do: { onNewOrder, onAddUser, onExportUsers, onHelp }. */
   commands = {},
+  /** The bell: { items, onOpen, onMarkAllRead, onOpenSettings } (see NotificationBell). */
+  notifications = null,
   onNavigate,
   onSignOut,
   children,
@@ -145,7 +149,7 @@ export default function Shell({
     <SidebarProvider>
       <AppSidebar items={items} view={view} profile={profile} navCounts={navCounts} onNavigate={onNavigate} onSignOut={onSignOut} />
       <SidebarInset>
-        <TopBar crumb={crumbForView(view, recordTitle)} onNavigate={onNavigate} onSearch={() => setCommandOpen(true)} />
+        <TopBar crumb={crumbForView(view, recordTitle)} onNavigate={onNavigate} onSearch={() => setCommandOpen(true)} notifications={notifications} />
         <Content view={view}>{children}</Content>
       </SidebarInset>
       <CommandMenu open={commandOpen} onOpenChange={setCommandOpen} groups={commandGroups} />
@@ -362,6 +366,7 @@ function WorkspaceSwitcher({ collapsed }) {
 function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
   const name = profile?.name || "Signed in";
   const initials = initialsOf(name);
+  const photo = useStaffPhoto(profile?.name);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -371,8 +376,8 @@ function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
           collapsed ? "h-8 justify-center p-0" : "h-12 px-2"
         )}
       >
-        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted-strong text-xs font-medium text-foreground">
-          {initials}
+        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted-strong text-xs font-medium text-foreground">
+          {photo ? <img src={photo} alt="" className="size-full object-cover" /> : initials}
         </span>
         {!collapsed ? (
           <>
@@ -412,7 +417,7 @@ function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
 /* -------------------------------------------------------------------------- */
 
 /** h-12: SidebarTrigger, a vertical Separator, the Breadcrumb, the ⌘K search and the theme switch. */
-function TopBar({ crumb, onNavigate, onSearch }) {
+function TopBar({ crumb, onNavigate, onSearch, notifications }) {
   const { toggleSidebar } = useSidebar();
   return (
     <header className="flex min-h-12 flex-wrap items-center gap-2 border-b border-border py-2 pl-3 pr-4">
@@ -456,6 +461,14 @@ function TopBar({ crumb, onNavigate, onSearch }) {
         <span className="flex-1">Search…</span>
         <Kbd>⌘K</Kbd>
       </button>
+      {notifications ? (
+        <NotificationBell
+          notifications={notifications.items}
+          onOpen={notifications.onOpen}
+          onMarkAllRead={notifications.onMarkAllRead}
+          onOpenSettings={notifications.onOpenSettings}
+        />
+      ) : null}
       <ThemeToggle />
     </header>
   );

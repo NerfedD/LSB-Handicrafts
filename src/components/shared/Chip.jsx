@@ -2,6 +2,7 @@ import { cloneElement, isValidElement } from "react";
 
 import { initialsOf } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { useStaffPhoto } from "./staffPhotos";
 
 /**
  * An icon in a bordered box, the way the boards frame icons: neutral, never
@@ -23,13 +24,18 @@ export default function IconChip({ icon, size = "md", className }) {
 /** Initials in a --muted circle: 24px in table rows, 32px and 40px elsewhere. */
 const AVATAR = { xs: "size-6 text-[10px]", sm: "size-8 text-xs", md: "size-10 text-13", lg: "size-14 text-lg" };
 
-export function Avatar({ name, size = "xs", className }) {
+/**
+ * A person's initials, or their photo. `photo={false}` for customers: their
+ * name could match a member of staff, and a customer has no photo here.
+ */
+export function Avatar({ name, size = "xs", className, photo = true }) {
+  const src = useStaffPhoto(photo ? name : null);
   return (
     <span
       aria-hidden="true"
-      className={cn("inline-flex shrink-0 items-center justify-center rounded-full bg-muted font-medium text-fg-2", AVATAR[size] ?? AVATAR.xs, className)}
+      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-medium text-fg-2", AVATAR[size] ?? AVATAR.xs, className)}
     >
-      {initialsOf(name)}
+      {src ? <img src={src} alt="" className="size-full object-cover" /> : initialsOf(name)}
     </span>
   );
 }

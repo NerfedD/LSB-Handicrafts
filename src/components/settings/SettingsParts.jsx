@@ -1,5 +1,3 @@
-import { Info } from "../icons";
-import Callout from "../shared/Callout";
 import { cn } from "@/lib/utils";
 
 /** A settings section: a 14px title and 13px line, then its fields, as the Settings boards draw them. */
@@ -18,14 +16,3 @@ export function SettingsSection({ id, title, description, action, children, clas
   );
 }
 
-/**
- * Said once at the top of a settings screen the app has no backend for, so
- * the disabled controls under it read as "not yet" rather than as broken.
- */
-export function NotStoredYet({ children }) {
-  return (
-    <Callout tone="neutral" icon={<Info />} title="Nothing on this screen can be saved yet">
-      {children}
-    </Callout>
-  );
-}

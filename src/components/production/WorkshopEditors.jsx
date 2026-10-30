@@ -127,12 +127,19 @@ export function MaterialDialog({ material, materials = [], onSave, onClose }) {
  * placed: a different supplier or material is a different order, so that one
  * is cancelled and a new one placed.
  */
+/** How a supplier order is paid. A card payment is made on ordering; COD on arrival. */
+const SUPPLIER_PAYMENT_METHODS = [
+  { value: 'cod', label: 'Cash on delivery' },
+  { value: 'card', label: 'Credit card' },
+];
+
 export function SupplierOrderDialog({ order, preset, materials, suppliers, profile, onSave, onClose }) {
   const today = localDateIso();
   const initial = order
     ? { id: order.id, quantity_ordered: String(order.quantity_ordered ?? ''), unit_price: String(order.unit_price ?? ''),
-        expected_delivery_date: order.expected_delivery_date || '', carrier_notes: order.carrier_notes || '' }
-    : { supplier_id: '', raw_material_id: '', quantity_ordered: '', unit_price: '', expected_delivery_date: '', carrier_notes: '', ...preset };
+        expected_delivery_date: order.expected_delivery_date || '', carrier_notes: order.carrier_notes || '',
+        payment_method: order.payment_method || 'cod' }
+    : { supplier_id: '', raw_material_id: '', quantity_ordered: '', unit_price: '', expected_delivery_date: '', carrier_notes: '', payment_method: 'cod', ...preset };
   const orderedMaterial = order ? materials.find((m) => m.id === order.raw_material_id) : null;
   const orderedFrom = order ? suppliers.find((s) => s.id === order.supplier_id) : null;
 
@@ -186,6 +193,9 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
           type="date" min={order?.expected_delivery_date && order.expected_delivery_date < today ? undefined : today}
           value={v.expected_delivery_date || ''} onChange={(e) => change('expected_delivery_date', e.target.value)} />
         </Row>
+        <WorkshopField name="payment_method" label="Paid by" required placeholder="Choose how"
+          hint={v.payment_method === 'card' ? 'Paid by card when the order is placed.' : 'Paid in cash when the delivery is received.'}
+          options={SUPPLIER_PAYMENT_METHODS} value={v.payment_method} onChange={(e) => change('payment_method', e.target.value)} />
         <WorkshopField name="carrier_notes" label={<>Courier and delivery notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="The driver's phone number and any delivery instructions. The expected date can wait until the supplier confirms." multiline maxLength={1000} value={v.carrier_notes || ''} onChange={(e) => change('carrier_notes', e.target.value)} />
         <ReviewBox>{order ? 'Changed' : 'Placed'} by {profile.name}.</ReviewBox>
       </>;

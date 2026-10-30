@@ -52,6 +52,10 @@ export default function DeliveryDetailPage({
   onOpenOrder,
   onOpenDelivery,
   busy = false,
+  /** For the printed slip: the business's settings, and what the order still owes. */
+  settings = null,
+  toCollect = null,
+  termDays = null,
 }) {
   const [history, setHistory] = useState([]);
   const subject = delivery ? `delivery:${delivery.id}` : null;
@@ -229,7 +233,7 @@ export default function DeliveryDetailPage({
 
       {/* Renders to document.body, not here: the print stylesheet hides #root
           and shows .slip, which only works from outside the app's tree. */}
-      <DeliverySlip delivery={delivery} />
+      <DeliverySlip delivery={delivery} settings={settings} toCollect={toCollect} termDays={termDays} />
     </Page>
   );
 }

@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 
-import { OFFICE_PHONE, OFFICE_PHONE_IS_PLACEHOLDER } from "../../utils/office";
+import { letterheadOf } from "../../utils/office";
 import { customerFrom, orderRefFrom } from "../../utils/deliveries";
 import { formatPeso, formatLongDate, formatShortDate } from "../../utils/profileFormat";
 import { DELIVERY_STAGE } from "../../utils/constants";
@@ -46,7 +46,12 @@ function Line({ children }) {
   return <p className="slip-line">{children}</p>;
 }
 
-export default function DeliverySlip({ delivery }) {
+/**
+ * `toCollect` is what the order still owes (utils/payments), or null when the
+ * delivery carries no order. `termDays` is the order's payment term: an order
+ * on terms is paid later, so the driver collects nothing on the doorstep.
+ */
+export default function DeliverySlip({ delivery, settings = null, toCollect = null, termDays = null }) {
   if (!delivery) return null;
 
   const manifest = Array.isArray(delivery.itemsManifest) ? delivery.itemsManifest : [];
@@ -56,17 +61,16 @@ export default function DeliverySlip({ delivery }) {
   const charge = Number(delivery.amount) || 0;
   const arrived = delivery.status === DELIVERY_STAGE.ARRIVED;
   const standing = STAGE_LOOK[delivery.status]?.label ?? "";
+  const head = letterheadOf(settings);
+  const collect = toCollect == null ? null : Number(toCollect) || 0;
 
   return createPortal(
     <article className="slip" aria-hidden="true">
       <header className="slip-head">
         <div>
-          <p className="slip-brand">LSB Handicrafts</p>
-          <p className="slip-trade">Styrofoam decor · Davao City</p>
-          {/* Absent until VITE_OFFICE_PHONE is real: a placeholder number on an
-              internal screen is a harmless stand-in, but on a sheet handed to a
-              customer it is simply a wrong number to ring. */}
-          {OFFICE_PHONE_IS_PLACEHOLDER ? null : <p className="slip-trade">{OFFICE_PHONE}</p>}
+          <p className="slip-brand">{head.name}</p>
+          <p className="slip-trade">{head.trade}</p>
+          {head.phone ? <p className="slip-trade">{head.phone}</p> : null}
         </div>
         <div className="slip-head-right">
           <p className="slip-doc">Delivery slip</p>
@@ -125,7 +129,7 @@ export default function DeliverySlip({ delivery }) {
         </tbody>
       </table>
 
-      {(itemCount > 0 || charge > 0) && (
+      {(itemCount > 0 || charge > 0 || (collect !== null && !arrived)) && (
         <section className="slip-totals">
           <dl>
             {itemCount > 0 && (
@@ -135,9 +139,21 @@ export default function DeliverySlip({ delivery }) {
               </div>
             )}
             {charge > 0 && (
-              <div className="slip-total-row">
+              <div className={collect === null ? "slip-total-row" : undefined}>
                 <dt>Delivery charge</dt>
                 <dd>{formatPeso(charge)}</dd>
+              </div>
+            )}
+            {/* The one figure a driver must not get wrong: what the order still
+                owes after every payment already recorded against it. */}
+            {collect !== null && !arrived && (
+              <div className="slip-total-row">
+                <dt>{termDays ? "Payment" : "To collect"}</dt>
+                <dd>
+                  {termDays
+                    ? `Due ${termDays} days after delivery. Nothing to collect.`
+                    : collect > 0 ? formatPeso(collect) : "Nothing. Paid in full."}
+                </dd>
               </div>
             )}
           </dl>

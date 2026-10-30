@@ -63,11 +63,11 @@ function RecentOrders({ customer, loadOrders, onOpenOrder }) {
   );
 }
 
-function DetailPanel({ customer, summary, onClose, onWriteOrder, onEdit, onView, onOpenOrder, loadOrders }) {
+function DetailPanel({ customer, summary, onClose, onWriteOrder, onRecordPayment, onEdit, onView, onOpenOrder, loadOrders }) {
   return (
     <aside aria-labelledby="cu-detail" className="flex w-full flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-xs lg:w-[340px] lg:shrink-0">
       <div className="flex items-start gap-3">
-        <Avatar name={customer.name} size="md" />
+        <Avatar name={customer.name} size="md" photo={false} />
         <div className="min-w-0 flex-1">
           <h2 id="cu-detail" className="m-0 truncate text-sm font-semibold">{customer.name}</h2>
           <div className="text-13 text-muted-fg">{kindLabel(customer)} · customer since {formatShortDate(customer.createdAt) || "—"}</div>
@@ -98,7 +98,7 @@ function DetailPanel({ customer, summary, onClose, onWriteOrder, onEdit, onView,
       </div>
       <div className="flex flex-wrap gap-2">
         {onWriteOrder ? <Button variant="outline" size="sm" onClick={() => onWriteOrder(customer)}>New order</Button> : null}
-        <Button variant="outline" size="sm" disabled title="Payments are not recorded in the system yet">Record payment</Button>
+        {onRecordPayment ? <Button variant="outline" size="sm" onClick={() => onRecordPayment(customer)}>Record payment</Button> : null}
         {onEdit ? <Button variant="outline" size="sm" onClick={() => onEdit(customer.id)}>Edit details</Button> : null}
       </div>
       <div>
@@ -126,6 +126,7 @@ export default function CustomerListPage({
   onAdd,
   onEdit,
   onWriteOrder,
+  onRecordPayment,
   onOpenOrder,
   loadOrders,
   onEditLoyalty,
@@ -255,7 +256,7 @@ export default function CustomerListPage({
                     <TableRow key={landed.key} data-state={customer.id === selectedId ? "selected" : undefined} className={`h-10 ${landed.className ?? ""}`}>
                       <TableCell>
                         <span className="flex min-w-0 items-center gap-2">
-                          <Avatar name={customer.name} className="rounded-md" />
+                          <Avatar name={customer.name} className="rounded-md" photo={false} />
                           <span className="min-w-0">
                             <button type="button" data-slot="text-link" onClick={() => setSelectedId(customer.id)} className="block max-w-[220px] truncate border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline">
                               {customer.name}
@@ -288,6 +289,7 @@ export default function CustomerListPage({
             summary={selected.summary}
             onClose={() => setSelectedId(null)}
             onWriteOrder={onWriteOrder}
+            onRecordPayment={onRecordPayment}
             onEdit={onEdit}
             onView={onView}
             onOpenOrder={onOpenOrder}

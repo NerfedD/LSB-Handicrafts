@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 
-import { OFFICE_PHONE, OFFICE_PHONE_IS_PLACEHOLDER } from "../../utils/office";
+import { letterheadOf } from "../../utils/office";
 import { customerFrom, dueTime, orderRefFrom } from "../../utils/deliveries";
 import { formatLongDate, formatShortDate } from "../../utils/profileFormat";
 import { STAGE_LOOK } from "./stageLook";
@@ -56,7 +56,8 @@ function groupByDriver(deliveries) {
     }));
 }
 
-export default function RunSheet({ deliveries = [], scope }) {
+export default function RunSheet({ deliveries = [], scope, settings = null }) {
+  const head = letterheadOf(settings);
   const groups = groupByDriver(deliveries);
   const stops = deliveries.length;
 
@@ -64,9 +65,9 @@ export default function RunSheet({ deliveries = [], scope }) {
     <article className="slip" aria-hidden="true">
       <header className="slip-head">
         <div>
-          <p className="slip-brand">LSB Handicrafts</p>
-          <p className="slip-trade">Styrofoam decor · Davao City</p>
-          {OFFICE_PHONE_IS_PLACEHOLDER ? null : <p className="slip-trade">{OFFICE_PHONE}</p>}
+          <p className="slip-brand">{head.name}</p>
+          <p className="slip-trade">{head.trade}</p>
+          {head.phone ? <p className="slip-trade">{head.phone}</p> : null}
         </div>
         <div className="slip-head-right">
           <p className="slip-doc">Run sheet</p>

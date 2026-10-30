@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import Callout from "../shared/Callout";
 import { EmptySlot } from "../shared/PageStates";
-import { Field, Row } from "../shared/forms";
+import { Field, RadioRow, Row } from "../shared/forms";
 import { Avatar } from "../shared/Chip";
 import { TextLink } from "../shared/page";
 import FormFrame from "../shared/FormFrame";
@@ -26,6 +26,7 @@ import { normalizeItems, orderTotal } from "../../utils/orderItems";
 import { roundMoney } from "../../utils/money";
 import { moneyProblem, nameProblem } from "../../utils/validation";
 import { formatPeso } from "../../utils/profileFormat";
+import { needsReference, PAYMENT_METHODS, TERM_OPTIONS } from "../../utils/payments";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
 
@@ -165,6 +166,10 @@ export default function OrderFormPage({
   onCancel,
   /** Draw it as a dialog over the current screen rather than as a screen. */
   asDialog = false,
+  /** Settings · General: the usual delivery fee and the order total it is waived from. */
+  settings = null,
+  /** Whether this person may take a down payment as the order is written (recordPayments). */
+  canTakePayment = false,
 }) {
   const isEdit = mode === "edit";
   const [customerName, setCustomerName] = useState(
@@ -182,6 +187,16 @@ export default function OrderFormPage({
   const [deliveryCharge, setDeliveryCharge] = useState(
     isEdit && delivery?.amount ? String(delivery.amount) : ""
   );
+  // HOW IT IS PAID depends on how it leaves the shop. A delivered order is on
+  // terms -- 30 or 60 days from delivery, nothing paid down -- starting from
+  // the customer's usual term. A pick-up order is paid at the shop, in full or
+  // in part, and whatever is paid as it is written is recorded straight away
+  // (App's saveOrder), so it lands on the order like any other payment.
+  const [termChoice, setTermChoice] = useState(null);
+  const [downAmount, setDownAmount] = useState("");
+  const [downMethod, setDownMethod] = useState("cash");
+  const [downReference, setDownReference] = useState("");
+  const [downProblem, setDownProblem] = useState(null);
   const [error, setError] = useState(null);
   // Problems shown beside the field they belong to: the customer, and each
   // line's price by line key.
@@ -227,6 +242,9 @@ export default function OrderFormPage({
     : named.length === 1 ? named[0].id : null;
   const linked = customers.find((one) => one.id === customerId);
 
+  const term = termChoice ?? (isEdit ? order?.paymentTermDays ?? 30 : linked?.paymentTermDays ?? 30);
+  const onDelivery = address.trim() !== "";
+
   const [useReward, setUseReward] = useState(true);
   const earned = linked ? customerSummary(linked, customerStats, loyalty) : null;
   const offerReward = Boolean(earned?.rewardEligible);
@@ -234,7 +252,20 @@ export default function OrderFormPage({
   // the rules have moved since; the database re-checks only a changed amount.
   const keptDiscount = isEdit && !offerReward ? Number(order?.discountAmount) || 0 : 0;
   const discount = offerReward && useReward ? loyaltyDiscount(itemsTotal, loyalty) : keptDiscount;
-  const total = Math.max(0, roundMoney(itemsTotal + (Number(deliveryCharge) || 0) - discount));
+  // A new order left blank takes the usual fee from Settings, or nothing once
+  // the items reach the free-delivery amount. Typing a number -- 0 included --
+  // always wins, and an order being edited keeps what it was written with.
+  const usualCharge = !isEdit && settings?.deliveryFee != null
+    ? (settings.freeDeliveryFrom && itemsTotal >= settings.freeDeliveryFrom ? 0 : settings.deliveryFee)
+    : null;
+  const charge = deliveryCharge === "" ? (usualCharge ?? 0) : Number(deliveryCharge) || 0;
+  const total = Math.max(0, roundMoney(itemsTotal + (address.trim() ? charge : 0) - discount));
+  let chargeHint = "Empty if free.";
+  if (usualCharge === 0) chargeHint = `Free: the items come to ${formatPeso(settings.freeDeliveryFrom)} or more.`;
+  else if (usualCharge != null) {
+    const from = settings?.freeDeliveryFrom ? `, free from ${formatPeso(settings.freeDeliveryFrom)}` : "";
+    chargeHint = `Empty for the usual ${formatPeso(usualCharge)}${from}. 0 for free.`;
+  }
 
   function setLine(key, changes) {
     setLines((previous) =>
@@ -359,6 +390,26 @@ export default function OrderFormPage({
       return;
     }
 
+    // Money paid now is checked like any payment, against the order's total.
+    // Only a pick-up order takes any: a delivered one is paid on its terms.
+    let downPayment = null;
+    if (!isEdit && canTakePayment && !onDelivery && String(downAmount).trim() !== "") {
+      const value = Number(downAmount);
+      let problem = null;
+      if (!Number.isFinite(value) || value <= 0) problem = "Put in the amount paid, or leave it empty.";
+      else if (roundMoney(value) !== value) problem = "Use at most two decimal places.";
+      else if (value > total) problem = `That is more than the order comes to (${formatPeso(total)}).`;
+      else if (needsReference(downMethod) && !downReference.trim()) {
+        problem = downMethod === "check" ? "Put in the check number." : "Put in the reference number from the receipt.";
+      }
+      setDownProblem(problem);
+      if (problem) {
+        fail(problem);
+        return;
+      }
+      downPayment = { amount: value, method: downMethod, reference: needsReference(downMethod) ? downReference.trim() : null };
+    }
+
     try {
     const result = await onSave({
       customerName: customerName.trim(),
@@ -417,9 +468,11 @@ export default function OrderFormPage({
             location: address.trim(),
             dueOn: dueOn || null,
             driver: driver.trim() || null,
-            amount: Number(deliveryCharge) || 0,
+            amount: charge,
           }
         : null,
+      paymentTermDays: onDelivery ? term : null,
+      downPayment,
     });
     if (!result?.ok) fail(result?.message || 'The order was not saved. Check the details and retry.');
     } catch {
@@ -493,7 +546,7 @@ export default function OrderFormPage({
       </Field>
       {linked ? (
         <div className="-mt-1.5 flex items-center gap-2.5 rounded-md border border-border px-3 py-2 text-13">
-          <Avatar name={linked.name} size="sm" />
+          <Avatar name={linked.name} size="sm" photo={false} />
           <span className="min-w-0 truncate">
             <span className="font-medium">{linked.name}</span>
             <span className="text-muted-fg">
@@ -696,7 +749,7 @@ export default function OrderFormPage({
               />
             )}
           </Field>
-          <Field label="Delivery charge" hint="Empty if free.">
+          <Field label="Delivery charge" hint={chargeHint}>
             {(props) => (
               <Input
                 {...props}
@@ -706,7 +759,7 @@ export default function OrderFormPage({
                 min="0"
                 value={deliveryCharge}
                 onChange={(event) => setDeliveryCharge(event.target.value)}
-                placeholder="0.00"
+                placeholder={usualCharge == null ? "0.00" : usualCharge.toFixed(2)}
               />
             )}
           </Field>
@@ -738,10 +791,10 @@ export default function OrderFormPage({
           <dt className="text-muted-fg">Items</dt>
           <dd className="m-0 tabular-nums">{formatPeso(itemsTotal)}</dd>
         </div>
-        {Number(deliveryCharge) > 0 && address.trim() ? (
+        {charge > 0 && address.trim() ? (
           <div className="flex justify-between gap-6">
             <dt className="text-muted-fg">Delivery</dt>
-            <dd className="m-0 tabular-nums">{formatPeso(Number(deliveryCharge))}</dd>
+            <dd className="m-0 tabular-nums">{formatPeso(charge)}</dd>
           </div>
         ) : null}
         {discount > 0 ? (
@@ -754,7 +807,72 @@ export default function OrderFormPage({
           <dt className="font-medium">Total to pay</dt>
           <dd className="m-0 text-base font-semibold tabular-nums">{formatPeso(total)}</dd>
         </div>
+        {onDelivery ? (
+          <div className="flex justify-between gap-6">
+            <dt className="text-muted-fg">Payment</dt>
+            <dd className="m-0">Due {term} days after delivery</dd>
+          </div>
+        ) : Number(downAmount) > 0 && Number(downAmount) <= total ? (
+          <>
+            <div className="flex justify-between gap-6">
+              <dt className="text-muted-fg">Paid now</dt>
+              <dd className="m-0 tabular-nums">−{formatPeso(Number(downAmount))}</dd>
+            </div>
+            <div className="flex justify-between gap-6">
+              <dt className="font-medium">Still to pay at pick-up</dt>
+              <dd className="m-0 font-semibold tabular-nums">{formatPeso(roundMoney(total - Number(downAmount)))}</dd>
+            </div>
+          </>
+        ) : null}
       </dl>
+
+      {onDelivery ? (
+        <Field
+          label="Payment terms"
+          hint={linked && !isEdit ? `Counted from the day it is delivered. ${linked.name}'s usual is ${linked.paymentTermDays ?? 30} days.` : "Counted from the day it is delivered. Nothing is paid down."}
+        >
+          {() => <RadioRow label="Payment terms" value={term} onChange={setTermChoice} options={TERM_OPTIONS} />}
+        </Field>
+      ) : null}
+
+      {/* A pick-up order is paid at the shop, in full or in part. Whatever is
+          paid as the order is written is recorded now. */}
+      {!isEdit && canTakePayment && !onDelivery ? (
+        <div className="flex flex-col gap-3.5 rounded-md border border-border p-3">
+          <Field label="Paid now" error={downProblem ?? undefined} hint="In full or in part. Leave empty if they pay when they pick it up.">
+            {(props) => (
+              <div className="relative">
+                <span aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">₱</span>
+                <Input
+                  {...props}
+                  type="number"
+                  inputMode="decimal"
+                  step="any"
+                  min="0"
+                  className="pl-6"
+                  value={downAmount}
+                  onChange={(event) => { setDownAmount(event.target.value); setDownProblem(null); }}
+                  placeholder="0.00"
+                />
+              </div>
+            )}
+          </Field>
+          {String(downAmount).trim() !== "" ? (
+            <Row>
+              <Field label="Paid by">
+                {() => <RadioRow label="Paid by" value={downMethod} onChange={setDownMethod} options={PAYMENT_METHODS} />}
+              </Field>
+              {needsReference(downMethod) ? (
+                <Field label="Reference number" required>
+                  {(props) => (
+                    <Input {...props} maxLength={80} value={downReference} onChange={(event) => { setDownReference(event.target.value); setDownProblem(null); }} />
+                  )}
+                </Field>
+              ) : null}
+            </Row>
+          ) : null}
+        </div>
+      ) : null}
     </FormFrame>
   );
 }

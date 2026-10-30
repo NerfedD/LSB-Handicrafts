@@ -30,6 +30,12 @@ export const CAPABILITIES = {
    * order's lines, calling an order off, putting a finished order back.
    */
   handleMoney: MANAGERS,
+  /**
+   * Record money received against an order: sales take it at the counter and
+   * drivers on the doorstep. Removing a payment entered by mistake is
+   * handleMoney's (public.remove_payment).
+   */
+  recordPayments: [...MANAGERS, "Sales Staff", "Delivery Staff"],
   /** See customers' contact details. */
   viewCustomers: [...MANAGERS, "Sales Staff", "Delivery Staff"],
   /** Add or edit customers. */

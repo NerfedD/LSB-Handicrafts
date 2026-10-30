@@ -141,10 +141,10 @@ export const NAV_TREE = [
     count: "suppliers",
     views: ["suppliers", "supplier-detail"],
   },
-  // Settings. General, Notifications and editing roles have no backend yet:
-  // their screens are built to the design with nothing to save to, so their
-  // controls are disabled (see components/settings). They are kept to
-  // administrators, like the activity log beside them.
+  // Settings. General and Roles are kept to administrators, like the activity
+  // log beside them; General saves to public.business_settings, and Roles is
+  // shown read-only. Notifications is open to everybody: each person chooses
+  // their own alerts (public.notification_settings).
   {
     key: "settings-general",
     label: "General",
@@ -166,7 +166,6 @@ export const NAV_TREE = [
     label: "Notifications",
     parent: "settings",
     group: "system",
-    adminOnly: true,
     views: ["settings-notifications"],
   },
   {

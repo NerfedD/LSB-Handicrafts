@@ -5,6 +5,7 @@ import { can, canAccess } from "./utils/permissions";
 import { nameFromEmail } from "./utils/staffData";
 import {
   activityLogCollection,
+  businessSettingsCollection,
   categoriesCollection,
   customersCollection,
   customerStatsCollection,
@@ -12,10 +13,14 @@ import {
   deleteStaffAuthUser,
   fetchActivityFor,
   fetchCustomerOrders,
+  fetchOrderPayments,
   inventoryCollection,
   loyaltyCollection,
+  orderPaidCollection,
   ordersCollection,
   productsCollection,
+  recordPayment,
+  removePayment,
   removeProduct,
   removeMaterial,
   removeSupplier,
@@ -23,11 +28,24 @@ import {
   restoreSupplier,
   runCategoryCommand,
   saveOwnDashboardView,
+  saveOwnPhoto,
   saveOwnProfile,
   saveProductImage,
+  fetchNotificationSettings,
+  markNotificationsRead,
+  notificationsCollection,
+  refreshAlerts,
+  saveNotificationSettings,
+  setSupplierPayment,
+  signOutStaff,
   staffCollection,
+  staffPhotosCollection,
   suppliersCollection,
 } from "./utils/storageManager";
+import { balanceOf, paidIndex } from "./utils/payments";
+import { localDateIso } from "./utils/dates";
+import { StaffPhotos } from "./components/shared/staffPhotos";
+import { ALERT_REFRESH_MS } from "./utils/notifications";
 import useIdleTimeout, { clearIdleStamp } from "./hooks/useIdleTimeout";
 import useSupabaseCollection, { STALE_MS, subscribe as subscribeToRefresh } from "./hooks/useSupabaseCollection";
 import { formatPeso, nowIso } from "./utils/profileFormat";
@@ -185,6 +203,7 @@ const RecordDeliveredDialog = lazy(() =>
 );
 
 const RefundDialog = lazy(() => import("./components/orders/RefundDialog"));
+const RecordPaymentDialog = lazy(() => import("./components/orders/RecordPaymentDialog"));
 const ReplacementDialog = lazy(() => import("./components/orders/ReplacementDialog"));
 const LoyaltyRulesDialog = lazy(() => import("./components/customers/LoyaltyRulesDialog"));
 const PriceAdjustmentDialog = lazy(() => import("./components/orders/PriceAdjustmentDialog"));
@@ -372,6 +391,12 @@ export default function App() {
   // restored session actually lands there, not over a fresh sign-in.
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isNewOrderOpen, setIsNewOrderOpen] = useState(false);
+  // The Record payment dialog: whose orders it offers and which one is picked.
+  // paymentsVersion is bumped after a payment is recorded or removed, so an
+  // open order re-reads its list of payments.
+  const [paymentFor, setPaymentFor] = useState(null);
+  const [paymentsVersion, setPaymentsVersion] = useState(0);
+  const paymentLookup = useRef(null);
 
   const isSignedIn = !!sessionEmail;
 
@@ -414,6 +439,26 @@ export default function App() {
   const customersState = useSupabaseCollection(customersCollection, use("customers"));
   const customerStatsState = useSupabaseCollection(customerStatsCollection, use("customerStats"));
   const loyaltyState = useSupabaseCollection(loyaltyCollection, use("loyalty"));
+  // Read on every screen: a sum per paid order, one settings row and a small
+  // picture per person. Balances, printed slips and avatars appear everywhere.
+  const orderPaidState = useSupabaseCollection(orderPaidCollection, use());
+  const settingsState = useSupabaseCollection(businessSettingsCollection, use());
+  const staffPhotosState = useSupabaseCollection(staffPhotosCollection, use());
+  // The person's own alerts, for the bell.
+  const notificationsState = useSupabaseCollection(notificationsCollection, use());
+  const reloadNotifications = notificationsState.reload;
+
+  // Late deliveries and overdue payments are raised by the clock, not by a
+  // change anybody makes, so the database is asked to look while anyone is
+  // signed in: once at sign-in, then every few minutes. Each is raised once.
+  useEffect(() => {
+    if (!isSignedIn) return undefined;
+    let live = true;
+    const check = () => refreshAlerts().then(() => { if (live) reloadNotifications(); });
+    check();
+    const timer = window.setInterval(check, ALERT_REFRESH_MS);
+    return () => { live = false; window.clearInterval(timer); };
+  }, [isSignedIn, reloadNotifications]);
   const productsState = useSupabaseCollection(productsCollection, use());
   const suppliersState = useSupabaseCollection(suppliersCollection, use("suppliers"));
   const inventoryState = useSupabaseCollection(inventoryCollection, use());
@@ -441,6 +486,14 @@ export default function App() {
   const activity = useMemo(() => readAll(activityState.rows), [activityState.rows]);
   const customerStats = useMemo(() => statsIndex(customerStatsState.rows), [customerStatsState.rows]);
   const loyalty = loyaltyState.rows[0] ?? DEFAULT_LOYALTY;
+  const paid = useMemo(() => paidIndex(orderPaidState.rows), [orderPaidState.rows]);
+  const settings = settingsState.rows[0] ?? null;
+  // Photos are keyed by staff id in the table and looked up by name on screen,
+  // because an avatar is drawn from the name a record carries.
+  const staffPhotoByName = useMemo(() => {
+    const byId = new Map(staffPhotosState.rows.map((row) => [row.staffId, row.dataUrl]));
+    return new Map(staff.filter((s) => byId.has(s.id)).map((s) => [String(s.name).trim().toLowerCase(), byId.get(s.id)]));
+  }, [staffPhotosState.rows, staff]);
   // Archived products keep their history but leave the lists and the order form.
   const activeProducts = useMemo(() => products.filter((p) => p.status !== "Archived"), [products]);
   const archivedProducts = useMemo(() => products.filter((p) => p.status === "Archived"), [products]);
@@ -675,6 +728,8 @@ export default function App() {
     setIsAddProductOpen(false);
     setIsNewOrderOpen(false);
     setOrderDraftFor(null);
+    setPaymentFor(null);
+    paymentLookup.current = null;
     setRecordMadeFor(null);
     setRecordChange(null);
     setAssignDriverFor(null);
@@ -1343,8 +1398,17 @@ export default function App() {
   // The database locks the records, checks permissions and saves stock + logs
   // in one transaction. Never recreate these stock movements with client writes.
   async function handleWorkshopCommand(action, payload, requestId) {
-    const result = await runCommand("workshop_command", action, payload, requestId);
+    // How a supplier order is paid is set by its own function once the order
+    // exists (set_supplier_payment), not by workshop_command, so it is taken
+    // off the request and applied after.
+    const { payment_method: paymentMethod, ...command } = payload ?? {};
+    const result = await runCommand("workshop_command", action, action === "save_order" ? command : payload, requestId);
     if (!result.ok) return result;
+    if (action === "save_order" && paymentMethod && paymentMethod !== (result.data.payment_method ?? "cod")) {
+      const paying = await setSupplierPayment(result.data.id, paymentMethod);
+      if (paying.ok) result.data = { ...result.data, ...paying.data };
+      else toast.warning(`Order #${result.data.id} was saved, but not how it is paid.`, { description: `${paying.message} It is down as cash on delivery; correct it from the order.` });
+    }
     const target = {
       save_material: rawMaterialsState, transfer_stock: rawMaterialsState,
       save_order: rawMaterialOrdersState, order_status: rawMaterialOrdersState,
@@ -1379,7 +1443,7 @@ export default function App() {
   // ---- orders --------------------------------------------------------------
 
   /** Writes the order and, when there is an address, the delivery carrying it. */
-  async function saveOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery }) {
+  async function saveOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery, paymentTermDays = null, downPayment = null }) {
     setBusy(true);
     try {
     // Set only on a retry, where the order row already exists and is being
@@ -1394,6 +1458,8 @@ export default function App() {
       totalAmount,
       discountAmount,
       promotion,
+      // Delivered: 30 or 60 days from delivery. Picked up: null, paid at the shop.
+      paymentTermDays,
       status: ORDER_STATUS.PENDING,
       createdAt: nowIso(),
       stockCommittedAt: null,
@@ -1451,14 +1517,38 @@ export default function App() {
       }
     }
 
+    // The down payment goes on once the order exists. The order is already
+    // saved either way, so a payment that does not go through is said plainly
+    // and left to be recorded from the order, never retried behind the scenes.
+    let paymentNote = null;
+    if (downPayment) {
+      const taken = await recordPayment({
+        orderIds: [id],
+        amount: downPayment.amount,
+        method: downPayment.method,
+        reference: downPayment.reference,
+        receivedOn: localDateIso(),
+        requestId: crypto.randomUUID(),
+      });
+      if (taken.ok) {
+        orderPaidState.reload();
+        setPaymentsVersion((version) => version + 1);
+      } else {
+        paymentNote = `The ${formatPeso(downPayment.amount)} paid now was not recorded: ${taken.message} Record it from the order.`;
+      }
+    }
+
     setBusy(false);
     orderRetryRef.current = null;
     customerStatsState.reload();
     setSelectedOrderId(id);
     setOrderDraftFor(null);
     setView("order-detail");
-    toast.success(`Order #${id} written for ${customerName}.`, {
-      description: formatPeso(totalAmount),
+    if (paymentNote) toast.warning(`Order #${id} written for ${customerName}.`, { description: paymentNote, duration: 12000 });
+    else toast.success(`Order #${id} written for ${customerName}.`, {
+      description: downPayment
+        ? `${formatPeso(totalAmount)}, ${formatPeso(downPayment.amount)} paid now.`
+        : formatPeso(totalAmount),
     });
     markLanded("order", id);
     return { ok: true };
@@ -1489,7 +1579,7 @@ export default function App() {
    * nothing is stored against the old lines, so replacing them re-derives every
    * count on the next read. See utils/productStock.
    */
-  async function updateOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery }) {
+  async function updateOrder({ customerName, customerId, items, totalAmount, discountAmount = 0, promotion = null, delivery, paymentTermDays = null }) {
     const order = selectedOrder;
     if (!order) return;
 
@@ -1515,6 +1605,7 @@ export default function App() {
       totalAmount,
       discountAmount,
       promotion,
+      paymentTermDays,
     });
     if (!result.ok) {
       setBusy(false);
@@ -2165,6 +2256,82 @@ export default function App() {
     setOrderDraftFor(customer);
     setIsNewOrderOpen(true);
   }
+  /** Record a payment against one order, from the order's own screen. */
+  function openPaymentForOrder(order) {
+    paymentLookup.current = null;
+    setPaymentFor({ customerName: order.customerName, orders: [order], initialOrderId: order.id, loading: false });
+  }
+
+  /**
+   * Record a payment from a customer: every order of theirs that still owes
+   * something is offered, read from their whole history rather than the
+   * recent window the screens hold.
+   */
+  async function openPaymentForCustomer(customer) {
+    const lookup = {};
+    paymentLookup.current = lookup;
+    setPaymentFor({ customerName: customer.name, orders: [], loading: true });
+    const result = await fetchCustomerOrders(customer, 200);
+    if (paymentLookup.current !== lookup) return;
+    if (!result.ok) {
+      setPaymentFor(null);
+      toast.error("Their orders could not be loaded. Check the connection and try again.");
+      return;
+    }
+    setPaymentFor({ customerName: customer.name, orders: result.data, loading: false });
+  }
+
+  async function handleRecordPayment(values) {
+    const result = await recordPayment(values);
+    if (!result.ok) return result;
+    const total = result.data.reduce((sum, payment) => sum + payment.amount, 0);
+    paymentLookup.current = null;
+    setPaymentFor(null);
+    orderPaidState.reload();
+    setPaymentsVersion((version) => version + 1);
+    toast.success(`${formatPeso(total)} recorded.`, {
+      description: result.data.length > 1 ? `Across orders ${result.data.map((p) => `#${p.orderId}`).join(", ")}.` : `On order #${result.data[0]?.orderId}.`,
+    });
+    return result;
+  }
+
+  /** Opens what an alert is about, and marks it read. */
+  async function openNotification(note) {
+    if (!note.readAt) markNotificationsRead([note.id]).then(() => reloadNotifications());
+    const id = note.recordId;
+    if (note.view === "order-detail" && id != null) return openOrder(id);
+    if (note.view === "delivery-detail" && id != null) return openDelivery(id);
+    if (note.view === "product-detail" && id != null) { setSelectedProductId(id); return navigate("product-detail"); }
+    if (note.view === "raw-material-detail" && id != null) { setSelectedRawMaterialId(id); return navigate("raw-material-detail"); }
+    if (note.view === "manage-account" && id != null) { setSelectedAccountId(id); return navigate("manage-account"); }
+    if (note.view) navigate(note.view);
+  }
+
+  async function markAllNotificationsRead() {
+    const unread = notificationsState.rows.filter((n) => !n.readAt).map((n) => n.id);
+    const result = await markNotificationsRead(unread);
+    if (!result.ok) toast.error(result.message);
+    reloadNotifications();
+  }
+
+  async function saveBusinessSettings(values) {
+    const result = await settingsState.update(settings?.id ?? 1, { ...settings, ...values });
+    if (result.ok) toast.success("The settings were saved.", { description: "Slips printed from now on use them." });
+    return result;
+  }
+
+  async function handleRemovePayment(payment) {
+    const result = await removePayment(payment.id);
+    if (!result.ok) {
+      toast.error(result.message);
+      return result;
+    }
+    orderPaidState.reload();
+    setPaymentsVersion((version) => version + 1);
+    toast.success("The payment was removed.");
+    return result;
+  }
+
   // Closing one that was opened from /products/new or /orders/new takes the
   // /new off the address, so a reload does not open it again.
   function leaveNewPath() {
@@ -2438,6 +2605,13 @@ export default function App() {
             busy={busy}
             canHandleMoney={can(role, "handleMoney")}
             canViewCustomers={can(role, "viewCustomers")}
+            paid={paid.get(selectedOrder?.id) ?? 0}
+            owedAmount={balanceOf(selectedOrder, paid)}
+            loadPayments={fetchOrderPayments}
+            paymentsVersion={paymentsVersion}
+            onRecordPayment={can(role, "recordPayments") && selectedOrder ? () => openPaymentForOrder(selectedOrder) : undefined}
+            onRemovePayment={can(role, "handleMoney") ? handleRemovePayment : undefined}
+            settings={settings}
             onBack={() => navigate("orders")}
             onMarkDone={() => markOrderDone(selectedOrder)}
             onPrint={() => window.print()}
@@ -2503,6 +2677,7 @@ export default function App() {
             }}
             onMoveForward={(id, next) => advanceDelivery(deliveries.find((d) => d.id === id), next)}
             onAssignDrivers={() => setIsAssignDriversOpen(true)}
+            settings={settings}
             onGoToDashboard={() => navigate("dashboard")}
             initialFilter={pendingFilter}
             key={`deliveries-${pendingFilter ?? "all"}`}
@@ -2525,6 +2700,14 @@ export default function App() {
             onAssignDriver={() => setAssignDriverFor(selectedDelivery.id)}
             onOpenOrder={openOrder}
             onOpenDelivery={openDelivery}
+            settings={settings}
+            // What the driver hands back to the office: the order's balance
+            // after every payment recorded, or nothing to say without an order.
+            toCollect={(() => {
+              const order = orders.find((o) => o.id === selectedDelivery?.orderId);
+              return order ? balanceOf(order, paid) : null;
+            })()}
+            termDays={orders.find((o) => o.id === selectedDelivery?.orderId)?.paymentTermDays ?? null}
           />
         );
 
@@ -2546,6 +2729,7 @@ export default function App() {
             onAdd={can(role, "editCustomers") ? () => openProfileForm("customer") : undefined}
             onEdit={can(role, "editCustomers") ? (id) => openProfileForm("customer", id) : undefined}
             onWriteOrder={(one) => openNewOrder(one)}
+            onRecordPayment={can(role, "recordPayments") ? openPaymentForCustomer : undefined}
             onOpenOrder={openOrder}
             loadOrders={loadCustomerOrders}
             onEditLoyalty={can(role, "manageLoyalty") ? () => setIsLoyaltyOpen(true) : undefined}
@@ -2655,6 +2839,17 @@ export default function App() {
             }}
             onOpenActivity={() => navigate("activity")}
             onCompareRoles={() => navigate("settings-roles")}
+            // Not your own account (My profile ends your other sessions), and
+            // the owner's only by the owner -- the database refuses the same.
+            onSignOutEverywhere={
+              sameEmail(selectedAccount.email, sessionEmail) || (selectedAccount.isSuperAdmin && !profile?.isSuperAdmin)
+                ? undefined
+                : async (account) => {
+                  const result = await signOutStaff(account.id);
+                  if (result.ok) activityState.reload();
+                  return result;
+                }
+            }
             onStatusChange={async (status, revision) => {
               if (await updateSelectedAccount({ status, revision })) {
                 toast.success(
@@ -2727,16 +2922,26 @@ export default function App() {
         );
 
       // ---- settings ----
-      // General and Notifications have no backend yet; Roles is shown
-      // read-only from utils/permissions. See components/settings.
+      // General saves to business_settings. Notifications has no backend yet,
+      // and Roles is shown read-only from utils/permissions. See components/settings.
       case "settings-general":
-        return <SettingsGeneralPage />;
+        return <SettingsGeneralPage settings={settings} isLoaded={settingsState.isLoaded} onSave={saveBusinessSettings} />;
 
       case "settings-roles":
         return <SettingsRolesPage staff={staff} />;
 
       case "settings-notifications":
-        return <SettingsNotificationsPage profile={profile} />;
+        return (
+          <SettingsNotificationsPage
+            profile={profile}
+            loadSettings={fetchNotificationSettings}
+            onSave={async (events) => {
+              const result = await saveNotificationSettings(events);
+              if (result.ok) toast.success("Your notification settings were saved.");
+              return result;
+            }}
+          />
+        );
 
       // ---- my own account ----
       case "profile":
@@ -2748,6 +2953,14 @@ export default function App() {
               if (await updateProfile(changes)) toast.success("Your details were saved.");
             }}
             onSetDashboardView={setDashboardView}
+            onSavePhoto={async (dataUrl) => {
+              const result = await saveOwnPhoto(dataUrl);
+              if (result.ok) {
+                staffPhotosState.reload();
+                toast.success(dataUrl ? "Your photo was saved." : "Your initials are back.");
+              }
+              return result;
+            }}
           />
         );
 
@@ -2789,6 +3002,21 @@ export default function App() {
       {/* Mounted at the root rather than inside a screen, because each is
           opened from list screens, detail screens AND dashboard actions.
           `key` forces fresh state when the target record changes. */}
+      {paymentFor ? (
+        <RecordPaymentDialog
+          key={`pay-${paymentFor.customerName}-${paymentFor.loading ? "loading" : "ready"}`}
+          customerName={paymentFor.customerName}
+          orders={paymentFor.orders}
+          paid={paid}
+          initialOrderId={paymentFor.initialOrderId ?? null}
+          loading={paymentFor.loading}
+          onSave={handleRecordPayment}
+          onClose={() => {
+            paymentLookup.current = null;
+            setPaymentFor(null);
+          }}
+        />
+      ) : null}
       {isAddProductOpen && can(role, "manageCatalogue") ? (
         <ProductFormPage
           asDialog
@@ -2817,6 +3045,8 @@ export default function App() {
           inventory={inventory}
           existingOrders={orders}
           customer={orderDraftFor}
+          settings={settings}
+          canTakePayment={can(role, "recordPayments")}
           saving={busy}
           onSave={async (values) => {
             const result = await saveOrder(values);
@@ -2969,7 +3199,7 @@ export default function App() {
   };
 
   return (
-    <>
+    <StaffPhotos.Provider value={staffPhotoByName}>
       {chromeless ? (
         <Suspense fallback={<RouteFallback />}>{renderView()}</Suspense>
       ) : (
@@ -2985,6 +3215,12 @@ export default function App() {
           onNavigate={navigate}
           onSignOut={handleSignOut}
           commands={shellCommands}
+          notifications={{
+            items: notificationsState.rows,
+            onOpen: openNotification,
+            onMarkAllRead: markAllNotificationsRead,
+            onOpenSettings: () => navigate("settings-notifications"),
+          }}
         >
           {denied ? <NotAllowedState role={profile?.role} onGoToDashboard={() => navigate("dashboard")} onSignOut={handleSignOut} /> : renderView()}
         </Shell>
@@ -2995,6 +3231,6 @@ export default function App() {
       {/* Mounted once, at the root, so a failed write on any screen has
           somewhere to report itself. */}
       <Toaster />
-    </>
+    </StaffPhotos.Provider>
   );
 }

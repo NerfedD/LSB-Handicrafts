@@ -83,6 +83,8 @@ export default function DeliveryBoardPage({
   onGoToDashboard,
   initialFilter,
   change = null,
+  /** Printed at the head of the run sheet. */
+  settings = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "deliveries");
   const [chip] = useUrlState("tab", initialFilter ?? "all", "deliveries");
@@ -380,7 +382,7 @@ export default function DeliveryBoardPage({
       {/* Renders to document.body, not here: the print stylesheet hides #root
           and shows .slip, which only works from outside the app's tree. It
           gets the filtered list, so Print puts on paper what is on screen. */}
-      <RunSheet deliveries={filtered} scope={printScope} />
+      <RunSheet deliveries={filtered} scope={printScope} settings={settings} />
     </Page>
   );
 }

@@ -221,7 +221,10 @@ export default function PurchasingSection({ ws }) {
                       <TableCell className="max-w-[200px] truncate">{supplierName(o.supplier_id)}</TableCell>
                       <TableCell className="max-w-[220px] truncate font-medium">{mat(o.raw_material_id)?.name}</TableCell>
                       <TableCell>{o.quantity_ordered} {pluralUnit(unit, o.quantity_ordered)}</TableCell>
-                      <TableCell className="text-right">{formatPeso(o.total_cost)}</TableCell>
+                      <TableCell className="text-right">
+                        {formatPeso(o.total_cost)}
+                        <span className="block text-xs text-muted-fg">{supplierPaymentLabel(o)}</span>
+                      </TableCell>
                       <TableCell className="text-muted-fg">
                         {o.status === "Arrived" ? formatShortDate(o.actual_delivery_date) : o.expected_delivery_date ? formatShortDate(o.expected_delivery_date) : "Not set"}
                       </TableCell>
@@ -252,4 +255,15 @@ export default function PurchasingSection({ ws }) {
 
     </Page>
   );
+}
+
+/**
+ * How a supplier order is paid and whether it has been: by card when it was
+ * placed, or cash on delivery once the goods arrive (the database stamps
+ * paid_at either way -- see the 2026-10-31 migration).
+ */
+function supplierPaymentLabel(order) {
+  const how = order.payment_method === 'card' ? 'Card' : 'COD';
+  if (order.status === 'Cancelled') return order.paid_at ? `${how} · paid, order cancelled` : `${how} · not paid`;
+  return order.paid_at ? `${how} · paid` : `${how} · pay on arrival`;
 }

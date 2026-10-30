@@ -105,6 +105,19 @@ function select(rows, params) {
 }
 
 /** Stands in for the customer_order_stats view: whole-history sums per customer. */
+/** public.order_paid: what each order has been paid, from the payments table. */
+function orderPaid(payments) {
+  const byOrder = new Map();
+  for (const payment of payments) {
+    const row = byOrder.get(payment.order_id) ?? { order_id: payment.order_id, paid_amount: 0, payment_count: 0, last_paid_on: null };
+    row.paid_amount += Number(payment.amount);
+    row.payment_count += 1;
+    if (!row.last_paid_on || payment.received_on > row.last_paid_on) row.last_paid_on = payment.received_on;
+    byOrder.set(payment.order_id, row);
+  }
+  return [...byOrder.values()];
+}
+
 function customerStats(orders) {
   const byKey = new Map();
   for (const order of orders) {
@@ -308,6 +321,14 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
   tables.product_categories ??= [...new Set((tables.inventory ?? []).map((row) => row.category).filter(Boolean))]
     .map((name, index) => ({ id: 3000 + index, name }));
   tables.product_images ??= [];
+  tables.order_payments ??= [];
+  tables.notifications ??= [];
+  tables.notification_settings ??= [];
+  tables.staff_photos ??= [];
+  tables.business_settings ??= [{ id: 1, business_name: 'LSB Handicrafts', tin: null, phone: null, email: null, address: null,
+    vat_registered: false, delivery_fee: null, free_delivery_from: null, delivery_areas: [], open_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    opens_at: null, closes_at: null, revision: 0, updated_at: null, updated_by: null }];
+  const paymentRequests = new Map();
   tables.loyalty_rules ??= [{ id: 1, enabled: false, regular_after_orders: 3, reward_after_orders: 5, reward_percent: 5, revision: 0, updated_at: null, updated_by: null }];
   const stockRequests = new Map();
   const orderRequests = new Map();
@@ -506,11 +527,88 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       onWrite?.({ table: 'product_images', method: 'RPC', row });
       return json(route, { product_id: productId, removed: false });
     }
+    // Payments: the same oldest-first settling and the same refusals as
+    // public.record_payment, so a screen test sees the database's answers.
+    if (url.pathname.endsWith("/rpc/record_payment")) {
+      const body = request.postDataJSON();
+      if (paymentRequests.has(body.p_request_id)) return json(route, { payments: paymentRequests.get(body.p_request_id), replayed: true });
+      const owedOn = (order) => Math.max(0, Number(order.total_amount) - Number(order.refunded_amount ?? 0)
+        - tables.order_payments.filter((p) => p.order_id === order.id).reduce((sum, p) => sum + Number(p.amount), 0));
+      const orders = tables.orders.filter((o) => body.p_order_ids.includes(o.id))
+        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at) || a.id - b.id);
+      if (orders.some((o) => o.status === 'Cancelled')) return json(route, { code: 'P0001', message: 'That order was cancelled, so nothing is owed on it.' }, 400);
+      const owed = orders.reduce((sum, o) => sum + owedOn(o), 0);
+      if (body.p_method !== 'cash' && !body.p_reference) return json(route, { code: 'P0001', message: 'Put in the reference number from the receipt.' }, 400);
+      if (owed <= 0) return json(route, { code: 'P0001', message: 'Nothing is owed on that. It is already paid.' }, 400);
+      if (body.p_amount > owed) return json(route, { code: 'P0001', message: `That is more than is owed (₱${owed.toFixed(2)}). Put in at most that much.` }, 400);
+      let left = body.p_amount;
+      const saved = [];
+      for (const order of orders) {
+        const share = Math.min(owedOn(order), left);
+        if (share <= 0) continue;
+        const row = { id: nextRecordId(), order_id: order.id, amount: share, method: body.p_method, reference: body.p_reference,
+          received_on: body.p_received_on, note: body.p_note, request_id: body.p_request_id, recorded_by: 'Maria Santos', created_at: new Date().toISOString() };
+        tables.order_payments.push(row);
+        saved.push(row);
+        onWrite?.({ table: 'order_payments', method: 'RPC', row });
+        left -= share;
+      }
+      paymentRequests.set(body.p_request_id, saved);
+      return json(route, { payments: saved, replayed: false });
+    }
+    if (url.pathname.endsWith("/rpc/remove_payment")) {
+      const { p_payment_id: id } = request.postDataJSON();
+      const index = tables.order_payments.findIndex((p) => p.id === id);
+      if (index === -1) return json(route, { code: 'P0001', message: 'That payment is no longer on record.' }, 400);
+      const [gone] = tables.order_payments.splice(index, 1);
+      onWrite?.({ table: 'order_payments', method: 'DELETE', id });
+      return json(route, { removed: id, order_id: gone.order_id });
+    }
+    if (url.pathname.endsWith("/rpc/save_own_photo")) {
+      const { p_data_url: dataUrl } = request.postDataJSON();
+      const me = tables.staff.find((s) => String(s.email).toLowerCase() === as.toLowerCase());
+      const index = tables.staff_photos.findIndex((row) => row.staff_id === me?.id);
+      if (dataUrl === null) {
+        if (index !== -1) tables.staff_photos.splice(index, 1);
+      } else {
+        const row = { staff_id: me.id, data_url: dataUrl, updated_at: new Date().toISOString() };
+        if (index === -1) tables.staff_photos.push(row); else tables.staff_photos[index] = row;
+      }
+      onWrite?.({ table: 'staff_photos', method: 'RPC', row: { staff_id: me?.id, removed: dataUrl === null } });
+      return json(route, { staff_id: me?.id, removed: dataUrl === null });
+    }
+    if (url.pathname.endsWith("/rpc/save_notification_settings")) {
+      const { p_in_app: events } = request.postDataJSON();
+      const me = tables.staff.find((s) => String(s.email).toLowerCase() === as.toLowerCase());
+      const index = tables.notification_settings.findIndex((row) => row.staff_id === me?.id);
+      const row = { staff_id: me?.id, in_app: events, updated_at: new Date().toISOString() };
+      if (index === -1) tables.notification_settings.push(row); else tables.notification_settings[index] = row;
+      onWrite?.({ table: 'notification_settings', method: 'RPC', row });
+      return json(route, { in_app: events });
+    }
+    if (url.pathname.endsWith("/rpc/refresh_alerts")) return json(route, { ok: true });
+    if (url.pathname.endsWith("/rpc/set_supplier_payment")) {
+      const { p_order_id: id, p_method: method } = request.postDataJSON();
+      const row = tables.raw_material_orders.find((o) => Number(o.id) === Number(id));
+      if (!row) return json(route, { code: 'P0001', message: 'That supplier order no longer exists.' }, 400);
+      if (['Arrived', 'Cancelled'].includes(row.status)) return json(route, { code: 'P0001', message: 'This order is already closed, so how it was paid can no longer change.' }, 400);
+      row.payment_method = method;
+      row.paid_at = method === 'card' ? new Date().toISOString() : null;
+      onWrite?.({ table: 'raw_material_orders', method: 'RPC', row });
+      return json(route, { id: row.id, payment_method: row.payment_method, paid_at: row.paid_at });
+    }
+    if (url.pathname.endsWith("/rpc/sign_out_staff")) {
+      const { p_staff_id: staffId } = request.postDataJSON();
+      onWrite?.({ table: 'sessions', method: 'RPC', row: { staff_id: staffId } });
+      return json(route, { ended: 2 });
+    }
     if (url.pathname.includes("/rpc/")) return json(route, null);
 
     // /rest/v1/<table>  ->  ["", "rest", "v1", "<table>"]
     const key = url.pathname.split("/")[3];
-    const rows = key === 'customer_order_stats' ? customerStats(tables.orders) : tables[key];
+    const rows = key === 'customer_order_stats' ? customerStats(tables.orders)
+      : key === 'order_paid' ? orderPaid(tables.order_payments)
+      : tables[key];
     if (!rows) {
       return json(route, { message: `stub has no table "${key}"` }, 501);
     }
@@ -543,13 +641,22 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       return json(route, [created], 201);
     }
 
+    // Marking alerts read is the one write sent with `id=in.(...)`.
+    if (method === "PATCH" && idFilter?.startsWith("in.")) {
+      const ids = idFilter.slice(4, -1).split(",").map(Number);
+      const changed = rows.filter((r) => ids.includes(r.id));
+      for (const row of changed) Object.assign(row, body);
+      onWrite?.({ table: key, method, row: { ids, ...body } });
+      return json(route, changed);
+    }
+
     if (method === "PATCH") {
       const index = rows.findIndex((r) => r.id === id);
       if (index === -1) return json(route, [], 200);
       const expected = url.searchParams.get('revision');
       if (expected && Number(expected.replace('eq.', '')) !== (rows[index].revision ?? 0)) return json(route, [], 200);
       rows[index] = { ...rows[index], ...body };
-      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
+      if (['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules', 'business_settings'].includes(key)) rows[index].revision = (rows[index].revision ?? 0) + 1;
       onWrite?.({ table: key, method, row: rows[index] });
       return json(route, [rows[index]]);
     }
