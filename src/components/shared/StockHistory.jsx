@@ -1,41 +1,24 @@
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { EmptySlot } from "./PageStates";
 import { movementLabel, stockReasonLabel } from "../../utils/copy";
 import { whenLabel } from "../../utils/activityLog";
 
 /**
- * Every change to one shelf count, newest first: what happened, who did it,
- * the change, and the count it left. Read from public.stock_movements, which
- * the database writes in the same transaction as the change itself -- so a
- * count that moved always has a line here saying why.
- *
- * UNDOING DAMAGE. A damage record entered wrong is not edited away: the history
- * is append-only, and one that can be rewritten is worth nothing. `onUndoDamage`
- * puts the quantity back as its own entry that names the one it reverses, so
- * both the mistake and the correction stay on the record. The offer is withdrawn
- * once a record has been undone -- the database allows exactly one -- and it is
- * only passed in for the roles that may do it.
+ * Every change to one stock count, newest first, in the boards' table: When,
+ * What happened, In, Out and the balance after. A damage write-off can be put
+ * back by a manager, once.
  */
 export default function StockHistory({ rows = [], isLoaded = true, error = null, onUndoDamage = null, busy = false, limit = 50 }) {
   if (error) {
-    return <EmptySlot className="py-10 text-[15px]">The stock history could not be loaded. Reopen this screen to try again.</EmptySlot>;
+    return <EmptySlot>The stock history could not be loaded. Reopen this screen to try again.</EmptySlot>;
   }
   if (!isLoaded && rows.length === 0) {
-    return <EmptySlot className="py-10 text-[15px]">Loading the stock history…</EmptySlot>;
+    return <EmptySlot>Loading the stock history…</EmptySlot>;
   }
   if (rows.length === 0) {
     return (
-      <EmptySlot className="py-10 text-[15px]">
+      <EmptySlot>
         Nothing has moved yet. Every stock in (deliveries received, production, returns) and stock out (sales, production use, damage) shows up here.
       </EmptySlot>
     );
@@ -45,72 +28,54 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
   const undone = new Set(rows.map((row) => row.reversesMovementId).filter(Boolean));
   return (
     <>
-    <Table minWidth={680}>
-      <TableCaption>Every change to this stock count, newest first</TableCaption>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead className="w-48">When</TableHead>
-          <TableHead>What happened</TableHead>
-          {/* In and out in their own columns, so "what came in" and "what went
-              out" can each be read straight down, and the balance beside them. */}
-          <TableHead className="w-24 text-right">Stock in</TableHead>
-          <TableHead className="w-24 text-right">Stock out</TableHead>
-          <TableHead className="w-24 text-right">Balance</TableHead>
-          {onUndoDamage && <TableHead className="w-36">Entered wrong?</TableHead>}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => {
-          const why = [
-            row.reason ? stockReasonLabel(row.reason) : null,
-            row.orderId ? `order #${row.orderId}` : null,
-            row.supplierOrderId ? `supplier order #${row.supplierOrderId}` : null,
-            row.note,
-          ].filter(Boolean).join(" · ");
-          const up = row.change > 0;
-          return (
-            <TableRow key={row.id}>
-              <TableCell className="text-[15px] text-muted">{whenLabel(row.at)}</TableCell>
-              <TableCell>
-                <p className="text-[15.5px]">
-                  <strong className="font-extrabold">{movementLabel(row.kind)}</strong> by {row.actorName}
-                </p>
-                {why && <p className="pt-0.5 text-[14.5px] text-muted">{why}</p>}
-              </TableCell>
-              <TableCell className="text-right text-[17px] font-extrabold tabular-nums text-green dark:text-dk-green">
-                {up ? `+${row.change}` : <span className="sr-only">none</span>}
-              </TableCell>
-              <TableCell className={cn("text-right text-[17px] font-extrabold tabular-nums", !up && "text-red dark:text-dk-red")}>
-                {up ? <span className="sr-only">none</span> : `−${Math.abs(row.change)}`}
-              </TableCell>
-              <TableCell className="text-right text-[16px] tabular-nums">{row.balanceAfter}</TableCell>
-              {onUndoDamage && (
-                <TableCell>
-                  {row.kind === "damage" && !undone.has(row.id) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => onUndoDamage(row)}
-                    >
-                      Put this back
-                    </Button>
-                  )}
-                  {row.kind === "damage" && undone.has(row.id) && (
-                    <span className="text-[14.5px] text-muted">Already put back</span>
-                  )}
+      <Table minWidth={680} aria-label="Every change to this stock count, newest first">
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-44">When</TableHead>
+            <TableHead>What happened</TableHead>
+            <TableHead className="w-20 text-right">In</TableHead>
+            <TableHead className="w-20 text-right">Out</TableHead>
+            <TableHead className="w-24 text-right">Balance</TableHead>
+            {onUndoDamage ? <TableHead className="w-36"><span className="sr-only">Entered wrong?</span></TableHead> : null}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((row) => {
+            const why = [
+              row.reason ? stockReasonLabel(row.reason) : null,
+              row.orderId ? `order #${row.orderId}` : null,
+              row.supplierOrderId ? `supplier order #${row.supplierOrderId}` : null,
+              row.note,
+            ].filter(Boolean).join(" · ");
+            const up = row.change > 0;
+            return (
+              <TableRow key={row.id} className="h-auto">
+                <TableCell className="py-2 text-muted-fg">{whenLabel(row.at)}</TableCell>
+                <TableCell className="whitespace-normal py-2">
+                  <span className="font-medium">{movementLabel(row.kind)}</span> by {row.actorName}
+                  {why ? <span className="block text-xs text-muted-fg">{why}</span> : null}
                 </TableCell>
-              )}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-    {rows.length >= limit && (
-      <p className="border-t border-hair px-5.5 py-3 text-[15px] text-muted">
-        Showing the latest {limit} changes. The balance column is always the true count after each one.
-      </p>
-    )}
+                <TableCell className="py-2 text-right text-success-fg">{up ? `+${row.change}` : <span className="sr-only">none</span>}</TableCell>
+                <TableCell className="py-2 text-right text-danger-fg">{up ? <span className="sr-only">none</span> : `−${Math.abs(row.change)}`}</TableCell>
+                <TableCell className="py-2 text-right">{row.balanceAfter}</TableCell>
+                {onUndoDamage ? (
+                  <TableCell className="py-2">
+                    {row.kind === "damage" && !undone.has(row.id) ? (
+                      <Button variant="outline" size="sm" disabled={busy} onClick={() => onUndoDamage(row)}>Put this back</Button>
+                    ) : null}
+                    {row.kind === "damage" && undone.has(row.id) ? <span className="text-xs text-muted-fg">Already put back</span> : null}
+                  </TableCell>
+                ) : null}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {rows.length >= limit ? (
+        <p className="m-0 border-t border-border px-4 py-2.5 text-13 text-muted-fg">
+          Showing the latest {limit} changes. The balance column is always the true count after each one.
+        </p>
+      ) : null}
     </>
   );
 }

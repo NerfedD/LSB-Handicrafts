@@ -16,6 +16,7 @@ dist-ssr
 test-results
 playwright-report
 qa-artifacts/
+.shots/
 
 # Generated Supabase CLI metadata
 supabase/.temp/

@@ -1,10 +1,9 @@
 import { useState } from "react";
 
-import { CircleAlert, Mail, Phone, Send } from "./icons";
-import AuthLayout, { StepBar } from "./layout/AuthLayout";
+import { Envelope, Phone, WarningCircle } from "./icons";
+import AuthLayout, { AuthCard } from "./layout/AuthLayout";
 import AuthField from "./shared/AuthField";
 import Callout from "./shared/Callout";
-import IconChip from "./shared/Chip";
 import { Button } from "@/components/ui/button";
 import { supabase } from "../lib/supabaseClient";
 import { OFFICE_PHONE } from "../utils/office";
@@ -63,87 +62,67 @@ export default function ForgotPasswordPage({ onBack }) {
     }
   }
 
+  const footer = (
+    <button type="button" data-slot="text-link" onClick={onBack} className="text-13 font-medium text-primary-text hover:text-primary-hover">
+      Back to sign in
+    </button>
+  );
+
   if (sent) {
     return (
-      <AuthLayout width={470}>
-        <StepBar step={2} />
-
-        <div className="pt-6">
-          <IconChip icon={<Mail />} tone="cobalt" size="xl" />
-          <h1 className="pt-5 text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-            Now check your email
-          </h1>
-          <p className="pt-2 text-[16px] leading-[1.55] text-muted">
-            {/* Deliberately "if an account exists": confirming which addresses
-                are registered would tell a stranger who works here. */}
-            If there is an account for{" "}
-            <strong className="font-bold text-ink">{email}</strong>, a link is on its way.
-            Open it on this device and you can choose a new password. The link works for
-            one hour.
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3 pt-7">
-          <Button variant="cobalt" size="xl" block onClick={onBack}>
-            Back to sign in
+      <AuthLayout>
+        <AuthCard
+          width={400}
+          step={2}
+          title="Check your email"
+          // Deliberately "if an account exists": confirming which addresses
+          // are registered would tell a stranger who works here.
+          description={<>If there is an account for <strong className="font-medium text-foreground">{email}</strong>, a link is on its way. It works for one hour.</>}
+          footer={footer}
+        >
+          <Callout tone="neutral" icon={<Envelope />}>
+            Open the link on this device and you can choose a new password.
+          </Callout>
+          <Button variant="outline" block render={<a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`} />}>
+            <Phone />
+            No email arrived? Call the office
           </Button>
-          <Button variant="outline" size="lg" block asChild>
-            <a href={`tel:${OFFICE_PHONE.replace(/[^\d+]/g, "")}`}>
-              <Phone className="h-5 w-5" />
-              No email arrived — call the office
-            </a>
-          </Button>
-        </div>
+        </AuthCard>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout width={470}>
-      <StepBar step={1} />
-
-      <div className="pt-6">
-        <h1 className="text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-          What is your email?
-        </h1>
-        <p className="pt-2 text-[16px] leading-[1.55] text-muted">
-          We will send you a link that lets you choose a new password. The link works for
-          one hour.
-        </p>
-      </div>
-
-      {error && (
-        <Callout tone="red" icon={<CircleAlert />} title="That did not work." className="mt-5">
-          {error}
-        </Callout>
-      )}
-
-      <form onSubmit={handleSubmit} className="pt-6" noValidate>
-        <AuthField
-          label="Email address"
-          icon={<Mail />}
-          type="email"
-          value={email}
-          onChange={(next) => {
-            setEmail(next);
-            setEmailError(null);
-          }}
-          placeholder="you@example.com"
-          autoComplete="email"
-          invalid={Boolean(error) || Boolean(emailError)}
-          error={emailError}
-        />
-
-        <div className="flex flex-wrap gap-3 pt-6">
-          <Button type="submit" variant="cobalt" size="xl" className="flex-1" disabled={isSubmitting}>
-            <Send className="h-5 w-5" />
-            {isSubmitting ? "Sending…" : "Send the link"}
+    <AuthLayout>
+      <AuthCard
+        width={400}
+        step={1}
+        title="Reset your password"
+        description="We email a link to the address you sign in with. It works for one hour."
+        footer={footer}
+      >
+        {error ? (
+          <Callout tone="red" icon={<WarningCircle />} title="That did not work.">{error}</Callout>
+        ) : null}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <AuthField
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(next) => {
+              setEmail(next);
+              setEmailError(null);
+            }}
+            placeholder="name@lsbhandicrafts.ph"
+            autoComplete="email"
+            invalid={Boolean(error) || Boolean(emailError)}
+            error={emailError}
+          />
+          <Button type="submit" block disabled={isSubmitting}>
+            {isSubmitting ? "Sending…" : "Send me a link"}
           </Button>
-          <Button variant="outline" size="xl" onClick={onBack}>
-            Back
-          </Button>
-        </div>
-      </form>
+        </form>
+      </AuthCard>
     </AuthLayout>
   );
 }

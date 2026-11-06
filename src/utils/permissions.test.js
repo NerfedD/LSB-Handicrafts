@@ -53,21 +53,25 @@ describe('screen access', () => {
     }
   });
 
-  it('keeps the production report with managers, as a tab of Production', () => {
+  it('keeps the production report with managers, under Production', () => {
     for (const role of ROLES) {
       expect(canAccess(role, 'production-report'), role).toBe(role === 'Admin' || role === 'Manager');
     }
     expect(canAccess('Production Staff', 'production')).toBe(true);
     expect(canAccess('Sales Staff', 'production')).toBe(false);
-    expect(SECTION_OF['production-report']).toBe('production');
+    // The design gives the report its own Production sub-item.
+    expect(SECTION_OF['production-report']).toBe('production-report');
+    expect(NAV_TREE.find((item) => item.key === 'production-report')?.parent).toBe('production');
   });
 
-  it('gives purchasing, raw materials, production and products a sidebar entry each', () => {
+  it('gives purchasing, raw materials, batches and inventory a sidebar entry each', () => {
     const entry = (view) => NAV_TREE.find((item) => item.views[0] === view);
     expect(entry('raw-material-orders')?.label).toBe('Purchasing');
     expect(entry('raw-materials')?.label).toBe('Raw materials');
-    expect(entry('production')?.label).toBe('Production');
-    expect(entry('products')?.label).toBe('Products & stock');
+    // The design's labels: Production opens Batches, Raw materials, Purchasing
+    // and Production report; Products & stock is now Inventory.
+    expect(entry('production')?.label).toBe('Batches');
+    expect(entry('products')?.label).toBe('Inventory');
     // Anyone may receive a supplier delivery, so everyone can open Purchasing.
     for (const role of ROLES) expect(canAccess(role, 'raw-material-orders'), role).toBe(true);
   });

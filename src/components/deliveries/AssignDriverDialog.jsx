@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-import { UserRound } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -62,18 +61,18 @@ export default function AssignDriverDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[480px]">
+      <DialogContent>
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader>
-            <DialogTitle>Who is taking this one out?</DialogTitle>
+            <DialogTitle>{delivery ? `Driver for delivery #${delivery.id}` : "Assign driver"}</DialogTitle>
             <DialogDescription>
-              It shows on the board so nobody has to ask, and it can be changed later.
+              It shows on the board so nobody has to ask. It can be changed later.
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody>
             <Field
-              label="Their name"
+              label="Driver"
               error={problem}
               hint="Anyone can be named here — they do not need an account in the system."
             >
@@ -99,18 +98,16 @@ export default function AssignDriverDialog({
             </Field>
           </DialogBody>
 
-          <DialogFooter className="justify-between">
+          <DialogFooter>
             <Button
               variant="outline"
-              size="lg"
               disabled={saving}
               onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving}>
-              <UserRound className="h-5 w-5" />
-              {saving ? "Saving…" : driver.trim() ? "Give it to them" : "Leave it unassigned"}
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : driver.trim() ? "Assign driver" : "Leave it unassigned"}
             </Button>
           </DialogFooter>
         </form>

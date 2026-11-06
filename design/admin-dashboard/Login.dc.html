@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--background, #F1FAEE)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+.lsb-panel :focus-visible{outline-color:var(--card, #ffffff)}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@keyframes lsbPhoto{0%{opacity:1;transform:scale(1.02)}33.3%{opacity:1;transform:scale(1.07)}40.5%{opacity:0;transform:scale(1.08)}92.8%{opacity:0;transform:scale(1)}100%{opacity:1;transform:scale(1.02)}}
+@keyframes lsbBar{0%{transform:scaleX(0)}33.3%{transform:scaleX(1)}33.4%{transform:scaleX(0)}100%{transform:scaleX(0)}}
+@media (max-width: 1023px){.lsb-panel{display:none !important}}
+@media (min-width: 1024px){.lsb-compact-brand{display:none !important}}
+@media (prefers-reduced-motion: reduce){.lsb-photo,.lsb-bar-fill{animation:none !important}.lsb-photo-2,.lsb-photo-3{opacity:0 !important}}
+</style>
+</helmet>
+<div style="min-height: 860px; box-sizing: border-box; display: flex; align-items: stretch; background: var(--background, #F1FAEE); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+
+<!-- Workshop photo panel -->
+<aside class="lsb-panel" aria-label="LSB Handicrafts" style="position: relative; flex: 0 0 44%; display: flex; flex-direction: column; box-sizing: border-box; padding: 40px; overflow: hidden; background: #00294a; color: var(--on-primary, #ffffff);">
+<div role="img" aria-label="Photographs of the LSB Handicrafts workshop in Davao City" style="position: absolute; inset: 0;">
+<sc-for list="{{photos}}" as="p" hint-placeholder-count="3">
+<img class="lsb-photo {{p.cls}}" src="{{p.src}}" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: {{p.position}}; transform-origin: {{p.origin}}; animation: {{p.anim}}; opacity: {{p.op}};">
+</sc-for>
+<div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,41,74,0.92) 0%, rgba(0,41,74,0.45) 22%, rgba(0,41,74,0.15) 46%, rgba(0,41,74,0.55) 68%, rgba(0,41,74,0.96) 100%);"></div>
+</div>
+
+<div style="position: relative; display: flex; align-items: center; gap: 14px;">
+<img src="/_blob/f03b3fc781d0bdbd45f0db36281d2ab4" alt="" style="width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex: none;">
+<div>
+<p style="margin: 0; font-size: 18px; line-height: 22px; font-weight: 600;">LSB Handicrafts</p>
+<p style="margin: 2px 0 0; font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: rgba(255,255,255,0.75);">Management system</p>
+</div>
+</div>
+
+<div style="position: relative; margin-top: auto;">
+<p style="margin: 0; max-width: 380px; font-size: 20px; line-height: 29px; font-weight: 500; letter-spacing: -0.01em;">Styrofoam decor made in Davao City — centrepieces, wall art, stage backdrops, custom sculptures.</p>
+<p style="margin: 18px 0 0; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: rgba(255,255,255,0.75);">Staff access only</p>
+<div role="group" aria-label="Workshop photographs" style="display: flex; gap: 8px; padding-top: 12px;">
+<sc-for list="{{photos}}" as="p" hint-placeholder-count="3">
+<button type="button" aria-label="Photograph {{p.n}} of 3" aria-pressed="{{p.pressed}}" onClick="{{p.pick}}" style="display: flex; align-items: center; width: 56px; height: 44px; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: pointer;">
+<span style="position: relative; display: block; width: 100%; height: 3px; overflow: hidden; border-radius: 3px; background: rgba(255,255,255,0.28);">
+<span class="lsb-bar-fill" style="position: absolute; inset: 0; border-radius: 3px; background: var(--card, #ffffff); transform-origin: left center; animation: {{p.barAnim}}; transform: {{p.barScale}};"></span>
+</span>
+</button>
+</sc-for>
+</div>
+</div>
+</aside>
+
+<!-- Sign-in form -->
+<div style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 48px 16px; box-sizing: border-box;">
+
+<div class="lsb-compact-brand" style="display: flex; align-items: center; gap: 10px;">
+<img src="/_blob/f03b3fc781d0bdbd45f0db36281d2ab4" alt="" style="width: 32px; height: 32px; border-radius: 6px; object-fit: cover;">
+<span style="display: flex; flex-direction: column;"><span style="font-size: 14px; line-height: 18px; font-weight: 600;">LSB Handicrafts</span><span style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">Management system · Staff access only</span></span>
+</div>
+
+<main style="width: 100%; max-width: 380px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 24px 24px 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Sign in</h1>
+<p style="margin: 4px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Use the email address your admin set up for you.</p>
+</div>
+<div style="padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<label for="login-email" style="font-size: 14px; font-weight: 500;">Email</label>
+<input id="login-email" type="email" autocomplete="email" placeholder="name@lsbhandicrafts.ph" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+<label for="login-password" style="font-size: 14px; font-weight: 500;">Password</label>
+<a href="ForgotPassword.dc.html" style="font-size: 13px; text-decoration: none;">Forgot password?</a>
+</div>
+<input id="login-password" type="password" autocomplete="current-password" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<button type="button" role="checkbox" id="login-keep" aria-checked="{{keep}}" aria-labelledby="login-keep-label" onClick="{{toggleKeep}}" style="flex: none; width: 16px; height: 16px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid {{keepBorder}}; border-radius: 4px; background: {{keepBg}}; color: var(--on-primary, #ffffff); cursor: pointer;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{keepCheck}};"><path d="M40 144l56 56L224 72"></path></svg></button>
+<label id="login-keep-label" for="login-keep" style="font-size: 14px; cursor: pointer;">Keep me signed in on this computer</label>
+</div>
+<a href="Main.dc.html" style="display: flex; align-items: center; justify-content: center; height: 32px; border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">Sign in</a>
+</div>
+<div style="padding: 12px 24px; border-top: 1px solid var(--border, #d4d4d8); font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Locked out? Ask an admin to reset your account. Nothing is lost while you wait.</div>
+</main>
+
+<p style="margin: 0; font-size: 12px; color: var(--muted-fg, #71717a);">© 2026 LSB Handicrafts</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const keep = s.keep ?? true;
+    const picked = s.picked ?? null;
+    const sources = [
+      { src: '/_blob/665754a868dee9c6286ecd73b8da35e2', position: '50% 50%', origin: '30% 40%' },
+      { src: '/_blob/b322452e1015591b3080068ce7c31733', position: '50% 60%', origin: '60% 70%' },
+      { src: '/_blob/242c19914ff56a159bf77568e3a071f9', position: '30% 50%', origin: '25% 45%' }
+    ];
+    // Each photograph holds 6.5s; negative delays put photo 2 and 3 mid-cycle so the loop starts on photo 1.
+    const delays = ['0s', '-13s', '-6.5s'];
+    const photos = sources.map((p, i) => ({
+      ...p,
+      n: i + 1,
+      cls: 'lsb-photo-' + (i + 1),
+      anim: picked === null ? 'lsbPhoto 19.5s ease-in-out ' + delays[i] + ' infinite' : 'none',
+      op: picked === null ? '' : (picked === i ? '1' : '0'),
+      barAnim: picked === null ? 'lsbBar 19.5s linear ' + delays[i] + ' infinite' : 'none',
+      barScale: picked === null ? '' : (picked === i ? 'scaleX(1)' : 'scaleX(0)'),
+      pressed: picked === i,
+      pick: () => this.setState({ picked: i })
+    }));
+    return {
+      photos,
+      keep,
+      keepBg: keep ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)',
+      keepBorder: keep ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)',
+      keepCheck: keep ? 'block' : 'none',
+      toggleKeep: () => this.setState({ keep: !keep })
+    };
+  }
+}
+</script>
+</body>
+</html>

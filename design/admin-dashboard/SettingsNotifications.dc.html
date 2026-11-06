@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings · Notifications</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1120px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="settings" sub="notifications" collapsed="{{collapsed}}" h="1120" on-toggle="{{toggleNav}}" hint-size="240px,1120px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Settings" page="Notifications" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 1040px; box-sizing: border-box; width: 100%;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 192a32 32 0 0 0 64 0M56 104a72 72 0 0 1 144 0c0 35.82 8.3 64.6 14.9 76A8 8 0 0 1 208 192H48a8 8 0 0 1-6.88-12C47.71 168.6 56 139.81 56 104Z"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Notifications</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Your own alerts. Each person chooses theirs; this does not change anyone else's.</p>
+</div>
+</div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Save changes</button>
+</header>
+
+<!-- Event matrix -->
+<section aria-labelledby="sn-events" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div style="padding: 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<h2 id="sn-events" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Tell me when</h2>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Text messages go to 0917 555 0101. Email goes to maria@lsbhandicrafts.ph.</p>
+</div>
+<div role="table" aria-label="Notification channels" style="min-width: 620px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(260px, 2.4fr) repeat(3, minmax(90px, 1fr)); align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 16px;">Event</div>
+<div role="columnheader" style="text-align: center;">In the app</div>
+<div role="columnheader" style="text-align: center;">Email</div>
+<div role="columnheader" style="text-align: center;">Text message</div>
+</div>
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="5">
+<div role="row" style="display: grid; grid-template-columns: 1fr; height: 32px; align-items: center; background: var(--surface-2, #fafafa); border-bottom: 1px solid var(--row-divider, #f4f4f5);"><div role="rowheader" style="padding: 0 16px; font-size: 12px; font-weight: 600; color: var(--fg-2, #3f3f46);">{{g.name}}</div></div>
+<sc-for list="{{g.events}}" as="e" hint-placeholder-count="2">
+<div role="row" style="display: grid; grid-template-columns: minmax(260px, 2.4fr) repeat(3, minmax(90px, 1fr)); align-items: center; min-height: 44px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 4px 16px;"><div style="font-weight: 500;">{{e.name}}</div><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{e.hint}}</div></div>
+<sc-for list="{{e.cells}}" as="c" hint-placeholder-count="3">
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" role="checkbox" aria-checked="{{c.on}}" aria-label="{{c.label}}" onClick="{{c.toggle}}" style="width: 16px; height: 16px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 1px solid {{c.bd}}; border-radius: 4px; background: {{c.bg}}; color: var(--on-primary, #ffffff); cursor: pointer;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display: {{c.checkD}};"><path d="M40 144l56 56L224 72"></path></svg></button></div>
+</sc-for>
+</div>
+</sc-for>
+</sc-for>
+</div>
+</section>
+
+<!-- Daily summary + quiet hours -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
+<section aria-labelledby="sn-daily" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+<div><h2 id="sn-daily" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;"><label for="sn-daily-switch">Daily summary</label></h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">One email with the day's orders, deliveries and stock to watch.</p></div>
+<button type="button" role="switch" id="sn-daily-switch" aria-checked="{{daily}}" onClick="{{toggleDaily}}" style="flex: none; position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{dailyTrack}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{dailyThumb}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<sc-if value="{{daily}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><span style="color: var(--muted-fg, #71717a);">Send at</span><label for="sn-time" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Send time</label><input id="sn-time" type="text" defaultValue="6:00 PM" style="width: 110px; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><span style="color: var(--muted-fg, #71717a);">every working day</span></div>
+</sc-if>
+</section>
+
+<section aria-labelledby="sn-quiet" style="display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;">
+<div><h2 id="sn-quiet" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;"><label for="sn-quiet-switch">Quiet hours</label></h2><p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">No text messages overnight. They wait in the app until morning.</p></div>
+<button type="button" role="switch" id="sn-quiet-switch" aria-checked="{{quiet}}" onClick="{{toggleQuiet}}" style="flex: none; position: relative; width: 32px; height: 18px; padding: 0; border: 0; border-radius: 9px; background: {{quietTrack}}; cursor: pointer;"><span style="position: absolute; top: 2px; left: {{quietThumb}}; width: 14px; height: 14px; border-radius: 50%; background: var(--thumb, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.2);"></span></button>
+</div>
+<sc-if value="{{quiet}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px;"><span style="color: var(--muted-fg, #71717a);">From</span><label for="sn-q1" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Quiet from</label><input id="sn-q1" type="text" defaultValue="9:00 PM" style="width: 100px; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><span style="color: var(--muted-fg, #71717a);">to</span><label for="sn-q2" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Quiet until</label><input id="sn-q2" type="text" defaultValue="7:00 AM" style="width: 100px; height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"></div>
+</sc-if>
+</section>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="settings" sub="notifications" h="1120" hint-size="240px,1120px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const picks = s.picks ?? {};
+    const daily = s.daily ?? true;
+    const quiet = s.quiet ?? true;
+    const CH = ['in the app', 'by email', 'by text message'];
+    const GROUPS = [
+      ['Orders', [
+        ['new', 'A new order is placed', 'Shows who took it and the total', [1, 0, 0]],
+        ['cancel', 'An order is cancelled', 'Any stock it set aside goes back on the shelf', [1, 1, 0]]
+      ]],
+      ['Stock', [
+        ['low', 'A product is running low', 'Below its warning level', [1, 0, 0]],
+        ['out', 'A product runs out', 'Open orders may be affected', [1, 1, 1]],
+        ['raw', 'A raw material is short for a batch', 'A planned batch cannot start', [1, 1, 0]]
+      ]],
+      ['Deliveries', [
+        ['late', 'A delivery is late', 'Past its promised day and not delivered', [1, 1, 1]],
+        ['done', 'A delivery arrives', 'The driver records it as delivered', [1, 0, 0]]
+      ]],
+      ['Production', [
+        ['qc', 'A batch is ready for quality check', 'Somebody needs to count good and damaged pieces', [1, 0, 0]]
+      ]],
+      ['People and security', [
+        ['invite', 'Someone accepts an invite', 'Their account can sign in', [1, 0, 0]],
+        ['fail', 'Repeated failed sign-ins', 'Three wrong passwords in a row on one account', [1, 1, 1]]
+      ]]
+    ];
+    const groups = GROUPS.map(([name, events]) => ({
+      name,
+      events: events.map(([key, ev, hint, def]) => ({
+        name: ev, hint,
+        cells: CH.map((ch, i) => {
+          const id = key + '.' + i;
+          const on = !!(picks[id] ?? def[i]);
+          return {
+            on,
+            label: ev + ', ' + ch,
+            bg: on ? 'var(--primary, #004E89)' : 'var(--card, #ffffff)', bd: on ? 'var(--primary, #004E89)' : 'var(--input-strong, #a1a1aa)', checkD: on ? 'block' : 'none',
+            toggle: () => this.setState({ picks: { ...picks, [id]: !on } })
+          };
+        })
+      }))
+    }));
+    const sw = (on) => ({ track: on ? 'var(--primary, #004E89)' : 'var(--border, #d4d4d8)', thumb: on ? '16px' : '2px' });
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      groups,
+      daily, dailyTrack: sw(daily).track, dailyThumb: sw(daily).thumb,
+      quiet, quietTrack: sw(quiet).track, quietThumb: sw(quiet).thumb,
+      toggleDaily: () => this.setState({ daily: !daily }),
+      toggleQuiet: () => this.setState({ quiet: !quiet }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

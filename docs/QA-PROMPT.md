@@ -167,8 +167,11 @@ blocked user, signed-out user):
   failed request or 500 is a finding.
 
 === 7. UI / ACCESSIBILITY HOUSE RULES (report violations as bugs) ===
-- No readable text under 16px; controls ≥44px; table rows 62px.
-- Every icon has a word beside it (except a dialog's close button).
+- Type follows the design scale (14px body, 13px tables, 12px captions; nothing
+  under 11px); controls are 32px and table rows 36px, as on the boards in
+  design/admin-dashboard/. Anything that departs from the boards is a finding.
+- An icon-only control has an accessible name and a tooltip; state is never
+  conveyed by colour alone.
 - Plain words: no raw database literals (e.g. "Pending", "status: active",
   snake_case) shown to users.
 - Visible focus ring on every focusable element; keyboard-only use of every

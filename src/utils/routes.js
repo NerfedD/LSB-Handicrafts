@@ -14,6 +14,11 @@ export const RECORD_KEYS = {
   // nothing.
   'order-edit': 'Order',
 };
+// Screens My profile took over when it began editing in place. An old bookmark
+// lands on the profile rather than on "page not found".
+const RETIRED_VIEWS = { 'profile-edit': 'profile', 'change-password': 'profile' };
+/** The dialog each section's /new path opens. */
+export const NEW_DIALOGS = { products: 'add-product', orders: 'new-order' };
 // Screens that exist only as part of a section's record routes.
 const INTERNAL_VIEWS = new Set([...Object.keys(RECORD_KEYS), 'order-form']);
 const sections = { products: 'product', orders: 'order', customers: 'customer',
@@ -22,11 +27,15 @@ const sections = { products: 'product', orders: 'order', customers: 'customer',
 export function readRoute(location) {
   const parts = location.pathname.split('/').filter(Boolean);
   let view = parts[0] || 'dashboard';
+  if (parts.length === 1 && RETIRED_VIEWS[view]) view = RETIRED_VIEWS[view];
   let id = null;
   if (sections[view] && parts[1]) {
     const section = view;
     if (parts[1] === 'new' && ['products', 'orders'].includes(section)) {
-      view = parts.length === 2 ? `${sections[section]}-form` : 'not-found';
+      // Adding is a dialog over the list now, so /products/new and
+      // /orders/new open the list with that dialog up.
+      if (parts.length !== 2) view = 'not-found';
+      else return { view: section, id: null, record: undefined, dialog: NEW_DIALOGS[section] };
     } else {
       id = /^\d+$/.test(parts[1]) ? Number(parts[1]) : null;
       view = section === 'staff' ? 'manage-account' : `${sections[section]}-detail`;

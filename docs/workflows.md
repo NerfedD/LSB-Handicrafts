@@ -41,7 +41,7 @@ Damage found at other moments is handled where it happens: on a supplier deliver
 
 ## Where each job lives
 
-The sidebar's *Stock & production* group has one entry per job, in the order stock moves: **Purchasing** (order from a supplier, receive the delivery), **Raw materials** (what the workshop holds), **Production** (batches, with the *Production report* as a second tab for managers) and **Products & stock** (what is sold). Each screen's main action — *Add a product*, *Create order*, *Order materials*, *Start batch*, *Add raw material* — sits in the page beside its search and filters, and moves to a bar above the tab bar on a phone. Each workshop screen opens with three short steps saying what adds stock, what sets it aside and what takes it away; the header's *Help* explains the screen it is opened on.
+The sidebar's *Stock & production* group has one entry per job, in the order stock moves: **Purchasing** (order from a supplier, receive the delivery), **Raw materials** (what the workshop holds), **Production** (batches, with the *Production report* as a second tab for managers) and **Products & stock** (what is sold). Each screen has one main action — *Add product*, *New order*, *Order materials*, *Start batch*, *Add raw material*. *Add product* and *New order* open as dialogs over their list (the addresses `/products/new` and `/orders/new` open the list with the dialog up); changing an existing product or order opens its own page. Each workshop screen opens with three short steps saying what adds stock, what sets it aside and what takes it away; the header's *Help* explains the screen it is opened on.
 
 ## Raw materials
 

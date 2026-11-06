@@ -10,5 +10,5 @@ export default function FormError({ message }) {
     target.focus({ preventScroll: true });
   }, [message]);
   if (!message) return null;
-  return <p ref={boundary} role="alert" tabIndex={-1} data-form-error className="rounded-field border border-red bg-tint-red p-4 text-[16px] font-bold text-red-text">{message}</p>;
+  return <p ref={boundary} role="alert" tabIndex={-1} data-form-error className="mb-3.5 rounded-md border border-danger-bd bg-danger-bg p-3 text-13 font-medium text-danger-fg">{message}</p>;
 }

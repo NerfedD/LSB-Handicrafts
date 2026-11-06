@@ -1,4 +1,5 @@
 import WorkshopForm, { ReviewBox, WorkshopField } from '../production/WorkshopForm';
+import { Row } from '../shared/forms';
 import { freeMaterial, recipeEstimate, units } from '../../utils/production';
 import { countProblem } from '../../utils/validation';
 
@@ -36,8 +37,8 @@ export default function StartBatchDialog({ products, materials, recipes, batches
     };
   }
 
-  return <WorkshopForm title="Start a batch" description="Plan what to make and set the material aside. Stock is deducted only when the batch is finished."
-    submitLabel="Plan this batch" initial={{ product_id: productId || '', raw_material_id: startsWith, output_qty: pieces,
+  return <WorkshopForm title="Plan a batch" description="The material is set aside now and used up only when you finish the batch."
+    submitLabel="Plan batch" initial={{ product_id: productId || '', raw_material_id: startsWith, output_qty: pieces,
       material_qty: startsWith ? recipeEstimate(recipe, pieces) : '', assigned_staff_id: profile.role === 'Production Staff' ? profile.id : '', order_id: '', notes: '' }}
     validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change, set) => {
@@ -45,13 +46,16 @@ export default function StartBatchDialog({ products, materials, recipes, batches
       const material = usable.find((m) => m.id === Number(v.raw_material_id));
       const free = material ? freeMaterial(material, batches) : 0;
       return <>
-        <WorkshopField name="product_id" label="What are we making?" hint="The finished item that will go on the shelf." required options={onSale.map((p) => ({ value: p.id, label: p.name }))} value={v.product_id} onChange={(e) => {
+        <WorkshopField name="product_id" label="Product" required options={onSale.map((p) => ({ value: p.id, label: p.name }))} value={v.product_id} onChange={(e) => {
           const id = Number(e.target.value);
           const r = recipes.find((one) => one.product_id === id && usable.some((m) => m.id === one.raw_material_id && freeMaterial(m, batches) > 0));
           set((old) => ({ ...old, product_id: id, raw_material_id: r?.raw_material_id || '', material_qty: recipeEstimate(r, old.output_qty) }));
         }} />
-        <WorkshopField name="output_qty" label="Target pieces" hint="Count individual pieces, even when they are sold in packs. A whole number." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => { const n = e.target.value; set((old) => ({ ...old, output_qty: n, ...(selectedRecipe ? { material_qty: recipeEstimate(selectedRecipe, n) } : {}) })); }} />
-        <WorkshopField name="raw_material_id" label="Which raw material?" hint="Counts allow for other unfinished batches. A material with none free cannot be chosen: order more under Purchasing first." required
+        <Row>
+        <WorkshopField name="output_qty" label="How many" hint="Pieces, even when they are sold in packs." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => { const n = e.target.value; set((old) => ({ ...old, output_qty: n, ...(selectedRecipe ? { material_qty: recipeEstimate(selectedRecipe, n) } : {}) })); }} />
+        <WorkshopField name="assigned_staff_id" label="Made by" required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
+        </Row>
+        <WorkshopField name="raw_material_id" label="Material" hint="A material with none free cannot be chosen: order more under Purchasing first." required
           options={usable.map((m) => {
             const left = freeMaterial(m, batches);
             return { value: m.id, disabled: left <= 0,
@@ -62,9 +66,8 @@ export default function StartBatchDialog({ products, materials, recipes, batches
             set((old) => ({ ...old, raw_material_id: id, material_qty: recipeEstimate(r, old.output_qty) }));
           }} />
         <WorkshopField name="material_qty" label="Material to set aside" hint={selectedRecipe ? `Recipe: ${units(selectedRecipe.material_qty, material?.unit)} make about ${selectedRecipe.output_qty} pieces. Change it for this job if needed.` : material ? `Up to ${units(free, material.unit)} free. No recipe yet, so enter what this job needs.` : 'Choose the material first.'} type="number" inputMode="numeric" min="1" max={material ? Math.max(1, free) : undefined} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
-        <WorkshopField name="assigned_staff_id" label="Who will make it?" hint="The worker responsible for this batch." required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
-        <WorkshopField name="order_id" label="Customer order, if any" hint="Leave blank when making shelf stock." placeholder="None: for shelf stock" options={orders.filter((o) => o.status === 'Pending').map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
-        <WorkshopField name="notes" label="Instructions for this batch" hint="Optional: a custom size, event details or changes to the recipe." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
+        <WorkshopField name="order_id" label="For order" hint="Leave blank when making shelf stock." placeholder="None: for shelf stock" options={orders.filter((o) => o.status === 'Pending').map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
+        <WorkshopField name="notes" label="Notes" hint="Optional: a custom size, event details or changes to the recipe." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
         <ReviewBox>
           {material && Number(v.material_qty) > 0
             ? <>Sets aside {units(Number(v.material_qty), material.unit)} of {material.name}, leaving {units(Math.max(0, free - Number(v.material_qty)), material.unit)} free. Nothing is deducted until the batch is finished and checked.</>

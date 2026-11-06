@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Confirm dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="alertdialog" aria-modal="true" aria-labelledby="cf-title" aria-describedby="cf-body" style="position: relative; box-sizing: border-box; width: 440px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+<div style="display: flex; gap: 12px; padding: 20px 20px 0;">
+<span aria-hidden="true" style="flex: none; width: 32px; height: 32px; border-radius: 50%; background: var(--danger-bg, #fef2f2); color: var(--danger-fg, #b91c1c); display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"><path d="M128 104v40M128 176h.01M114.15 40.09 22.6 199a16 16 0 0 0 13.85 24h183.1a16 16 0 0 0 13.85-24L141.85 40.09a16 16 0 0 0-27.7 0Z"></path></svg></span>
+<div style="min-width: 0;">
+<h2 id="cf-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">{{title}}</h2>
+<p id="cf-body" style="margin: 4px 0 0; font-size: 13px; line-height: 18px; color: var(--fg-2, #3f3f46);">{{body}}</p>
+</div>
+</div>
+<sc-if value="{{needsTyping}}" hint-placeholder-val="{{false}}">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 14px 20px 0 64px;"><label for="cf-type" style="font-size: 13px; font-weight: 500;">Type <strong style="font-weight: 600;">{{confirmText}}</strong> to confirm</label><input id="cf-type" type="text" autocomplete="off" value="{{typed}}" onChange="{{onType}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px;"></div>
+</sc-if>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">{{keep}}</button>
+<button type="button" onClick="{{confirm}}" disabled="{{blocked}}" style="height: 32px; padding: 0 12px; border: 1px solid {{verbBd}}; border-radius: 6px; background: {{verbBg}}; color: {{verbFg}}; font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: {{verbCursor}};">{{verb}}</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"title":{"editor":"text","default":"Stop Rosa Navarro signing in?"},"body":{"editor":"text","default":"Rosa is signed out everywhere now and can’t sign in until someone turns it back on. Nothing Rosa recorded is removed."},"verb":{"editor":"text","default":"Yes, suspend"},"keep":{"editor":"text","default":"Keep access"},"confirmText":{"editor":"text","default":""},"onClose":{"editor":null},"onConfirm":{"editor":null},"$preview":{"width":440,"height":220}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const confirmText = p.confirmText ?? '';
+    const typed = s.typed ?? '';
+    const needsTyping = !!confirmText;
+    const blocked = needsTyping && typed.trim() !== confirmText;
+    return {
+      title: p.title ?? 'Stop Rosa Navarro signing in?',
+      body: p.body ?? 'Rosa is signed out everywhere now and can’t sign in until someone turns it back on. Nothing Rosa recorded is removed.',
+      verb: p.verb ?? 'Yes, suspend',
+      keep: p.keep ?? 'Keep access',
+      confirmText, typed, needsTyping, blocked,
+      verbBg: blocked ? 'var(--muted, #f4f4f5)' : 'var(--danger, #b91c1c)',
+      verbBd: blocked ? 'var(--border-subtle, #e4e4e7)' : 'var(--danger, #b91c1c)',
+      verbFg: blocked ? 'var(--muted-2, #a1a1aa)' : 'var(--on-primary, #ffffff)',
+      verbCursor: blocked ? 'not-allowed' : 'pointer',
+      onType: (e) => this.setState({ typed: e.target.value }),
+      confirm: () => { if (blocked) return; if (typeof p.onConfirm === 'function') p.onConfirm(); else if (typeof p.onClose === 'function') p.onClose(); },
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

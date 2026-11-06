@@ -1,119 +1,117 @@
-// Central icon re-exports.
+// Central icon re-exports: Phosphor, regular weight by default.
 //
-// Deep imports, deliberately — NOT `from "lucide-react"`. The package is a
-// barrel of ~1900 icons with no `exports` map, so Vite pre-bundles the entire
-// thing into a ~1MB dep chunk in dev, even for a file that uses three icons.
-// These paths pull only what's actually used. Production tree-shakes either
-// way; this is about dev-server load time.
+// One file so a call site names an icon once and the library behind it can
+// change here. Each icon is imported from its own public subpath
+// (`@phosphor-icons/react/House`), not from the package barrel, so the dev
+// server loads only the icons something uses.
 //
-// CAUTION: these are internal paths into the package's dist/, not a public
-// API, so they are tied to the exact installed version — 1.8.0 shipped ESM as
-// .js, 1.33.0 ships .mjs, and that rename alone broke a production build.
-// lucide-react is therefore pinned exactly in package.json. If you bump it,
-// check the file extension under node_modules/lucide-react/dist/esm/icons/
-// and run `npm run build` before pushing.
+// Weights: regular everywhere; `weight="fill"` only on the active nav item.
+// Sizes: 16px in menus and buttons (size-4), 20px in page headers (size-5).
 //
-// Adding an icon: find its kebab-case file in that directory and add a line.
-// Only icons something imports are listed; names follow lucide's current ones.
+// Every name below is the Phosphor name; the boards in design/admin-dashboard
+// draw these same icons by hand.
 
-// ---- navigation & sections ----
-export { default as LayoutDashboard } from "lucide-react/dist/esm/icons/layout-dashboard.mjs";
-export { default as Package }         from "lucide-react/dist/esm/icons/package.mjs";
-export { default as PackagePlus }     from "lucide-react/dist/esm/icons/package-plus.mjs";
-export { default as PackageCheck }    from "lucide-react/dist/esm/icons/package-check.mjs";
-export { default as PackageOpen }     from "lucide-react/dist/esm/icons/package-open.mjs";
-export { default as ShoppingCart }    from "lucide-react/dist/esm/icons/shopping-cart.mjs";
-export { default as Truck }           from "lucide-react/dist/esm/icons/truck.mjs";
-export { default as Users }           from "lucide-react/dist/esm/icons/users.mjs";
-export { default as UserRound }       from "lucide-react/dist/esm/icons/user-round.mjs";
-export { default as UserPlus }        from "lucide-react/dist/esm/icons/user-plus.mjs";
-export { default as UserCheck }       from "lucide-react/dist/esm/icons/user-check.mjs";
-export { default as UserX }           from "lucide-react/dist/esm/icons/user-x.mjs";
-export { default as UserCog }         from "lucide-react/dist/esm/icons/user-cog.mjs";
-export { default as Handshake }       from "lucide-react/dist/esm/icons/handshake.mjs";
-export { default as BookUser }        from "lucide-react/dist/esm/icons/book-user.mjs";
+// ---- navigation ----
+export { SquaresFourIcon as SquaresFour } from "@phosphor-icons/react/SquaresFour";
+export { ReceiptIcon as Receipt } from "@phosphor-icons/react/Receipt";
+export { PackageIcon as Package } from "@phosphor-icons/react/Package";
+export { TruckIcon as Truck } from "@phosphor-icons/react/Truck";
+export { HammerIcon as Hammer } from "@phosphor-icons/react/Hammer";
+export { UsersIcon as Users } from "@phosphor-icons/react/Users";
+export { IdentificationCardIcon as IdentificationCard } from "@phosphor-icons/react/IdentificationCard";
+export { StorefrontIcon as Storefront } from "@phosphor-icons/react/Storefront";
+export { FactoryIcon as Factory } from "@phosphor-icons/react/Factory";
+export { GearIcon as Gear } from "@phosphor-icons/react/Gear";
+export { StackIcon as Stack } from "@phosphor-icons/react/Stack";
+export { ClipboardTextIcon as ClipboardText } from "@phosphor-icons/react/ClipboardText";
+export { ChartLineIcon as ChartLine } from "@phosphor-icons/react/ChartLine";
+export { ClockCounterClockwiseIcon as ClockCounterClockwise } from "@phosphor-icons/react/ClockCounterClockwise";
+export { BellIcon as Bell } from "@phosphor-icons/react/Bell";
+export { ShieldIcon as Shield } from "@phosphor-icons/react/Shield";
+export { ShieldWarningIcon as ShieldWarning } from "@phosphor-icons/react/ShieldWarning";
+export { UserIcon as User } from "@phosphor-icons/react/User";
+export { SignOutIcon as SignOut } from "@phosphor-icons/react/SignOut";
+export { SignInIcon as SignIn } from "@phosphor-icons/react/SignIn";
+export { SidebarSimpleIcon as SidebarSimple } from "@phosphor-icons/react/SidebarSimple";
 
-// ---- work & product shapes ----
-export { default as ClipboardList }   from "lucide-react/dist/esm/icons/clipboard-list.mjs";
-export { default as Hammer }          from "lucide-react/dist/esm/icons/hammer.mjs";
-export { default as Layers }          from "lucide-react/dist/esm/icons/layers.mjs";
-export { default as Boxes }           from "lucide-react/dist/esm/icons/boxes.mjs";
-export { default as Box }             from "lucide-react/dist/esm/icons/box.mjs";
-export { default as Square }          from "lucide-react/dist/esm/icons/square.mjs";
-export { default as Circle }          from "lucide-react/dist/esm/icons/circle.mjs";
-export { default as Shapes }          from "lucide-react/dist/esm/icons/shapes.mjs";
+// ---- carets and arrows ----
+export { CaretUpDownIcon as CaretUpDown } from "@phosphor-icons/react/CaretUpDown";
+export { CaretRightIcon as CaretRight } from "@phosphor-icons/react/CaretRight";
+export { CaretLeftIcon as CaretLeft } from "@phosphor-icons/react/CaretLeft";
+export { CaretDownIcon as CaretDown } from "@phosphor-icons/react/CaretDown";
+export { CaretUpIcon as CaretUp } from "@phosphor-icons/react/CaretUp";
+export { ArrowLeftIcon as ArrowLeft } from "@phosphor-icons/react/ArrowLeft";
+export { ArrowRightIcon as ArrowRight } from "@phosphor-icons/react/ArrowRight";
+export { ArrowClockwiseIcon as ArrowClockwise } from "@phosphor-icons/react/ArrowClockwise";
+export { ArrowCounterClockwiseIcon as ArrowCounterClockwise } from "@phosphor-icons/react/ArrowCounterClockwise";
+export { ArrowUUpLeftIcon as ArrowUUpLeft } from "@phosphor-icons/react/ArrowUUpLeft";
+export { ArrowsClockwiseIcon as ArrowsClockwise } from "@phosphor-icons/react/ArrowsClockwise";
 
-// ---- controls ----
-export { default as Search }          from "lucide-react/dist/esm/icons/search.mjs";
-export { default as Filter }          from "lucide-react/dist/esm/icons/filter.mjs";
-export { default as ChevronDown }     from "lucide-react/dist/esm/icons/chevron-down.mjs";
-export { default as ChevronUp }       from "lucide-react/dist/esm/icons/chevron-up.mjs";
-export { default as ArrowLeft }       from "lucide-react/dist/esm/icons/arrow-left.mjs";
-export { default as ArrowRight }      from "lucide-react/dist/esm/icons/arrow-right.mjs";
-export { default as Eye }             from "lucide-react/dist/esm/icons/eye.mjs";
-export { default as EyeOff }          from "lucide-react/dist/esm/icons/eye-off.mjs";
-export { default as Pencil }          from "lucide-react/dist/esm/icons/pencil.mjs";
-export { default as Trash2 }          from "lucide-react/dist/esm/icons/trash-2.mjs";
-export { default as Plus }            from "lucide-react/dist/esm/icons/plus.mjs";
-export { default as X }               from "lucide-react/dist/esm/icons/x.mjs";
-export { default as Check }           from "lucide-react/dist/esm/icons/check.mjs";
-export { default as MoreHorizontal }  from "lucide-react/dist/esm/icons/more-horizontal.mjs";
+// ---- actions ----
+export { MagnifyingGlassIcon as MagnifyingGlass } from "@phosphor-icons/react/MagnifyingGlass";
+export { PlusIcon as Plus } from "@phosphor-icons/react/Plus";
+export { MinusIcon as Minus } from "@phosphor-icons/react/Minus";
+export { CheckIcon as Check } from "@phosphor-icons/react/Check";
+export { XIcon as X } from "@phosphor-icons/react/X";
+export { DownloadSimpleIcon as DownloadSimple } from "@phosphor-icons/react/DownloadSimple";
+export { PrinterIcon as Printer } from "@phosphor-icons/react/Printer";
+export { PencilSimpleIcon as PencilSimple } from "@phosphor-icons/react/PencilSimple";
+export { TrashIcon as Trash } from "@phosphor-icons/react/Trash";
+export { DotsThreeIcon as DotsThree } from "@phosphor-icons/react/DotsThree";
+export { FunnelIcon as Funnel } from "@phosphor-icons/react/Funnel";
+export { FloppyDiskIcon as FloppyDisk } from "@phosphor-icons/react/FloppyDisk";
+export { CopyIcon as Copy } from "@phosphor-icons/react/Copy";
+export { EyeIcon as Eye } from "@phosphor-icons/react/Eye";
+export { EyeSlashIcon as EyeSlash } from "@phosphor-icons/react/EyeSlash";
+export { LockIcon as Lock } from "@phosphor-icons/react/Lock";
+export { KeyIcon as Key } from "@phosphor-icons/react/Key";
+export { ProhibitIcon as Prohibit } from "@phosphor-icons/react/Prohibit";
+export { CameraIcon as Camera } from "@phosphor-icons/react/Camera";
+export { ImageSquareIcon as ImageSquare } from "@phosphor-icons/react/ImageSquare";
 
-// ---- status & feedback ----
-export { default as CircleCheck }     from "lucide-react/dist/esm/icons/circle-check.mjs";
-export { default as CircleX }         from "lucide-react/dist/esm/icons/circle-x.mjs";
-export { default as CircleAlert }     from "lucide-react/dist/esm/icons/circle-alert.mjs";
-export { default as CircleHelp }      from "lucide-react/dist/esm/icons/circle-help.mjs";
-export { default as TriangleAlert }   from "lucide-react/dist/esm/icons/triangle-alert.mjs";
-export { default as Shield }          from "lucide-react/dist/esm/icons/shield.mjs";
-export { default as ShieldAlert }     from "lucide-react/dist/esm/icons/shield-alert.mjs";
-export { default as Bell }            from "lucide-react/dist/esm/icons/bell.mjs";
-export { default as Info }            from "lucide-react/dist/esm/icons/info.mjs";
-export { default as CloudOff }        from "lucide-react/dist/esm/icons/cloud-off.mjs";
-export { default as LoaderCircle }    from "lucide-react/dist/esm/icons/loader-circle.mjs";
+// ---- views ----
+export { ListIcon as List } from "@phosphor-icons/react/List";
+export { RowsIcon as Rows } from "@phosphor-icons/react/Rows";
+export { KanbanIcon as Kanban } from "@phosphor-icons/react/Kanban";
+export { CalendarBlankIcon as CalendarBlank } from "@phosphor-icons/react/CalendarBlank";
+export { ClockIcon as Clock } from "@phosphor-icons/react/Clock";
+export { SunIcon as Sun } from "@phosphor-icons/react/Sun";
+export { MoonIcon as Moon } from "@phosphor-icons/react/Moon";
+export { DeviceMobileIcon as DeviceMobile } from "@phosphor-icons/react/DeviceMobile";
+export { MonitorIcon as Monitor } from "@phosphor-icons/react/Monitor";
+export { TextAaIcon as TextAa } from "@phosphor-icons/react/TextAa";
 
-// ---- contact & identity ----
-export { default as Mail }            from "lucide-react/dist/esm/icons/mail.mjs";
-export { default as Phone }           from "lucide-react/dist/esm/icons/phone.mjs";
-export { default as MapPin }          from "lucide-react/dist/esm/icons/map-pin.mjs";
-export { default as AtSign }          from "lucide-react/dist/esm/icons/at-sign.mjs";
-export { default as Lock }            from "lucide-react/dist/esm/icons/lock.mjs";
-export { default as KeyRound }        from "lucide-react/dist/esm/icons/key-round.mjs";
-export { default as LogIn }           from "lucide-react/dist/esm/icons/log-in.mjs";
-export { default as LogOut }          from "lucide-react/dist/esm/icons/log-out.mjs";
-export { default as Building2 }       from "lucide-react/dist/esm/icons/building-2.mjs";
+// ---- status ----
+export { InfoIcon as Info } from "@phosphor-icons/react/Info";
+export { WarningIcon as Warning } from "@phosphor-icons/react/Warning";
+export { WarningCircleIcon as WarningCircle } from "@phosphor-icons/react/WarningCircle";
+export { CheckCircleIcon as CheckCircle } from "@phosphor-icons/react/CheckCircle";
+export { XCircleIcon as XCircle } from "@phosphor-icons/react/XCircle";
+export { QuestionIcon as Question } from "@phosphor-icons/react/Question";
+export { CloudSlashIcon as CloudSlash } from "@phosphor-icons/react/CloudSlash";
+export { SpinnerGapIcon as SpinnerGap } from "@phosphor-icons/react/SpinnerGap";
+export { TrayIcon as Tray } from "@phosphor-icons/react/Tray";
 
-// ---- time ----
-export { default as Calendar }        from "lucide-react/dist/esm/icons/calendar.mjs";
-export { default as CalendarClock }   from "lucide-react/dist/esm/icons/calendar-clock.mjs";
-export { default as Clock }           from "lucide-react/dist/esm/icons/clock.mjs";
-export { default as History }         from "lucide-react/dist/esm/icons/history.mjs";
-
-// ---- money & records ----
-export { default as Tag }             from "lucide-react/dist/esm/icons/tag.mjs";
-export { default as Wallet }          from "lucide-react/dist/esm/icons/wallet.mjs";
-export { default as Banknote }        from "lucide-react/dist/esm/icons/banknote.mjs";
-export { default as Save }            from "lucide-react/dist/esm/icons/save.mjs";
-export { default as Printer }         from "lucide-react/dist/esm/icons/printer.mjs";
-export { default as Download }        from "lucide-react/dist/esm/icons/download.mjs";
-export { default as Undo2 }           from "lucide-react/dist/esm/icons/undo-2.mjs";
-export { default as RotateCw }        from "lucide-react/dist/esm/icons/rotate-cw.mjs";
-export { default as ImagePlus }       from "lucide-react/dist/esm/icons/image-plus.mjs";
-export { default as Settings }        from "lucide-react/dist/esm/icons/settings.mjs";
-export { default as List }            from "lucide-react/dist/esm/icons/list.mjs";
-export { default as Inbox }           from "lucide-react/dist/esm/icons/inbox.mjs";
-export { default as Send }            from "lucide-react/dist/esm/icons/send.mjs";
-
-// ---- view preference ----
-export { default as Moon }            from "lucide-react/dist/esm/icons/moon.mjs";
-export { default as Sun }             from "lucide-react/dist/esm/icons/sun.mjs";
-export { default as ALargeSmall }     from "lucide-react/dist/esm/icons/a-large-small.mjs";
-
-export { default as Activity }        from "lucide-react/dist/esm/icons/activity.mjs";
-
-// ---- stock and returns ----
-export { default as ClipboardCheck }  from "lucide-react/dist/esm/icons/clipboard-check.mjs";
-export { default as PackageX }        from "lucide-react/dist/esm/icons/package-x.mjs";
-export { default as Repeat }          from "lucide-react/dist/esm/icons/repeat.mjs";
-export { default as ArchiveRestore }  from "lucide-react/dist/esm/icons/archive-restore.mjs";
-export { default as Gift }            from "lucide-react/dist/esm/icons/gift.mjs";
+// ---- records ----
+export { MoneyIcon as Money } from "@phosphor-icons/react/Money";
+export { WalletIcon as Wallet } from "@phosphor-icons/react/Wallet";
+export { TagIcon as Tag } from "@phosphor-icons/react/Tag";
+export { GiftIcon as Gift } from "@phosphor-icons/react/Gift";
+export { RepeatIcon as Repeat } from "@phosphor-icons/react/Repeat";
+export { EnvelopeIcon as Envelope } from "@phosphor-icons/react/Envelope";
+export { PhoneIcon as Phone } from "@phosphor-icons/react/Phone";
+export { MapPinIcon as MapPin } from "@phosphor-icons/react/MapPin";
+export { AtIcon as At } from "@phosphor-icons/react/At";
+export { BuildingsIcon as Buildings } from "@phosphor-icons/react/Buildings";
+export { UserPlusIcon as UserPlus } from "@phosphor-icons/react/UserPlus";
+export { UserCheckIcon as UserCheck } from "@phosphor-icons/react/UserCheck";
+export { UserMinusIcon as UserMinus } from "@phosphor-icons/react/UserMinus";
+export { UserGearIcon as UserGear } from "@phosphor-icons/react/UserGear";
+export { HandshakeIcon as Handshake } from "@phosphor-icons/react/Handshake";
+export { AddressBookIcon as AddressBook } from "@phosphor-icons/react/AddressBook";
+export { CubeIcon as Cube } from "@phosphor-icons/react/Cube";
+export { CircleIcon as Circle } from "@phosphor-icons/react/Circle";
+export { SquareIcon as Square } from "@phosphor-icons/react/Square";
+export { ShapesIcon as Shapes } from "@phosphor-icons/react/Shapes";
+export { ListChecksIcon as ListChecks } from "@phosphor-icons/react/ListChecks";
+export { PulseIcon as Pulse } from "@phosphor-icons/react/Pulse";

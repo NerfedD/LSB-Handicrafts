@@ -1,96 +1,46 @@
+import { cloneElement, isValidElement } from "react";
+
+import { initialsOf } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { avatarFill, tone as toneOf } from "./tones";
-import { initialsOf } from "../../utils/staffData";
+import { useStaffPhoto } from "./staffPhotos";
 
 /**
- * A tinted square holding one icon.
- *
- * The most repeated shape in the system: it fronts every attention row, every
- * activity entry, every product row, every fact-table row and every stat. Its
- * job is to make a row scannable before any of it is read — you find the amber
- * warning chip before you find the sentence next to it.
- *
- * Sizes are the handoff's, and each has a job:
- *   sm  36px  activity rows, callout headers, small facts
- *   md  44px  product rows, supplier rows, role cards
- *   lg  46px  attention rows, customer contact rows
- *   xl  52px  the "where it is now" card, destructive confirm dialogs
- *   2xl 60px  destination tiles on the large-text dashboard
+ * An icon in a bordered box, the way the boards frame icons: neutral, never
+ * tinted. `size` sm 28px, md 32px, lg 36px, xl 40px.
  */
-const SIZES = {
-  sm: "size-9 rounded-btn text-[17px]",
-  md: "size-11 rounded-field text-[20px]",
-  lg: "size-11.5 rounded-tile text-[22px]",
-  xl: "size-13 rounded-tile2 text-[24px]",
-  "2xl": "size-15 rounded-[15px] text-[28px]",
-};
+const BOX = { sm: "size-7 [&_svg]:size-4", md: "size-8 [&_svg]:size-4", lg: "size-9 [&_svg]:size-5", xl: "size-10 [&_svg]:size-5" };
 
-export default function IconChip({ icon, tone = "neutral", size = "md", className }) {
-  const t = toneOf(tone);
+export default function IconChip({ icon, size = "md", className }) {
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center",
-        SIZES[size] ?? SIZES.md,
-        t.tint,
-        t.text,
-        className
-      )}
+      className={cn("flex shrink-0 items-center justify-center rounded-md border border-border bg-card text-fg-2 shadow-xs", BOX[size] ?? BOX.md, className)}
     >
-      {icon}
+      {isValidElement(icon) ? cloneElement(icon, { "aria-hidden": true }) : icon}
     </span>
   );
 }
 
-/**
- * A person's initials in a filled circle.
- *
- * Colour is derived from the name (see tones.avatarTone) so the same person is
- * the same colour on every screen and across reloads — the design varies it
- * per row, but nothing in the data says which row gets which.
- *
- * `tone` overrides that when the colour has to mean something instead: a
- * customer's own colour on their detail screen, navy for the order's customer
- * card.
- */
-const AVATAR_SIZES = {
-  sm: "size-9 text-[13px]",
-  md: "size-11 text-[15px]",
-  lg: "size-12 text-[16.5px]",
-  xl: "size-15 text-[21px]",
-  "2xl": "size-22 text-[30px]",
-};
+/** Initials in a --muted circle: 24px in table rows, 32px and 40px elsewhere. */
+const AVATAR = { xs: "size-6 text-[10px]", sm: "size-8 text-xs", md: "size-10 text-13", lg: "size-14 text-lg" };
 
-export function Avatar({ name, tone, size = "md", className }) {
-  const fill = tone ? toneOf(tone).fill : avatarFill(name);
+/**
+ * A person's initials, or their photo. `photo={false}` for customers: their
+ * name could match a member of staff, and a customer has no photo here.
+ */
+export function Avatar({ name, size = "xs", className, photo = true }) {
+  const src = useStaffPhoto(photo ? name : null);
   return (
     <span
       aria-hidden="true"
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full font-extrabold text-white",
-        AVATAR_SIZES[size] ?? AVATAR_SIZES.md,
-        fill,
-        className
-      )}
+      className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted font-medium text-fg-2", AVATAR[size] ?? AVATAR.xs, className)}
     >
-      {initialsOf(name)}
+      {src ? <img src={src} alt="" className="size-full object-cover" /> : initialsOf(name)}
     </span>
   );
 }
 
-/**
- * A SKU, an item code or an order number.
- *
- * Monospaced and 13.5px, which is the one place small type is allowed outside
- * a tracked uppercase signpost: an identifier is matched character by character
- * against a label on a shelf, not read as a word, and a monospace face at that
- * size is easier to match than proportional text at 16px.
- */
+/** A code or identifier: monospace 12px muted, as the boards print item codes. */
 export function Mono({ children, className }) {
-  return (
-    <span className={cn("font-mono text-[13.5px] text-muted", className)}>
-      {children}
-    </span>
-  );
+  return <span className={cn("font-mono text-xs text-muted-fg", className)}>{children}</span>;
 }

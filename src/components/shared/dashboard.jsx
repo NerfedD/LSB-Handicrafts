@@ -1,290 +1,266 @@
-import { ArrowRight, TriangleAlert } from "../icons";
-import { cn } from "@/lib/utils";
+import { useEffect, useId, useState } from "react";
+
+import { ArrowRight, CaretRight } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import IconChip from "./Chip";
-import { EmptySlot } from "./PageStates";
-import { tone as toneOf } from "./tones";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ToggleGroup } from "@/components/ui/toggle-group";
+import { Avatar, Mono } from "./Chip";
+import StatusPill, { InlineBadge } from "./StatusPill";
+import { EmptyState, SectionCard, TextLink } from "./page";
+import { timeLabel } from "../../utils/activityLog";
+import { cn } from "@/lib/utils";
 
 /**
- * The dashboard furniture.
- *
- * The three role dashboards and the large-text view are the same pieces
- * arranged around different data, so they live here rather than being copied
- * four times and drifting apart — which is exactly what happened to the
- * previous three dashboards.
+ * The parts the "2 · Dashboard" board is built from: the chart card, Stock to
+ * watch, Recent activity, and the count-up the stat figures do once.
  */
 
-/**
- * "Needs your attention" — the centrepiece of every standard dashboard.
- *
- * This is the screen's teaching mechanism, and that is a design claim worth
- * spelling out: a new user learns what this system is FOR by reading three
- * sentences about their own day, each with one button whose label is a verb.
- * Not "7 low stock items" with a link to a list, but "Seven products are
- * running low" → "Restock these".
- *
- * The 5px clay left border and the lifted shadow are what make it the first
- * thing on the page. It is the only element in the app that gets them.
- */
-export function AttentionCard({ title, updatedAt, items, emptyMessage, className }) {
-  return (
-    <Card variant="lift" className={cn("border-l-[5px] border-l-clay", className)}>
-      <CardHeader>
-        <IconChip icon={<TriangleAlert />} tone="amber" size="sm" />
-        <CardTitle className="text-[19px]">{title}</CardTitle>
-        {updatedAt && (
-          <span className="ml-auto shrink-0 text-[14px] text-muted">
-            {updatedAt}
-          </span>
-        )}
-      </CardHeader>
+/** A number that counts up once when it first shows: 600ms, ease-out, tabular figures. */
+function useCountUp(target, duration = 600) {
+  const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const [k, setK] = useState(reduce ? 1 : 0);
+  // Runs on mount only: the figure counts up once per visit, not on every refresh of the data.
+  useEffect(() => {
+    if (reduce) return undefined;
+    let frame = 0;
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      setK(1 - Math.pow(1 - t, 3));
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [duration, reduce]);
+  return target * k;
+}
 
-      {items.length === 0 ? (
-        <EmptySlot className="py-10 text-[15.5px]">{emptyMessage}</EmptySlot>
-      ) : (
-        <ul>
-          {items.map((item) => (
-            <li
-              key={item.key ?? item.title}
-              className="flex flex-wrap items-center gap-4.5 border-b border-hair px-5.5 py-4.5 last:border-b-0"
-            >
-              <IconChip icon={item.icon} tone={item.tone} size="lg" />
-              <div className="min-w-[220px] flex-1">
-                <p className="text-[17.5px] font-bold leading-[1.35] text-ink">
-                  {item.title}
-                </p>
-                <p className="pt-1 text-[15px] leading-[1.45] text-muted">
-                  {item.body}
-                </p>
-              </div>
-              {/* Full width on a phone: the handoff turns each item's CTA into
-                  a full-width 50px button there rather than letting three
-                  buttons wrap into a ragged column. */}
-              <Button
-                variant="cobalt"
-                onClick={item.onAction}
-                // One width for every row's button, so the three right edges
-                // AND left edges line up down the card as in the handoff (1b),
-                // instead of each button sizing to its own label.
-                className="w-full sm:w-auto sm:min-w-[13.5rem]"
-              >
-                {item.actionIcon}
-                {item.actionLabel}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
+/** Renders a figure that counts up; `format` turns the running number into text. */
+export function CountUp({ value, format = (n) => String(Math.round(n)) }) {
+  const shown = useCountUp(Number(value) || 0);
+  return <>{format(shown)}</>;
 }
 
 /**
- * Four numbers in ONE bordered card, divided by rules — not four separate
- * cards.
- *
- * Four cards give four equal-weight objects each demanding its own read. One
- * card with rules in it reads as a single strip you scan, which is all these
- * numbers are worth: they are context, and the attention card above them is
- * the content. Demoting them is the point.
+ * "Orders per week": this period's weekly line in --primary-text against the
+ * period before in dashed --muted-2, with the Orders / Revenue switch.
+ * `weeks` is [{ label, current, previous }] for both measures.
  */
-// Rules BETWEEN cells, never around the outside — the card's own border does
-// that. Written out per position rather than derived, because "which edges does
-// cell 2 of 4 need at each breakpoint" is not something a modulo expression
-// says clearly: at two columns the strip needs a rule under the top pair, at
-// four columns it does not.
-const STRIP_EDGES = [
-  "border-r border-b lg:border-b-0",
-  "border-b lg:border-b-0 lg:border-r",
-  "border-r",
-];
+export function WeeklyChart({ title, description, series, measure, onMeasure, formatValue }) {
+  const gradientId = useId();
+  const points = series[measure];
+  const max = Math.max(1, ...points.flatMap((p) => [p.current, p.previous]));
+  const top = niceCeil(max);
+  const ticks = [top, (top * 2) / 3, top / 3, 0];
+  const W = 720;
+  const H = 216;
+  const x = (i) => (points.length <= 1 ? W / 2 : (i * W) / (points.length - 1));
+  const y = (v) => H - (v / top) * H;
+  const line = (key) => points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)} ${y(p[key]).toFixed(1)}`).join(" ");
+  const total = (key) => points.reduce((sum, p) => sum + p[key], 0);
 
-export function StatStrip({ stats, className }) {
   return (
-    <Card className={cn("grid grid-cols-2 lg:grid-cols-4", className)}>
-      {stats.map((stat, index) => (
-        <div
-          key={stat.label}
-          className={cn(
-            "px-5 py-4.5 border-hair",
-            STRIP_EDGES[index] ?? ""
-          )}
-        >
-          <div className="flex items-center gap-2.5">
-            <span className={cn("shrink-0 text-[18px]", toneOf(stat.tone).text)} aria-hidden="true">
-              {stat.icon}
-            </span>
-            <p className="text-[14px] font-bold text-muted">{stat.label}</p>
-          </div>
-          <p className="pt-2.5 text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
-            {stat.value}
-          </p>
-          <p className="pt-1.5 text-[13.5px] text-muted">{stat.hint}</p>
+    <section className="min-w-0 flex-[2_1_520px] rounded-lg border border-border bg-card shadow-xs">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 pt-4">
+        <div>
+          <h2 className="m-0 text-sm font-semibold">{title}</h2>
+          <p className="m-0 text-13 text-muted-fg">{description}</p>
         </div>
-      ))}
-    </Card>
+        <ToggleGroup
+          label="Chart measure"
+          value={measure}
+          onValueChange={onMeasure}
+          options={[{ value: "orders", label: "Orders" }, { value: "revenue", label: "Revenue" }]}
+        />
+      </div>
+      <div className="flex flex-wrap gap-4 px-4 pt-3 text-xs text-muted-fg">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-primary" />
+          This period · {formatValue(total("current"))}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-2 rounded-sm bg-muted-2" />
+          Previous period · {formatValue(total("previous"))}
+        </span>
+      </div>
+      <div className="flex gap-2 px-4 pb-4 pt-3">
+        <div aria-hidden="true" className="-mt-2 flex h-[216px] w-8 shrink-0 flex-col justify-between text-right text-2xs text-muted-fg">
+          {ticks.map((tick) => <span key={tick}>{shortNumber(tick)}</span>)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <svg
+            role="img"
+            aria-label={`${title}: ${points.map((p) => `${p.label} ${formatValue(p.current)}`).join(", ")}`}
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="block h-[216px] w-full overflow-visible"
+          >
+            <defs>
+              <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {[0, 1, 2, 3].map((i) => (
+              <path key={i} d={`M0 ${(i * H) / 3 + (i === 0 ? 0.5 : 0)}H${W}`} stroke="var(--border-subtle)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            ))}
+            <path d={line("previous")} fill="none" stroke="var(--muted-2)" strokeWidth="1.5" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+            <path d={`${line("current")} L${W} ${H} L0 ${H} Z`} fill={`url(#${gradientId})`} />
+            <path d={line("current")} fill="none" stroke="var(--primary-text)" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+          </svg>
+          <div aria-hidden="true" className="mt-2 flex justify-between text-2xs text-muted-fg">
+            {points.map((p) => (
+              <span key={p.label} className="flex w-0 justify-center whitespace-nowrap">{p.label}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
-/**
- * A standalone stat card, for the role dashboards that show three rather than
- * a strip of four.
- */
-export function StatCard({ icon, tone = "cobalt", value, label, hint, className }) {
-  return (
-    <Card className={cn("p-5", className)}>
-      <IconChip icon={icon} tone={tone} size="md" />
-      <p className="pt-4 text-[32px] font-extrabold leading-none tracking-[-0.03em] tabular-nums text-ink">
-        {value}
-      </p>
-      <p className="pt-2 text-[16px] font-bold text-ink">{label}</p>
-      <p className="pt-1 text-[14px] text-muted">{hint}</p>
-    </Card>
-  );
-}
+const niceCeil = (n) => {
+  if (n <= 3) return 3;
+  const step = Math.pow(10, Math.floor(Math.log10(n)));
+  const scaled = Math.ceil((n / step) * 1.5) / 1.5;
+  return Math.ceil((scaled * step) / 3) * 3;
+};
+
+const shortNumber = (n) => {
+  if (n >= 1_000_000) return `${Math.round(n / 100_000) / 10}m`;
+  if (n >= 1000) return `${Math.round(n / 100) / 10}k`;
+  return String(Math.round(n));
+};
 
 /**
- * The large-text dashboard's hero stat: a 2px tone-tinted border, a 48px chip
- * and a 56px number.
- *
- * Nothing on that screen is below 15px, and the numbers are set at a size that
- * is readable across a workshop — it is the same system at kiosk scale, for
- * somebody who is not going to lean in.
+ * "Stock to watch": products at or below their reorder level, each with its
+ * code, what is left and a status badge, and a link to the inventory.
  */
-export function HeroStat({ icon, tone = "cobalt", value, label, hint, className }) {
-  const t = toneOf(tone);
+export function StockWatch({ rows, total, onOpen, onOpenInventory, className }) {
   return (
-    <div className={cn("rounded-card border-2 bg-surface p-5.5", t.border, className)}>
-      <IconChip icon={icon} tone={tone} size="xl" className="size-12 text-[22px]" />
-      <p className="pt-4 text-[56px] font-extrabold leading-none tracking-[-0.04em] tabular-nums text-ink">
-        {value}
-      </p>
-      <p className="pt-3 text-[18px] font-extrabold text-ink">{label}</p>
-      <p className="pt-1.5 text-[16.5px] leading-[1.4] text-muted">{hint}</p>
-    </div>
-  );
-}
-
-/**
- * A destination tile on the large-text dashboard — "WHERE DO YOU WANT TO GO?".
- *
- * Six of these in a 3-column grid replace a sidebar somebody has to read down.
- * Each is a 96px target with a 60px icon, which is a very large thing to aim
- * at, and that is the requirement being met rather than an aesthetic.
- */
-export function DestinationTile({ icon, tone = "cobalt", label, hint, onClick, className }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex min-h-24 items-center gap-4 rounded-feature border border-card bg-surface p-5 text-left shadow-card transition duration-150",
-        "hover:border-cobalt/40 hover:shadow-lift",
-        className
-      )}
+    <SectionCard
+      className={cn("flex-[1_1_280px]", className)}
+      title="Stock to watch"
+      description="At or below the reorder level"
+      action={<InlineBadge label={`${rows.length} of ${total}`} />}
+      footer={
+        <TextLink onClick={onOpenInventory}>
+          Open inventory
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </TextLink>
+      }
     >
-      <IconChip icon={icon} tone={tone} size="2xl" />
-      <span className="min-w-0">
-        <span className="block text-[21px] font-extrabold leading-tight text-ink">{label}</span>
-        <span className="block pt-1 text-[15.5px] leading-[1.4] text-muted">{hint}</span>
-      </span>
-    </button>
-  );
-}
-
-/**
- * "What happened recently" — a feed of sentences, not a table of event types.
- *
- * Each entry is one line somebody can read at speed: the staff name in bold,
- * then what they did, then when. The old version put the event TYPE in a pill
- * on the right ("Stock Edit"), which is a category the reader has to translate
- * back into a sentence themselves.
- */
-export function ActivityFeed({ entries, onSeeAll, title = "What happened recently", className }) {
-  return (
-    <Card className={cn("flex flex-col", className)}>
-      <CardHeader className="justify-between">
-        <CardTitle>{title}</CardTitle>
-        {onSeeAll && (
-          <Button variant="link" size="sm" className="px-0" onClick={onSeeAll}>
-            See all
-            <ArrowRight className="h-4.5 w-4.5" />
-          </Button>
-        )}
-      </CardHeader>
-
-      {entries.length === 0 ? (
-        <EmptySlot className="py-10 text-[15.5px]">
-          Nothing has happened yet today.
-        </EmptySlot>
+      {rows.length === 0 ? (
+        <EmptyState title="Nothing to watch" description="Every product is above its reorder level." className="py-8" />
       ) : (
-        <ul className="flex-1">
-          {entries.map((entry) => (
-            <li
-              key={entry.id}
-              className="flex items-start gap-3.5 border-b border-hair px-5 py-3.5 last:border-b-0"
-            >
-              <IconChip icon={entry.icon} tone={entry.tone} size="sm" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[15.5px] leading-[1.45] text-ink">
-                  <strong className="font-extrabold">{entry.who}</strong> {entry.what}
-                </p>
-                <p className="pt-0.5 text-[13.5px] text-muted">{entry.when}</p>
-              </div>
+        <ul className="m-0 list-none p-0">
+          {rows.map((row) => (
+            <li key={row.key} className="flex items-center gap-3 border-t border-row-divider px-4 py-[9px]">
+              <button type="button" onClick={() => onOpen?.(row)} className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left text-inherit">
+                <div className="truncate text-13 font-medium">{row.name}</div>
+                <Mono className="block truncate">{row.code}</Mono>
+              </button>
+              <span className="whitespace-nowrap text-13 text-fg-2">{row.left}</span>
+              <StatusPill label={row.status} tone={row.tone} />
             </li>
           ))}
         </ul>
       )}
-    </Card>
+    </SectionCard>
   );
 }
 
+const UNVERIFIED = " (historical entry; unverified)";
+
 /**
- * "Things you do often" — four stacked 56px buttons, the first one cobalt.
- *
- * Only the first is filled. Four primary-coloured buttons is no priority at
- * all, and the one that is filled is the one this role reaches for most.
+ * "Recent activity": Time, Staff, Action, Record and Status in a 36px-row
+ * table. The status says whether the entry was recorded by the server or
+ * carried over from the old screens unverified.
  */
-export function QuickActions({ actions, title = "Things you do often", className }) {
+export function RecentActivity({ entries, description, onViewAll }) {
   return (
-    <Card className={cn("p-5", className)}>
-      <CardTitle>{title}</CardTitle>
-      <div className="flex flex-col gap-2.5 pt-4">
-        {/* An action this person cannot take is left out, not shown dead. */}
-        {actions.filter((action) => action.onClick).map((action, index) => (
-          <Button
-            key={action.label}
-            variant={index === 0 ? "cobalt" : "outline"}
-            size="xl"
-            block
-            className="justify-start gap-3"
-            onClick={action.onClick}
-          >
-            {action.icon}
-            {action.label}
+    <SectionCard
+      title="Recent activity"
+      description={description}
+      action={
+        onViewAll ? (
+          <Button variant="ghost" className="px-2.5" onClick={onViewAll}>
+            View all
+            <CaretRight aria-hidden="true" />
           </Button>
-        ))}
-      </div>
-    </Card>
+        ) : null
+      }
+    >
+      {entries.length === 0 ? (
+        <div className="border-t border-border">
+          <EmptyState title="Nothing recorded yet" description="Changes anybody makes show up here as they happen." className="py-8" />
+        </div>
+      ) : (
+        <div className="border-t border-border">
+          <Table minWidth={760}>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-24">Time</TableHead>
+                <TableHead>Staff</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Record</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => {
+                const unverified = entry.what.endsWith(UNVERIFIED);
+                const action = unverified ? entry.what.slice(0, -UNVERIFIED.length) : entry.what;
+                return (
+                  <TableRow key={entry.id}>
+                    <TableCell className="text-muted-fg">{timeLabel(entry.at)}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        <Avatar name={entry.who} />
+                        {entry.who}
+                      </span>
+                    </TableCell>
+                    <TableCell className="max-w-[420px] truncate">{action}</TableCell>
+                    <TableCell className="text-fg-2">{entry.subject || "—"}</TableCell>
+                    <TableCell>
+                      <StatusPill label={unverified ? "Unverified" : "Recorded"} tone={unverified ? "warning" : "success"} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </SectionCard>
   );
 }
 
 /**
- * The page greeting: "Good morning, Maria." over one line about the day.
- *
- * The second line is the one that does the work — "Three things need you
- * today. Everything else is running normally." tells somebody whether to
- * settle in or carry on, which is the actual question they open a dashboard
- * with.
+ * The app's "Needs your attention" (or a salesperson's follow-ups): each
+ * item one row with its explanation and the outline button that deals with
+ * it. Not on the board; built from the same card and row parts.
  */
-export function Greeting({ greeting, name, summary, className }) {
+export function AttentionList({ title, items }) {
+  if (items.length === 0) return null;
   return (
-    <div className={className}>
-      <h2 className="text-[29px] font-extrabold leading-tight tracking-[-0.025em] text-ink">
-        {greeting}, {name}.
-      </h2>
-      <p className="pt-1.5 text-[16px] leading-[1.45] text-muted">{summary}</p>
-    </div>
+    <SectionCard title={title} description="Each one opens the screen where it can be dealt with">
+      <ul className="m-0 list-none p-0">
+        {items.map((item) => (
+          <li key={item.key ?? item.title} className="flex flex-wrap items-center gap-3 border-t border-row-divider px-4 py-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-13 font-medium">
+                <StatusPill label={item.tone === "red" ? "Urgent" : item.tone === "amber" ? "Soon" : "Note"} tone={item.tone} />
+                <span className="min-w-0">{item.title}</span>
+              </div>
+              {item.body ? <p className="m-0 mt-0.5 text-13 text-muted-fg">{item.body}</p> : null}
+            </div>
+            <Button variant="outline" size="sm" onClick={item.onAction}>
+              {item.actionLabel}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </SectionCard>
   );
 }

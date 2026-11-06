@@ -24,20 +24,21 @@ test("a stored number written with spaces is shown as digits and saves back", as
   const tables = await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole("button", { name: "Open" }).first().click();
-  await page.getByRole("button", { name: /Edit/ }).first().click();
+  // A row opens the design's side panel, which carries "Edit details".
+  await page.getByRole("table").getByRole("button", { name: /^Open / }).first().click();
+  await page.getByRole("button", { name: "Edit details" }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 
   // The seed writes every number with spaces; the box shows the same number in
   // the shape the rule now keeps.
-  const shown = await dialog.getByLabel(/Phone number/).inputValue();
+  const shown = await dialog.getByLabel(/^Phone/).inputValue();
   expect(shown, "the stored punctuation is absorbed, not carried into the box").toMatch(
     /^09\d{9}$/
   );
 
-  await dialog.getByLabel(/Where they are/).fill("9 Torres St, Poblacion, Davao City");
+  await dialog.getByLabel(/^Delivery address/).fill("9 Torres St, Poblacion, Davao City");
   await dialog.getByRole("button", { name: /Save/ }).click();
 
   // The submit is not refused, which is the whole point of normalising on entry.
@@ -57,10 +58,10 @@ test("the box holds digits only, eleven of them, and converts +63 as it is typed
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole("button", { name: "Add a customer" }).click();
+  await page.getByRole("button", { name: "Add customer" }).click();
 
   const dialog = page.getByRole("dialog");
-  const phone = dialog.getByLabel(/Phone number/);
+  const phone = dialog.getByLabel(/^Phone/);
 
   // The field has to be WEARING the phone treatment, not merely be cleaned by
   // the form around it. Every form here also calls cleanPhoneInput in its own
@@ -103,11 +104,11 @@ test("too few digits is refused in words, naming the count", async ({ page, base
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole("button", { name: "Add a customer" }).click();
+  await page.getByRole("button", { name: "Add customer" }).click();
 
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Their name/).fill("Aling Nena Catering");
-  await dialog.getByLabel(/Phone number/).fill("0912");
+  await dialog.getByLabel(/^Customer name/).fill("Aling Nena Catering");
+  await dialog.getByLabel(/^Phone/).fill("0912");
   await dialog.getByRole("button", { name: /Save|Add/ }).click();
 
   // phoneProblem's sentence, which names the count and therefore where to look.
@@ -120,13 +121,13 @@ test("a landline is refused, and says so by its count", async ({ page, baseURL }
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole("button", { name: "Add a customer" }).click();
+  await page.getByRole("button", { name: "Add customer" }).click();
 
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Their name/).fill("Aling Nena Catering");
+  await dialog.getByLabel(/^Customer name/).fill("Aling Nena Catering");
   // Ten digits once the punctuation is absorbed. This is the deliberate cost of
   // the one-shape rule, and it is asserted so the loss stays visible.
-  await dialog.getByLabel(/Phone number/).fill("(02) 8888 8888");
+  await dialog.getByLabel(/^Phone/).fill("(02) 8888 8888");
   await dialog.getByRole("button", { name: /Save|Add/ }).click();
 
   await expect(dialog).toContainText("that has 10");
@@ -137,14 +138,14 @@ test("there is no 'save it anyway' left to press", async ({ page, baseURL }) => 
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/customers`);
-  await page.getByRole("button", { name: "Add a customer" }).click();
+  await page.getByRole("button", { name: "Add customer" }).click();
 
   const dialog = page.getByRole("dialog");
-  await dialog.getByLabel(/Their name/).fill("Aling Nena Catering");
+  await dialog.getByLabel(/^Customer name/).fill("Aling Nena Catering");
   // The number that used to raise "That is 12 digits — save it anyway?" cannot
   // be typed, and nothing that can be typed is merely surprising any more.
-  await dialog.getByLabel(/Phone number/).fill("091212121212");
-  await expect(dialog.getByLabel(/Phone number/)).toHaveValue("09121212121");
+  await dialog.getByLabel(/^Phone/).fill("091212121212");
+  await expect(dialog.getByLabel(/^Phone/)).toHaveValue("09121212121");
   await expect(dialog).not.toContainText("Save it anyway");
 });
 
@@ -155,9 +156,9 @@ test("the staff screen checks the number it stopped getting checked for free", a
   await stubSupabase(page);
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/staff`);
-  await page.getByRole("button", { name: /Open|Manage/ }).first().click();
+  await page.getByRole("table").getByRole("button", { name: "Juan Dela Cruz", exact: true }).click();
 
-  const phone = page.getByLabel(/Phone number/);
+  const phone = page.getByLabel(/^Mobile/);
   await expect(phone).toBeVisible();
   await phone.fill("0912");
   await page.getByRole("button", { name: /Save/ }).first().click();

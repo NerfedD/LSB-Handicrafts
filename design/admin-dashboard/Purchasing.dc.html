@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Purchasing</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 940px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="production" psub="purchasing" collapsed="{{collapsed}}" h="940" on-toggle="{{toggleNav}}" hint-size="240px,940px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Production" page="Purchasing" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M88 104h80M88 136h80M88 168h48"></path><rect x="48" y="40" width="160" height="184" rx="8"></rect><path d="M96 24h64v32H96Z"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Purchasing</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Raw materials ordered from suppliers. Stock is added only when a delivery is received and counted.</p>
+</div>
+</div>
+<button type="button" onClick="{{openSO}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>New supplier order</button>
+</header>
+
+<section aria-label="Purchasing totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; gap: 1px; background: var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Waiting to arrive</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">{{waiting}} orders</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Arriving this week</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">2 orders</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Open claims</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">1 claim</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Spent in October</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">₱48,250.00</div></div>
+</section>
+
+<section aria-label="How a supplier order works" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; background: var(--border, #d4d4d8); gap: 1px;">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">1. Order</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Supplier, material, quantity and agreed price. Nothing is added to stock yet.</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">2. Receive</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Count what was unloaded and what was damaged. Only usable units go into stock.</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 13px; font-weight: 600;">3. Settle</div><div style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">A short, extra or damaged delivery opens a claim for a manager to settle.</div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<div style="position: relative; flex: 0 1 280px; min-width: 180px;">
+<label for="po-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search supplier orders</label>
+<span style="position: absolute; left: 10px; top: 8px; line-height: 0; color: var(--muted-fg, #71717a); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<input id="po-search" type="search" placeholder="Search material, supplier or order" value="{{query}}" onChange="{{onQuery}}" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div role="group" aria-label="Show" style="display: inline-flex; gap: 4px; flex-wrap: wrap;">
+<sc-for list="{{chips}}" as="ch" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{ch.on}}" onClick="{{ch.pick}}" style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid {{ch.bd}}; border-radius: 6px; background: {{ch.bg}}; font-size: 13px; font-weight: 500; cursor: pointer;">{{ch.label}}<span style="font-size: 12px; color: {{ch.countColor}};">{{ch.count}}</span></button>
+</sc-for>
+</div>
+</div>
+
+<!-- Orders -->
+<sc-if value="{{showOrders}}" hint-placeholder-val="{{true}}">
+<section aria-label="Supplier orders" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div role="table" aria-label="Supplier orders" style="min-width: 1000px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: 90px minmax(160px, 1fr) minmax(180px, 1.2fr) 100px 120px 130px 150px 110px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Order</div>
+<div role="columnheader" style="padding: 0 8px;">Supplier</div>
+<div role="columnheader" style="padding: 0 8px;">Material</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Ordered</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Agreed total</div>
+<div role="columnheader" style="padding: 0 8px;">Expected</div>
+<div role="columnheader" style="padding: 0 8px;">Status</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Next step</span></div>
+</div>
+<sc-for list="{{orders}}" as="o" hint-placeholder-count="8">
+<div role="row" style="display: grid; grid-template-columns: 90px minmax(160px, 1fr) minmax(180px, 1.2fr) 100px 120px 130px 150px 110px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">{{o.id}}</div>
+<div role="cell" style="padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{o.supplier}}</div>
+<div role="cell" style="padding: 0 8px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{o.material}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{o.qty}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{o.total}}</div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46); white-space: nowrap;">{{o.when}}</div>
+<div role="cell" style="padding: 0 8px; display: flex; align-items: center; gap: 4px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{o.st.bd}}; background: {{o.st.bg}}; color: {{o.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{o.st.dot}};"></span>{{o.st.label}}</span><sc-if value="{{o.claim}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;">Claim</span></sc-if></div>
+<div role="cell" style="padding: 0 12px 0 8px; display: flex; justify-content: flex-end;"><sc-if value="{{o.canReceive}}" hint-placeholder-val="{{false}}"><button type="button" onClick="{{o.receive}}" style="height: 28px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Receive</button></sc-if></div>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<!-- Claims -->
+<sc-if value="{{showClaims}}" hint-placeholder-val="{{false}}">
+<section aria-label="Supplier claims" style="display: flex; flex-direction: column; gap: 12px;">
+<article style="display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 16px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="flex: 1 1 320px; min-width: 0;">
+<div style="display: flex; align-items: center; gap: 8px;"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">PO-0317</span><h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">1 EPS block crushed in transit</h2><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;">Waiting for supplier</span></div>
+<p style="margin: 6px 0 0; font-size: 13px; line-height: 18px; color: var(--fg-2, #3f3f46);">Foamtech Manila delivered 10 blocks on Oct 28. Carla Mendoza counted 9 usable and 1 crushed by the cargo strap. 9 went into stock.</p>
+<dl style="margin: 10px 0 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: start; gap: 2px 24px; font-size: 13px;"><dt style="color: var(--muted-fg, #71717a);">Ordered</dt><dt style="color: var(--muted-fg, #71717a);">Usable</dt><dt style="color: var(--muted-fg, #71717a);">Value at stake</dt><dd style="margin: 0;">10 blocks</dd><dd style="margin: 0;">9 blocks</dd><dd style="margin: 0; font-weight: 500;">₱2,850.00</dd></dl>
+</div>
+<div style="display: flex; gap: 8px;">
+<button type="button" onClick="{{openSettle}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Record settlement</button>
+</div>
+</article>
+</section>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{dlgSO}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="SupplierOrderDialog" on-close="{{closeDlg}}" hint-size="520px,600px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgReceive}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="ReceiveDeliveryDialog" on-close="{{closeDlg}}" on-confirm="{{receiveNow}}" hint-size="520px,620px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgSettle}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="SettleClaimDialog" on-close="{{closeDlg}}" hint-size="480px,560px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="production" psub="purchasing" h="940" hint-size="240px,940px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":940}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const query = s.query ?? '';
+    const q = query.trim().toLowerCase();
+    const filter = s.filter ?? 'open';
+    const received = s.received ?? {};
+    const ST = {
+      ordered: { label: 'Ordered', bg: 'var(--card, #ffffff)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)', dot: 'var(--muted-2, #a1a1aa)' },
+      scheduled: { label: 'Delivery scheduled', bg: 'var(--muted, #f4f4f5)', fg: 'var(--ink, #18181b)', bd: 'var(--border, #d4d4d8)', dot: 'var(--inverse, #18181b)' },
+      transit: { label: 'On the way', bg: 'var(--muted, #f4f4f5)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)', dot: 'var(--muted-fg, #71717a)' },
+      arrived: { label: 'Received', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)', dot: 'var(--success, #15803d)' },
+      cancelled: { label: 'Cancelled', bg: 'var(--card, #ffffff)', fg: 'var(--muted-fg, #71717a)', bd: 'var(--border, #d4d4d8)', dot: 'var(--border, #d4d4d8)' }
+    };
+    const all = [
+      { id: 'PO-0320', supplier: 'Foamtech Manila', material: 'Glue, foam-safe', qty: '10 L', total: '₱3,800.00', when: 'Thu, Oct 30', status: 'scheduled' },
+      { id: 'PO-0319', supplier: 'Craftline Supply', material: 'Glitter, bulk, gold', qty: '5 kg', total: '₱2,250.00', when: 'Wed, Oct 29', status: 'transit' },
+      { id: 'PO-0318', supplier: 'Davao Hardware', material: 'Hot-wire, nichrome', qty: '50 m', total: '₱1,750.00', when: 'Mon, Nov 3', status: 'ordered' },
+      { id: 'PO-0317', supplier: 'Foamtech Manila', material: 'EPS block, raw, 1 × 1 × 2 m', qty: '10 blocks', total: '₱28,500.00', when: 'Oct 28', status: 'arrived', claim: true },
+      { id: 'PO-0316', supplier: 'Davao Paint Center', material: 'Spray paint, white', qty: '36 cans', total: '₱6,840.00', when: 'Oct 18', status: 'arrived' },
+      { id: 'PO-0315', supplier: 'Davao Paint Center', material: 'Spray paint, gold', qty: '12 cans', total: '₱3,360.00', when: 'Oct 18', status: 'arrived' },
+      { id: 'PO-0314', supplier: 'Craftline Supply', material: 'Satin ribbon roll, red', qty: '24 rolls', total: '₱1,920.00', when: 'Oct 14', status: 'arrived' },
+      { id: 'PO-0313', supplier: 'Davao Hardware', material: 'Masking tape, 2 in', qty: '40 rolls', total: '₱1,200.00', when: 'Oct 7', status: 'cancelled' }
+    ].map((o) => ({ ...o, status: received[o.id] ? 'arrived' : o.status }));
+    const open = (o) => o.status === 'ordered' || o.status === 'scheduled' || o.status === 'transit';
+    const orders = all
+      .filter((o) => (filter === 'all' || (filter === 'open' && open(o))) &&
+        (!q || (o.id + ' ' + o.supplier + ' ' + o.material).toLowerCase().includes(q)))
+      .map((o) => ({
+        ...o,
+        st: ST[o.status],
+        claim: !!o.claim,
+        canReceive: o.status === 'scheduled' || o.status === 'transit',
+        receive: () => this.setState({ dlg: 'receive', target: o.id })
+      }));
+    const chipOn = { bg: 'var(--muted, #f4f4f5)', bd: 'var(--input-strong, #a1a1aa)' };
+    const chipOff = { bg: 'var(--card, #ffffff)', bd: 'var(--border, #d4d4d8)' };
+    const chips = [['open', 'Not received yet', all.filter(open).length], ['all', 'All orders', all.length], ['claims', 'Supplier claims', 1]]
+      .map(([v, label, count]) => ({
+        label, count, on: v === filter, ...(v === filter ? chipOn : chipOff),
+        countColor: v === 'claims' ? 'var(--warning-fg, #b45309)' : 'var(--muted-fg, #71717a)',
+        pick: () => this.setState({ filter: v })
+      }));
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      query,
+      chips,
+      orders,
+      waiting: all.filter(open).length,
+      showOrders: filter !== 'claims',
+      showClaims: filter === 'claims',
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgSO: s.dlg === 'so',
+      dlgReceive: s.dlg === 'receive',
+      dlgSettle: s.dlg === 'settle',
+      openSO: () => this.setState({ dlg: 'so' }),
+      openSettle: () => this.setState({ dlg: 'settle' }),
+      receiveNow: () => this.setState({ received: { ...received, [s.target]: true }, dlg: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

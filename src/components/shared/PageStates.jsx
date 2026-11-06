@@ -1,87 +1,46 @@
-import { CloudOff, Inbox, LoaderCircle, RotateCw, ShieldAlert } from "../icons";
+import { cloneElement, isValidElement } from "react";
+
+import { ArrowClockwise, CloudSlash, ShieldWarning, Tray } from "../icons";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { tone as toneOf } from "./tones";
 import { NOT_ALLOWED_TITLE, roleLabel } from "../../utils/copy";
 
 /**
- * The four states that are not "here is your data".
+ * The states a screen can be in besides "here are the rows", drawn as the
+ * boards' EmptyState: an icon in a 40px bordered box, a 14/20 title, one 13px
+ * line of help and one outline button. Each sits in a card where the table
+ * would be, or inside it.
  *
- * They were one state before — an empty list — which meant a failed read, a
- * read still in flight, and a genuinely empty table all showed the same "No
- * customer records yet" panel. Those are three different situations with three
- * different next actions, and telling somebody "there is nothing here" while
- * their data is still arriving is simply false.
- *
- * ALL FOUR OFFER A WAY OUT. That is the part that makes them states rather
- * than dead ends: an empty list offers the button that fills it, a failed read
- * offers a retry AND a route off the screen, and a permission wall names who
- * to ask.
+ * The words are the app's: each state says what happened and what to do.
  */
-
-function Frame({ children, className }) {
+function Frame({ children, bare = false, className }) {
   return (
-    <Card
-      className={cn("flex min-h-[380px] flex-col items-center justify-center px-6 py-16 text-center", className)}
-      clip={false}
+    <div
+      className={cn(
+        "flex flex-col items-center gap-2 px-4 py-12 text-center",
+        !bare && "rounded-lg border border-border bg-card shadow-xs",
+        className
+      )}
     >
       {children}
-    </Card>
+    </div>
   );
 }
 
-/** The 76px circle every one of these leads with. */
-function StateIcon({ icon, tone = "neutral" }) {
-  const t = toneOf(tone);
+function StateIcon({ icon }) {
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "flex size-19 items-center justify-center rounded-full text-[30px]",
-        t.tint,
-        t.text
-      )}
-    >
-      {icon}
+    <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-lg border border-border text-muted-fg">
+      {isValidElement(icon) ? cloneElement(icon, { className: "size-5" }) : icon}
     </span>
   );
 }
 
-function Heading({ children }) {
-  return (
-    <h2 className="pt-5 text-[21px] font-extrabold tracking-[-0.01em] text-ink">
-      {children}
-    </h2>
-  );
-}
+const Heading = ({ children }) => <h2 className="m-0 mt-1 text-sm font-semibold text-foreground">{children}</h2>;
+const Body = ({ children }) => <p className="m-0 max-w-md text-13 text-muted-fg">{children}</p>;
+const Actions = ({ children }) => <div className="mt-1 flex flex-wrap justify-center gap-2">{children}</div>;
 
-function Body({ children }) {
-  return (
-    <p className="max-w-80 pt-2.5 text-[15.5px] leading-[1.55] text-muted">
-      {children}
-    </p>
-  );
-}
-
-function Actions({ children }) {
-  return <div className="flex flex-wrap justify-center gap-3 pt-6">{children}</div>;
-}
-
-/**
- * Nothing there yet.
- *
- * Three flavours. A never-populated list gets the button that populates it. A
- * search that matched nothing gets the control that undoes the search, and
- * names what was typed. A CHIP OR DROPDOWN that narrowed a real list to zero
- * rows is neither of those — the list is not empty and nothing was typed —
- * and used to fall through to the never-populated copy, telling somebody who
- * clicked a filter chip that already showed "0" that their data was gone.
- * `filtered` names that third case explicitly instead of leaving it to
- * masquerade as the first.
- */
 export function EmptyState({
-  icon = <Inbox />,
+  icon = <Tray />,
   title,
   description,
   query,
@@ -90,206 +49,114 @@ export function EmptyState({
   onClearFilters,
   actionLabel,
   onAction,
+  bare = false,
 }) {
   const isSearch = Boolean(query);
   const isFiltered = !isSearch && filtered;
-
   return (
-    <Frame>
+    <Frame bare={bare}>
       <StateIcon icon={icon} />
-      <Heading>
-        {isSearch ? "Nothing matched that" : isFiltered ? "Nothing matches that filter" : title}
-      </Heading>
+      <Heading>{isSearch ? "Nothing matched that" : isFiltered ? "Nothing matches these filters" : title}</Heading>
       <Body>
         {isSearch ? (
-          <>
-            Nothing here matches &ldquo;<strong className="font-bold text-ink">{query}</strong>&rdquo;.
-            Check the spelling, or clear the search box to see everything again.
-          </>
+          <>Nothing here matches &ldquo;<strong className="font-medium text-foreground">{query}</strong>&rdquo;. Check the spelling, or clear the search.</>
         ) : isFiltered ? (
-          "Nothing here matches the filter you have on right now. The list is not empty — clear the filter to see everyone again."
+          "Try another filter, or clear them to see everything."
         ) : (
           description
         )}
       </Body>
       <Actions>
         {isSearch ? (
-          <Button variant="outline" size="lg" onClick={onClearSearch}>
-            Clear the search box
-          </Button>
+          <Button variant="outline" onClick={onClearSearch}>Clear the search box</Button>
         ) : isFiltered ? (
-          <Button variant="outline" size="lg" onClick={onClearFilters}>
-            Show everyone
-          </Button>
-        ) : (
-          onAction && (
-            <Button variant="cobalt" size="lg" onClick={onAction}>
-              {actionLabel}
-            </Button>
-          )
-        )}
+          <Button variant="outline" onClick={onClearFilters}>Clear filters</Button>
+        ) : onAction ? (
+          <Button variant="outline" onClick={onAction}>{actionLabel}</Button>
+        ) : null}
       </Actions>
     </Frame>
   );
 }
 
-/**
- * Still loading.
- *
- * Skeleton rows that MIRROR THE REAL ROW GEOMETRY — a 44px chip block, two
- * bars, a pill block, on a 62px row. That matching matters: a skeleton whose
- * shape is wrong makes the content jump when it lands, which reads as the page
- * having reloaded itself.
- *
- * The spinner and the sentence are underneath rather than instead, so somebody
- * on a slow connection has words confirming that waiting is the right thing to
- * do.
- */
-export function LoadingState({ noun = "records", rows = 5 }) {
+/** Loading: the table's shape in --muted bars, so the page does not jump when rows arrive. */
+export function LoadingState({ noun = "records", rows = 5, bare = false }) {
   return (
-    <Card aria-busy="true" aria-live="polite">
+    <div aria-busy="true" aria-live="polite" className={cn(!bare && "rounded-lg border border-border bg-card shadow-xs")}>
       <span className="sr-only">Loading {noun}…</span>
-      <div className="h-12 border-b border-hair bg-paper-2" />
+      <div className="h-9 border-b border-border" />
       {Array.from({ length: rows }).map((_, index) => (
-        <div
-          key={index}
-          className="flex h-15.5 items-center gap-3.5 border-b border-hair px-5.5"
-        >
-          <div className="size-11 shrink-0 animate-pulse rounded-field bg-rule" />
-          <div className="min-w-0 flex-1">
-            <div className="h-4 w-[38%] animate-pulse rounded-full bg-rule" />
-            <div className="mt-2 h-3 w-[22%] animate-pulse rounded-full bg-wash" />
-          </div>
-          <div className="h-11 w-28 shrink-0 animate-pulse rounded-full bg-wash" />
+        <div key={index} className="flex h-9 items-center gap-3 border-b border-row-divider px-4 last:border-0">
+          <div className="size-6 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="h-3 w-[34%] animate-pulse rounded bg-muted" />
+          <div className="ml-auto h-3 w-[12%] animate-pulse rounded bg-muted" />
         </div>
       ))}
-      <div className="flex items-center justify-center gap-3 bg-paper-2 py-4">
-        <LoaderCircle className="h-5 w-5 animate-spin text-muted" aria-hidden="true" />
-        <p className="text-[15px] text-muted">Fetching your {noun}…</p>
-      </div>
-    </Card>
+    </div>
   );
 }
 
-/**
- * Something went wrong.
- *
- * The reassurance is deliberate. Somebody who has just filled in a form and
- * seen an error assumes they have destroyed something; saying plainly that
- * nothing was lost is most of what this screen is for. Then two ways out, not
- * one — a retry for a blip, and a route off the screen for an outage.
- */
 export function ErrorState({ onRetry, onGoToDashboard, noun = "records" }) {
   return (
     <Frame>
-      <StateIcon icon={<CloudOff />} tone="red" />
+      <StateIcon icon={<CloudSlash />} />
       <Heading>We could not reach the system</Heading>
       <Body>
-        Your {noun} could not be loaded, and nothing you have done was lost. This is almost
-        always the internet connection rather than anything you did.
+        Your {noun} could not be loaded, and nothing you have done was lost. This is almost always the internet connection.
       </Body>
       <Actions>
-        {onRetry && (
-          <Button variant="cobalt" size="lg" onClick={onRetry}>
-            <RotateCw className="h-5 w-5" />
+        {onRetry ? (
+          <Button variant="outline" onClick={onRetry}>
+            <ArrowClockwise aria-hidden="true" />
             Try again
           </Button>
-        )}
-        {onGoToDashboard && (
-          <Button variant="outline" size="lg" onClick={onGoToDashboard}>
-            Go to the dashboard
-          </Button>
-        )}
+        ) : null}
+        {onGoToDashboard ? <Button variant="ghost" onClick={onGoToDashboard}>Go to the dashboard</Button> : null}
       </Actions>
     </Frame>
   );
 }
 
-/**
- * Not allowed.
- *
- * "This screen is not part of your job" instead of "You don't have access to
- * this screen" — the second reads as an accusation and leaves the person
- * wondering whether something is broken. This one names their role, says what
- * that role does reach, and tells them who can change it.
- */
 export function NotAllowedState({ role, onGoToDashboard, onSignOut }) {
   return (
-    <Frame>
-      <StateIcon icon={<ShieldAlert />} tone="amber" />
-      <Heading>{NOT_ALLOWED_TITLE}</Heading>
-      <Body>
-        {role ? (
-          <>
-            Your account is set up as <strong className="font-bold text-ink">{roleLabel(role)}</strong>,
-            and this screen belongs to someone else&rsquo;s work. If you need it, an
-            administrator can change what your account does.
-          </>
-        ) : (
-          <>
-            Nobody has set up what your account does yet, so nothing is open to it. An
-            administrator needs to give your account a job before you can get in.
-          </>
-        )}
-      </Body>
-      <Actions>
-        {onGoToDashboard && (
-          <Button variant="cobalt" size="lg" onClick={onGoToDashboard}>
-            Back to the dashboard
-          </Button>
-        )}
-        {onSignOut && (
-          <Button variant="outline" size="lg" onClick={onSignOut}>
-            Sign out
-          </Button>
-        )}
-      </Actions>
-    </Frame>
+    <div className="p-4">
+      <Frame>
+        <StateIcon icon={<ShieldWarning />} />
+        <Heading>{NOT_ALLOWED_TITLE}</Heading>
+        <Body>
+          {role ? (
+            <>
+              Your account is set up as <strong className="font-medium text-foreground">{roleLabel(role)}</strong>, and this screen belongs to someone else&rsquo;s work. If you need it, an administrator can change what your account does.
+            </>
+          ) : (
+            "Nobody has set up what your account does yet, so nothing is open to it. An administrator needs to give your account a job before you can get in."
+          )}
+        </Body>
+        <Actions>
+          {onGoToDashboard ? <Button variant="outline" onClick={onGoToDashboard}>Back to the dashboard</Button> : null}
+          {onSignOut ? <Button variant="ghost" onClick={onSignOut}>Log out</Button> : null}
+        </Actions>
+      </Frame>
+    </div>
   );
 }
 
-/** A record that has gone away — deleted, or a stale selection after a reload. */
 export function NotFoundState({ noun, onBack }) {
   return (
-    <Frame>
-      <StateIcon icon={<Inbox />} />
-      <Heading>That {noun} is not here any more</Heading>
-      <Body>
-        It may have been removed, or the link you followed is out of date. The list will
-        show you what is there now.
-      </Body>
-      <Actions>
-        <Button variant="outline" size="lg" onClick={onBack}>
-          Back to the list
-        </Button>
-      </Actions>
-    </Frame>
+    <div className="p-4">
+      <Frame>
+        <StateIcon icon={<Tray />} />
+        <Heading>That {noun} is not here any more</Heading>
+        <Body>It may have been removed, or the link you followed is out of date. The list shows what is there now.</Body>
+        <Actions>
+          <Button variant="outline" onClick={onBack}>Back to the list</Button>
+        </Actions>
+      </Frame>
+    </div>
   );
 }
 
-/**
- * The per-container empty state — a board column with nothing in it, a panel
- * with no rows.
- *
- * Empty states are per-container, not per-page: a deliveries board with one
- * empty column should not replace the whole board with an empty state, and a
- * column left blank reads as a rendering fault rather than as "nothing due
- * today".
- */
+/** A quiet one-line note inside a card where a list would be. */
 export function EmptySlot({ children, className }) {
-  return (
-    <p
-      className={cn(
-        // Muted, not muted-2: muted-2 is the placeholder/disabled grey (~3:1
-        // on white), and this is a sentence somebody has to read -- often the
-        // only thing in the panel. 15px is the floor for supporting copy;
-        // callers that need more pass a size. Balanced and capped so a wide
-        // panel does not stretch it into one 120-character line.
-        "mx-auto max-w-[68ch] text-balance px-4 py-6 text-center text-[15px] text-muted",
-        className
-      )}
-    >
-      {children}
-    </p>
-  );
+  return <p className={cn("m-0 px-4 py-6 text-center text-13 text-muted-fg", className)}>{children}</p>;
 }

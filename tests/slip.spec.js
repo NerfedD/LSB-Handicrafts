@@ -15,8 +15,8 @@ const OUT = "test-results/slip";
 async function openAnOrder(page, baseURL) {
   await page.goto(`${baseURL}/orders`);
   await expect(page.getByRole("main").getByText("#104").first()).toBeVisible();
-  await page.getByRole("button", { name: "Open" }).first().click();
-  await expect(page.getByRole("main").getByText("All orders").first()).toBeVisible();
+  await page.getByRole("button", { name: /^Open order \d+/ }).first().click();
+  await expect(page.getByRole("button", { name: "Back to Orders" })).toBeVisible();
 }
 
 test("on screen the slip is invisible and the app is not", async ({ page, baseURL }) => {
@@ -95,10 +95,10 @@ test("the slip is a real page: A4, one sheet, nothing off the edge", async ({
 async function openOrderNumbered(page, baseURL, number) {
   await page.goto(`${baseURL}/orders`);
   await expect(page.getByRole("main").getByText("#104").first()).toBeVisible();
-  await page.getByPlaceholder(/Search by customer or order number/).fill(String(number));
+  await page.getByRole('searchbox', { name: 'Search orders' }).fill(String(number));
   await expect(page.getByRole("main").getByText(`#${number}`).first()).toBeVisible();
-  await page.getByRole("button", { name: "Open" }).first().click();
-  await expect(page.getByRole("main").getByText("All orders").first()).toBeVisible();
+  await page.getByRole("button", { name: /^Open order \d+/ }).first().click();
+  await expect(page.getByRole("button", { name: "Back to Orders" })).toBeVisible();
 }
 
 test("a corrected price reaches the paper", async ({ page, baseURL }) => {

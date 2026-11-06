@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Suppliers</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+input:focus-visible{outline:none;border-color:var(--primary, #004E89) !important;box-shadow:0 0 0 3px rgba(0,78,137,0.2) !important}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1040px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="suppliers" collapsed="{{collapsed}}" h="1040" on-toggle="{{toggleNav}}" hint-size="240px,1040px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Contacts" page="Suppliers" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 208V96l64 40V96l64 40V96l64 40v72Z"></path><path d="M24 208h208"></path></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Suppliers</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Where the workshop buys foam, paint and supplies, and how reliably they deliver.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<a href="Purchasing.dc.html" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M88 104h80M88 136h80M88 168h48"></path><rect x="48" y="40" width="160" height="184" rx="8"></rect><path d="M96 24h64v32H96Z"></path></svg>Supplier orders</a>
+<button type="button" onClick="{{openSupplier}}" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>Add supplier</button>
+</div>
+</header>
+
+<section aria-label="Supplier totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; overflow: hidden; gap: 1px; background: var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Suppliers</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">6</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Orders on the way</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">3</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Spent in 2026</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">₱486,900.00</div></div>
+<div style="padding: 10px 16px; background: var(--card, #ffffff);"><div style="font-size: 12px; font-weight: 500; color: var(--muted-fg, #71717a);">Open claims</div><div style="font-size: 18px; line-height: 26px; font-weight: 600;">1</div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<div style="position: relative; flex: 0 1 280px; min-width: 180px;">
+<label for="su-search" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Search suppliers</label>
+<span style="position: absolute; left: 10px; top: 8px; line-height: 0; color: var(--muted-fg, #71717a); pointer-events: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="112" cy="112" r="80"></circle><path d="M168.57 168.57 224 224"></path></svg></span>
+<input id="su-search" type="search" placeholder="Search supplier or material" value="{{query}}" onChange="{{onQuery}}" style="width: 100%; height: 32px; box-sizing: border-box; padding: 0 10px 0 32px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+<section aria-label="Suppliers" style="flex: 999 1 620px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div role="table" aria-label="Suppliers" style="min-width: 780px; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(180px, 1.4fr) 90px 110px 100px 44px; align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Supplier</div>
+<div role="columnheader" style="padding: 0 8px;">Supplies</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Lead time</div>
+<div role="columnheader" style="padding: 0 8px;">On time</div>
+<div role="columnheader" style="padding: 0 8px;">Last order</div>
+<div role="columnheader"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Open</span></div>
+</div>
+<sc-for list="{{rows}}" as="v" hint-placeholder-count="6">
+<div role="row" aria-selected="{{v.selected}}" style="display: grid; grid-template-columns: minmax(180px, 1.3fr) minmax(180px, 1.4fr) 90px 110px 100px 44px; align-items: center; height: 40px; border-bottom: 1px solid var(--row-divider, #f4f4f5); background: {{v.rowBg}};">
+<div role="cell" style="padding: 0 8px 0 16px; min-width: 0;"><button type="button" onClick="{{v.open}}" style="display: block; max-width: 100%; padding: 0; border: 0; background: transparent; font-weight: 500; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;">{{v.name}}</button><span style="display: block; font-size: 11px; line-height: 14px; color: var(--muted-fg, #71717a);">{{v.city}}</span></div>
+<div role="cell" style="padding: 0 8px; color: var(--fg-2, #3f3f46); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{v.supplies}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{v.lead}}</div>
+<div role="cell" style="padding: 0 8px; display: flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="flex: none; width: 40px; height: 4px; border-radius: 2px; background: var(--muted, #f4f4f5); overflow: hidden;"><span style="display: block; width: {{v.onTime}}%; height: 100%; background: var(--muted-fg, #71717a);"></span></span><span>{{v.onTime}}%</span></div>
+<div role="cell" style="padding: 0 8px; color: var(--muted-fg, #71717a); white-space: nowrap; display: flex; align-items: center; gap: 6px;">{{v.last}}<sc-if value="{{v.claim}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;">Claim</span></sc-if></div>
+<div role="cell" style="display: flex; justify-content: center;"><button type="button" aria-label="Open {{v.name}}" onClick="{{v.open}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></button></div>
+</div>
+</sc-for>
+</div>
+</section>
+
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{true}}">
+<aside aria-labelledby="su-detail" style="flex: 1 1 320px; max-width: 400px; min-width: 280px; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; gap: 8px; padding: 14px 12px 12px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<div style="flex: 1; min-width: 0;"><h2 id="su-detail" style="margin: 0; font-size: 15px; line-height: 22px; font-weight: 600;">{{sel.name}}</h2><div style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{sel.city}} · supplier since {{sel.since}}</div></div>
+<button type="button" aria-label="Close details" onClick="{{closeSel}}" style="width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--border, #d4d4d8);">
+<div style="padding: 10px 16px; border-right: 1px solid var(--row-divider, #f4f4f5);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">On time</div><div style="font-size: 16px; line-height: 24px; font-weight: 600;">{{sel.onTime}}%</div></div>
+<div style="padding: 10px 16px; border-right: 1px solid var(--row-divider, #f4f4f5);"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Arrived damaged</div><div style="font-size: 16px; line-height: 24px; font-weight: 600;">{{sel.damaged}}</div></div>
+<div style="padding: 10px 16px;"><div style="font-size: 12px; color: var(--muted-fg, #71717a);">Spent in 2026</div><div style="font-size: 16px; line-height: 24px; font-weight: 600;">{{sel.spent}}</div></div>
+</div>
+
+<dl style="margin: 0; padding: 10px 16px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; line-height: 18px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<dt style="color: var(--muted-fg, #71717a);">Contact</dt><dd style="margin: 0;">{{sel.contact}}</dd>
+<dt style="color: var(--muted-fg, #71717a);">Phone</dt><dd style="margin: 0;"><a href="#" style="text-decoration: none;">{{sel.phone}}</a></dd>
+<dt style="color: var(--muted-fg, #71717a);">Payment</dt><dd style="margin: 0;">{{sel.terms}}</dd>
+<dt style="color: var(--muted-fg, #71717a);">Usually takes</dt><dd style="margin: 0;">{{sel.lead}}</dd>
+</dl>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<button type="button" onClick="{{openSO}}" style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 13px; font-weight: 500; text-decoration: none; box-shadow: 0 1px 2px rgba(0,0,0,0.05); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;">New supplier order</button>
+<button type="button" onClick="{{editSupplier}}" style="height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 500; cursor: pointer;">Edit details</button>
+</div>
+
+<div style="padding: 12px 16px 4px;"><h3 style="margin: 0; font-size: 13px; font-weight: 600;">What they supply</h3></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 8px; font-size: 13px; line-height: 18px;">
+<sc-for list="{{sel.items}}" as="i" hint-placeholder-count="3">
+<li style="display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span>{{i.name}}</span><span style="color: var(--fg-2, #3f3f46);">{{i.price}}</span></li>
+</sc-for>
+</ul>
+
+<div style="padding: 8px 16px 4px;"><h3 style="margin: 0; font-size: 13px; font-weight: 600;">Orders</h3></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 14px; font-size: 13px; line-height: 18px;">
+<sc-for list="{{sel.orders}}" as="o" hint-placeholder-count="3">
+<li style="display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg-3, #52525b);">{{o.id}}</span><span style="color: var(--muted-fg, #71717a);">{{o.date}}</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{o.st.bd}}; background: {{o.st.bg}}; color: {{o.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;">{{o.st.label}}</span></li>
+</sc-for>
+</ul>
+</aside>
+</sc-if>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgSupplier}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="AddSupplierDialog" on-close="{{closeDlg}}" mode="{{supMode}}" hint-size="520px,600px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{dlgSO}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="SupplierOrderDialog" on-close="{{closeDlg}}" hint-size="520px,600px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="suppliers" h="1040" hint-size="240px,1040px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const query = s.query ?? '';
+    const q = query.trim().toLowerCase();
+    const selKey = s.sel === undefined ? 'ftm' : s.sel;
+    const OST = {
+      scheduled: { label: 'Delivery scheduled', bg: 'var(--muted, #f4f4f5)', fg: 'var(--ink, #18181b)', bd: 'var(--border, #d4d4d8)' },
+      transit: { label: 'On the way', bg: 'var(--muted, #f4f4f5)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)' },
+      ordered: { label: 'Ordered', bg: 'var(--card, #ffffff)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)' },
+      arrived: { label: 'Received', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' },
+      claim: { label: 'Received · claim open', bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)' }
+    };
+    const all = [
+      { key: 'ftm', name: 'Foamtech Manila', city: 'Valenzuela, Metro Manila', supplies: 'EPS blocks, foam-safe glue', lead: '3–5 days', onTime: 92, damaged: '1.1%', spent: '₱312,400', since: '2017', claim: true,
+        contact: 'Rodel Santos', phone: '0917 812 3300', terms: '30 days after delivery', last: 'Oct 28',
+        items: [['EPS block, raw, 1 × 1 × 2 m', '₱2,850.00 / block'], ['Glue, foam-safe', '₱380.00 / L']],
+        orders: [['PO-0320', 'Oct 26', 'scheduled'], ['PO-0317', 'Oct 21', 'claim'], ['PO-0309', 'Oct 2', 'arrived']] },
+      { key: 'dpc', name: 'Davao Paint Center', city: 'Bajada, Davao City', supplies: 'Spray paint, primer', lead: '1 day', onTime: 98, damaged: '0%', spent: '₱58,200', since: '2018',
+        contact: 'Grace Lim', phone: '(082) 224 5512', terms: 'Cash on delivery', last: 'Oct 18',
+        items: [['Spray paint, white', '₱190.00 / can'], ['Spray paint, gold', '₱280.00 / can']],
+        orders: [['PO-0316', 'Oct 17', 'arrived'], ['PO-0315', 'Oct 17', 'arrived']] },
+      { key: 'cls', name: 'Craftline Supply', city: 'Cebu City', supplies: 'Glitter, gold leaf, ribbon', lead: '5–7 days', onTime: 81, damaged: '2.4%', spent: '₱44,700', since: '2021',
+        contact: 'Mae Tan', phone: '0922 405 1188', terms: '50% down, rest on delivery', last: 'Oct 22',
+        items: [['Glitter, bulk, gold', '₱450.00 / kg'], ['Gold leaf sheets', '₱230.00 / pack'], ['Satin ribbon roll, red', '₱80.00 / roll']],
+        orders: [['PO-0319', 'Oct 22', 'transit'], ['PO-0314', 'Oct 8', 'arrived']] },
+      { key: 'dhw', name: 'Davao Hardware', city: 'Ilustre St, Davao City', supplies: 'Hot-wire, tape, tools', lead: '2 days', onTime: 95, damaged: '0%', spent: '₱21,300', since: '2016',
+        contact: 'Jun Abella', phone: '(082) 221 0090', terms: '15 days after delivery', last: 'Oct 27',
+        items: [['Hot-wire, nichrome', '₱35.00 / m'], ['Masking tape, 2 in', '₱30.00 / roll']],
+        orders: [['PO-0318', 'Oct 27', 'ordered']] },
+      { key: 'mpp', name: 'Mindanao Packaging', city: 'Sasa, Davao City', supplies: 'Boxes, bubble wrap', lead: '2 days', onTime: 90, damaged: '0.5%', spent: '₱38,900', since: '2020',
+        contact: 'Rey Navarro', phone: '0917 330 9988', terms: '30 days after delivery', last: 'Sep 30',
+        items: [['Shipping box, large', '₱42.00 / box'], ['Bubble wrap, 50 m', '₱650.00 / roll']],
+        orders: [['PO-0302', 'Sep 29', 'arrived']] },
+      { key: 'gpt', name: 'Gensan Print & Tarp', city: 'General Santos', supplies: 'Printed tarps for backdrops', lead: '4 days', onTime: 86, damaged: '0%', spent: '₱11,400', since: '2024',
+        contact: 'Lea Ramos', phone: '0918 600 2020', terms: 'Paid before printing', last: 'Sep 12',
+        items: [['Tarp print, per sq ft', '₱18.00 / sq ft']],
+        orders: [['PO-0294', 'Sep 10', 'arrived']] }
+    ];
+    const rows = all
+      .filter((v) => !q || (v.name + ' ' + v.supplies).toLowerCase().includes(q))
+      .map((v) => ({ ...v, claim: !!v.claim, selected: v.key === selKey, rowBg: v.key === selKey ? 'var(--muted, #f4f4f5)' : 'var(--card, #ffffff)', open: () => this.setState({ sel: v.key }) }));
+    const p = all.find((v) => v.key === selKey);
+    const sel = p ? {
+      ...p,
+      items: p.items.map(([name, price]) => ({ name, price })),
+      orders: p.orders.map(([id, date, st]) => ({ id, date, st: OST[st] }))
+    } : { items: [], orders: [] };
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      query,
+      rows,
+      hasSel: !!p,
+      sel,
+      closeSel: () => this.setState({ sel: null }),
+      onQuery: (e) => this.setState({ query: e.target.value }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      closeDlg: () => this.setState({ dlg: null }),
+      dlgSupplier: s.dlg === 'supplier',
+      dlgSO: s.dlg === 'so',
+      supMode: s.supMode ?? 'add',
+      openSupplier: () => this.setState({ dlg: 'supplier', supMode: 'add' }),
+      editSupplier: () => this.setState({ dlg: 'supplier', supMode: 'edit' }),
+      openSO: () => this.setState({ dlg: 'so' })
+    };
+  }
+}
+</script>
+</body>
+</html>

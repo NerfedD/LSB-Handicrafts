@@ -1,176 +1,123 @@
-import { forwardRef, useRef } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 
 import { X } from "@/components/icons";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 /**
- * Modal shell.
+ * shadcn/ui Dialog on Base UI, drawn to the *Dialog boards.
  *
- * 18px radius, the handoff's modal shadow, and a header/body/footer split —
- * because every dialog in the design has the same three parts: a title with a
- * subhead, a single column of content, and a footer band carrying exactly two
- * buttons.
+ * The panel sits 64px from the top, centred, on an --overlay backdrop: 8px
+ * radius, 1px --border, --card, shadow-dialog. Header 20px in (52px on the
+ * right to clear the 28px close button), title 16/24 semibold, description
+ * 13/18 muted. Body 16px/20px with 14px between fields. Footer right-aligned,
+ * 8px apart, 20px padding: Cancel (outline) then the one primary.
  *
- * THE CLOSE CONTROL IS 44px AND OUTLINED, not a 16px grey X in the corner. It
- * is the one place an icon appears without a word beside it, and it earns that
- * exemption by being a dismiss affordance in a fixed, conventional position —
- * so it is given a real tap target instead of being made small to compensate.
- *
- * Focus trapping, Escape-to-close, trigger restoration and hiding the rest of
- * the page from screen readers all come from Radix underneath. The hand-rolled
- * modals this replaced did none of that.
+ * The panel pops in (lsb-pop) and the backdrop fades (lsb-fade).
  */
-const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
-const DialogPortal = DialogPrimitive.Portal;
-const DialogClose = DialogPrimitive.Close;
+const SIZES = {
+  sm: "w-[440px]",
+  default: "w-[480px]",
+  md: "w-[520px]",
+  lg: "w-[560px]",
+  xl: "w-[640px]",
+};
 
-const DialogOverlay = forwardRef(function DialogOverlay({ className, ...props }, ref) {
+function Dialog(props) {
+  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+}
+
+function DialogTrigger(props) {
+  return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
+}
+
+function DialogPortal(props) {
+  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+}
+
+function DialogClose(props) {
+  return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+}
+
+function DialogOverlay({ className, ...props }) {
   return (
-    <DialogPrimitive.Overlay
-      ref={ref}
-      className={cn(
-        "fixed inset-0 z-50 bg-[#111d2b7a]",
-        // NO BLUR. A full-viewport backdrop-filter is the one effect a low-end
-        // GPU struggles with -- on the shop's older desktops as much as on a
-        // floor tablet -- and the ink wash alone already separates the dialog
-        // from the page. Only the overlay's opacity animates.
-        "data-[state=open]:animate-in data-[state=closed]:animate-out",
-        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        className
-      )}
+    <DialogPrimitive.Backdrop
+      data-slot="dialog-overlay"
+      className={cn("lsb-fade fixed inset-0 z-50 bg-overlay data-[ending-style]:opacity-0", className)}
       {...props}
     />
   );
-});
+}
 
-const DialogContent = forwardRef(function DialogContent(
-  { className, children, showClose = true, closeLabel = "Close", onOpenAutoFocus, onCloseAutoFocus, ...props },
-  ref
-) {
-  // Radix returns focus only to a <DialogTrigger>. Most dialogs here are opened
-  // from state by an ordinary button, so without this focus is dropped onto the
-  // page body on close and a keyboard user loses their place. The opener is
-  // noted when focus is about to move into the dialog. (Not at render: several
-  // dialogs render this component while closed.)
-  const opener = useRef(null);
+function DialogContent({ className, children, size = "default", showClose = true, closeLabel = "Close", ...props }) {
   return (
     <DialogPortal>
       <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={ref}
-        onOpenAutoFocus={(event) => {
-          opener.current = document.activeElement;
-          onOpenAutoFocus?.(event);
-        }}
-        onCloseAutoFocus={(event) => {
-          onCloseAutoFocus?.(event);
-          const target = opener.current;
-          opener.current = null;
-          if (event.defaultPrevented) return;
-          if (target && target !== document.body && target.isConnected) {
-            event.preventDefault();
-            target.focus();
-          }
-        }}
-        className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-32px)] max-w-[560px] -translate-x-1/2 -translate-y-1/2 flex-col",
-          "overflow-hidden rounded-modal2 border border-card bg-surface text-left shadow-modal",
-          "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        {showClose && (
-          <DialogPrimitive.Close asChild>
-            <Button variant="outline" size="icon" className="absolute right-5 top-5">
-              <X className="h-5 w-5" />
-              <span className="sr-only">{closeLabel}</span>
-            </Button>
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
+      <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto px-4 pb-8 pt-16">
+        <DialogPrimitive.Popup
+          data-slot="dialog-content"
+          className={cn(
+            "lsb-pop relative max-w-full rounded-lg border border-border bg-card text-sm text-foreground shadow-dialog outline-none",
+            "data-[ending-style]:opacity-0",
+            SIZES[size] ?? SIZES.default,
+            className
+          )}
+          {...props}
+        >
+          {children}
+          {showClose ? (
+            <DialogPrimitive.Close
+              aria-label={closeLabel}
+              className="absolute right-3 top-3 inline-flex size-7 items-center justify-center rounded-md text-muted-fg hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </DialogPrimitive.Close>
+          ) : null}
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Viewport>
     </DialogPortal>
   );
-});
+}
 
-/**
- * Title over subhead, with the close button's 44px reserved on the right so a
- * long title never runs under it.
- */
 function DialogHeader({ className, ...props }) {
-  return (
-    <div
-      className={cn(
-        "shrink-0 border-b border-hair2 px-6.5 py-5.5 pr-19",
-        className
-      )}
-      {...props}
-    />
-  );
+  return <div data-slot="dialog-header" className={cn("px-5 pr-[52px] pt-5", className)} {...props} />;
 }
 
-/** The scrolling middle. A single column, per rule 5 — one question at a time. */
 function DialogBody({ className, ...props }) {
-  return (
-    <div
-      className={cn("min-h-0 flex-1 overflow-y-auto px-6.5 py-6", className)}
-      {...props}
-    />
-  );
+  return <div data-slot="dialog-body" className={cn("flex flex-col gap-3.5 px-5 py-4", className)} {...props} />;
 }
 
-/**
- * The footer band. Two buttons, the dismissing one on the left and the
- * committing one on the right, on paper-2 so it reads as a separate register
- * from the content above it.
- */
 function DialogFooter({ className, ...props }) {
   return (
-    <div
-      className={cn(
-        "flex shrink-0 flex-wrap items-center justify-end gap-3 border-t border-hair2 bg-paper-2 px-6.5 py-5",
-        className
-      )}
+    <div data-slot="dialog-footer" className={cn("flex flex-wrap justify-end gap-2 px-5 pb-5", className)} {...props} />
+  );
+}
+
+function DialogTitle({ className, ...props }) {
+  return (
+    <DialogPrimitive.Title
+      data-slot="dialog-title"
+      className={cn("m-0 text-base font-semibold leading-6", className)}
       {...props}
     />
   );
 }
 
-const DialogTitle = forwardRef(function DialogTitle({ className, ...props }, ref) {
-  return (
-    <DialogPrimitive.Title
-      ref={ref}
-      className={cn(
-        "text-[20px] font-extrabold leading-tight tracking-[-0.02em] text-ink",
-        className
-      )}
-      {...props}
-    />
-  );
-});
-
-const DialogDescription = forwardRef(function DialogDescription({ className, ...props }, ref) {
+function DialogDescription({ className, ...props }) {
   return (
     <DialogPrimitive.Description
-      ref={ref}
-      className={cn("pt-1 text-[15px] leading-[1.5] text-muted", className)}
+      data-slot="dialog-description"
+      className={cn("m-0 mt-0.5 text-13 text-muted-fg", className)}
       {...props}
     />
   );
-});
+}
 
 export {
   Dialog,
-  DialogPortal,
-  DialogOverlay,
   DialogTrigger,
+  DialogPortal,
   DialogClose,
+  DialogOverlay,
   DialogContent,
   DialogHeader,
   DialogBody,

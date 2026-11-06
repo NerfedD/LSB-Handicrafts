@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Production report</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1080px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="production" psub="report" collapsed="{{collapsed}}" h="1080" on-toggle="{{toggleNav}}" hint-size="240px,1080px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Production" page="Production report" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M224 208H32V48M224 96l-64 56-64-48-64 56"></path></svg></span>
+<div style="min-width: 0;">
+<div style="display: flex; align-items: center; gap: 8px;"><h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Production report</h1><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--card, #ffffff); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">Managers only</span></div>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">What the workshop made, what was damaged, and why.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" aria-haspopup="listbox" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="176" height="176" rx="8"></rect><path d="M176 24v32M80 24v32M40 88h176"></path></svg>October 2026<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M208 96l-80 80-80-80"></path></svg></button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 144V32M216 144v64a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8v-64M168 104l-40 40-40-40"></path></svg>Download PDF</button>
+</div>
+</header>
+
+<section aria-label="October totals" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Good pieces</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">4,860</span><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500;">+6.2%</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Damaged</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">104</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">2.1% of everything made</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Batches finished</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">23</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">1 cancelled</span></div></div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 12px 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><div style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Material used</div><div style="display: flex; align-items: baseline; gap: 8px; margin-top: 4px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600;">₱62,400.00</span><span style="font-size: 12px; color: var(--muted-fg, #71717a);">at cost</span></div></div>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px;">
+<!-- Weekly chart -->
+<section aria-labelledby="pr-weekly" style="flex: 2 1 520px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 0;">
+<div><h2 id="pr-weekly" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Pieces made per week</h2><p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Last 6 weeks, with the share that was damaged</p></div>
+<div aria-hidden="true" style="display: flex; gap: 16px; font-size: 12px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--primary, #004E89);"></span>Good</span><span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--muted-2, #a1a1aa);"></span>Damaged</span></div>
+</div>
+<div role="img" aria-label="{{chartLabel}}" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; align-items: end; height: 200px; padding: 16px 24px 0; border-bottom: 1px solid var(--border, #d4d4d8); margin: 0 16px;">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 4px;">
+<span style="font-size: 11px; color: var(--fg-2, #3f3f46); font-weight: 500;">{{w.goodLabel}}</span>
+<span style="display: flex; flex-direction: column; width: 100%; max-width: 44px;"><span style="height: {{w.badH}}px; background: var(--muted-2, #a1a1aa); border-radius: 3px 3px 0 0;"></span><span style="height: {{w.goodH}}px; background: var(--primary, #004E89);"></span></span>
+</div>
+</sc-for>
+</div>
+<div aria-hidden="true" style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; padding: 6px 40px 16px; font-size: 11px; line-height: 16px; color: var(--muted-fg, #71717a); text-align: center;">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="6"><span><span style="display: block; color: var(--fg-2, #3f3f46);">{{w.label}}</span>{{w.rate}} damaged</span></sc-for>
+</div>
+</section>
+
+<!-- Reasons -->
+<section aria-labelledby="pr-why" style="flex: 1 1 300px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 16px 16px 8px;"><h2 id="pr-why" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Why pieces were damaged</h2><p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">104 pieces in October</p></div>
+<ul style="list-style: none; margin: 0; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+<sc-for list="{{reasons}}" as="r" hint-placeholder-count="5">
+<li><div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px; line-height: 18px;"><span>{{r.label}}</span><span style="font-weight: 500;">{{r.n}}</span></div><div aria-hidden="true" style="height: 6px; margin-top: 4px; border-radius: 3px; background: var(--muted, #f4f4f5); overflow: hidden;"><div style="width: {{r.pct}}%; height: 100%; background: var(--muted-fg, #71717a);"></div></div></li>
+</sc-for>
+</ul>
+</section>
+</div>
+
+<!-- By product -->
+<section aria-labelledby="pr-prod" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); overflow-x: auto;">
+<div style="padding: 16px 16px 12px;"><h2 id="pr-prod" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">By product</h2></div>
+<div role="table" aria-label="Production by product" style="min-width: 860px; font-size: 13px; line-height: 18px; border-top: 1px solid var(--border, #d4d4d8);">
+<div role="row" style="display: grid; grid-template-columns: minmax(200px, 1.6fr) 80px 90px 90px 90px 120px minmax(170px, 1.2fr); align-items: center; height: 36px; border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 8px 0 16px;">Product</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Batches</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Made</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Good</div>
+<div role="columnheader" style="padding: 0 8px; text-align: right;">Damaged</div>
+<div role="columnheader" style="padding: 0 8px;">Damage rate</div>
+<div role="columnheader" style="padding: 0 16px 0 8px;">Main reason</div>
+</div>
+<sc-for list="{{products}}" as="p" hint-placeholder-count="6">
+<div role="row" style="display: grid; grid-template-columns: minmax(200px, 1.6fr) 80px 90px 90px 90px 120px minmax(170px, 1.2fr); align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 8px 0 16px; font-weight: 500;">{{p.name}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right; color: var(--muted-fg, #71717a);">{{p.batches}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{p.made}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{p.good}}</div>
+<div role="cell" style="padding: 0 8px; text-align: right;">{{p.bad}}</div>
+<div role="cell" style="padding: 0 8px;">
+<sc-if value="{{p.high}}" hint-placeholder-val="{{false}}"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500;">{{p.rate}}</span></sc-if>
+<sc-if value="{{p.normal}}" hint-placeholder-val="{{true}}"><span>{{p.rate}}</span></sc-if>
+</div>
+<div role="cell" style="padding: 0 16px 0 8px; color: var(--fg-2, #3f3f46);">{{p.reason}}</div>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; padding: 10px 16px; font-size: 13px; color: var(--muted-fg, #71717a);">Rates of 3% or more are marked. The workshop's usual rate is about 2%.</p>
+</section>
+
+</div>
+</main>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="production" psub="report" h="1080" hint-size="240px,1080px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const W = [['Sep 21', 980, 31], ['Sep 28', 1120, 34], ['Oct 5', 1050, 22], ['Oct 12', 1210, 29], ['Oct 19', 1180, 25], ['Oct 26', 1240, 26]];
+    const max = 1400, H = 150;
+    const weeks = W.map(([label, good, bad]) => ({
+      label,
+      goodLabel: good.toLocaleString('en-PH'),
+      goodH: Math.round((good / max) * H),
+      badH: Math.max(2, Math.round((bad / max) * H)),
+      rate: ((bad / (good + bad)) * 100).toFixed(1) + '%'
+    }));
+    const R = [['Broke while being cut', 42], ['Crushed by strap or cargo', 23], ['Water or dirt damage', 18], ['Wrong density or thickness', 12], ['Other', 9]];
+    const reasons = R.map(([label, n]) => ({ label, n, pct: Math.round((n / 42) * 100) }));
+    const P = [
+      ['Styro ball, 4 inch', 4, 1200, 18, 'Broke while being cut'],
+      ['Styro ball, 6 inch', 3, 640, 19, 'Broke while being cut'],
+      ['Star cutout, 12 inch', 4, 600, 12, 'Broke while being cut'],
+      ['Styro ball, 10 inch', 2, 160, 4, 'Wrong density or thickness'],
+      ['Styro sheet, 1 in, 4 × 8 ft', 3, 90, 3, 'Crushed by strap or cargo'],
+      ['Foam block, 12 inch', 2, 80, 1, 'Water or dirt damage']
+    ];
+    const products = P.map(([name, batches, made, bad, reason]) => {
+      const r = (bad / made) * 100;
+      return {
+        name, batches, reason,
+        made: made.toLocaleString('en-PH'),
+        good: (made - bad).toLocaleString('en-PH'),
+        bad,
+        rate: r.toFixed(1) + '%',
+        high: r >= 3, normal: r < 3
+      };
+    });
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      weeks,
+      reasons,
+      products,
+      chartLabel: 'Bar chart of pieces made per week, Sep 21 to Oct 26. Good pieces rose from 980 to 1,240; damaged stayed between 22 and 34 a week.',
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

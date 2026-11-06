@@ -1,43 +1,23 @@
 import { useMemo, useState } from "react";
 
-import {
-  ArrowLeft,
-  Banknote,
-  CircleCheck,
-  CircleX,
-  Clock,
-  Info,
-  MapPin,
-  PackageOpen,
-  Pencil,
-  Phone,
-  Printer,
-  Repeat,
-  Tag,
-  Truck,
-  UserRound,
-} from "../icons";
+import { CheckCircle, Info, Money, Package, PencilSimple, Printer, Repeat, Tag, Truck, XCircle } from "../icons";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Callout, { DangerBlock } from "../shared/Callout";
-import IconChip, { Avatar, Mono } from "../shared/Chip";
 import ConfirmDialog from "../shared/ConfirmDialog";
-import FactTable from "../shared/FactTable";
-import { EmptySlot, NotFoundState } from "../shared/PageStates";
-import StageTracker from "../shared/StageTracker";
-import OrderSlip from "./OrderSlip";
+import { NotFoundState } from "../shared/PageStates";
+import { Page, PageHeader, TextLink } from "../shared/page";
 import StatusPill from "../shared/StatusPill";
+import StageBadge from "../deliveries/StageBadge";
+import { STAGE_LOOK } from "../deliveries/stageLook";
+import OrderPayments from "./OrderPayments";
+import { dueDateOf } from "../../utils/payments";
+import OrderSlip from "./OrderSlip";
+import { cn } from "@/lib/utils";
 import { DELIVERY_STAGE, ORDER_STATUS } from "../../utils/constants";
 import {
+  DELIVERY_STAGES,
   dispositionLabel,
   orderLabel,
   orderTone,
@@ -55,51 +35,75 @@ import {
   hasBackorder,
   isBackorderDelivery,
   lastPriceAdjustment,
-  orderProgress,
+  orderNetTotal,
   orderTotals,
   returnHistory,
 } from "../../utils/orders";
+import { dueLabel, isLate } from "../../utils/deliveries";
 import { committedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
+import { timeLabel } from "../../utils/activityLog";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
 /**
- * One order — screen 2j.
+ * One order, drawn to the "17 · Order detail and edit" board:
  *
- * THE TRACKER REPLACES THE STATUS WORD. Four stages with a date under each,
- * done ones filled green, the current one cobalt, the future ones open — so
- * anybody, including somebody on their first day, can see both where the order
- * is AND what happens after. "Pending" says neither. The stages are derived
- * from the order and its delivery rather than stored (see utils/orders), so
- * there is no second place that can disagree about where the order is.
+ *   Back to Orders → the header (Order #, the delivery stage and order status,
+ *   customer · taken · deliver; Print slip, Cancel order, Edit order) → Items
+ *   with the totals → Delivery (the five stages, date, address, driver) →
+ *   Payments, beside Customer and History.
  *
- * ONE FORWARD ACTION. "Mark as done" is green, in the header, and it is the
- * only control on the screen that changes where the order stands. Marking an
- * order done deducts stock, which is a real, one-way event — so it is a
- * deliberate press on the order itself, never a dropdown in a list.
- *
- * THE WAITING CALLOUT IS NOT A BADGE. An order that has sat for four days is a
- * problem with an owner, so the amber block says how long AND offers the thing
- * that unblocks it: give it to somebody.
- *
- * MONEY LIVES IN ITS OWN OUTLINED BLOCK AT THE BOTTOM. Rule 6: giving money
- * back and changing what an order costs are not recoverable by pressing
- * something again, so they are never a control in the header beside Print. They
- * are a bordered section that names what each one does, and it only renders for
- * somebody allowed to use it — the courtesy half of a permission whose real
- * half is the guard trigger on public.orders.
- *
- * WHAT WAS DONE TO THE MONEY IS SHOWN, NOT JUST THE RESULT. A total that moved
- * with no explanation is indistinguishable from a mistake, so a corrected price
- * carries a banner naming the day, the person and the reason, and every return
- * -- refunded or replaced -- is listed with what happened to the goods.
+ * The app does not record payments, so Payments holds the money the app does
+ * record (refunds, replacements and price fixes) with its actions, and
+ * Record payment is disabled. Editing opens the order editor (the board's
+ * edit mode).
  */
+function Panel({ id, title, action, children, className }) {
+  return (
+    <section aria-labelledby={id} className={cn("rounded-lg border border-border bg-card shadow-xs", className)}>
+      <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-3.5">
+        <h2 id={id} className="m-0 text-sm font-semibold">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Totals({ order, totals }) {
+  const rows = [
+    ["Items", formatPeso(totals.items)],
+    ["Delivery", totals.delivery > 0 ? formatPeso(totals.delivery) : "Free"],
+    ...(totals.discount > 0
+      ? [[`${order.promotion?.label || "Loyalty reward"}${order.promotion?.percent ? ` (${order.promotion.percent}%)` : ""}`, `−${formatPeso(totals.discount)}`]]
+      : []),
+  ];
+  return (
+    <dl className="m-0 grid grid-cols-[1fr_auto] justify-items-end gap-x-6 gap-y-1.5 px-4 py-3 text-13">
+      {rows.map(([label, value]) => (
+        <div key={label} className="contents">
+          <dt className="text-muted-fg">{label}</dt>
+          <dd className="m-0">{value}</dd>
+        </div>
+      ))}
+      <dt className="font-medium">Order total</dt>
+      <dd className="m-0 text-base font-semibold">{formatPeso(totals.total)}</dd>
+      {totals.refunded > 0 ? (
+        <>
+          <dt className="text-muted-fg">Given back</dt>
+          <dd className="m-0 text-danger-fg">−{formatPeso(totals.refunded)}</dd>
+          <dt className="font-medium">What they still owe</dt>
+          <dd className="m-0 font-semibold">{formatPeso(totals.net)}</dd>
+        </>
+      ) : null}
+    </dl>
+  );
+}
+
 export default function OrderDetailPage({
   order,
   customer,
   deliveries = [],
   canHandleMoney = false,
-  // Production Staff are not shown customer contact details, so a missing
-  // customer record means "not for you", not "never saved".
   canViewCustomers = true,
   onBack,
   onMarkDone,
@@ -114,550 +118,325 @@ export default function OrderDetailPage({
   onEdit,
   onCancelOrder,
   onOpenDelivery,
+  onOpenCustomer,
   busy = false,
+  /** What has been paid on this order (order_paid), and its payments on demand. */
+  paid = 0,
+  owedAmount = 0,
+  loadPayments,
+  paymentsVersion = 0,
+  onRecordPayment,
+  onRemovePayment,
+  /** The business's own settings, for the printed slip. */
+  settings = null,
 }) {
   const [reopening, setReopening] = useState(false);
   const [callingOff, setCallingOff] = useState(false);
   const items = useMemo(() => normalizeItems(order?.items), [order]);
-  const progress = useMemo(() => orderProgress(order, deliveries), [order, deliveries]);
   const totals = useMemo(() => orderTotals(order, deliveries), [order, deliveries]);
   const delivery = useMemo(() => deliveryForOrder(order, deliveries), [order, deliveries]);
   const owed = useMemo(() => backorderLines(order), [order]);
-  const followUp = useMemo(
-    () => deliveriesForOrder(order, deliveries).find(isBackorderDelivery),
-    [order, deliveries]
-  );
+  const followUp = useMemo(() => deliveriesForOrder(order, deliveries).find(isBackorderDelivery), [order, deliveries]);
 
   if (!order) return <NotFoundState noun="order" onBack={onBack} />;
 
   const waiting = daysWaiting(order);
   const isDone = order.status === ORDER_STATUS.COMPLETED;
   const isCancelled = order.status === ORDER_STATUS.CANCELLED;
-  const partial = hasBackorder(order);
   const correction = lastPriceAdjustment(order);
   const returns = returnHistory(order);
-  // Only goods the customer received can come back to be replaced.
   const delivered = stockLines(order).some((line) => committedOf(line) > 0);
+  const stageIndex = delivery ? DELIVERY_STAGES.findIndex((s) => s.value === delivery.status) : -1;
+  const history = [
+    { at: order.createdAt, what: `Order taken for ${order.customerName}` },
+    ...(order.priceAdjustments || []).map((p) => ({ at: p.changedAt, what: `Price changed from ${formatPeso(p.oldTotal)} to ${formatPeso(p.newTotal)}${p.changedBy ? ` by ${p.changedBy}` : ""}` })),
+    ...returns.map((r) => ({ at: r.at, what: r.resolution === "refund" ? `${formatPeso(r.amount)} given back` : `${r.replacementQuantity} × ${r.replacementName} sent as a replacement` })),
+    ...(isDone ? [{ at: order.stockCommittedAt, what: "Marked as done" }] : []),
+    ...(isCancelled ? [{ at: null, what: "Called off" }] : []),
+  ].filter((h) => h.what).sort((a, b) => String(b.at ?? "").localeCompare(String(a.at ?? "")));
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Invisible on screen, and the only thing on the page once somebody
-          presses Print. It lives here rather than in App.jsx because it needs
-          the same order, customer and delivery this screen already resolved --
-          and a second resolution of the same three is a second chance for the
-          paper and the screen to disagree. */}
-      <OrderSlip
-        order={order}
-        customer={customer}
-        delivery={delivery}
-        deliveries={deliveries}
+    <Page>
+      <OrderSlip order={order} customer={customer} delivery={delivery} deliveries={deliveries} settings={settings} paid={paid} />
+
+      <PageHeader
+        back={{ label: "Back to Orders", onClick: onBack }}
+        title={`Order #${order.id}`}
+        titleBadge={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {delivery ? <StageBadge status={delivery.status} /> : null}
+            <StatusPill label={orderLabel(order.status)} tone={orderTone(order.status)} />
+            {hasBackorder(order) ? <Badge variant="warning">Goods still owed</Badge> : null}
+          </span>
+        }
+        description={
+          <>
+            {customer && onOpenCustomer ? (
+              <TextLink className="text-13" onClick={() => onOpenCustomer(customer.id)}>{order.customerName}</TextLink>
+            ) : (
+              <span className="font-medium text-fg-2">{order.customerName}</span>
+            )}
+            {` · taken ${formatShortDate(order.createdAt)}`}
+            {delivery ? ` · ${dueLabel(delivery).toLowerCase()}` : ""}
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={onPrint}>
+              <Printer aria-hidden="true" />
+              Print slip
+            </Button>
+            {!isDone && !isCancelled ? (
+              <Button variant="outline" onClick={onMarkDone} disabled={busy}>
+                <CheckCircle aria-hidden="true" />
+                {busy ? "Working…" : "Mark as done"}
+              </Button>
+            ) : null}
+            {canHandleMoney && !isCancelled && !isDone ? (
+              <Button variant="outline" onClick={() => setCallingOff(true)} disabled={busy}>Cancel order</Button>
+            ) : null}
+            {canEdit ? (
+              <Button onClick={onEdit} disabled={busy}>
+                <PencilSimple aria-hidden="true" />
+                Edit order
+              </Button>
+            ) : null}
+          </>
+        }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" className="px-2" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-          All orders
-        </Button>
+      {isCancelled ? (
+        <Callout tone="red" icon={<XCircle />} title="This order was cancelled.">
+          Nothing on it is being made and no stock is set aside for it. It is kept so the record of what was asked for is not lost.
+        </Callout>
+      ) : null}
+      {hasBackorder(order) ? (
+        <Callout
+          tone="amber"
+          icon={<Package />}
+          title="Some of this order has not gone out yet"
+          action={followUp && onOpenDelivery ? (
+            <Button variant="outline" size="sm" onClick={() => onOpenDelivery(followUp.id)}>Open the second delivery</Button>
+          ) : null}
+        >
+          {owed.map((line) => (
+            <span key={line.index} className="block"><span className="font-medium text-foreground">{outstandingOf(line)} × {line.name}</span> still to go.</span>
+          ))}
+          The rest was delivered and has come off the shelf. What is listed here is still set aside for {order.customerName}.
+        </Callout>
+      ) : null}
+      {correction ? (
+        <Callout tone="neutral" icon={<Info />} title={`Price changed on ${formatShortDate(correction.changedAt)} by ${correction.changedBy || "somebody"}`}>
+          It went from {formatPeso(correction.oldTotal)} to {formatPeso(correction.newTotal)}. Reason: {priceReasonLabel(correction.reason).toLowerCase()}.
+        </Callout>
+      ) : null}
 
-        <div className="flex flex-wrap gap-2.5">
-          <Button variant="outline" onClick={onPrint}>
-            <Printer className="h-5 w-5" />
-            Print
-          </Button>
-          {canEdit && (
-            <Button variant="outline" onClick={onEdit} disabled={busy}>
-              <Pencil className="h-5 w-5" />
-              Change this order
-            </Button>
-          )}
-          {!isDone && order.status !== ORDER_STATUS.CANCELLED && (
-            <Button variant="green" onClick={onMarkDone} disabled={busy}>
-              <CircleCheck className="h-5 w-5" />
-              {busy ? "Working…" : "Mark as done"}
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          {/* ---- where it stands ---- */}
-          <Card className="p-5.5">
-            <div className="flex flex-wrap items-baseline justify-between gap-3 pb-5">
-              <div>
-                <Mono className="text-[15px]">#{order.id}</Mono>
-                <h2 className="text-[23px] font-extrabold tracking-[-0.02em] text-ink">
-                  {order.customerName}
-                </h2>
-              </div>
-              <StatusPill
-                label={orderLabel(order.status)}
-                tone={orderTone(order.status)}
-                size="sm"
-              />
-            </div>
-
-            {progress.cancelled ? (
-              <Callout tone="red" icon={<CircleX />} title="This order was cancelled.">
-                Nothing on it is being made and no stock is set aside for it. It is kept so
-                the record of what was asked for is not lost.
-              </Callout>
-            ) : (
-              <>
-                {/* Horizontal on a desktop, stacked and compact below — a
-                    four-stage tracker with labels under the circles cannot fit
-                    an 834px column without them colliding. */}
-                <div className="hidden lg:block">
-                  <StageTracker stages={progress.stages} current={progress.current} />
-                </div>
-                <div className="lg:hidden">
-                  <StageTracker stages={progress.stages} current={progress.current} compact />
-                </div>
-              </>
-            )}
-          </Card>
-
-          {/* ---- what is still owed ---- */}
-          {partial && (
-            <Callout
-              tone="amber"
-              icon={<PackageOpen />}
-              title="Some of this order has not gone out yet"
-              action={
-                followUp &&
-                onOpenDelivery && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onOpenDelivery(followUp.id)}
-                  >
-                    <Truck className="h-4.5 w-4.5" />
-                    Open the second delivery
-                  </Button>
-                )
-              }
-            >
-              {owed.map((line) => (
-                <span key={line.index} className="block">
-                  <strong className="font-bold text-ink">
-                    {outstandingOf(line)} × {line.name}
-                  </strong>{" "}
-                  still to go.
-                </span>
-              ))}
-              <span className="block pt-2">
-                The rest was delivered and has come off the shelf. What is listed here is
-                still set aside for {order.customerName} and is not sellable to anybody
-                else.
-              </span>
-            </Callout>
-          )}
-
-          {/* ---- the price was changed after it was sent ---- */}
-          {correction && (
-            <Callout
-              tone="cobalt"
-              icon={<Info />}
-              title={`Price changed on ${formatShortDate(correction.changedAt)} by ${correction.changedBy || "somebody"}`}
-            >
-              It went from{" "}
-              <strong className="font-bold text-ink">{formatPeso(correction.oldTotal)}</strong>{" "}
-              to{" "}
-              <strong className="font-bold text-ink">{formatPeso(correction.newTotal)}</strong>.
-              Reason: {priceReasonLabel(correction.reason).toLowerCase()}.
-            </Callout>
-          )}
-
-          {/* ---- what is on it ---- */}
-          <Card>
-            <CardHeader>
-              <CardTitle>What is on this order</CardTitle>
-            </CardHeader>
-
+      <div className="flex flex-col items-start gap-4 lg:flex-row">
+        <div className="flex w-full min-w-0 flex-1 flex-col gap-4">
+          <Panel id="od-items" title="Items">
             {items.length === 0 ? (
-              <EmptySlot className="py-10 text-[16px]">
-                Nothing has been added to this order yet.
-              </EmptySlot>
+              <p className="m-0 px-4 py-6 text-13 text-muted-fg">Nothing has been added to this order yet.</p>
             ) : (
-              <>
-                {/* ≥834px: the table. Below it the same lines as stacked rows,
-                    because nothing here scrolls sideways on a phone and four
-                    columns at 390px pushed the line total off the card. */}
-                <div className="hidden tab:block">
-                  <Table minWidth={560}>
-                    <TableCaption>The things on this order and what they cost</TableCaption>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead>Item</TableHead>
-                        <TableHead className="w-24 text-right">How many</TableHead>
-                        <TableHead className="w-32 text-right">Each</TableHead>
-                        <TableHead className="w-36 text-right">Line total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item, index) => (
-                        <TableRow key={`${item.name}-${index}`}>
-                          <TableCell>
-                            <p className="text-[16.5px] font-bold">{item.name}</p>
-                            {/* A cut-to-size or custom line is priced by hand, so
-                                the note explaining it is the only record of why
-                                the number is what it is. */}
-                            {(item.notes || item.description || item.reason) && (
-                              <p className="pt-0.5 text-[16px] text-muted">
-                                {item.notes || item.description || item.reason}
-                              </p>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right text-[16px] tabular-nums">
-                            {item.quantity}
-                          </TableCell>
-                          <TableCell className="text-right text-[16px] tabular-nums">
-                            {formatPeso(item.unitPrice)}
-                          </TableCell>
-                          <TableCell className="text-right text-[16.5px] font-bold tabular-nums">
-                            {formatPeso(item.lineTotal)}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                <ul className="divide-y divide-hair tab:hidden">
+              <Table minWidth={520} aria-label="Order items">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead className="w-20 text-right">Qty</TableHead>
+                    <TableHead className="w-28 text-right">Price</TableHead>
+                    <TableHead className="w-32 text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {items.map((item, index) => (
-                    <li key={`${item.name}-${index}`} className="px-5.5 py-4">
-                      <p className="text-[16.5px] font-bold">{item.name}</p>
-                      {(item.notes || item.description || item.reason) && (
-                        <p className="pt-0.5 text-[16px] text-muted">
-                          {item.notes || item.description || item.reason}
-                        </p>
-                      )}
-                      <div className="flex items-baseline justify-between gap-4 pt-2">
-                        <span className="text-[16px] tabular-nums text-muted">
-                          {item.quantity} × {formatPeso(item.unitPrice)}
-                        </span>
-                        <span className="text-[16.5px] font-bold tabular-nums">
-                          {formatPeso(item.lineTotal)}
-                        </span>
-                      </div>
+                    <TableRow key={`${item.name}-${index}`} className="h-auto">
+                      <TableCell className="whitespace-normal py-2">
+                        <span className="font-medium">{item.name}</span>
+                        {item.notes || item.description || item.reason ? (
+                          <span className="block text-xs text-muted-fg">{item.notes || item.description || item.reason}</span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-right">{item.quantity}</TableCell>
+                      <TableCell className="text-right text-fg-2">{formatPeso(item.unitPrice)}</TableCell>
+                      <TableCell className="text-right font-medium">{formatPeso(item.lineTotal)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            <div className="border-t border-border">
+              <Totals order={order} totals={totals} />
+            </div>
+          </Panel>
+
+          <Panel
+            id="od-del"
+            title="Delivery"
+            action={delivery && onOpenDelivery ? <TextLink onClick={() => onOpenDelivery(delivery.id)}>Open delivery</TextLink> : null}
+          >
+            {delivery ? (
+              <>
+                <ol aria-label="Delivery stage" className="m-0 grid list-none grid-cols-5 gap-1.5 border-b border-row-divider px-4 py-3.5 text-xs">
+                  {DELIVERY_STAGES.map((stage, index) => (
+                    <li
+                      key={stage.value}
+                      aria-current={index === stageIndex ? "step" : undefined}
+                      className={cn("flex flex-col gap-1.5", index > stageIndex && "text-muted-fg", index === stageIndex && "font-semibold")}
+                    >
+                      <span className={cn("h-1 rounded-sm", index <= stageIndex ? "bg-primary" : "bg-muted-strong")} />
+                      {STAGE_LOOK[stage.value]?.label ?? stage.label}
                     </li>
                   ))}
-                </ul>
-
-                {/* The footer band, and the one number on the screen set at
-                    28px: what the customer actually pays. */}
-                <div className="bg-paper-2 px-5.5 py-4.5">
-                  <dl className="ml-auto flex max-w-[320px] flex-col gap-2.5">
-                    <div className="flex items-baseline justify-between gap-6">
-                      <dt className="text-[16px] text-muted">
-                        Items total
-                      </dt>
-                      <dd className="text-[16.5px] font-bold tabular-nums">
-                        {formatPeso(totals.items)}
-                      </dd>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-6">
-                      <dt className="text-[16px] text-muted">Delivery</dt>
-                      <dd className="text-[16.5px] font-bold tabular-nums">
-                        {totals.delivery > 0 ? formatPeso(totals.delivery) : "Free"}
-                      </dd>
-                    </div>
-                    {totals.discount > 0 && (
-                      <div className="flex items-baseline justify-between gap-6">
-                        <dt className="text-[16px] text-muted">
-                          {order.promotion?.label || "Loyalty reward"}
-                          {order.promotion?.percent ? ` (${order.promotion.percent}%)` : ""}
-                        </dt>
-                        <dd className="text-[16.5px] font-bold tabular-nums text-green dark:text-dk-green">
-                          −{formatPeso(totals.discount)}
-                        </dd>
-                      </div>
-                    )}
-                    <div
-                      className="h-px bg-rule"
-                      aria-hidden="true"
-                    />
-                    <div className="flex items-baseline justify-between gap-6">
-                      <dt className="text-[16.5px] font-extrabold text-ink">
-                        Total to pay
-                      </dt>
-                      <dd className="text-[28px] font-extrabold tracking-[-0.02em] tabular-nums text-ink">
-                        {formatPeso(totals.total)}
-                      </dd>
-                    </div>
-
-                    {/* Only once money has actually gone back. An order with no
-                        refund should not carry a row of zeroes explaining a
-                        thing that never happened. "Total to pay" keeps its 28px
-                        as the one number on the screen set that size, and what
-                        they are left owing sits under it as the correction. */}
-                    {totals.refunded > 0 && (
-                      <>
-                        <div className="flex items-baseline justify-between gap-6">
-                          <dt className="text-[16px] text-muted">Given back</dt>
-                          <dd className="text-[16.5px] font-bold tabular-nums text-red-text">
-                            −{formatPeso(totals.refunded)}
-                          </dd>
-                        </div>
-                        <div className="flex items-baseline justify-between gap-6">
-                          <dt className="text-[16.5px] font-extrabold text-ink">
-                            What they still owe
-                          </dt>
-                          <dd className="text-[19px] font-extrabold tabular-nums text-ink">
-                            {formatPeso(totals.net)}
-                          </dd>
-                        </div>
-                      </>
-                    )}
-                  </dl>
+                </ol>
+                <div className="grid gap-3 px-4 py-3 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-13 font-medium text-muted-fg">Deliver on</span>
+                    <span className={isLate(delivery) ? "text-danger-fg" : undefined}>
+                      {delivery.dueOn ? `${formatShortDate(delivery.dueOn)}${isLate(delivery) ? " · late" : ""}` : "No date promised"}
+                    </span>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-13 font-medium text-muted-fg">Address</span>
+                    <span>{delivery.location || "No address"}</span>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <span className="text-13 font-medium text-muted-fg">Driver</span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className={delivery.driver ? undefined : "text-muted-fg"}>{delivery.driver || "Nobody yet"}</span>
+                      {onAssignDriver && ![DELIVERY_STAGE.ARRIVED].includes(delivery.status) ? (
+                        <TextLink onClick={onAssignDriver}>{delivery.driver ? "Change" : "Assign"}</TextLink>
+                      ) : null}
+                    </span>
+                  </div>
                 </div>
               </>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-13 text-muted-fg">
+                No delivery on this order.
+                {onAssignDriver ? <TextLink onClick={onAssignDriver}>Assign a driver</TextLink> : null}
+              </div>
             )}
-          </Card>
+          </Panel>
 
-          {/* ---- what came back ---- */}
-          {returns.length > 0 && (
-            <Card>
-              <CardHeader>
-                <IconChip icon={<Banknote />} tone="red" size="sm" />
-                <CardTitle>Returns</CardTitle>
-              </CardHeader>
-              <ul>
+          <Panel
+            id="od-pay"
+            title="Payments"
+            action={onRecordPayment && !isCancelled && owedAmount > 0 ? (
+              <Button variant="outline" size="sm" disabled={busy} onClick={onRecordPayment}>Record payment</Button>
+            ) : null}
+          >
+            <OrderPayments
+              orderId={order.id}
+              netTotal={orderNetTotal(order)}
+              paid={paid}
+              owed={owedAmount}
+              cancelled={isCancelled}
+              termDays={order.paymentTermDays}
+              dueOn={dueDateOf(order)}
+              loadPayments={loadPayments}
+              version={paymentsVersion}
+              onRemove={onRemovePayment}
+            />
+            {returns.length === 0 ? null : (
+              <ul className="m-0 list-none border-t border-border p-0" aria-label="Money given back">
                 {returns.map((entry, index) => (
-                  <li
-                    key={entry.id ?? index}
-                    className="border-b border-hair px-5.5 py-4 last:border-b-0"
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-3">
-                      <p className="text-[16.5px] font-bold text-ink">
+                  <li key={entry.id ?? index} className="flex flex-col gap-0.5 border-b border-row-divider px-4 py-2.5 text-13 last:border-b-0">
+                    <span className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium">
                         {entry.resolution === "refund"
                           ? `${formatPeso(entry.amount)} given back · ${refundMethodLabel(entry.method)}`
                           : `Replaced: ${entry.replacementQuantity} × ${entry.replacementName} sent out`}
-                      </p>
-                      <p className="text-[16px] text-muted">
-                        {formatShortDate(entry.at)}
-                        {entry.handledBy ? ` · ${entry.handledBy}` : ""}
-                      </p>
-                    </div>
-                    <p className="pt-1 text-[16px] leading-[1.5] text-ink-2">
-                      {entry.resolution === "refund"
-                        ? refundReasonLabel(entry.reason)
-                        : replacementReasonLabel(entry.reason)}
+                      </span>
+                      <span className="text-muted-fg">{formatShortDate(entry.at)}{entry.handledBy ? ` · ${entry.handledBy}` : ""}</span>
+                    </span>
+                    <span className="text-fg-2">
+                      {entry.resolution === "refund" ? refundReasonLabel(entry.reason) : replacementReasonLabel(entry.reason)}
                       {entry.note ? ` — ${entry.note}` : ""}
-                    </p>
-                    <ul className="pt-1.5">
-                      {entry.resolution === "refund"
-                        ? (entry.restockedItems || []).map((line, lineIndex) => (
-                            <li key={lineIndex} className="text-[16px] text-muted">
-                              {line.quantity} × {line.name} — {dispositionLabel(line.disposition).toLowerCase()}
-                            </li>
-                          ))
-                        : (
-                            <li className="text-[16px] text-muted">
-                              {entry.quantity} × {entry.name} came back — {dispositionLabel(entry.disposition).toLowerCase()}
-                            </li>
-                          )}
-                    </ul>
+                    </span>
+                    {(entry.resolution === "refund" ? entry.restockedItems || [] : [entry]).map((line, lineIndex) => (
+                      <span key={lineIndex} className="text-xs text-muted-fg">
+                        {line.quantity} × {line.name} {entry.resolution === "refund" ? "" : "came back "}— {dispositionLabel(line.disposition).toLowerCase()}
+                      </span>
+                    ))}
                   </li>
                 ))}
               </ul>
-            </Card>
-          )}
-
-          {/* ---- the only place money moves on an order ---- */}
-          {canHandleMoney && !isCancelled && (
-            <DangerBlock
-              title="Money on this order"
-              action={
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="danger" size="lg" disabled={busy} onClick={onRefund}>
-                    <Banknote className="h-5 w-5" />
-                    Give money back
-                  </Button>
-                  {delivered && onReplace && (
-                    <Button variant="outline" size="lg" disabled={busy} onClick={onReplace}>
-                      <Repeat className="h-5 w-5" />
-                      Replace goods
-                    </Button>
-                  )}
-                  <Button variant="outline" size="lg" disabled={busy} onClick={onAdjustPrice}>
-                    <Tag className="h-5 w-5" />
-                    Fix the price
-                  </Button>
-                </div>
-              }
-            >
-              Giving money back records where it went and what happened to the goods —
-              whether they went back on the shelf or were thrown away. Anything thrown
-              away is counted as waste and is not sold again. Replacing goods sends new
-              ones out instead and moves no money.
-              <br />
-              <br />
-              Fixing the price never overwrites what {order.customerName} was told. The old
-              figure is kept beside the new one, with your name and the reason, and it
-              shows at the top of this screen from then on.
-            </DangerBlock>
-          )}
-
-          {/* ---- calling it off, which is NOT a refund ---- */}
-          {canHandleMoney && !isCancelled && !isDone && (
-            <DangerBlock
-              title="Call this order off"
-              action={
-                <Button
-                  variant="danger"
-                  size="lg"
-                  disabled={busy}
-                  onClick={() => setCallingOff(true)}
-                >
-                  <CircleX className="h-5 w-5" />
-                  Call off order #{order.id}
-                </Button>
-              }
-            >
-              The order reads Cancelled and anything it was holding goes back on the shelf.
-              Nothing is written to the money records, because no money moved — this is not
-              a refund, and using one to cancel an order is what put money that never
-              changed hands into the refund history.
-              {!canEdit && editBlocker && (
-                <>
-                  <br />
-                  <br />
-                  {editBlocker}
-                </>
-              )}
-            </DangerBlock>
-          )}
-
-          {/* ---- undoing "done", which is a correction and not a refund ---- */}
-          {canHandleMoney && isDone && (
-            <Callout
-              tone="amber"
-              icon={<Clock />}
-              title="Marked as done by mistake?"
-              action={
-                <Button
-                  variant="outline"
-                  size="lg"
-                  disabled={busy}
-                  onClick={() => setReopening(true)}
-                >
-                  <PackageOpen className="h-5 w-5" />
-                  Put it back to waiting
-                </Button>
-              }
-            >
-              Everything this order took off the shelf goes back on it, and the order
-              returns to Waiting so it can be finished again properly. What stays is the
-              record: the activity log keeps who marked it done and when, because this is
-              a correction rather than an erasure.
-              {order.stockCommittedAt == null && (
-                <>
-                  <br />
-                  <br />
-                  Nothing was taken off the shelf for this one, so only the status changes.
-                </>
-              )}
-            </Callout>
-          )}
-        </div>
-
-        {/* ---- who it is for ---- */}
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Who it is for</CardTitle>
-            </CardHeader>
-
-            <div className="flex items-center gap-3.5 px-5.5 py-4.5">
-              <Avatar name={order.customerName} tone="navy" size="lg" />
-              <div className="min-w-0">
-                <p className="truncate text-[17px] font-extrabold text-ink">
-                  {order.customerName}
-                </p>
-                <p className="pt-0.5 text-[16px] text-muted">
-                  Ordered {formatShortDate(order.createdAt)}
-                </p>
-              </div>
-            </div>
-
-            {!canViewCustomers ? (
-              <EmptySlot className="border-t border-hair py-6">
-                Customer contact details are kept to the office.
-              </EmptySlot>
-            ) : customer ? (
-              <FactTable
-                className="border-t border-hair"
-                rows={[
-                  {
-                    label: "Phone",
-                    value: customer.contactNumber || null,
-                    icon: <Phone className="h-4.5 w-4.5" />,
-                  },
-                  {
-                    label: "Where they are",
-                    value: customer.address || null,
-                    icon: <MapPin className="h-4.5 w-4.5" />,
-                  },
-                ]}
-              />
-            ) : (
-              <EmptySlot className="border-t border-hair py-6">
-                This order was written against a name rather than a saved customer, so there
-                is no phone number on it.
-              </EmptySlot>
             )}
-          </Card>
-
-          {waiting !== null && waiting >= 1 && (
-            <Callout
-              tone="amber"
-              icon={<Clock />}
-              title={`Waiting ${waiting} ${waiting === 1 ? "day" : "days"}`}
-              action={
-                onAssignDriver && (
-                  <Button variant="outline" size="sm" onClick={onAssignDriver}>
-                    <UserRound className="h-4.5 w-4.5" />
-                    {delivery?.driver ? "Change who takes it" : "Assign someone"}
+            {canHandleMoney && !isCancelled ? (
+              <div className="flex flex-wrap gap-2 border-t border-border px-4 py-3">
+                <Button variant="outline" size="sm" disabled={busy} onClick={onRefund}>
+                  <Money aria-hidden="true" />
+                  Give money back
+                </Button>
+                {delivered && onReplace ? (
+                  <Button variant="outline" size="sm" disabled={busy} onClick={onReplace}>
+                    <Repeat aria-hidden="true" />
+                    Replace goods
                   </Button>
-                )
-              }
-            >
-              {delivery?.driver ? (
-                <>
-                  <strong className="font-bold text-ink">{delivery.driver}</strong> is taking this
-                  one out. It has been on the list since {formatShortDate(order.createdAt)}.
-                </>
-              ) : (
-                <>Nobody has been given this one yet. It has been sitting since{" "}
-                {formatShortDate(order.createdAt)}.</>
-              )}
-            </Callout>
-          )}
+                ) : null}
+                <Button variant="outline" size="sm" disabled={busy} onClick={onAdjustPrice}>
+                  <Tag aria-hidden="true" />
+                  Fix the price
+                </Button>
+              </div>
+            ) : null}
+          </Panel>
 
-          {delivery && (
-            <Card>
-              <CardHeader>
-                <IconChip icon={<Truck />} tone="amber" size="sm" />
-                <CardTitle>Going out</CardTitle>
-              </CardHeader>
-              <FactTable
-                rows={[
-                  { label: "Where to", value: delivery.location || null },
-                  { label: "Who is taking it", value: delivery.driver || null },
-                  {
-                    label: "Delivery charge",
-                    value: delivery.amount ? formatPeso(delivery.amount) : "Free",
-                  },
-                ]}
-              />
-            </Card>
-          )}
+          {canHandleMoney && isDone ? (
+            <DangerBlock
+              title="Marked as done by mistake?"
+              action={<Button variant="outline" disabled={busy} onClick={() => setReopening(true)}>Put it back to waiting</Button>}
+            >
+              Everything this order took off the shelf goes back on it, and the order returns to Waiting. The activity log keeps who marked it done and when.
+              {order.stockCommittedAt == null ? " Nothing was taken off the shelf for this one, so only the status changes." : ""}
+            </DangerBlock>
+          ) : null}
+          {canHandleMoney && !isCancelled && !isDone && !canEdit && editBlocker ? (
+            <p className="m-0 text-13 text-muted-fg">{editBlocker}</p>
+          ) : null}
         </div>
+
+        <aside className="flex w-full flex-col gap-4 lg:w-[320px] lg:shrink-0">
+          <Panel id="od-cust" title="Customer">
+            <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 px-4 py-3 text-13">
+              <dt className="text-muted-fg">Name</dt>
+              <dd className="m-0">{customer && onOpenCustomer ? <TextLink className="text-13" onClick={() => onOpenCustomer(customer.id)}>{order.customerName}</TextLink> : order.customerName}</dd>
+              {!canViewCustomers ? null : customer ? (
+                <>
+                  <dt className="text-muted-fg">Phone</dt>
+                  <dd className="m-0">{customer.contactNumber ? <a href={`tel:${String(customer.contactNumber).replace(/[^\d+]/g, "")}`}>{customer.contactNumber}</a> : "—"}</dd>
+                  <dt className="text-muted-fg">Address</dt>
+                  <dd className="m-0">{customer.address || "—"}</dd>
+                </>
+              ) : null}
+            </dl>
+            {!canViewCustomers ? (
+              <p className="m-0 border-t border-row-divider px-4 py-2.5 text-13 text-muted-fg">Customer contact details are kept to the office.</p>
+            ) : !customer ? (
+              <p className="m-0 border-t border-row-divider px-4 py-2.5 text-13 text-muted-fg">Written against a name rather than a saved customer, so there is no phone number on it.</p>
+            ) : null}
+            {waiting !== null && waiting >= 1 && !isDone && !isCancelled ? (
+              <p className="m-0 border-t border-row-divider px-4 py-2.5 text-13 text-warning-fg">
+                Waiting {waiting} {waiting === 1 ? "day" : "days"}{delivery?.driver ? ` · ${delivery.driver} is taking it` : " · nobody is taking it yet"}
+              </p>
+            ) : null}
+          </Panel>
+
+          <Panel id="od-hist" title="History">
+            <ol className="m-0 list-none px-4 py-3 text-13">
+              {history.map((entry, index) => (
+                <li key={index} className="flex gap-3 py-1">
+                  <span className="w-24 shrink-0 whitespace-nowrap text-muted-fg">{entry.at ? (new Date(entry.at).toDateString() === new Date().toDateString() ? timeLabel(entry.at) : formatShortDate(entry.at)) : "—"}</span>
+                  <span>{entry.what}</span>
+                </li>
+              ))}
+            </ol>
+          </Panel>
+          {delivery?.amount ? (
+            <p className="m-0 flex items-center gap-2 text-13 text-muted-fg"><Truck className="size-4" aria-hidden="true" />Delivery charge {formatPeso(delivery.amount)}</p>
+          ) : null}
+        </aside>
       </div>
 
-      {/* Green, not red: this puts goods BACK and undoes nothing anyone was
-          told — the design system reserves the red confirm for a loss. */}
       <ConfirmDialog
         open={reopening}
         onOpenChange={(next) => !next && setReopening(false)}
@@ -665,11 +444,8 @@ export default function OrderDetailPage({
         intent="forward"
         consequences={
           <>
-            {order.stockCommittedAt == null
-              ? "Nothing was taken off the shelf for this order, so only its status changes."
-              : "Everything this order took off the shelf goes back on it."}{" "}
-            The order returns to Waiting. The activity log keeps the record of it having
-            been marked done — this is a correction, not an erasure.
+            {order.stockCommittedAt == null ? "Nothing was taken off the shelf for this order, so only its status changes." : "Everything this order took off the shelf goes back on it."}{" "}
+            The order returns to Waiting. The activity log keeps the record of it having been marked done.
           </>
         }
         confirmLabel="Yes, put it back"
@@ -680,29 +456,24 @@ export default function OrderDetailPage({
           setReopening(false);
         }}
       />
-
       <ConfirmDialog
         open={callingOff}
         onOpenChange={(next) => !next && setCallingOff(false)}
-        title={`Call off order #${order.id} for ${order.customerName}?`}
+        title={`Cancel order #${order.id} for ${order.customerName}?`}
         consequences={
           <>
-            The order reads Cancelled from now on and anything it was holding goes back on
-            the shelf. It stays in the orders list and in the activity log, so there is
-            still a record that it was written and called off. No money is recorded as
-            moving, because none did.
-            {delivery && (
+            The order reads Cancelled from now on and anything it was holding goes back on the shelf. It stays in the orders list and the activity log. No money is recorded as moving, because none did.
+            {delivery ? (
               <>
-                <br />
-                <br />
+                {" "}
                 {[DELIVERY_STAGE.ON_THE_WAY, DELIVERY_STAGE.ARRIVED].includes(delivery.status)
                   ? "Its delivery has already gone out, so that record stays on the board."
-                  : "The delivery waiting to carry it comes off the deliveries board, so nobody sets out with goods that are not going."}
+                  : "The delivery waiting to carry it comes off the deliveries board."}
               </>
-            )}
+            ) : null}
           </>
         }
-        confirmLabel="Yes, call it off"
+        confirmLabel="Yes, cancel it"
         keepLabel="Keep the order"
         busy={busy}
         onConfirm={async () => {
@@ -710,6 +481,6 @@ export default function OrderDetailPage({
           setCallingOff(false);
         }}
       />
-    </div>
+    </Page>
   );
 }

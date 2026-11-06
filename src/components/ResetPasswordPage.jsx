@@ -1,10 +1,9 @@
 import { useState } from "react";
 
-import { CircleAlert, CircleCheck, KeyRound, Lock } from "./icons";
-import AuthLayout, { StepBar } from "./layout/AuthLayout";
+import { CheckCircle, WarningCircle } from "./icons";
+import AuthLayout, { AuthCard } from "./layout/AuthLayout";
 import AuthField from "./shared/AuthField";
 import Callout from "./shared/Callout";
-import IconChip from "./shared/Chip";
 import { RequirementList } from "./shared/forms";
 import { Button } from "@/components/ui/button";
 import { supabase } from "../lib/supabaseClient";
@@ -64,81 +63,55 @@ export default function ResetPasswordPage({ onReturnToLogin }) {
 
   if (succeeded) {
     return (
-      <AuthLayout width={470}>
-        <StepBar step={3} />
-
-        <div className="pt-6">
-          <IconChip icon={<CircleCheck />} tone="green" size="xl" />
-          <h1 className="pt-5 text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-            Your new password is saved
-          </h1>
-          <p className="pt-2 text-[16px] leading-[1.55] text-muted">
-            Use it the next time you sign in. Your old password no longer works, and
-            anywhere else you were signed in has been signed out.
-          </p>
-        </div>
-
-        <Button variant="cobalt" size="xl" block className="mt-7" onClick={onReturnToLogin}>
-          Sign in with the new password
-        </Button>
+      <AuthLayout>
+        <AuthCard width={400} step={3} title="All set" description="Sign in with your new password.">
+          <Callout tone="green" icon={<CheckCircle />}>
+            <span className="font-medium text-success-fg">Your password is changed. Other devices were signed out.</span>
+          </Callout>
+          <Button block onClick={onReturnToLogin}>Sign in</Button>
+        </AuthCard>
       </AuthLayout>
     );
   }
 
   return (
-    <AuthLayout width={470}>
-      <StepBar step={3} />
-
-      <div className="pt-6">
-        <h1 className="text-[25px] font-extrabold leading-tight tracking-[-0.02em] text-ink">
-          Choose a new password
-        </h1>
-        <p className="pt-2 text-[16px] leading-[1.55] text-muted">
-          Pick something you will remember. Nobody else can see what you type here.
-        </p>
-      </div>
-
-      {error && (
-        <Callout tone="red" icon={<CircleAlert />} title="Not saved yet." className="mt-5">
-          {error}
-        </Callout>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 pt-6" noValidate>
-        <AuthField
-          label="New password"
-          type="password"
-          icon={<KeyRound />}
-          value={password}
-          onChange={setPassword}
-          placeholder="Your new password"
-          autoComplete="new-password"
-        />
-
-        <RequirementList requirements={requirements} />
-
-        <AuthField
-          label="Type the new password again"
-          type="password"
-          icon={<Lock />}
-          value={confirmPassword}
-          onChange={setConfirmPassword}
-          placeholder="The same password"
-          autoComplete="new-password"
-          invalid={confirmPassword !== "" && confirmPassword !== password}
-          hint="So we know there is no typo."
-        />
-
-        <Button
-          type="submit"
-          variant="cobalt"
-          size="xl"
-          block
-          disabled={isSubmitting || !ready}
-        >
-          {isSubmitting ? "Saving…" : "Save the new password"}
-        </Button>
-      </form>
+    <AuthLayout>
+      <AuthCard
+        width={400}
+        step={3}
+        title="Choose a new password"
+        description="You will use it from now on, on every device."
+        footer={
+          <button type="button" data-slot="text-link" onClick={onReturnToLogin} className="text-13 font-medium text-primary-text hover:text-primary-hover">
+            Back to sign in
+          </button>
+        }
+      >
+        {error ? (
+          <Callout tone="red" icon={<WarningCircle />} title="Not saved yet.">{error}</Callout>
+        ) : null}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+          <AuthField
+            label="New password"
+            type="password"
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+          />
+          <RequirementList requirements={requirements} />
+          <AuthField
+            label="Type it again"
+            type="password"
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            autoComplete="new-password"
+            invalid={confirmPassword !== "" && confirmPassword !== password}
+          />
+          <Button type="submit" block disabled={isSubmitting || !ready}>
+            {isSubmitting ? "Saving…" : "Save new password"}
+          </Button>
+        </form>
+      </AuthCard>
     </AuthLayout>
   );
 }

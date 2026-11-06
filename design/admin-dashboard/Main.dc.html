@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dashboard</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 980px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="dashboard" collapsed="{{collapsed}}" h="980" on-toggle="{{toggleNav}}" hint-size="240px,980px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Overview" page="Dashboard" on-trigger="{{toggleNav}}" on-search="{{openCmd}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<!-- PageHeader -->
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="display: flex; align-items: flex-start; gap: 12px; min-width: 0;">
+<span style="flex: none; width: 36px; height: 36px; box-sizing: border-box; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: var(--fg-2, #3f3f46); box-shadow: 0 1px 2px rgba(0,0,0,0.05);"><svg width="20" height="20" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="72" height="72" rx="8"></rect><rect x="144" y="40" width="72" height="72" rx="8"></rect><rect x="40" y="144" width="72" height="72" rx="8"></rect><rect x="144" y="144" width="72" height="72" rx="8"></rect></svg></span>
+<div style="min-width: 0;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Dashboard</h1>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Good morning, Maria. Here is how the workshop is doing in October.</p>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="40" y="40" width="176" height="176" rx="8"></rect><path d="M176 24v32M80 24v32M40 88h176"></path></svg>Last 30 days<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M208 96l-80 80-80-80"></path></svg></button>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M128 144V32M216 144v64a8 8 0 0 1-8 8H48a8 8 0 0 1-8-8v-64M168 104l-40 40-40-40"></path></svg>Export</button>
+<button type="button" onClick="{{openDialog}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 128h176M128 40v176"></path></svg>New order</button>
+</div>
+</header>
+
+<!-- StatCards -->
+<section aria-label="Key numbers" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Orders this month</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-2, #a1a1aa)"><path d="M72 104h112M72 136h112M32 208V56a8 8 0 0 1 8-8h176a8 8 0 0 1 8 8v152l-32-16-32 16-32-16-32 16-32-16Z"></path></svg></div>
+<div style="font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em;">{{stat.orders}}</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-weight: 500;">+12.4%</span>vs September</div>
+</div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Revenue</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-2, #a1a1aa)"><rect x="16" y="64" width="224" height="128" rx="8"></rect><circle cx="128" cy="128" r="32"></circle><path d="M176 64a48 48 0 0 0 48 48M32 112a48 48 0 0 0 48-48M224 144a48 48 0 0 0-48 48M80 192a48 48 0 0 0-48-48"></path></svg></div>
+<div style="font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em;">₱{{stat.sales}}</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-weight: 500;">+8.1%</span>vs September</div>
+</div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Staff on shift today</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-2, #a1a1aa)"><circle cx="84" cy="108" r="52"></circle><path d="M10.23 200a88 88 0 0 1 147.54 0M172 160a87.93 87.93 0 0 1 73.77 40M152.69 59.7A52 52 0 1 1 172 160"></path></svg></div>
+<div style="font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em;">{{stat.staff}} <span style="font-size: 14px; font-weight: 400; color: var(--muted-fg, #71717a); letter-spacing: 0;">of 24</span></div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-weight: 500;">2 on leave</span>4 off today</div>
+</div>
+<div style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; padding: 16px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 8px;">
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span style="font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a);">Items running low</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-2, #a1a1aa)"><path d="M128 129.09V232M32.7 76.92 128 129.09l95.3-52.17M219.84 182.84l-88 48.18a8 8 0 0 1-7.68 0l-88-48.18a8 8 0 0 1-4.16-7V80.18a8 8 0 0 1 4.16-7l88-48.18a8 8 0 0 1 7.68 0l88 48.18a8 8 0 0 1 4.16 7v95.64a8 8 0 0 1-4.16 7Z"></path></svg></div>
+<div style="font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em;">{{stat.low}}</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);"><span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-weight: 500;">1 out of stock</span>3 more than last week</div>
+</div>
+</section>
+
+<!-- Chart + stock list -->
+<section style="display: flex; flex-wrap: wrap; gap: 16px;">
+<div style="flex: 2 1 520px; min-width: 0; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 0;">
+<div>
+<h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Orders per week</h2>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Last 12 weeks against the 12 before</p>
+</div>
+<div role="group" aria-label="Chart measure" style="display: inline-flex; padding: 2px; gap: 2px; border-radius: 6px; background: var(--muted, #f4f4f5);">
+<button type="button" aria-pressed="true" style="height: 28px; padding: 0 10px; border: 0; border-radius: 4px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.06); font-size: 13px; font-weight: 500; color: var(--foreground, #09090b); cursor: pointer;">Orders</button>
+<button type="button" aria-pressed="false" style="height: 28px; padding: 0 10px; border: 0; border-radius: 4px; background: transparent; font-size: 13px; font-weight: 500; color: var(--muted-fg, #71717a); cursor: pointer;">Revenue</button>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 16px 0; font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--primary, #004E89);"></span>This period · 467 orders</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 8px; height: 8px; border-radius: 2px; background: var(--muted-2, #a1a1aa);"></span>Previous period · 386 orders</span>
+</div>
+<div style="display: flex; gap: 8px; padding: 12px 16px 16px;">
+<div aria-hidden="true" style="flex: none; width: 20px; height: 216px; margin-top: -8px; display: flex; flex-direction: column; justify-content: space-between; text-align: right; font-size: 11px; line-height: 16px; color: var(--muted-fg, #71717a);"><span>60</span><span>40</span><span>20</span><span>0</span></div>
+<div style="flex: 1; min-width: 0;">
+<svg role="img" aria-label="Line chart: weekly orders rose from 28 to 52 over the last 12 weeks, against 24 to 36 in the 12 weeks before." width="100%" height="200" viewBox="0 0 720 200" preserveAspectRatio="none" style="display: block; overflow: visible;">
+<path d="M0 0.5H720M0 66.67H720M0 133.33H720" stroke-width="1" vector-effect="non-scaling-stroke" style="stroke: var(--muted, #f4f4f5)"></path>
+<path d="M0 199.5H720" stroke-width="1" vector-effect="non-scaling-stroke" style="stroke: var(--border-subtle, #e4e4e7)"></path>
+<path d="M0 106.67L65.45 93.33L130.91 100L196.36 80L261.82 86.67L327.27 63.33L392.73 73.33L458.18 53.33L523.64 66.67L589.09 43.33L654.55 50L720 26.67L720 200L0 200Z" fill-opacity="0.06" stroke="none" style="fill: var(--primary, #004E89)"></path>
+<polyline points="0,120 65.45,113.33 130.91,103.33 196.36,110 261.82,96.67 327.27,100 392.73,90 458.18,93.33 523.64,83.33 589.09,86.67 654.55,76.67 720,80" fill="none" stroke-width="1.5" stroke-dasharray="4 4" vector-effect="non-scaling-stroke" style="stroke: var(--muted-2, #a1a1aa)"></polyline>
+<polyline points="0,106.67 65.45,93.33 130.91,100 196.36,80 261.82,86.67 327.27,63.33 392.73,73.33 458.18,53.33 523.64,66.67 589.09,43.33 654.55,50 720,26.67" fill="none" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" style="stroke: var(--primary-text, #004E89)"></polyline>
+</svg>
+<div aria-hidden="true" style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; line-height: 16px; color: var(--muted-fg, #71717a);">
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Aug 10</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Aug 17</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Aug 24</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Aug 31</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Sep 7</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Sep 14</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Sep 21</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Sep 28</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Oct 5</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Oct 12</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Oct 19</span>
+<span style="width: 0; display: flex; justify-content: center; white-space: nowrap;">Oct 26</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px;">
+<div>
+<h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Stock to watch</h2>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">At or below the reorder level</p>
+</div>
+<span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500;">5 of 7</span>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; flex: 1;">
+<li style="display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--row-divider, #f4f4f5);"><div style="flex: 1; min-width: 0;"><div style="font-size: 13px; font-weight: 500;">Glitter, gold, 100 g</div><div style="font-size: 12px; color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">GL-100-GD</div></div><span style="font-size: 13px; color: var(--fg-2, #3f3f46);">0 left</span><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--danger-bd, #fee2e2); background: var(--danger-bg, #fef2f2); color: var(--danger-fg, #b91c1c); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Out of stock</span></li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--row-divider, #f4f4f5);"><div style="flex: 1; min-width: 0;"><div style="font-size: 13px; font-weight: 500;">Styro sheet, 4 × 8 ft</div><div style="font-size: 12px; color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">SS-100-4X8</div></div><span style="font-size: 13px; color: var(--fg-2, #3f3f46);">6 left</span><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Running low</span></li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--row-divider, #f4f4f5);"><div style="flex: 1; min-width: 0;"><div style="font-size: 13px; font-weight: 500;">Styro ball, 6 inch</div><div style="font-size: 12px; color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">SB-060</div></div><span style="font-size: 13px; color: var(--fg-2, #3f3f46);">18 left</span><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Running low</span></li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--row-divider, #f4f4f5);"><div style="flex: 1; min-width: 0;"><div style="font-size: 13px; font-weight: 500;">Foam block, 12 inch</div><div style="font-size: 12px; color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">FB-120</div></div><span style="font-size: 13px; color: var(--fg-2, #3f3f46);">22 left</span><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Running low</span></li>
+<li style="display: flex; align-items: center; gap: 12px; padding: 9px 16px; border-top: 1px solid var(--row-divider, #f4f4f5);"><div style="flex: 1; min-width: 0;"><div style="font-size: 13px; font-weight: 500;">Satin ribbon, red, 1 in</div><div style="font-size: 12px; color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">RB-025-RD</div></div><span style="font-size: 13px; color: var(--fg-2, #3f3f46);">9 rolls</span><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Running low</span></li>
+</ul>
+<div style="padding: 10px 16px; border-top: 1px solid var(--border, #d4d4d8);"><a href="Stock.dc.html" style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; text-decoration: none;">Open inventory<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></a></div>
+</div>
+</section>
+
+<!-- Recent activity table -->
+<section style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px;">
+<div>
+<h2 style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Recent activity</h2>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Today, across every role</p>
+</div>
+<button type="button" style="display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--foreground, #09090b); font-size: 14px; font-weight: 500; cursor: pointer;">View all<svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M96 48l80 80-80 80"></path></svg></button>
+</div>
+<div style="overflow-x: auto; border-top: 1px solid var(--border, #d4d4d8);">
+<table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px; line-height: 18px;">
+<thead>
+<tr style="height: 36px; border-bottom: 1px solid var(--border, #d4d4d8);">
+<th scope="col" style="text-align: left; padding: 0 16px; font-weight: 500; color: var(--muted-fg, #71717a); white-space: nowrap; width: 96px;">Time</th>
+<th scope="col" style="text-align: left; padding: 0 8px; font-weight: 500; color: var(--muted-fg, #71717a); white-space: nowrap;">Staff</th>
+<th scope="col" style="text-align: left; padding: 0 8px; font-weight: 500; color: var(--muted-fg, #71717a); white-space: nowrap;">Action</th>
+<th scope="col" style="text-align: left; padding: 0 8px; font-weight: 500; color: var(--muted-fg, #71717a); white-space: nowrap;">Record</th>
+<th scope="col" style="text-align: left; padding: 0 16px 0 8px; font-weight: 500; color: var(--muted-fg, #71717a); white-space: nowrap; width: 120px;">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr style="height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">10:42 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">AR</span>Ana Reyes</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Created an order</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);"><a href="OrderDetail.dc.html" style="text-decoration: none;">#2048</a> · Bautista Party Supplies</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Pending</span></td>
+</tr>
+<tr style="height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">10:15 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">JD</span>Jun Dela Cruz</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Started a delivery</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);"><a href="DeliveryDetail.dc.html" style="text-decoration: none;">#2041</a> · Rizal Crafts Supply</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--border, #d4d4d8); background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--muted-fg, #71717a);"></span>On the way</span></td>
+</tr>
+<tr style="height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">9:58 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">LG</span>Lito Garcia</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Logged a production run</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);">120 × Styro ball, 6 inch</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Done</span></td>
+</tr>
+<tr style="height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">9:30 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">CM</span>Carla Mendoza</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Received a supplier order</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);">PO-0317 · Foamtech Manila</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--success-bd, #dcfce7); background: var(--success-bg, #f0fdf4); color: var(--success-fg, #15803d); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Done</span></td>
+</tr>
+<tr style="height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">9:02 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">MS</span>Maria Santos</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Invited a new user</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);">Paolo Villanueva · Sales Staff</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--warning-bd, #fef3c7); background: var(--warning-bg, #fffbeb); color: var(--warning-fg, #b45309); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Invite sent</span></td>
+</tr>
+<tr style="height: 36px;">
+<td style="padding: 0 16px; color: var(--muted-fg, #71717a); white-space: nowrap;">8:47 AM</td>
+<td style="padding: 0 8px; white-space: nowrap;"><span style="display: inline-flex; align-items: center; gap: 8px;"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 10px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">AR</span>Ana Reyes</span></td>
+<td style="padding: 0 8px; white-space: nowrap;">Cancelled an order</td>
+<td style="padding: 0 8px; white-space: nowrap; color: var(--fg-2, #3f3f46);">#2039 · Casa Regalo Gifts</td>
+<td style="padding: 0 16px 0 8px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid var(--danger-bd, #fee2e2); background: var(--danger-bg, #fef2f2); color: var(--danger-fg, #b91c1c); font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>Cancelled</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+
+</div>
+</main>
+
+<sc-if value="{{dialog}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDialog}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="NewOrderDialog" on-close="{{closeDialog}}" hint-size="640px,720px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; border-right: 1px solid var(--border, #d4d4d8); background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="dashboard" h="980" hint-size="240px,980px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{cmd}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 40; display: flex; justify-content: center; align-items: flex-start; padding: 96px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close search" onClick="{{closeCmd}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;">
+<dc-import name="CommandMenu" on-close="{{closeCmd}}" hint-size="560px,400px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":980}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    if (!this._counted) {
+      // Stat figures count up once when the dashboard opens.
+      this._counted = true;
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this._countFrom = reduce ? 1 : 0;
+      if (!reduce) {
+        const start = performance.now();
+        const step = (now) => {
+          const t = Math.min(1, (now - start) / 600);
+          this.setState({ k: 1 - Math.pow(1 - t, 3) });
+          if (t < 1) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+    }
+    const k = s.k !== undefined ? s.k : this._countFrom;
+    const peso = (v) => v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return {
+      stat: {
+        orders: String(Math.round(148 * k)),
+        sales: peso(Math.round(31245000 * k) / 100),
+        staff: String(Math.round(18 * k)),
+        low: String(Math.round(7 * k))
+      },
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      cmd: !!s.cmd,
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false }),
+      dialog: !!s.dialog,
+      openDialog: () => this.setState({ dialog: true }),
+      closeDialog: () => this.setState({ dialog: false }),
+      openCmd: () => this.setState({ cmd: true }),
+      closeCmd: () => this.setState({ cmd: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

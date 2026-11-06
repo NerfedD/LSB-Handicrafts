@@ -14,10 +14,11 @@ for (const [path, title] of [['products', 'No products yet'], ['orders', 'No ord
 test('UI-02: product search distinguishes no matches and clears back to the populated list', async ({ page, baseURL }) => {
   await stubSupabase(page); await signIn(page, baseURL);
   await page.goto(`${baseURL}/products`);
-  await page.getByPlaceholder('Search by name or code').fill('QA-NO-MATCH-' + (process.env.QA_RUN_ID || 'local'));
-  await expect(page.getByRole('heading', { name: 'Nothing matched that', exact: true })).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Search products' }).fill('QA-NO-MATCH-' + (process.env.QA_RUN_ID || 'local'));
+  // The design's empty state for a search: "No products match these filters", with "Clear filters".
+  await expect(page.getByRole('heading', { name: 'No products match these filters', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'No products yet', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Clear the search box' }).filter({ hasText: 'Clear the search box' }).click();
+  await page.getByRole('main').getByRole('button', { name: 'Clear filters' }).click();
   await expect(page.getByRole('row', { name: /Styro Ball 4 inch/ })).toBeVisible();
 });
 
@@ -50,7 +51,8 @@ test('UI-05: slow customer read, failed read and retry are different from an emp
     await route.fallback();
   });
   await page.goto(`${baseURL}/customers`);
-  await expect(page.getByText('Fetching your customers…', { exact: true })).toBeVisible();
+  // The design's loading state is the table's shape in muted bars, named for screen readers.
+  await expect(page.getByText('Loading customers…', { exact: true })).toBeAttached();
   await expect(page.getByRole('heading', { name: 'No customers yet' })).toHaveCount(0);
   release();
   await expect(page.getByRole('heading', { name: 'We could not reach the system', exact: true })).toBeVisible();

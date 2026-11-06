@@ -1,7 +1,7 @@
 /**
  * What makes a password acceptable, in one place.
  *
- * THREE RULES, NOT SEVEN. The change-password screen shows these as a live
+ * THREE RULES, NOT SEVEN. Your profile's Password section shows these as a live
  * checklist that ticks as somebody types, and a checklist only works if it is
  * short enough to hold in your head while you are typing into the box above
  * it. Three is what the handoff specifies and three is what a person can

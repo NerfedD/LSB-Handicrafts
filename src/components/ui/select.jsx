@@ -1,138 +1,108 @@
-import { forwardRef } from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
+import { Select as SelectPrimitive } from "@base-ui/react/select";
 
-import { Check, ChevronDown, ChevronUp } from "@/components/icons";
+import { CaretUpDown, Check } from "@/components/icons";
 import { cn } from "@/lib/utils";
 
 /**
- * Select.
+ * shadcn/ui Select on Base UI. The trigger is drawn like a field (32px, 6px
+ * radius, --border, --card, shadow-xs) with a CaretUpDown on the right; the
+ * list drops 4px from it (lsb-drop) as a 6px-radius --card popover.
  *
- * Matches Input's geometry — 54px, 11px radius, 1.5px border, 16px text — so a
- * form reads as one column of same-sized controls rather than a stack of
- * near-misses.
- *
- * See shared/FilterSelect.jsx for the OTHER dropdown in this system: the 52px
- * filter control that prints its own label ("Kind: All"). That one is not a
- * form field and deliberately looks different, because a filter that looks
- * like a field invites people to type in it.
+ * Pass `items` ({ value: label } or [{ value, label }]) to Select when the
+ * label differs from the value, so the trigger shows the label.
  */
-const Select = SelectPrimitive.Root;
-const SelectGroup = SelectPrimitive.Group;
-const SelectValue = SelectPrimitive.Value;
+function Select(props) {
+  return <SelectPrimitive.Root data-slot="select" {...props} />;
+}
 
-const SelectTrigger = forwardRef(function SelectTrigger({ className, children, ...props }, ref) {
+function SelectGroup(props) {
+  return <SelectPrimitive.Group data-slot="select-group" {...props} />;
+}
+
+function SelectValue({ className, ...props }) {
+  return (
+    <SelectPrimitive.Value
+      data-slot="select-value"
+      className={cn("min-w-0 flex-1 truncate text-left data-[placeholder]:text-muted-fg", className)}
+      {...props}
+    />
+  );
+}
+
+function SelectTrigger({ className, children, size = "default", ...props }) {
   return (
     <SelectPrimitive.Trigger
-      ref={ref}
+      data-slot="select-trigger"
       className={cn(
-        "flex h-13.5 w-full items-center justify-between gap-3 rounded-field border-[1.5px] border-field bg-surface px-4",
-        "text-[16px] font-medium text-ink transition duration-150",
-        "hover:border-chip2 focus:border-cobalt focus:outline-none focus:shadow-[0_0_0_4px_#1462c826]",
-        "disabled:cursor-not-allowed disabled:bg-tint-neutral disabled:text-muted",
-        "data-[placeholder]:text-muted-2 [&>span]:truncate",
+        "lsb-field flex items-center justify-between gap-1.5 whitespace-nowrap rounded-md border border-border bg-card pl-2.5 pr-2 text-sm text-foreground shadow-xs",
+        "disabled:cursor-not-allowed disabled:opacity-50 data-[disabled]:opacity-50",
+        size === "sm" ? "h-7 text-13" : "h-8",
         className
       )}
       {...props}
     >
       {children}
-      <SelectPrimitive.Icon asChild>
-        <ChevronDown className="h-4.5 w-4.5 shrink-0 text-muted" />
+      <SelectPrimitive.Icon className="flex text-muted-fg">
+        <CaretUpDown className="size-4" aria-hidden="true" />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
-});
+}
 
-const SelectContent = forwardRef(function SelectContent(
-  { className, children, position = "popper", ...props },
-  ref
-) {
+function SelectContent({ className, children, align = "start", sideOffset = 4, alignItemWithTrigger = false, ...props }) {
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Content
-        ref={ref}
-        position={position}
-        className={cn(
-          "relative z-50 max-h-96 min-w-[9rem] overflow-hidden rounded-field border border-card bg-surface shadow-modal",
-          "duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out",
-          "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          position === "popper" &&
-            "data-[side=bottom]:translate-y-1.5 data-[side=top]:-translate-y-1.5",
-          className
-        )}
-        {...props}
+      <SelectPrimitive.Positioner
+        className="z-50 outline-none"
+        align={align}
+        sideOffset={sideOffset}
+        alignItemWithTrigger={alignItemWithTrigger}
       >
-        <SelectPrimitive.ScrollUpButton className="flex h-6 items-center justify-center">
-          <ChevronUp className="h-4 w-4 text-muted" />
-        </SelectPrimitive.ScrollUpButton>
-        <SelectPrimitive.Viewport
+        <SelectPrimitive.Popup
+          data-slot="select-content"
           className={cn(
-            "p-1.5",
-            position === "popper" && "w-full min-w-[var(--radix-select-trigger-width)]"
+            "lsb-drop max-h-[var(--available-height)] min-w-[var(--anchor-width)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-sm text-foreground shadow-menu outline-none",
+            className
           )}
+          {...props}
         >
-          {children}
-        </SelectPrimitive.Viewport>
-        <SelectPrimitive.ScrollDownButton className="flex h-6 items-center justify-center">
-          <ChevronDown className="h-4 w-4 text-muted" />
-        </SelectPrimitive.ScrollDownButton>
-      </SelectPrimitive.Content>
+          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+        </SelectPrimitive.Popup>
+      </SelectPrimitive.Positioner>
     </SelectPrimitive.Portal>
   );
-});
+}
 
-const SelectLabel = forwardRef(function SelectLabel({ className, ...props }, ref) {
+function SelectLabel({ className, ...props }) {
   return (
-    <SelectPrimitive.Label
-      ref={ref}
-      className={cn(
-        "px-3 py-2 text-[13px] font-extrabold uppercase tracking-[0.07em] text-muted",
-        className
-      )}
+    <SelectPrimitive.GroupLabel
+      className={cn("px-2 pb-1 pt-1.5 text-xs font-medium text-muted-fg", className)}
       {...props}
     />
   );
-});
+}
 
-/** 44px per option — a menu item is a tap target like anything else. */
-const SelectItem = forwardRef(function SelectItem({ className, children, ...props }, ref) {
+function SelectItem({ className, children, ...props }) {
   return (
     <SelectPrimitive.Item
-      ref={ref}
+      data-slot="select-item"
       className={cn(
-        "relative flex h-11 w-full cursor-pointer select-none items-center rounded-btn pl-10 pr-3.5",
-        "text-[16px] font-medium text-ink outline-none transition duration-150",
-        "focus:bg-tint-cobalt data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex h-8 cursor-default select-none items-center gap-2 rounded pl-2 pr-8 outline-none",
+        "data-[highlighted]:bg-muted data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
         className
       )}
       {...props}
     >
-      <span className="absolute left-3.5 flex h-4.5 w-4.5 items-center justify-center">
-        <SelectPrimitive.ItemIndicator>
-          <Check className="h-4.5 w-4.5 text-cobalt dark:text-dk-cobalt" />
-        </SelectPrimitive.ItemIndicator>
-      </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText className="min-w-0 flex-1 truncate">{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemIndicator className="absolute right-2 flex">
+        <Check className="size-4" aria-hidden="true" />
+      </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   );
-});
+}
 
-const SelectSeparator = forwardRef(function SelectSeparator({ className, ...props }, ref) {
-  return (
-    <SelectPrimitive.Separator
-      ref={ref}
-      className={cn("-mx-1.5 my-1.5 h-px bg-rule", className)}
-      {...props}
-    />
-  );
-});
+function SelectSeparator({ className, ...props }) {
+  return <SelectPrimitive.Separator className={cn("-mx-1 my-1 h-px bg-border-subtle", className)} {...props} />;
+}
 
-export {
-  Select,
-  SelectGroup,
-  SelectValue,
-  SelectTrigger,
-  SelectContent,
-  SelectLabel,
-  SelectItem,
-  SelectSeparator,
-};
+export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator };

@@ -1,14 +1,23 @@
 import { clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
 
 /**
- * Merge Tailwind class strings, with later classes winning conflicts.
- *
- * This is what the old `shared/profileButtonStyles.js` approach could not do.
- * It exported raw class strings that callers concatenated to override size —
- * `${secondaryButton} h-11 px-[22px]` — which only worked when the resulting
- * class order happened to favour the override. twMerge resolves the conflict
- * properly, so a variant and a one-off override can't fight.
+ * tailwind-merge has to be told about the sizes tailwind.config.js adds.
+ * Without this `text-13` reads as a text COLOUR, so `cn("text-13", "text-muted-fg")`
+ * would quietly drop the size.
+ */
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [{ text: ["2xs", "13"] }],
+      shadow: [{ shadow: ["xs", "menu", "dialog", "seg"] }],
+    },
+  },
+});
+
+/**
+ * Merge Tailwind class strings, with later classes winning conflicts, so a
+ * variant and a one-off override can't fight.
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs));

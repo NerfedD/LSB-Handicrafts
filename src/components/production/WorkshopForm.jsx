@@ -1,109 +1,73 @@
 import { Children, Fragment, cloneElement, isValidElement, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input, Textarea, fieldBase } from '@/components/ui/input';
+import { Input, Textarea } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ChevronDown, Info, TriangleAlert } from '../icons';
+import { Info, Warning } from '../icons';
 import { cn } from '@/lib/utils';
-import { Field, FormBand } from '../shared/forms';
-import IconChip from '../shared/Chip';
-import { tone as toneOf } from '../shared/tones';
+import { Field } from '../shared/forms';
 import FormError from '../shared/FormError';
 import { reportFormError } from '../../utils/formErrors';
 
 /**
- * THE 16px FLOOR IS THE REASON THIS DIALOG HAS ITS OWN WRAPPER.
+ * The dialog form the workshop's dialogs share, drawn to the *Dialog boards:
+ * the title and its line, the fields 14px apart (a 14/500 label over each
+ * control, its help or its problem under it), and Cancel then the one
+ * primary button on the right.
  *
- * The shared Field/Callout primitives set help text at 14.5–15.5px, which is
- * the app's ordinary register. Every screen in the workshop is read standing
- * at a bench by someone counting sheets, so these forms hold the house floor
- * of 16px for anything read as a sentence — and tests/production.spec.js
- * asserts it on a 390px viewport. Stating it once here beats three different
- * arbitrary overrides drifting apart later.
+ * `validate(values)` returns null when the form can be sent, a sentence for a
+ * problem with the form as a whole, or `{ fieldName: sentence }` for problems
+ * with particular fields. Field problems are shown beside their fields; the
+ * note at the top only says how many there are.
  */
-const READABLE = '[&_p]:text-[16px] [&_label]:text-[16px] [&_[data-form-error]]:text-[16px]';
 
-/**
- * One question, in its own numbered band.
- *
- * The visible question is the band heading; the <label> is still rendered and
- * still wired to the control, just visually hidden, so the accessible name and
- * the question a sighted user reads are the same string rather than two
- * strings that can drift.
- *
- * NO `number` PROP. It used to be hardcoded per field, which is how editing a
- * material produced bands numbered "2." and "3." with no "1.", and how a
- * completion form with no damage ran "1, 2, 4". WorkshopForm numbers whatever
- * actually rendered — see `numbered` below.
- */
-export function WorkshopField({ number, label, hint, error, options, placeholder = 'Choose one', multiline, ...props }) {
-  const title = (
-    <>
-      {label}
-      {props.required && <span className="font-normal text-muted"> (needed)</span>}
-    </>
-  );
-
+/** One question: label, control, and its help or problem. `options` makes it a select. */
+export function WorkshopField({ label, hint, error, options, placeholder = 'Choose one', multiline, className, suffix, ...props }) {
   return (
-    <FormBand step={number} title={title} className="px-0 py-4">
-      <Field label={label} hint={hint} error={error} required={props.required} className="[&_label]:sr-only">
-        {(a11y) =>
-          options ? (
-            <div className="relative">
-              <select
-                {...a11y}
-                {...props}
-                className={cn(fieldBase, 'h-13.5 appearance-none py-0 pl-4 pr-12')}
-              >
-                <option value="">{placeholder}</option>
-                {options.map((o) => (
-                  <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted"
-              />
-            </div>
-          ) : multiline ? (
-            <Textarea {...a11y} {...props} />
-          ) : (
-            <Input {...a11y} {...props} />
-          )
-        }
-      </Field>
-    </FormBand>
+    <Field label={label} hint={hint} error={error} required={props.required} className={className}>
+      {(a11y) =>
+        options ? (
+          <NativeSelect {...a11y} {...props}>
+            <option value="">{placeholder}</option>
+            {options.map((o) => (
+              <option key={o.value} value={o.value} disabled={o.disabled}>{o.label}</option>
+            ))}
+          </NativeSelect>
+        ) : multiline ? (
+          <Textarea {...a11y} {...props} rows={props.rows ?? 2} />
+        ) : suffix ? (
+          <div className="relative">
+            <Input {...a11y} {...props} className="pr-14" />
+            <span aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">{suffix}</span>
+          </div>
+        ) : (
+          <Input {...a11y} {...props} />
+        )
+      }
+    </Field>
   );
 }
 
-/**
- * Walks the rendered tree and numbers the WorkshopFields that survived their
- * conditions, in order. Derived from children on every render rather than
- * counted into a ref, so it cannot drift when React re-renders the body.
- *
- * It also hands each field its own error, found by the field's `name` -- the
- * same key the form's values use -- so a problem is stated beside the field it
- * is about rather than only in a box at the top.
- */
-function numbered(node, counter, errors) {
+/** Hands each field its own error, found by its `name`, so a problem sits beside its field. */
+function withErrors(node, errors) {
   return Children.map(node, (child) => {
     if (!isValidElement(child)) return child;
     if (child.type === Fragment) {
-      return <Fragment key={child.key}>{numbered(child.props.children, counter, errors)}</Fragment>;
+      return <Fragment key={child.key}>{withErrors(child.props.children, errors)}</Fragment>;
     }
     if (child.type === WorkshopField) {
-      counter.n += 1;
       const error = child.props.error ?? (child.props.name ? errors[child.props.name] : undefined);
-      return cloneElement(child, { number: counter.n, error });
+      return cloneElement(child, { error });
+    }
+    // Into layout wrappers too (a Row pairing two fields, a grid of sizes), so their fields get their errors.
+    if (child.props.children && typeof child.props.children !== 'function') {
+      return cloneElement(child, undefined, withErrors(child.props.children, errors));
     }
     return child;
   });
 }
 
-/**
- * The browser's own check on a field (needed, too small, not whole), in the
- * words the rest of the app uses. Its built-in bubbles were the only error some
- * of these fields could show, in the browser's language rather than ours.
- */
+/** The browser's own check on a field, in the words the rest of the app uses. */
 function nativeProblem(el) {
   const v = el.validity;
   if (v.valueMissing) return el.tagName === 'SELECT' ? 'Choose one from the list.' : 'This is needed.';
@@ -119,13 +83,7 @@ function nativeProblem(el) {
   return el.validationMessage;
 }
 
-/**
- * `validate(values)` returns null when the form can be sent, a sentence for a
- * problem with the form as a whole, or `{ fieldName: sentence }` for problems
- * with particular fields. Field problems are shown beside their fields; the
- * box at the top only says how many there are.
- */
-export default function WorkshopForm({ title, description, submitLabel, submitVariant = 'clay', initial, onSave, onClose, children, validate }) {
+export default function WorkshopForm({ title, description, submitLabel, submitVariant = 'default', cancelLabel = 'Cancel', size = 'md', initial, onSave, onClose, children, validate, footerNote }) {
   const [values, setValues] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -134,7 +92,6 @@ export default function WorkshopForm({ title, description, submitLabel, submitVa
   const request = useRef(null);
   const change = (key, value) => {
     setValues((v) => ({ ...v, [key]: value }));
-    // Cleared as soon as they start fixing it, rather than on the next submit.
     setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
   };
   const setAll = (update) => {
@@ -172,65 +129,50 @@ export default function WorkshopForm({ title, description, submitLabel, submitVa
     } catch (cause) { setError(cause.message); reportFormError(form, cause.message); }
     finally { pending.current = false; setSaving(false); }
   }
-  return <Dialog open onOpenChange={(open) => { if (!open && !pending.current) onClose(); }}>
-    <DialogContent className={cn('max-w-[620px] text-[16px]', READABLE)} showClose={!saving}>
-      <form onSubmit={submit} noValidate className="flex min-h-0 flex-col">
-        <DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription className="text-[16px]">{description}</DialogDescription></DialogHeader>
-        <DialogBody>
-          <FormError message={error} />
-          <fieldset disabled={saving} className="min-w-0">
-            {numbered(children(values, change, setAll), { n: 0 }, fieldErrors)}
-          </fieldset>
-        </DialogBody>
-        <DialogFooter className="justify-between">
-          <Button variant="outline" size="lg" disabled={saving} onClick={onClose}>Go back</Button>
-          <Button type="submit" size="lg" variant={submitVariant} disabled={saving}>{saving ? 'Saving…' : submitLabel}</Button>
-        </DialogFooter>
-      </form>
-    </DialogContent>
-  </Dialog>;
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open && !pending.current) onClose(); }}>
+      <DialogContent size={size} showClose={!saving}>
+        <form onSubmit={submit} noValidate className="flex min-h-0 flex-col">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            {description ? <DialogDescription>{description}</DialogDescription> : null}
+          </DialogHeader>
+          <DialogBody>
+            <FormError message={error} />
+            <fieldset disabled={saving} className="m-0 flex min-w-0 flex-col gap-3.5 border-0 p-0">
+              {withErrors(children(values, change, setAll), fieldErrors)}
+            </fieldset>
+          </DialogBody>
+          <DialogFooter className={footerNote ? 'items-center justify-between' : undefined}>
+            {footerNote ? <span className="text-13 text-muted-fg">{footerNote(values)}</span> : null}
+            <span className="flex flex-wrap gap-2">
+              <Button variant="outline" disabled={saving} onClick={onClose}>{cancelLabel}</Button>
+              <Button type="submit" variant={submitVariant === 'danger' ? 'destructive' : 'default'} disabled={saving}>{saving ? 'Saving…' : submitLabel}</Button>
+            </span>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /**
- * The "here is what this will do" block that sits under a workshop form.
- *
- * Built from the same tint/border/foreground trio as every pill, chip and
- * callout in the app (shared/tones.js) rather than from two hand-picked
- * background classes — which is what made it flat, borderless and identical
- * whether it was confirming a total or warning that stock is about to move.
- * `warning` is amber and carries an alert glyph; the plain one is neutral and
- * carries an info glyph, so the two are told apart before either is read.
- *
- * `arrives` marks the one that is mounted by a count rather than present from
- * the start — see the note beside it below.
+ * "Here is what this will do": a quiet note under the fields. `warning` is the
+ * warning tint with its mark; the plain one is neutral.
  */
 export function ReviewBox({ children, warning = false, arrives = false }) {
-  const t = toneOf(warning ? 'amber' : 'neutral');
+  const Mark = warning ? Warning : Info;
   return (
     <div
       aria-live="polite"
       className={cn(
-        'my-4 flex items-start gap-3.5 rounded-field border-[1.5px] p-4.5',
-        t.tint,
-        t.border,
-        // `arrives` is for the box that only exists once the counts are in. It
-        // is the form answering a number somebody just typed, and it appears
-        // below the field they are still looking at, so it rises into place
-        // rather than being there suddenly. The boxes that are always on screen
-        // do not take this: a block that re-animates every keystroke is a
-        // flicker, not feedback.
-        arrives && 'lsb-rise'
+        'flex items-start gap-2.5 rounded-md border p-3 text-13',
+        warning ? 'border-warning-bd bg-warning-bg' : 'border-border bg-muted',
+        arrives && 'lsb-card-in'
       )}
     >
-      <IconChip
-        icon={warning ? <TriangleAlert className="h-4.5 w-4.5" /> : <Info className="h-4.5 w-4.5" />}
-        tone={warning ? 'amber' : 'neutral'}
-        size="sm"
-        className="bg-white/60 dark:bg-white/[0.08]"
-      />
-      <div className="min-w-0 flex-1 text-[16px] leading-[1.5] text-ink-2 [&>p]:pt-1.5">
-        {children}
-      </div>
+      <Mark className={cn('mt-px size-4 shrink-0', warning ? 'text-warning-fg' : 'text-muted-fg')} aria-hidden="true" />
+      <div className="min-w-0 flex-1 text-fg-2 [&>p]:m-0 [&>p]:mt-1 [&_strong]:font-medium [&_strong]:text-foreground">{children}</div>
     </div>
   );
 }

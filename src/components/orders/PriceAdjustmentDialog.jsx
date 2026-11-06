@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Info, Tag } from "../icons";
+import { Info } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -114,20 +114,20 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody className="flex flex-col gap-3.5">
             {/* The two figures side by side, because the whole question is how
                 they differ and a single input hides the number being replaced. */}
-            <div className="rounded-field bg-paper-2 p-4.5">
-              <dl className="flex flex-col gap-2.5">
-                <div className="flex items-baseline justify-between gap-6">
-                  <dt className="text-[15.5px] text-muted">What they were told</dt>
-                  <dd className="text-[17px] font-bold tabular-nums text-ink">
+            <div className="rounded-md border border-border">
+              <dl className="m-0 flex flex-col text-13">
+                <div className="flex items-baseline justify-between gap-6 border-b border-row-divider px-3 py-2">
+                  <dt className="text-muted-fg">What they were told</dt>
+                  <dd className="m-0 font-medium tabular-nums">
                     {formatPeso(oldTotal)}
                   </dd>
                 </div>
-                <div className="flex items-baseline justify-between gap-6">
-                  <dt className="text-[15.5px] text-muted">What it should be</dt>
-                  <dd className="text-[17px] font-bold tabular-nums text-ink">
+                <div className="flex items-baseline justify-between gap-6 px-3 py-2">
+                  <dt className="text-muted-fg">What it should be</dt>
+                  <dd className="m-0 font-medium tabular-nums">
                     {formatPeso(next)}
                   </dd>
                 </div>
@@ -171,7 +171,7 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
 
             {overcharged && (
               <Callout
-                tone="cobalt"
+                tone="neutral"
                 icon={<Info />}
                 title={`${formatPeso(Math.abs(difference))} too much was charged`}
               >
@@ -194,10 +194,9 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
             </Field>
           </DialogBody>
 
-          <DialogFooter className="justify-between">
+          <DialogFooter>
             <Button
               variant="outline"
-              size="lg"
               disabled={saving}
               onClick={() => handleOpenChange(false)}
             >
@@ -205,14 +204,11 @@ export default function PriceAdjustmentDialog({ open, onOpenChange, order, onSav
             </Button>
             <Button
               type="submit"
-              variant="cobalt"
-              size="lg"
               // Same price in, same price out is guaranteed to fail on
               // submit — don't leave the button looking ready for it.
               disabled={saving || difference === 0}
             >
-              <Tag className="h-5 w-5" />
-              {saving ? "Saving…" : "Save the new price"}
+                            {saving ? "Saving…" : "Save the new price"}
             </Button>
           </DialogFooter>
         </form>

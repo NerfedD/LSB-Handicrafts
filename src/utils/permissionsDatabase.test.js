@@ -157,3 +157,16 @@ describe('loyalty', () => {
     expect(stats).toEqual({ order_count: 2, completed_count: 1, open_count: 1, spent: '2000' });
   });
 });
+
+describe('the owner account', () => {
+  it('cannot be renamed or given a new number by any other administrator', async () => {
+    const owner = await one(db, 'select id from public.staff where is_super_admin limit 1');
+    const rename = (who) => asApi(db, who, () => db.query(
+      `update public.staff set name = 'Renamed', contact_number = '09170000000' where id = $1`, [owner.id]));
+    // An administrator can reach the row, and the guard trigger refuses.
+    await expect(rename('admin')).rejects.toThrow(/Only a super administrator can modify the super administrator account/);
+    // A manager cannot reach it at all: the update matches nothing.
+    expect((await rename('manager')).affectedRows ?? 0).toBe(0);
+    expect((await one(db, 'select name from public.staff where id = $1', [owner.id])).name).not.toBe('Renamed');
+  });
+});

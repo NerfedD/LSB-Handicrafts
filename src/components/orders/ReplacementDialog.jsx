@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Repeat } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -158,7 +157,7 @@ export default function ReplacementDialog({ open, onOpenChange, order, inventory
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody className="flex flex-col gap-3.5">
             <FormError message={error} />
 
             {lines.length === 0 ? (
@@ -170,7 +169,7 @@ export default function ReplacementDialog({ open, onOpenChange, order, inventory
                 {lines.length > 1 && (
                   <Field label="Which line came back" required error={errors.line}>
                     {(props) => (
-                      <Select value={line ? String(line.index) : ""} onValueChange={(next) => { setLineIndex(Number(next)); touch("line"); }}>
+                      <Select items={lines.map((one) => ({ value: String(one.index), label: `${one.name} — ${one.held} delivered` }))} value={line ? String(line.index) : ""} onValueChange={(next) => { setLineIndex(Number(next)); touch("line"); }}>
                         <SelectTrigger id={props.id}>
                           <SelectValue placeholder="Pick a line" />
                         </SelectTrigger>
@@ -209,7 +208,7 @@ export default function ReplacementDialog({ open, onOpenChange, order, inventory
 
                 <Field label="What goes out instead" required error={errors.replacement} hint="Usually the same product. Pick another if that is what was agreed.">
                   {(props) => (
-                    <Select value={chosenId} onValueChange={(next) => { setReplacementId(next); touch("replacement"); }}>
+                    <Select items={shelf.map((row) => ({ value: String(row.id), label: `${row.name} — ${row.stock} on the shelf` }))} value={chosenId} onValueChange={(next) => { setReplacementId(next); touch("replacement"); }}>
                       <SelectTrigger id={props.id}>
                         <SelectValue placeholder="Pick a product" />
                       </SelectTrigger>
@@ -241,12 +240,11 @@ export default function ReplacementDialog({ open, onOpenChange, order, inventory
             )}
           </DialogBody>
 
-          <DialogFooter className="justify-between">
-            <Button variant="outline" size="lg" disabled={saving} onClick={() => close(false)}>
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => close(false)}>
               Keep it
             </Button>
-            <Button type="submit" variant="cobalt" size="lg" disabled={saving || lines.length === 0}>
-              <Repeat className="h-5 w-5" />
+            <Button type="submit" disabled={saving || lines.length === 0}>
               {saving ? "Working…" : "Record the replacement"}
             </Button>
           </DialogFooter>

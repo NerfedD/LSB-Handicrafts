@@ -28,12 +28,16 @@ function loadImage(file) {
   });
 }
 
-/** Resolves to a JPEG data URL no larger than the database allows. */
-export async function preparePhoto(file) {
+/**
+ * Resolves to a JPEG data URL no larger than the database allows. A staff
+ * photo passes a smaller `maxSide` and `maxLength`: it is only ever shown as a
+ * small circle, and staff_photos keeps less than product_images.
+ */
+export async function preparePhoto(file, { maxSide = PHOTO_MAX_SIDE, maxLength = MAX_DATA_URL } = {}) {
   const problem = photoFileProblem(file);
   if (problem) throw new Error(problem);
   const image = await loadImage(file);
-  const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
+  const scale = Math.min(1, maxSide / Math.max(image.naturalWidth || 1, image.naturalHeight || 1));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
   canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
@@ -44,7 +48,7 @@ export async function preparePhoto(file) {
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
   for (const quality of [0.86, 0.75, 0.6, 0.45]) {
     const dataUrl = canvas.toDataURL('image/jpeg', quality);
-    if (dataUrl.length <= MAX_DATA_URL) return dataUrl;
+    if (dataUrl.length <= maxLength) return dataUrl;
   }
   throw new Error('That photo is too detailed to store. Try a simpler or smaller one.');
 }

@@ -1,84 +1,106 @@
-import useUrlState from "../../hooks/useUrlState";
-import { useEffect, useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import { BookUser, History, Settings, UserPlus, Users } from "../icons";
+import useUrlState from "../../hooks/useUrlState";
+import useTablePage from "../../hooks/useTablePage";
+import { DotsThree, DownloadSimple, Key, PencilSimple, Plus, Prohibit, Users, UserGear } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardFooter } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar } from "../shared/Chip";
-import { FilterBar, ListToolbar, RecordCard, StickyCta } from "../shared/ListScreen";
-import Landed from "../shared/Landed";
 import { landedRow } from "../shared/landing";
-import { FilterChips, Pager, SearchField } from "../shared/filters";
-import { EmptyState, ErrorState, LoadingState } from "../shared/PageStates";
-import StatusPill, { InlineBadge } from "../shared/StatusPill";
-import useMediaQuery, { TAB_QUERY } from "../../hooks/useMediaQuery";
-import usePaged from "../../hooks/usePaged";
+import {
+  BulkActions,
+  DataCard,
+  EmptyState,
+  FilterBar,
+  FilterSelect,
+  FilterSpacer,
+  Page,
+  PageHeader,
+  SearchField,
+  StatCard,
+  StatCards,
+  TablePagination,
+} from "../shared/page";
+import { ErrorState, LoadingState } from "../shared/PageStates";
+import StatusPill from "../shared/StatusPill";
+import { toast } from "@/components/ui/sonner";
+import { exportUsers } from "@/lib/exports";
+import { supabase } from "../../lib/supabaseClient";
 import { matches } from "../../utils/search";
 import { sameEmail } from "../../utils/email";
+import { whenLabel } from "../../utils/activityLog";
 import { roleLabel, signInState } from "../../utils/copy";
+import { ROLES } from "../../utils/staffData";
 
 /**
- * Staff & accounts — screen 2o.
+ * User Management, drawn to the "3 · User Management" board:
  *
- * "CAN SIGN IN", NOT "STATUS". This is the column that justifies the screen.
- * An administrator opening it is answering one of two questions — can this
- * person get in, and what are they allowed to do — and "Status: Active" answers
- * neither. Three plain answers do:
+ *   PageHeader (Export, Add user) → four compact StatCards → a DataCard with
+ *   the FilterBar (search, Role, Status, bulk actions) and the accounts table
+ *   (Name, Email, Role, Can sign in, Last active, row actions) → pagination.
  *
- *   Yes           green, with a check
- *   Blocked       red, with a cross
- *   Not set up    amber, with a clock — the password works, but nobody has
- *                 said what the account does, so it still cannot get in
+ * "Last active" is the newest activity-log entry by that person. Bulk actions
+ * are shown as the board draws them but stay disabled: accounts change one at
+ * a time, on the account's own screen.
  *
- * That third state existed all along and had no name. Somebody with a working
- * password and no role was shown "Active", tried to sign in, and was bounced
- * with no explanation on either screen.
- *
- * "MANAGE", NOT A KEBAB. One 44px button per row that says where it goes.
- * Every destructive action lives on the account's own screen, inside its own
- * outlined block — never as a red icon in this table.
+ * "Reset password" in a row's menu sends the reset link to that account's own
+ * email -- the same call as "Send password reset" on Manage account -- so the
+ * administrator starts the recovery without ever seeing the password.
  */
+const STATUS_LABEL = { Yes: "Active", Blocked: "Suspended", "Not set up": "Not set up" };
 
 export default function StaffAccountsPage({
   users = [],
+  activity = [],
   isLoaded = true,
   loadError = null,
   onRetry,
   onGoToDashboard,
   currentUserEmail,
   onManage,
+  onChangeRole,
   onAdd,
-  onOpenDirectory,
-  onOpenActivity,
-  onContext,
   initialFilter,
-  /** The last record a write changed — see shared/Landed.jsx. */
   change = null,
 }) {
   const [query, setQuery] = useUrlState("query", "", "staff");
-  // Seeded from the dashboard. An attention row's button names a verb and
-  // lands here with the matching chip already on, so the sentence somebody
-  // read and the list they arrive at agree. It stays an ordinary chip
-  // afterwards -- clearable, and not a mode.
-  const [chip, setChip] = useUrlState("tab", initialFilter ?? "all", "staff");
-  // Which layout to mount. Only one of the table/card renders below ever
-  // reaches the DOM -- see useMediaQuery for why that used to not be true.
-  const isDesktop = useMediaQuery(TAB_QUERY);
+  const [status, setStatus] = useUrlState("tab", initialFilter ?? "all", "staff");
+  const [role, setRole] = useState("all");
+  const [selected, setSelected] = useState(() => new Set());
 
-  const rows = useMemo(
-    () => users.map((user) => ({ user, signIn: signInState(user) })),
-    [users]
-  );
+  async function sendPasswordReset(user) {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        toast.error("That did not send. Too many resets in a row are refused for a few minutes — wait, then try again.");
+        return;
+      }
+      toast.success(`Reset link sent to ${user.email}.`);
+    } catch {
+      toast.error("We could not reach the system, so no reset link was sent.");
+    }
+  }
 
+  const lastSeen = useMemo(() => {
+    const map = new Map();
+    for (const entry of activity) {
+      if (entry.at && !map.has(entry.who)) map.set(entry.who, entry.at);
+    }
+    return map;
+  }, [activity]);
+
+  const rows = useMemo(() => users.map((user) => ({ user, signIn: signInState(user) })), [users]);
   const counts = useMemo(
     () => ({
       all: rows.length,
@@ -89,197 +111,211 @@ export default function StaffAccountsPage({
     [rows]
   );
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    onContext?.(
-      `${counts.all} people with accounts · ${counts.yes} can sign in`
-    );
-  }, [counts.all, counts.yes, isLoaded, onContext]);
-
   const filtered = useMemo(() => {
-    const wanted = { yes: "Yes", blocked: "Blocked", "not-set-up": "Not set up" }[chip];
+    const wanted = { yes: "Yes", blocked: "Blocked", "not-set-up": "Not set up" }[status];
     return rows
       .filter(({ user, signIn }) => {
         if (wanted && signIn.label !== wanted) return false;
+        if (role !== "all" && user.role !== role) return false;
         return matches(query, user.name, user.email, user.username, user.role);
       })
       .sort((a, b) => String(a.user.name).localeCompare(String(b.user.name)));
-  }, [rows, chip, query]);
+  }, [rows, status, role, query]);
 
-  const paged = usePaged(filtered);
+  const paged = useTablePage(filtered);
+  const visibleIds = paged.visible.map(({ user }) => user.id);
+  const selectedOnPage = visibleIds.filter((id) => selected.has(id)).length;
+  const toggleAll = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (selectedOnPage === visibleIds.length) visibleIds.forEach((id) => next.delete(id));
+      else visibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  const toggle = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const clearFilters = () => {
+    setQuery("");
+    setStatus("all");
+    setRole("all");
+  };
 
-  const chips = [
-    { value: "all", label: "Everyone", count: counts.all },
-    { value: "yes", label: "Can sign in", count: counts.yes, tone: "green" },
-    { value: "blocked", label: "Blocked", count: counts.blocked, tone: "red" },
-    { value: "not-set-up", label: "Not set up", count: counts.notSetUp, tone: "amber" },
-  ];
-
-  // Ahead of everything else, like the other four list screens: a failed read
-  // has nothing to filter, and offering a search box over it is a dead end.
   if (loadError) {
-    return <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="accounts" />;
+    return (
+      <Page>
+        <ErrorState onRetry={onRetry} onGoToDashboard={onGoToDashboard} noun="accounts" />
+      </Page>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-3.5">
-      <ListToolbar
-        action={onAdd && (
-          <Button variant="cobalt" size="lg" onClick={onAdd}>
-            <UserPlus className="h-5 w-5" />
-            Add a staff account
-          </Button>
-        )}
-      >
+    <Page>
+      <PageHeader
+        icon={Users}
+        title="User Management"
+        description="Who can sign in to the management system, and what their role lets them do."
+        actions={
+          <>
+            <Button variant="outline" onClick={() => exportUsers(filtered.map((row) => row.user))}>
+              <DownloadSimple aria-hidden="true" />
+              Export
+            </Button>
+            {onAdd ? (
+              <Button onClick={onAdd} aria-haspopup="dialog">
+                <Plus aria-hidden="true" />
+                Add user
+              </Button>
+            ) : null}
+          </>
+        }
+      />
+
+      <StatCards label="Account totals" min={180}>
+        <StatCard compact label="All accounts" value={counts.all} caption="people with an account" onClick={() => setStatus("all")} />
+        <StatCard compact label="Can sign in" value={counts.yes} caption={`${counts.all ? Math.round((counts.yes / counts.all) * 100) : 0}% of accounts`} onClick={() => setStatus("yes")} />
+        <StatCard compact label="Not set up" value={counts.notSetUp} caption="no role given yet" onClick={() => setStatus("not-set-up")} />
+        <StatCard compact label="Suspended" value={counts.blocked} caption="history is kept" onClick={() => setStatus("blocked")} />
+      </StatCards>
+
+      <DataCard label="Users">
         <FilterBar>
-          <SearchField
-            value={query}
-            onChange={setQuery}
-            placeholder="Search by name or email"
-            id="staff-search"
+          <SearchField label="Search users" value={query} onChange={setQuery} placeholder="Search name or email" />
+          <FilterSelect
+            label="Role"
+            value={role}
+            onChange={setRole}
+            options={[{ value: "all", label: "All" }, ...ROLES.map((r) => ({ value: r, label: roleLabel(r) }))]}
           />
-          {/* The directory and the activity log have no nav entry of their own —
-              they belong to this section, and this is where somebody looking for
-              "who do I call" or "who changed that price" would come first. */}
-          <Button variant="outline" size="field" onClick={onOpenDirectory}>
-            <BookUser className="h-4.5 w-4.5" />
-            Who to call for what
-          </Button>
-          <Button variant="outline" size="field" onClick={onOpenActivity}>
-            <History className="h-4.5 w-4.5" />
-            What happened recently
-          </Button>
+          <FilterSelect
+            label="Status"
+            value={status}
+            onChange={setStatus}
+            dashed={status === "all"}
+            options={[
+              { value: "all", label: "All" },
+              { value: "yes", label: "Active" },
+              { value: "not-set-up", label: "Not set up" },
+              { value: "blocked", label: "Suspended" },
+            ]}
+          />
+          <FilterSpacer />
+          <BulkActions count={selected.size} onClear={() => setSelected(new Set())}>
+            <Button variant="outline" size="sm" disabled title="Change roles one account at a time, from the account">
+              Change role
+            </Button>
+            <Button variant="outline" size="sm" disabled title="Suspend accounts one at a time, from the account">
+              Suspend
+            </Button>
+          </BulkActions>
         </FilterBar>
-      </ListToolbar>
 
-      <FilterChips chips={chips} value={chip} onChange={setChip} label="Show which accounts" />
-
-      {!isLoaded ? (
-        <LoadingState noun="accounts" />
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Users />}
-          title="No staff accounts yet"
-          description="Add an account for each person who needs to sign in, and say what they do."
-          query={query.trim()}
-          onClearSearch={() => setQuery("")}
-          actionLabel="Add a staff account"
-          onAction={onAdd}
-        />
-      ) : (
-        <>
-          {isDesktop && (
-          <Card>
-            <Table minWidth={820}>
-              <TableCaption>Everyone with an account, and whether they can sign in</TableCaption>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Person</TableHead>
-                  <TableHead className="w-56">What they do</TableHead>
-                  <TableHead className="w-48">Can sign in</TableHead>
-                  <TableHead className="w-44 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paged.visible.map(({ user, signIn }) => {
-                  const landed = landedRow(change, "account", user.id);
-                  return (
-                  <TableRow key={landed.key} className={landed.className}>
-                    <TableCell>
-                      <div className="flex min-w-0 items-center gap-3.5">
-                        <Avatar name={user.name} size="md" />
-                        <div className="min-w-0">
-                          <p className="flex min-w-0 items-center gap-2">
-                            <span className="truncate text-[16.5px] font-bold">{user.name}</span>
-                            {user.isSuperAdmin && <InlineBadge label="Owner" tone="cobalt" />}
-                            {sameEmail(user.email, currentUserEmail) && (
-                              <InlineBadge label="You" tone="purple" />
-                            )}
-                          </p>
-                          <p className="truncate pt-0.5 text-[14px] text-muted">{user.email}</p>
-                        </div>
-                      </div>
+        {!isLoaded ? (
+          <LoadingState noun="accounts" bare />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={rows.length === 0 ? "No user accounts yet" : "No users match these filters"}
+            description={rows.length === 0 ? "Add an account for each person who needs to sign in." : "Try another name, or show every role."}
+            action={rows.length === 0 ? null : <Button variant="outline" onClick={clearFilters}>Clear filters</Button>}
+          />
+        ) : (
+          <Table minWidth={880} aria-label="User accounts">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-11 pl-0 text-center first:pl-0">
+                  <Checkbox
+                    aria-label="Select all users on this page"
+                    checked={selectedOnPage > 0 && selectedOnPage === visibleIds.length}
+                    indeterminate={selectedOnPage > 0 && selectedOnPage < visibleIds.length}
+                    onCheckedChange={toggleAll}
+                  />
+                </TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead className="w-[120px]">Can sign in</TableHead>
+                <TableHead className="w-[140px]">Last active</TableHead>
+                <TableHead className="w-12"><span className="sr-only">Actions</span></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paged.visible.map(({ user, signIn }) => {
+                const landed = landedRow(change, "account", user.id);
+                const checked = selected.has(user.id);
+                const label = STATUS_LABEL[signIn.label] ?? signIn.label;
+                return (
+                  <TableRow key={landed.key} data-state={checked ? "selected" : undefined} className={landed.className}>
+                    <TableCell className="pl-0 text-center first:pl-0">
+                      <Checkbox aria-label={`Select ${user.name}`} checked={checked} onCheckedChange={() => toggle(user.id)} />
                     </TableCell>
-
-                    <TableCell className="text-[15.5px]">
-                      {user.role ? (
-                        roleLabel(user.role)
-                      ) : (
-                        <span className="text-muted-2">Nothing set yet</span>
-                      )}
-                    </TableCell>
-
                     <TableCell>
-                      <StatusPill
-                        label={signIn.label}
-                        tone={signIn.tone}
-                        mark={signIn.icon}
-                        size="sm"
-                      />
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Avatar name={user.name} />
+                        <button type="button" data-slot="text-link" onClick={() => onManage(user.id)} className="truncate border-0 bg-transparent p-0 font-medium text-foreground hover:underline">
+                          {user.name}
+                        </button>
+                        {user.isSuperAdmin ? <Badge variant="outline">Owner</Badge> : null}
+                        {sameEmail(user.email, currentUserEmail) ? <Badge variant="outline">You</Badge> : null}
+                      </span>
                     </TableCell>
-
+                    <TableCell className="max-w-[260px] truncate text-fg-3">{user.email}</TableCell>
+                    <TableCell>{user.role ? roleLabel(user.role) : <span className="text-muted-fg">No role yet</span>}</TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
-                        <Button variant="outline" size="sm" onClick={() => onManage(user.id)}>
-                          <Settings className="h-4.5 w-4.5" />
-                          Manage
-                        </Button>
-                      </div>
+                      <StatusPill label={label} tone={signIn.label === "Yes" ? "green" : signIn.label === "Blocked" ? "red" : "amber"} />
+                    </TableCell>
+                    <TableCell className="text-muted-fg">{lastSeen.has(user.name) ? whenLabel(lastSeen.get(user.name)) : "—"}</TableCell>
+                    <TableCell className="text-center">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          aria-label={`Actions for ${user.name}`}
+                          className="inline-flex size-7 items-center justify-center rounded-md text-fg-2 hover:bg-muted data-[popup-open]:bg-muted"
+                        >
+                          <DotsThree weight="bold" className="size-4" aria-hidden="true" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[196px]">
+                          <DropdownMenuItem onClick={() => onManage(user.id)}>
+                            <PencilSimple aria-hidden="true" />
+                            Edit details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem disabled={!user.email} onClick={() => sendPasswordReset(user)}>
+                            <Key aria-hidden="true" />
+                            Reset password
+                          </DropdownMenuItem>
+                          {onChangeRole && !user.isSuperAdmin && !sameEmail(user.email, currentUserEmail) ? (
+                            <DropdownMenuItem onClick={() => onChangeRole(user.id)}>
+                              <UserGear aria-hidden="true" />
+                              Change role
+                            </DropdownMenuItem>
+                          ) : null}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem variant="destructive" onClick={() => onManage(user.id)}>
+                            <Prohibit aria-hidden="true" />
+                            {user.status === "Blocked" ? "Review suspension" : "Suspend account"}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 );
-                })}
-              </TableBody>
-            </Table>
+              })}
+            </TableBody>
+          </Table>
+        )}
 
-            <CardFooter>
-              <Pager {...paged} noun="accounts" className="w-full" />
-            </CardFooter>
-          </Card>
-          )}
-
-          {!isDesktop && (
-          <div className="flex flex-col gap-3">
-            {paged.visible.map(({ user, signIn }) => (
-              <RecordCard key={user.id}>
-                <Landed change={change} kind="account" id={user.id} />
-                <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={user.name} size="md" />
-                  <div className="min-w-0">
-                    <p className="truncate text-[16.5px] font-bold">{user.name}</p>
-                    <p className="truncate text-[14px] text-muted">{user.email}</p>
-                  </div>
-                </div>
-                <p className="pt-3 text-[15.5px]">{roleLabel(user.role)}</p>
-                <div className="flex items-center justify-between gap-3 pt-3.5">
-                  <StatusPill
-                    label={signIn.standalone}
-                    tone={signIn.tone}
-                    mark={signIn.icon}
-                    size="sm"
-                  />
-                  <Button variant="outline" onClick={() => onManage(user.id)}>
-                    <Settings className="h-5 w-5" />
-                    Manage
-                  </Button>
-                </div>
-              </RecordCard>
-            ))}
-
-            <Card className="p-4">
-              <Pager {...paged} noun="accounts" />
-            </Card>
-          </div>
-          )}
-
-          <StickyCta>
-            <Button variant="cobalt" size="xl" block onClick={onAdd}>
-              <UserPlus className="h-5.5 w-5.5" />
-              Add a staff account
-            </Button>
-          </StickyCta>
-        </>
-      )}
-    </div>
+        <TablePagination
+          summary={`${selected.size} of ${filtered.length} selected`}
+          page={paged.page}
+          pageCount={paged.pageCount}
+          onPage={paged.onPage}
+          pageSize={paged.pageSize}
+          onPageSize={paged.onPageSize}
+        />
+      </DataCard>
+    </Page>
   );
 }

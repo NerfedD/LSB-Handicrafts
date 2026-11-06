@@ -1,25 +1,22 @@
 import { useId, useState } from "react";
 
-import { Eye, EyeOff } from "../icons";
+import { Eye, EyeSlash } from "../icons";
+import { Checkbox as CheckboxBox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 /**
- * The 56px field the auth screens use.
+ * A field on the sign-in and password screens, as the Login board draws it:
+ * a 14/500 label 6px above a 32px input, with a 12px muted hint or a 12px
+ * danger error under it.
  *
- * Taller than the 54px form field elsewhere, and that is the handoff's spec
- * rather than drift: signing in is done once, often on a shared machine, often
- * by somebody who is not confident, and the two fields on the screen can
- * afford to be the biggest things on it.
- *
- * THE PASSWORD TOGGLE SAYS "SHOW". An eye glyph on its own is the single most
- * common icon-only control on the web and still nobody is sure whether it
- * means "it is currently hidden" or "it is currently shown" — so it gets the
- * word beside it, and the word changes with the state. That is rule 3 applied
- * where it is least convenient and most needed.
+ * A password field keeps the app's reveal control: a word ("Show" / "Hide")
+ * inside the field's right edge, so the password can be checked before
+ * submitting. `labelAction` sits on the label's row (the board puts
+ * "Forgot password?" there).
  */
 export default function AuthField({
   label,
-  icon,
+  labelAction,
   type = "text",
   value,
   onChange,
@@ -28,101 +25,67 @@ export default function AuthField({
   invalid = false,
   disabled = false,
   hint,
-  // A sentence about this field alone, shown under it in place of the hint.
   error,
 }) {
   const id = useId();
   const [revealed, setRevealed] = useState(false);
   const isPassword = type === "password";
-  const inputType = isPassword && revealed ? "text" : type;
+  const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
 
   return (
-    <div>
-      <label htmlFor={id} className="block pb-2 text-[15.5px] font-bold text-ink">
-        {label}
-      </label>
-      <div
-        className={cn(
-          "flex h-14 items-center gap-3 rounded-field border-[1.5px] bg-surface px-4 transition duration-150",
-          "focus-within:border-cobalt focus-within:shadow-[0_0_0_4px_#1462c826]",
-          invalid ? "border-red" : "border-field",
-          disabled && "bg-tint-neutral"
-        )}
-      >
-        {icon && (
-          <span className="shrink-0 text-[20px] text-muted" aria-hidden="true">
-            {icon}
-          </span>
-        )}
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={id} className="text-sm font-medium">{label}</label>
+        {labelAction}
+      </div>
+      <div className="relative">
         <input
           id={id}
-          type={inputType}
+          type={isPassword && revealed ? "text" : type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
           disabled={disabled}
           aria-invalid={invalid || Boolean(error) || undefined}
-          aria-describedby={error ? `${id}-error` : undefined}
-          className="min-w-0 flex-1 bg-transparent text-[17px] text-ink outline-none placeholder:text-muted-2 disabled:cursor-not-allowed"
+          aria-describedby={describedBy}
+          className={cn(
+            "lsb-field h-8 w-full rounded-md border border-border bg-card px-2.5 text-sm text-foreground shadow-xs placeholder:text-muted-2",
+            "aria-[invalid=true]:border-danger disabled:cursor-not-allowed disabled:opacity-60",
+            isPassword && "pr-[68px]"
+          )}
         />
-        {isPassword && (
+        {isPassword ? (
           <button
             type="button"
             onClick={() => setRevealed((previous) => !previous)}
             disabled={disabled}
-            className="-mr-1.5 inline-flex h-11 shrink-0 items-center gap-1.5 rounded-btn px-2 text-[14.5px] font-bold text-cobalt dark:text-dk-cobalt transition duration-150 hover:bg-tint-cobalt"
+            data-slot="text-link"
+            className="absolute inset-y-0 right-1 my-auto inline-flex h-6 items-center gap-1 rounded px-1.5 text-xs font-medium text-muted-fg hover:bg-muted hover:text-foreground"
           >
-            {revealed ? (
-              <EyeOff className="h-4.5 w-4.5" aria-hidden="true" />
-            ) : (
-              <Eye className="h-4.5 w-4.5" aria-hidden="true" />
-            )}
+            {revealed ? <EyeSlash className="size-3.5" aria-hidden="true" /> : <Eye className="size-3.5" aria-hidden="true" />}
             {revealed ? "Hide" : "Show"}
             <span className="sr-only"> the password</span>
           </button>
-        )}
+        ) : null}
       </div>
       {error ? (
-        <p id={`${id}-error`} className="pt-2 text-[16px] font-bold leading-[1.45] text-red-text">
-          {error}
-        </p>
-      ) : (
-        hint && <p className="pt-2 text-[14.5px] leading-[1.45] text-muted">{hint}</p>
-      )}
+        <p id={`${id}-error`} className="m-0 text-xs font-medium text-danger-fg">{error}</p>
+      ) : hint ? (
+        <p id={`${id}-hint`} className="m-0 text-xs text-muted-fg">{hint}</p>
+      ) : null}
     </div>
   );
 }
 
-/**
- * "Keep me signed in" — a 24px box with a 6px radius.
- *
- * A real checkbox under a styled span rather than a div pretending to be one,
- * so it is keyboard-reachable and announces its own state.
- */
-export function Checkbox({ checked, onChange, label, id: providedId }) {
+/** A checkbox with its label beside it: "Keep me signed in on this computer". */
+export function Checkbox({ checked, onChange, label, id: providedId, disabled }) {
   const generated = useId();
   const id = providedId ?? generated;
-
   return (
-    <span className="inline-flex items-center gap-2.5">
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className={cn(
-          "size-6 shrink-0 cursor-pointer appearance-none rounded-[6px] border-2 border-field bg-surface",
-          "checked:border-cobalt checked:bg-cobalt",
-          // The tick is drawn with a background image so the control stays a
-          // real <input> — no wrapper div, no synced state to get wrong.
-          "checked:bg-[url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22white%22%20stroke-width%3D%223%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M20%206%209%2017l-5-5%22%2F%3E%3C%2Fsvg%3E')]",
-          "checked:bg-[length:15px_15px] checked:bg-center checked:bg-no-repeat"
-        )}
-      />
-      <label htmlFor={id} className="cursor-pointer text-[15.5px] font-semibold text-ink">
-        {label}
-      </label>
+    <span className="inline-flex items-center gap-2">
+      <CheckboxBox id={id} checked={checked} disabled={disabled} onCheckedChange={(next) => onChange(Boolean(next))} />
+      <label htmlFor={id} className="cursor-pointer text-sm">{label}</label>
     </span>
   );
 }

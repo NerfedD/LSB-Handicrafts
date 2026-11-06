@@ -1,53 +1,46 @@
 import { Toaster as Sonner, toast } from "sonner";
 
+import { Check, Info, Warning } from "@/components/icons";
+
 /**
- * Toasts.
+ * Toasts, drawn to the Toasts board: bottom right, 5 seconds and paused on
+ * hover. A --card panel with a 1px --border (--danger-bd-strong for an
+ * error), 8px radius and shadow-menu; an 18px round status mark, a medium
+ * title, a 13/18 muted description, and an outline action. They slide 16px
+ * in from the right (lsb-toast).
  *
- * This is the piece the app was missing entirely. Every Supabase write used to
- * go through a whole-table sync whose only failure path was console.error — so
- * a rejected write showed the user a green "saved successfully" panel while
- * nothing had been persisted. See storageManager.js for the write layer that
- * returns { ok, error } and the callers that surface it here.
- *
- * NAVY, NOT WHITE. The handoff makes the confirmation toast a navy panel with a
- * green check chip, and that is not decoration: a white toast on a paper canvas
- * covered in white cards does not announce itself. The dark panel is the only
- * thing on screen that colour, so it reads as a system message rather than as
- * another card that appeared.
- *
- * A toast says what happened and names the record ("Ana Reyes can sign in
- * again"), so `toast.success("Saved.")` is not enough — pass the subject.
+ * A toast says what happened and names the record ("Rosa Navarro can no
+ * longer sign in"), so pass the subject, not just "Saved".
  */
+const mark = "flex size-[18px] items-center justify-center rounded-full text-on-primary";
+
 function Toaster(props) {
   return (
     <Sonner
-      position="top-right"
-      closeButton
-      // 5s is sonner's default and too short to read a two-line confirmation
-      // that names a record, at the reading speed this system is designed for.
-      duration={6000}
-      gap={12}
+      position="bottom-right"
+      duration={5000}
+      gap={10}
+      icons={{
+        success: <span className={`${mark} bg-success`}><Check className="size-[11px]" weight="bold" /></span>,
+        error: <span className={`${mark} bg-danger text-xs font-semibold`}>!</span>,
+        warning: <span className={`${mark} bg-warning`}><Warning className="size-[11px]" weight="bold" /></span>,
+        info: <span className={`${mark} bg-strong-bg`}><Info className="size-[11px]" weight="bold" /></span>,
+        loading: <span className="block size-[18px] animate-spin rounded-full border-2 border-border border-t-primary" />,
+      }}
       toastOptions={{
+        unstyled: true,
         classNames: {
-          toast: [
-            "group w-full items-start gap-3 rounded-tile2 border-0 bg-navy p-4.5 text-white shadow-toast",
-          ].join(" "),
-          title: "text-[16px] font-extrabold leading-[1.35] text-white",
-          description: "pt-1 text-[14px] leading-[1.45] text-white/75",
-          icon: "mt-0.5",
-          // The action is a word with an underline, not a second filled
-          // button competing with the primary action on the screen behind it.
+          toast:
+            "lsb-toast flex w-[356px] max-w-[calc(100vw-32px)] items-start gap-2.5 rounded-lg border border-border bg-card py-3 pl-3.5 pr-3 text-sm text-foreground shadow-menu",
+          error: "border-danger-bd-strong",
+          icon: "mt-px flex shrink-0",
+          content: "min-w-0 flex-1",
+          title: "font-medium",
+          description: "text-13 text-muted-fg",
           actionButton:
-            "!bg-transparent !px-0 !text-[14.5px] !font-bold !text-white !underline !underline-offset-[3px] hover:!text-white/80",
-          cancelButton: "!bg-white/[0.14] !text-[14.5px] !font-bold !text-white",
-          closeButton:
-            "!border-white/20 !bg-navy !text-white hover:!bg-[#0b2547]",
-          success: "[&_[data-icon]]:text-[#4dbb8c]",
-          // Caution amber, lightened to hold against navy the way the green and
-          // red above are — a warning is "this worked, but something is left
-          // over", which is neither of those two.
-          warning: "[&_[data-icon]]:text-[#f2c46b]",
-          error: "[&_[data-icon]]:text-[#f09b8e]",
+            "inline-flex h-7 shrink-0 items-center rounded-md border border-border bg-card px-2.5 text-13 font-medium text-foreground hover:bg-muted",
+          cancelButton:
+            "inline-flex h-7 shrink-0 items-center rounded-md border border-border bg-card px-2.5 text-13 font-medium text-foreground hover:bg-muted",
         },
       }}
       {...props}

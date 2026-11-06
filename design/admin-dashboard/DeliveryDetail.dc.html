@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Delivery #2046</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0;background:var(--surface-2, #fafafa)}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--primary, #004E89);outline-offset:2px}
+a{color:var(--primary-text, #004E89)}a:hover{color:var(--primary-hover, #003a66)}
+@media (max-width: 767px){.app-sidebar-slot{display:none !important}.app-inset{margin:0 !important;border-radius:0 !important;border-left:0 !important;border-right:0 !important}}
+</style>
+</helmet>
+<div style="position: relative; min-height: 1000px; box-sizing: border-box; display: flex; flex-wrap: wrap; align-items: stretch; background: var(--surface-2, #fafafa); color: var(--foreground, #09090b); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<div class="app-sidebar-slot" style="flex: 0 0 auto; position: relative; z-index: 2;">
+<dc-import name="AppSidebar" active="deliveries" collapsed="{{collapsed}}" h="1000" on-toggle="{{toggleNav}}" hint-size="240px,1000px"></dc-import>
+</div>
+
+<main class="app-inset" style="flex: 999 1 560px; min-width: 0; margin: 8px 8px 8px 0; background: var(--background, #F1FAEE); border: 1px solid var(--border, #d4d4d8); border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); display: flex; flex-direction: column;">
+<dc-import name="TopBar" section="Deliveries" page="#2046" on-trigger="{{toggleNav}}" hint-size="100%,48px"></dc-import>
+
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+<a href="Deliveries.dc.html" style="display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; font-size: 13px; font-weight: 500; color: var(--fg-2, #3f3f46); text-decoration: none;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M160 208l-80-80 80-80"></path></svg>Back to Deliveries</a>
+
+<header style="display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px;">
+<div style="min-width: 0;">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Delivery #2046</h1>
+<span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{st.bd}}; background: {{st.bg}}; color: {{st.fg}}; font-size: 12px; font-weight: 500;"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{st.dot}};"></span>{{st.label}}</span>
+</div>
+<p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">SM Lanang Display Team · 8 items from <a href="OrderDetail.dc.html" style="text-decoration: none; font-weight: 500;">order #2046</a> · due today</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<sc-if value="{{canBack}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{back}}" style="height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer;">Move back a step</button></sc-if>
+<button type="button" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M64 96V40h128v56M64 176H40a8 8 0 0 1-8-8V104a8 8 0 0 1 8-8h176a8 8 0 0 1 8 8v64a8 8 0 0 1-8 8h-24"></path><rect x="64" y="152" width="128" height="64" rx="4"></rect></svg>Print delivery slip</button>
+<sc-if value="{{notDone}}" hint-placeholder-val="{{true}}"><button type="button" onClick="{{openDeliver}}" aria-haspopup="dialog" style="display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--primary, #004E89); border-radius: 6px; background: var(--primary, #004E89); color: var(--on-primary, #ffffff); font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg>Mark delivered</button></sc-if>
+</div>
+</header>
+
+<!-- Stage tracker -->
+<section aria-label="Delivery progress" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<ol style="list-style: none; margin: 0; padding: 16px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; font-size: 13px; line-height: 18px;">
+<sc-for list="{{steps}}" as="t" hint-placeholder-count="5">
+<li aria-current="{{t.current}}" style="display: flex; flex-direction: column; gap: 8px; min-width: 0;"><span style="height: 4px; border-radius: 2px; background: {{t.bar}};"></span><span style="font-weight: {{t.fw}}; color: {{t.fg}};">{{t.label}}</span><span style="font-size: 12px; line-height: 16px; color: var(--muted-fg, #71717a);">{{t.when}}</span></li>
+</sc-for>
+</ol>
+</section>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+<div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+
+<section aria-labelledby="dd-items" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="dd-items" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">What's on the truck</h2></div>
+<ul style="list-style: none; margin: 0; padding: 0; font-size: 13px; line-height: 18px;">
+<li style="display: grid; grid-template-columns: 1fr 60px 120px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="font-weight: 500;">Christmas tree cutout, 6 ft</span><span style="text-align: right;">2</span><span style="color: var(--muted-fg, #71717a);">Bubble-wrapped</span></li>
+<li style="display: grid; grid-template-columns: 1fr 60px 120px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="font-weight: 500;">Giant ornament ball, 24 inch</span><span style="text-align: right;">4</span><span style="color: var(--muted-fg, #71717a);">Boxed</span></li>
+<li style="display: grid; grid-template-columns: 1fr 60px 120px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="font-weight: 500;">Star topper, gold leaf</span><span style="text-align: right;">1</span><span style="color: var(--muted-fg, #71717a);">Handle with care</span></li>
+<li style="display: grid; grid-template-columns: 1fr 60px 120px; align-items: center; gap: 8px; min-height: 40px; padding: 0 16px;"><span style="font-weight: 500;">“Merry Christmas” letter set</span><span style="text-align: right;">1</span><span style="color: var(--muted-fg, #71717a);">Boxed</span></li>
+</ul>
+</section>
+
+<section aria-labelledby="dd-proof" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px; border-bottom: 1px solid var(--border, #d4d4d8);"><h2 id="dd-proof" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Proof of delivery</h2></div>
+<sc-if value="{{notDone}}" hint-placeholder-val="{{true}}"><p style="margin: 0; padding: 16px; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">The driver records who received it, with a photo of the signed slip, when it arrives.</p></sc-if>
+<sc-if value="{{isDone}}" hint-placeholder-val="{{false}}"><div style="display: flex; gap: 12px; padding: 16px; font-size: 13px; line-height: 18px;"><span aria-hidden="true" style="flex: none; width: 72px; height: 72px; border: 1px dashed var(--input-strong, #a1a1aa); border-radius: 6px; background: var(--surface-2, #fafafa); display: flex; align-items: center; justify-content: center; color: var(--muted-fg, #71717a); font-size: 11px;">Photo</span><div><div style="font-weight: 500;">Received by Jay Morales at 11:20 AM</div><div style="color: var(--muted-fg, #71717a);">All 8 items arrived in good shape.</div></div></div></sc-if>
+</section>
+</div>
+
+<aside style="flex: 1 1 300px; min-width: 260px; display: flex; flex-direction: column; gap: 16px;">
+<section aria-labelledby="dd-where" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 8px;"><h2 id="dd-where" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Where</h2></div>
+<dl style="margin: 0; padding: 0 16px 12px; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; font-size: 13px; line-height: 18px;">
+<dt style="color: var(--muted-fg, #71717a);">Address</dt><dd style="margin: 0;">SM Lanang Premier, J.P. Laurel Ave, Davao City</dd>
+<dt style="color: var(--muted-fg, #71717a);">Contact</dt><dd style="margin: 0;">Jay Morales · <a href="#" style="text-decoration: none;">0917 330 5521</a></dd>
+</dl>
+<p style="margin: 0 16px 14px; padding: 8px 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--surface-2, #fafafa); font-size: 13px; line-height: 18px; color: var(--fg-2, #3f3f46);">Loading dock, basement 2. Bring an ID for the guard.</p>
+</section>
+<section aria-labelledby="dd-driver" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding: 14px 16px 8px;"><h2 id="dd-driver" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">Driver</h2><button type="button" style="padding: 0; border: 0; background: transparent; color: var(--primary-text, #004E89); font-size: 13px; font-weight: 500; cursor: pointer;">Change</button></div>
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 16px 14px;"><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; background: var(--muted, #f4f4f5); color: var(--fg-2, #3f3f46); font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; justify-content: center;">JD</span><div style="font-size: 13px; line-height: 18px;"><div style="font-weight: 500;">Jun Dela Cruz</div><div style="color: var(--muted-fg, #71717a);">L300 van · LAB 1234 · left 10:15 AM</div></div></div>
+</section>
+<section aria-labelledby="dd-hist" style="border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+<div style="padding: 14px 16px 6px;"><h2 id="dd-hist" style="margin: 0; font-size: 14px; line-height: 20px; font-weight: 600;">History</h2></div>
+<ol style="list-style: none; margin: 0; padding: 0 16px 12px; font-size: 13px; line-height: 18px;">
+<sc-if value="{{isDone}}" hint-placeholder-val="{{false}}"><li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">11:20 AM</span><span>Delivered, received by Jay Morales</span></li></sc-if>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">10:15 AM</span><span>Jun Dela Cruz left the workshop</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--row-divider, #f4f4f5);"><span style="color: var(--muted-fg, #71717a);">Oct 27</span><span>Ready to go; packed by Edwin Castro</span></li>
+<li style="display: grid; grid-template-columns: 70px 1fr; gap: 8px; padding: 6px 0;"><span style="color: var(--muted-fg, #71717a);">Oct 22</span><span>Batch B-0310 started for this order</span></li>
+</ol>
+</section>
+</aside>
+</div>
+
+</div>
+</main>
+
+<sc-if value="{{dlgDeliver}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 50; display: flex; justify-content: center; align-items: flex-start; padding: 64px 16px 0; box-sizing: border-box;">
+<button type="button" aria-label="Close dialog" onClick="{{closeDlg}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div style="position: relative; max-width: 100%;"><dc-import name="MarkDeliveredDialog" on-close="{{closeDlg}}" on-confirm="{{deliverNow}}" delivery-id="2046" customer="SM Lanang Display Team" items="8" hint-size="480px,580px"></dc-import></div>
+</div>
+</sc-if>
+
+<sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+<div style="position: absolute; inset: 0; z-index: 30;">
+<button type="button" aria-label="Close navigation" onClick="{{closeSheet}}" style="position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--overlay, rgba(9,9,11,0.5)); cursor: pointer;"></button>
+<div role="dialog" aria-label="Navigation" style="position: absolute; top: 0; left: 0; bottom: 0; background: var(--surface-2, #fafafa); box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+<dc-import name="AppSidebar" active="deliveries" h="1000" hint-size="240px,1000px"></dc-import>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const stage = s.stage ?? 3;
+    const STEPS = [
+      ['Not yet sent', 'Oct 20'], ['Being made', 'Oct 22'], ['Ready to go', 'Oct 27'], ['On the way', 'Today, 10:15 AM'], ['Delivered', stage >= 4 ? 'Today, 11:20 AM' : 'Due today']
+    ];
+    const ST = [
+      { label: 'Not yet sent', bg: 'var(--card, #ffffff)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)', dot: 'var(--muted-2, #a1a1aa)' },
+      { label: 'Being made', bg: 'var(--warning-bg, #fffbeb)', fg: 'var(--warning-fg, #b45309)', bd: 'var(--warning-bd, #fef3c7)', dot: 'var(--warning, #b45309)' },
+      { label: 'Ready to go', bg: 'var(--muted, #f4f4f5)', fg: 'var(--ink, #18181b)', bd: 'var(--border, #d4d4d8)', dot: 'var(--inverse, #18181b)' },
+      { label: 'On the way', bg: 'var(--muted, #f4f4f5)', fg: 'var(--fg-2, #3f3f46)', bd: 'var(--border, #d4d4d8)', dot: 'var(--muted-fg, #71717a)' },
+      { label: 'Delivered', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)', dot: 'var(--success, #15803d)' }
+    ];
+    const steps = STEPS.map(([label, when], i) => ({
+      label, when: i <= stage || i === 4 ? when : '',
+      bar: i <= stage ? (stage === 4 ? 'var(--success, #15803d)' : 'var(--primary, #004E89)') : 'var(--muted-strong, #e4e4e7)',
+      fw: i === stage ? '600' : '400',
+      fg: i <= stage ? 'var(--foreground, #09090b)' : 'var(--muted-fg, #71717a)',
+      current: i === stage ? 'step' : undefined
+    }));
+    return {
+      collapsed: !!s.collapsed,
+      sheet: !!s.sheet,
+      st: ST[stage],
+      steps,
+      isDone: stage === 4,
+      notDone: stage < 4,
+      canBack: stage > 0,
+      back: () => this.setState({ stage: Math.max(0, stage - 1) }),
+      dlgDeliver: s.dlg === 'deliver',
+      openDeliver: () => this.setState({ dlg: 'deliver' }),
+      deliverNow: () => this.setState({ stage: 4, dlg: null }),
+      closeDlg: () => this.setState({ dlg: null }),
+      toggleNav: () => {
+        const mobile = window.matchMedia && window.matchMedia('(max-width: 767px)').matches;
+        if (mobile) this.setState({ sheet: !s.sheet });
+        else this.setState({ collapsed: !s.collapsed });
+      },
+      closeSheet: () => this.setState({ sheet: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

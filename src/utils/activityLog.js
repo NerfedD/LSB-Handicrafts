@@ -22,30 +22,17 @@ export const ACTIVITY_KIND = {
 };
 
 /** icon name + tone per kind. Names resolve in shared/activityIcons.jsx. */
-export const KIND_STYLE = {
-  [ACTIVITY_KIND.SIGN_IN]:  { icon: "LogIn", tone: "cobalt" },
-  [ACTIVITY_KIND.STOCK]:    { icon: "Boxes", tone: "clay" },
+const KIND_STYLE = {
+  [ACTIVITY_KIND.SIGN_IN]:  { icon: "LogIn", tone: "info" },
+  [ACTIVITY_KIND.STOCK]:    { icon: "Boxes", tone: "progress" },
   [ACTIVITY_KIND.PRICE]:    { icon: "Tag", tone: "green" },
   [ACTIVITY_KIND.ACCOUNT]:  { icon: "UserCog", tone: "purple" },
-  [ACTIVITY_KIND.ORDER]:    { icon: "ClipboardList", tone: "cobalt" },
+  [ACTIVITY_KIND.ORDER]:    { icon: "ClipboardList", tone: "info" },
   [ACTIVITY_KIND.DELIVERY]: { icon: "Truck", tone: "amber" },
   [ACTIVITY_KIND.PRODUCT]:  { icon: "Package", tone: "neutral" },
   [ACTIVITY_KIND.CUSTOMER]: { icon: "UserRound", tone: "purple" },
-  [ACTIVITY_KIND.SUPPLIER]: { icon: "Handshake", tone: "clay" },
+  [ACTIVITY_KIND.SUPPLIER]: { icon: "Handshake", tone: "progress" },
 };
-
-/** The activity screen's filter chips, in order. */
-export const ACTIVITY_CHIPS = [
-  { value: "all", label: "Everything", kinds: null },
-  { value: "sign-ins", label: "Sign-ins", kinds: [ACTIVITY_KIND.SIGN_IN] },
-  { value: "stock", label: "Stock changes", kinds: [ACTIVITY_KIND.STOCK] },
-  { value: "prices", label: "Price changes", kinds: [ACTIVITY_KIND.PRICE] },
-  {
-    value: "accounts",
-    label: "Staff accounts",
-    kinds: [ACTIVITY_KIND.ACCOUNT],
-  },
-];
 
 /**
  * Asks the database to note this session's sign-in, once per session. Every
@@ -98,7 +85,7 @@ export function readAll(rows = []) {
  * Grouping by day rather than printing a full date on every row is what makes
  * a long log skimmable: the eye finds the day, then the time within it.
  */
-export function dayLabel(value) {
+function dayLabel(value) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return "Earlier";
 

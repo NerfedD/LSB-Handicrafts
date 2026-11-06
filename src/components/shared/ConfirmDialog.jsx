@@ -1,105 +1,97 @@
-import { LoaderCircle, TriangleAlert } from "../icons";
+import { useState } from "react";
+
+import { CheckCircle, SpinnerGap, Warning } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import IconChip from "./Chip";
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 /**
- * The app's one confirmation dialog, and rule 6 in component form.
+ * A yes-or-no before something that is hard to take back, drawn to the
+ * "Confirm (destructive) · AlertDialog" board: 440px, a 32px round mark beside
+ * a 16/24 title and the consequence in 13/18 --fg-2, then the keep button and
+ * the act button on the right.
  *
- * WHAT THE HANDOFF REQUIRES OF EVERY DESTRUCTIVE CONFIRM:
- *
- *   1. NAME THE RECORD in the heading. Not "Are you sure?" but
- *      'Delete "Styro Ball 6 inch"?'. "Are you sure? This cannot be undone."
- *      is a question about a thing the dialog has declined to identify, and
- *      the honest answer to it is "sure about what?".
- *   2. STATE THE CONSEQUENCES, and state what SURVIVES. Somebody removing a
- *      staff account needs to know the orders that person wrote stay exactly
- *      as they are — without that, the safe-looking choice is to leave a
- *      leaver's account active forever.
- *   3. THE BUTTON SAYS THE VERB. "Yes, delete it", not "OK" or "Confirm". A
- *      button labelled "Confirm" tells you nothing about which of the two
- *      options you are picking, which is exactly when it gets clicked by
- *      mistake.
- *   4. THE DISMISSING BUTTON IS POSITIVE. "Keep it", not "Cancel" — cancelling
- *      is ambiguous next to a destructive verb ("cancel the deletion" or
- *      "cancel the record"?).
- *
- * `subject` and `consequences` are required for that reason: a confirm that
- * can be constructed without them is a confirm that will be.
+ * `intent="delete"` paints the mark and the act button --danger; "forward"
+ * (putting something back, letting someone in) keeps them neutral and blue.
+ * `confirmText` asks for the record's name to be typed before the act button
+ * works, for the removals that cannot be undone.
  */
 export default function ConfirmDialog({
   open,
   onOpenChange,
-  /** The heading, which must contain the record's name. */
   title,
-  /** What happens, and what survives. */
   consequences,
   confirmLabel,
   keepLabel = "Keep it",
-  /** "delete" paints the confirm button red; "forward" paints it green. */
   intent = "delete",
   busy = false,
+  confirmText,
   onConfirm,
 }) {
   const destructive = intent === "delete";
+  const [typed, setTyped] = useState("");
+  const blocked = Boolean(confirmText) && typed.trim() !== confirmText;
+  const Mark = destructive ? Warning : CheckCircle;
 
   return (
-    <Dialog open={open} onOpenChange={busy ? undefined : onOpenChange}>
-      <DialogContent showClose={false} className="max-w-[520px]">
-        <DialogHeader className="flex items-start gap-4 pr-6.5">
-          <IconChip
-            icon={<TriangleAlert />}
-            tone={destructive ? "red" : "green"}
-            size="xl"
-          />
+    <AlertDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (busy) return;
+        if (!next) setTyped("");
+        onOpenChange?.(next);
+      }}
+    >
+      <AlertDialogContent>
+        <div className="flex gap-3 px-5 pt-5">
+          <span
+            aria-hidden="true"
+            className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", destructive ? "bg-danger-bg text-danger-fg" : "bg-muted text-fg-2")}
+          >
+            <Mark className="size-4" />
+          </span>
           <div className="min-w-0">
-            <DialogTitle>{title}</DialogTitle>
+            <AlertDialogTitle>{title}</AlertDialogTitle>
+            <AlertDialogDescription render={<div />}>{consequences}</AlertDialogDescription>
           </div>
-        </DialogHeader>
-
-        <DialogBody>
-          <DialogDescription className="pt-0 text-[16px] text-ink-2">
-            {consequences}
-          </DialogDescription>
-        </DialogBody>
-
-        <DialogFooter className="justify-between">
-          <Button variant="outline" size="lg" disabled={busy} onClick={() => onOpenChange?.(false)}>
+        </div>
+        {confirmText ? (
+          <div className="flex flex-col gap-1.5 pl-16 pr-5 pt-3.5">
+            <label htmlFor="confirm-type" className="text-13 font-medium">
+              Type <strong className="font-semibold">{confirmText}</strong> to confirm
+            </label>
+            <input
+              id="confirm-type"
+              type="text"
+              autoComplete="off"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              className="lsb-field h-8 rounded-md border border-border bg-card px-2.5 text-sm"
+            />
+          </div>
+        ) : null}
+        <AlertDialogFooter>
+          <Button variant="outline" disabled={busy} onClick={() => onOpenChange?.(false)}>
             {keepLabel}
           </Button>
-          <Button
-            variant={destructive ? "danger-solid" : "green"}
-            size="lg"
-            disabled={busy}
-            onClick={onConfirm}
-          >
-            {/* The word alone was a still picture of a working app. This is
-                the dialog that deletes a customer or gives money back, so it is
-                also the one whose write is slowest and whose confirm button is
-                disabled the longest — and a disabled button holding the word
-                "Working…" without moving is indistinguishable from one that has
-                hung. The spinner is the only thing on screen saying the wait is
-                still going somewhere, which is why reduced motion deliberately
-                leaves it turning. */}
+          <Button variant={destructive ? "destructive" : "default"} disabled={busy || blocked} onClick={onConfirm}>
             {busy ? (
               <>
-                <LoaderCircle className="h-5 w-5 animate-spin" aria-hidden="true" />
+                <SpinnerGap className="animate-spin" aria-hidden="true" />
                 Working…
               </>
             ) : (
               confirmLabel
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

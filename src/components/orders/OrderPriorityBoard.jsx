@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Button } from '../ui/button';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 /** Persisted list ordering, with equivalent keyboard/touch buttons. */
 export default function OrderPriorityBoard({ orders, onReorder, onOpen }) {
@@ -31,26 +32,45 @@ export default function OrderPriorityBoard({ orders, onReorder, onOpen }) {
     }
   }
 
-  return <section aria-label="Order priority" aria-busy={!!optimistic} className="rounded-tile2 border border-card bg-surface p-5">
-    <p className="pb-4 text-[16px] text-muted">Drag an order onto another to change priority, or use Move up and Move down. Status and stock are managed on the order.</p>
-    <ol className="divide-y divide-hair">
-      {rows.map((order, index) => <li key={order.id} data-order-id={order.id}
-        draggable={!optimistic}
-        onDragStart={(event) => {
-          event.dataTransfer.setData('text/plain', String(order.id));
-          event.dataTransfer.effectAllowed = 'move'; setDragging(order.id);
-        }}
-        onDragOver={(event) => { if (dragging !== null && !optimistic) { event.preventDefault(); setOver(order.id); } }}
-        onDragEnd={() => { setDragging(null); setOver(null); }}
-        onDrop={(event) => { event.preventDefault(); if (dragging !== null) move(dragging, order.id); }}
-        className={`flex flex-wrap items-center justify-between gap-3 p-4 transition-colors ${over === order.id ? 'bg-tint-cobalt' : ''} ${dragging === order.id ? 'opacity-50' : ''}`}>
-        <button type="button" className="text-left text-[16px] font-bold" onClick={() => onOpen(order.id)}>#{order.id} · {order.customerName}</button>
-        <div className="flex gap-2">
-          <Button variant="outline" disabled={!!optimistic || index === 0} aria-label={`Move order ${order.id} up`} onClick={() => move(order.id, rows[index - 1].id)}>Move up</Button>
-          <Button variant="outline" disabled={!!optimistic || index === rows.length - 1} aria-label={`Move order ${order.id} down`} onClick={() => move(order.id, rows[index + 1].id)}>Move down</Button>
-        </div>
-      </li>)}
-    </ol>
-    <p role="status" className="sr-only">{optimistic ? 'Saving order priority.' : 'Order priority ready.'}</p>
-  </section>;
+  return (
+    <section aria-label="Order priority" aria-busy={!!optimistic} className="rounded-lg border border-border bg-card shadow-xs">
+      <p className="m-0 border-b border-border px-4 py-3 text-13 text-muted-fg">
+        Drag an order onto another to change priority, or use Move up and Move down. Status and stock are managed on the order.
+      </p>
+      <ol className="m-0 list-none p-0">
+        {rows.map((order, index) => (
+          <li
+            key={order.id}
+            data-order-id={order.id}
+            draggable={!optimistic}
+            onDragStart={(event) => {
+              event.dataTransfer.setData('text/plain', String(order.id));
+              event.dataTransfer.effectAllowed = 'move';
+              setDragging(order.id);
+            }}
+            onDragOver={(event) => { if (dragging !== null && !optimistic) { event.preventDefault(); setOver(order.id); } }}
+            onDragEnd={() => { setDragging(null); setOver(null); }}
+            onDrop={(event) => { event.preventDefault(); if (dragging !== null) move(dragging, order.id); }}
+            className={cn(
+              'flex flex-wrap items-center justify-between gap-3 border-b border-row-divider px-4 py-2 last:border-b-0',
+              over === order.id && 'bg-muted',
+              dragging === order.id && 'opacity-50'
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-3 text-13">
+              <span className="w-6 text-right text-muted-fg">{index + 1}</span>
+              <button data-slot="text-link" type="button" className="border-0 bg-transparent p-0 text-left font-medium text-foreground hover:underline" onClick={() => onOpen(order.id)}>
+                #{order.id} · {order.customerName}
+              </button>
+            </span>
+            <span className="flex gap-1">
+              <Button variant="outline" size="sm" disabled={!!optimistic || index === 0} aria-label={`Move order ${order.id} up`} onClick={() => move(order.id, rows[index - 1].id)}>Move up</Button>
+              <Button variant="outline" size="sm" disabled={!!optimistic || index === rows.length - 1} aria-label={`Move order ${order.id} down`} onClick={() => move(order.id, rows[index + 1].id)}>Move down</Button>
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p role="status" className="sr-only">{optimistic ? 'Saving order priority.' : 'Order priority ready.'}</p>
+    </section>
+  );
 }

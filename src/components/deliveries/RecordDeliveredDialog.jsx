@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { localDateIso, promisedDateProblem } from "../../utils/dates";
 
-import { PackageOpen, Truck } from "../icons";
+import { Package } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,14 +14,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import Callout from "../shared/Callout";
-import { Field } from "../shared/forms";
+import { Field, RadioRow, Row } from "../shared/forms";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import { deliveryStage } from "../../utils/copy";
+import { customerFrom } from "../../utils/deliveries";
 import { countProblem } from "../../utils/validation";
 import { committedOf, orderedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
 
 /**
- * What actually went on the van.
+ * What actually went on the van, drawn to the "Mark delivered · Dialog" board:
+ * the delivery and its customer, "did everything go?" with "all of it"
+ * chosen, and the per-line counts only once somebody says some did not.
+ * The board's "Received by", time and proof photo are left out: the app has
+ * nowhere to keep them.
+ *
  *
  * THE REASON THIS EXISTS. Advancing a delivery used to be one green button, and
  * that button assumed the whole order went. It usually does. When it does not —
@@ -94,6 +100,7 @@ export default function RecordDeliveredDialog({
   const [driver, setDriver] = useState(delivery?.driver ?? "");
   const [dueOn, setDueOn] = useState("");
   const [saving, setSaving] = useState(false);
+  const [some, setSome] = useState(false);
 
   const stage = deliveryStage(toStage);
 
@@ -133,6 +140,7 @@ export default function RecordDeliveredDialog({
     setWent(Object.fromEntries(lines.map((line) => [line.index, String(line.owed)])));
     setDriver(delivery?.driver ?? "");
     setDueOn("");
+    setSome(false);
   }
 
   function handleOpenChange(next) {
@@ -176,90 +184,110 @@ export default function RecordDeliveredDialog({
     if (ok !== false) handleOpenChange(false);
   }
 
+  const arriving = toStage === DELIVERY_STAGE.ARRIVED;
+  const itemCount = lines.reduce((n, line) => n + (Number(line.owed) || Number(line.quantity) || 0), 0);
+  const customer = customerFrom(delivery);
+  const counted = lines.filter((line) => line.tracked);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent size="md">
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader>
-            <DialogTitle>What actually went out?</DialogTitle>
+            <DialogTitle>
+              {delivery?.id
+                ? arriving ? `Delivery #${delivery.id} arrived` : `Delivery #${delivery.id} is ${stage.label.toLowerCase()}`
+                : "What actually went out?"}
+            </DialogTitle>
             <DialogDescription>
-              This is what comes off the shelf, so it needs to match what was really
-              loaded. If everything went, leave the numbers as they are.
+              {[customer, `${itemCount} ${itemCount === 1 ? "item" : "items"}`].filter(Boolean).join(" · ")}.
+              {" "}What is counted here comes off the shelf.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody className="flex flex-col gap-3.5">
             {lines.length === 0 ? (
-              <p className="text-[16px] text-muted">
+              <p className="m-0 text-13 text-muted-fg">
                 There is nothing on this order to load, so there is nothing to count.
               </p>
             ) : (
-              lines.map((line) =>
-                line.tracked ? (
-                  <Field
-                    key={line.index}
-                    label={line.name}
-                    error={problems[line.index]}
-                    hint={
-                      line.quantity !== line.ordered
-                        ? `${line.ordered} off the shelf, cut into ${line.quantity} pieces. Count what left the shelf.`
-                        : line.committed > 0
-                          ? `${line.committed} already gone, ${line.owed} still owed. Count only this trip.`
-                          : `${line.ordered} on the order. Count only this trip.`
-                    }
-                  >
-                    {(props) => (
-                      <Input
-                        {...props}
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        max={line.owed}
-                        value={went[line.index] ?? ""}
-                        onChange={(event) => setLine(line.index, event.target.value)}
-                      />
+              <>
+                {counted.length > 0 ? (
+                  <Field label={arriving ? "Did everything arrive in good shape?" : "Did everything go on the van?"}>
+                    <RadioRow
+                      label={arriving ? "Did everything arrive in good shape?" : "Did everything go on the van?"}
+                      value={some ? "some" : "all"}
+                      onChange={(next) => {
+                        setSome(next === "some");
+                        if (next === "all") setWent(Object.fromEntries(lines.map((line) => [line.index, String(line.owed)])));
+                      }}
+                      options={[
+                        { value: "all", label: `Yes, all ${itemCount} ${itemCount === 1 ? "item" : "items"}` },
+                        { value: "some", label: arriving ? "Some were missing or damaged" : "Some were left behind" },
+                      ]}
+                    />
+                  </Field>
+                ) : null}
+
+                {some || counted.length === 0 ? (
+                  <div className="flex flex-col gap-3.5 rounded-md border border-border p-3">
+                    {lines.map((line) =>
+                      line.tracked ? (
+                        <Field
+                          key={line.index}
+                          label={line.name}
+                          error={problems[line.index]}
+                          hint={
+                            line.quantity !== line.ordered
+                              ? `${line.ordered} off the shelf, cut into ${line.quantity} pieces. Count what left the shelf.`
+                              : line.committed > 0
+                                ? `${line.committed} already gone, ${line.owed} still owed. Count only this trip.`
+                                : `${line.ordered} on the order. Count only this trip.`
+                          }
+                        >
+                          {(props) => (
+                            <Input
+                              {...props}
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              max={line.owed}
+                              value={went[line.index] ?? ""}
+                              onChange={(event) => setLine(line.index, event.target.value)}
+                            />
+                          )}
+                        </Field>
+                      ) : (
+                        <div key={line.index} className="flex items-baseline justify-between gap-3 text-13">
+                          <span className="font-medium">{line.name}</span>
+                          <span className="text-muted-fg">{line.quantity} made to order, not counted on the shelf</span>
+                        </div>
+                      )
                     )}
-                  </Field>
-                ) : (
-                  <Field
-                    key={line.index}
-                    label={line.name}
-                    hint="A made-to-order piece. It is not counted on the shelf, so there is no number to record here."
-                  >
-                    <p className="text-[16px] font-bold text-muted">
-                      {line.quantity} on the order
-                    </p>
-                  </Field>
-                )
-              )
+                  </div>
+                ) : null}
+              </>
             )}
 
             {isShort && (
-              <Callout
-                tone="amber"
-                icon={<PackageOpen />}
-                title="Some of this is being left behind"
-              >
+              <Callout tone="amber" icon={<Package />} title="Some of this is being left behind">
                 {shortfall.map((line) => (
                   <span key={line.index} className="block">
-                    <strong className="font-bold text-ink">
-                      {line.owed - line.going} × {line.name}
-                    </strong>{" "}
-                    still owed.
+                    <strong>{line.owed - line.going} × {line.name}</strong> still owed.
                   </span>
                 ))}
-                <span className="block pt-2">
-                  A second delivery will be raised for the rest, and only what actually
-                  went out comes off the shelf. The order stays open until it arrives.
+                <span className="block pt-1">
+                  A second delivery is raised for the rest, and only what went out comes off the shelf.
+                  Sales can see it, and the order stays open until it arrives.
                 </span>
               </Callout>
             )}
 
             {isShort && (
-              <>
+              <Row>
                 <Field
-                  label="Who takes the rest"
-                  hint="Leave it empty if that is not decided yet — it shows on the board as needing somebody."
+                  label={<>Who takes the rest <span className="font-normal text-muted-fg">(optional)</span></>}
+                  hint="Left empty, it shows on the board as needing somebody."
                 >
                   {(props) => (
                     <>
@@ -282,7 +310,7 @@ export default function RecordDeliveredDialog({
                 <Field
                   label="When it should get there"
                   error={promisedDateProblem(dueOn)}
-                  hint="A promised day, today or later. Without one it never shows under Late or Due today."
+                  hint="Today or later, so it shows under Late or Due today."
                 >
                   {(props) => (
                     <Input
@@ -294,26 +322,20 @@ export default function RecordDeliveredDialog({
                     />
                   )}
                 </Field>
-              </>
+              </Row>
             )}
           </DialogBody>
 
-          <DialogFooter className="justify-between">
-            <Button
-              variant="outline"
-              size="lg"
-              disabled={saving}
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
+          <DialogFooter>
+            <Button variant="outline" disabled={saving} onClick={() => handleOpenChange(false)}>
+              Not yet
             </Button>
-            <Button type="submit" variant="green" size="lg" disabled={saving}>
-              <Truck className="h-5 w-5" />
+            <Button type="submit" disabled={saving}>
               {saving
                 ? "Recording…"
                 : isShort
                   ? "Record what went, and raise the rest"
-                  : `Yes, it is ${stage.label.toLowerCase()}`}
+                  : arriving ? "Mark delivered" : `Mark ${stage.label.toLowerCase()}`}
             </Button>
           </DialogFooter>
         </form>

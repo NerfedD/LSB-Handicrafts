@@ -128,6 +128,10 @@ const orderToRow = (o) => ({
   refund_history: o.refundHistory || [],
   price_adjustments: o.priceAdjustments || [],
   refunded_amount: numOrNull(o.refundedAmount) ?? 0,
+  // 30 or 60 days from delivery, or null for an order picked up at the shop.
+  // Left undefined when a patch does not mention it, so it drops out of the
+  // request rather than being sent as a change (only managers may change it).
+  payment_term_days: o.paymentTermDays,
 });
 
 const orderFromRow = (r) => ({
@@ -142,6 +146,7 @@ const orderFromRow = (r) => ({
   status: r.status,
   createdAt: r.created_at,
   stockCommittedAt: r.stock_committed_at,
+  paymentTermDays: r.payment_term_days ?? null,
   priorityPosition: r.priority_position ?? 0,
   backorderStatus: r.backorder_status || 'none',
   refundHistory: r.refund_history || [],
@@ -204,6 +209,8 @@ const customerToRow = (c) => ({
   email: c.email || null,
   address: c.address,
   kind: c.kind === 'business' ? 'business' : 'walk-in',
+  // The term a new order of theirs starts with. Undefined drops out of a patch.
+  payment_term_days: c.paymentTermDays,
   created_at: c.createdAt,
   updated_at: c.updatedAt,
 });
@@ -216,6 +223,7 @@ const customerFromRow = (r) => ({
   email: r.email,
   address: r.address,
   kind: r.kind || 'walk-in',
+  paymentTermDays: r.payment_term_days ?? 30,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -474,7 +482,7 @@ const createRow = async (table, row, toRow = identity) => {
 };
 
 /** Tables whose rows carry a revision: a save made from an older copy is refused. */
-const VERSIONED = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules'];
+const VERSIONED = ['orders', 'deliveries', 'customers', 'suppliers', 'products', 'inventory', 'staff', 'loyalty_rules', 'business_settings'];
 
 /**
  * Update one row by id. `id` is never part of the payload, so a mis-typed id
@@ -556,6 +564,204 @@ export const customerStatsCollection = {
     }, customerStatsFromRow),
 };
 export const loyaltyCollection = collection('loyalty_rules', loyaltyFromRow, loyaltyToRow);
+
+/** A small table or view read whole in one request: no `id` to page by. */
+const readWhole = (table, fromRow) => readRows(table, async () => {
+  const { data, error } = await supabase.from(table).select('*');
+  if (error) throw error;
+  return data ?? [];
+}, fromRow);
+
+// ---- payments ---------------------------------------------------------------
+
+/** What each order has been paid so far (the order_paid view): one row per order with any payment. */
+const orderPaidFromRow = (r) => ({
+  orderId: Number(r.order_id),
+  paid: Number(r.paid_amount) || 0,
+  count: Number(r.payment_count) || 0,
+  lastPaidOn: r.last_paid_on,
+});
+export const orderPaidCollection = {
+  table: 'order_paid',
+  fromRow: orderPaidFromRow,
+  load: () => readWhole('order_paid', orderPaidFromRow),
+};
+
+const paymentFromRow = (r) => ({
+  id: Number(r.id),
+  orderId: Number(r.order_id),
+  amount: Number(r.amount),
+  method: r.method,
+  reference: r.reference,
+  receivedOn: r.received_on,
+  note: r.note,
+  recordedBy: r.recorded_by,
+  createdAt: r.created_at,
+});
+
+/** One order's payments, oldest first. */
+export async function fetchOrderPayments(orderId) {
+  return readRows('order_payments', async () => {
+    const { data, error } = await supabase.from('order_payments').select('*').eq('order_id', orderId)
+      .order('received_on', { ascending: true }).order('id', { ascending: true });
+    if (error) throw error;
+    return data ?? [];
+  }, paymentFromRow);
+}
+
+/**
+ * Records money received against one or more orders; record_payment settles
+ * them oldest first. `requestId` stays the same across a retry, so a lost
+ * response is never recorded twice.
+ */
+export async function recordPayment({ orderIds, amount, method, reference = null, receivedOn, note = null, requestId }) {
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_order_ids: orderIds,
+    p_amount: Number(amount),
+    p_method: method,
+    p_reference: reference || null,
+    p_received_on: receivedOn,
+    p_note: note || null,
+    p_request_id: requestId,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't record that payment.") };
+  return { ok: true, data: (data?.payments ?? []).map(paymentFromRow) };
+}
+
+/** Removes a payment entered by mistake. Managers only. */
+export async function removePayment(paymentId) {
+  const { error } = await supabase.rpc('remove_payment', { p_payment_id: paymentId });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't remove that payment.") };
+  return { ok: true };
+}
+
+// ---- the business's own settings -------------------------------------------
+
+const timeOrNull = (value) => (value ? String(value).slice(0, 5) : null);
+const blankToNull = (value) => (String(value ?? '').trim() === '' ? null : String(value).trim());
+
+const businessSettingsFromRow = (r) => ({
+  id: r.id,
+  revision: r.revision ?? 0,
+  businessName: r.business_name ?? 'LSB Handicrafts',
+  tin: r.tin ?? '',
+  phone: r.phone ?? '',
+  email: r.email ?? '',
+  address: r.address ?? '',
+  vatRegistered: !!r.vat_registered,
+  deliveryFee: r.delivery_fee == null ? null : Number(r.delivery_fee),
+  freeDeliveryFrom: r.free_delivery_from == null ? null : Number(r.free_delivery_from),
+  deliveryAreas: r.delivery_areas ?? [],
+  openDays: r.open_days ?? [],
+  opensAt: timeOrNull(r.opens_at),
+  closesAt: timeOrNull(r.closes_at),
+  updatedAt: r.updated_at,
+  updatedBy: r.updated_by,
+});
+const businessSettingsToRow = (b) => ({
+  business_name: String(b.businessName ?? '').trim(),
+  tin: blankToNull(b.tin),
+  phone: blankToNull(b.phone),
+  email: blankToNull(b.email),
+  address: blankToNull(b.address),
+  vat_registered: !!b.vatRegistered,
+  delivery_fee: numOrNull(b.deliveryFee),
+  free_delivery_from: numOrNull(b.freeDeliveryFrom),
+  delivery_areas: b.deliveryAreas ?? [],
+  open_days: b.openDays ?? [],
+  opens_at: b.opensAt || null,
+  closes_at: b.closesAt || null,
+});
+/** One row, read by everyone and changed by an administrator, with a revision like loyalty_rules. */
+export const businessSettingsCollection = collection('business_settings', businessSettingsFromRow, businessSettingsToRow);
+
+// ---- staff photos and sessions ----------------------------------------------
+
+const staffPhotoFromRow = (r) => ({ staffId: Number(r.staff_id), dataUrl: r.data_url });
+/** Every staff photo. One small square per person, so it is read whole. */
+export const staffPhotosCollection = {
+  table: 'staff_photos',
+  fromRow: staffPhotoFromRow,
+  load: () => readWhole('staff_photos', staffPhotoFromRow),
+};
+
+/** Sets or replaces the signed-in person's own photo; null removes it. */
+export async function saveOwnPhoto(dataUrl) {
+  const { error } = await supabase.rpc('save_own_photo', { p_data_url: dataUrl });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't save your photo.") };
+  return { ok: true };
+}
+
+// ---- notifications ----------------------------------------------------------
+
+const notificationFromRow = (r) => ({
+  id: Number(r.id),
+  event: r.event,
+  title: r.title,
+  body: r.body,
+  view: r.view,
+  recordId: r.record_id == null ? null : Number(r.record_id),
+  createdAt: r.created_at,
+  readAt: r.read_at,
+});
+
+/** The signed-in person's newest alerts. Row level security keeps them to their own. */
+export const notificationsCollection = {
+  table: 'notifications',
+  fromRow: notificationFromRow,
+  load: () => readRows('notifications', async () => {
+    const { data, error } = await supabase.from('notifications').select('*')
+      .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(50);
+    if (error) throw error;
+    return data ?? [];
+  }, notificationFromRow),
+};
+
+/** Marks the given alerts read. Only the caller's own can be, and only read_at. */
+export async function markNotificationsRead(ids) {
+  if (!ids?.length) return { ok: true };
+  const { error } = await supabase.from('notifications').update({ read_at: new Date().toISOString() }).in('id', ids);
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't mark those as read.") };
+  return { ok: true };
+}
+
+/** Asks the database to raise the clock-driven alerts: late deliveries and overdue payments. */
+export async function refreshAlerts() {
+  const { error } = await supabase.rpc('refresh_alerts');
+  return error ? { ok: false, message: humanizeError(error, "Couldn't check for new alerts.") } : { ok: true };
+}
+
+/** The caller's own choice of events, or null when they have never saved one. */
+export async function fetchNotificationSettings() {
+  try {
+    const { data, error } = await supabase.from('notification_settings').select('in_app').limit(1);
+    if (error) throw error;
+    return { ok: true, data: data?.[0]?.in_app ?? null };
+  } catch (error) {
+    return { ok: false, data: null, error };
+  }
+}
+
+/** Saves the caller's own choice; the database drops anything their role may not hear about. */
+export async function saveNotificationSettings(events) {
+  const { data, error } = await supabase.rpc('save_notification_settings', { p_in_app: events });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't save your notification settings.") };
+  return { ok: true, data: data?.in_app ?? events };
+}
+
+/** Sets how a supplier order is paid: 'cod' or 'card'. Managers, until it arrives. */
+export async function setSupplierPayment(orderId, method) {
+  const { data, error } = await supabase.rpc('set_supplier_payment', { p_order_id: orderId, p_method: method });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't change how that order is paid.") };
+  return { ok: true, data };
+}
+
+/** Ends every session of another staff member's login. Administrators only. */
+export async function signOutStaff(staffId) {
+  const { data, error } = await supabase.rpc('sign_out_staff', { p_staff_id: staffId });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't sign them out.") };
+  return { ok: true, ended: Number(data?.ended ?? 0) };
+}
 
 /**
  * The newest `limit` activity entries. The feed grows with every change to

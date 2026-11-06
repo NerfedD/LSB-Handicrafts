@@ -32,7 +32,7 @@ npm run dev              # http://localhost:5173
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` | yes | The project URL. |
 | `VITE_SUPABASE_ANON_KEY` | yes | The anon or publishable key (it ships in the bundle; the database is the security boundary). |
-| `VITE_OFFICE_PHONE` | before staff use it | The office number shown to a locked-out person. Without it the sign-in screen shows the mockup's placeholder. |
+| `VITE_OFFICE_PHONE` | before staff use it | The office number shown to a locked-out person. Without it the sign-in screen shows a placeholder number, and printed slips leave the number off. |
 | `VITE_IDLE_TIMEOUT_MINUTES` | no | Sign out after this long idle; 30 if unset. |
 
 The service-role key is never a `VITE_` variable: only the Edge Functions use it, from their own environment.
@@ -41,7 +41,7 @@ Set up the database from **[docs/database.md](docs/database.md)**: a fresh proje
 
 ## Deploying a change
 
-1. Apply any new migrations first, oldest first (see [docs/database.md](docs/database.md#an-existing-project) — this release adds `20261014120000_role_corrections.sql`, after `20260924120000_stock_returns_loyalty.sql`, `20260924190000_material_crud_and_damage_undo.sql` and `20260929120000_controlled_inputs_and_photos.sql` if the project does not have them yet).
+1. Apply any new migrations first, oldest first (see [docs/database.md](docs/database.md#an-existing-project)). The newest is `20261014120000_role_corrections.sql`; the admin dashboard redesign itself changes no database objects, so a project that already has it needs no migration for this release.
 2. Deploy any changed Edge Function.
 3. `npm run build` and deploy `dist/` (Vercel; `vercel.json` rewrites every path to the app).
 4. Ask staff to reload open tabs.
@@ -52,7 +52,7 @@ Set up the database from **[docs/database.md](docs/database.md)**: a fresh proje
 npm run lint
 npm test              # unit tests, and the real schema.sql run in PGlite
 npm run build
-npx playwright test   # browser tests on the installed Microsoft Edge
+npm run test:e2e      # browser tests on the installed Microsoft Edge (Playwright)
 ```
 
 What each suite covers, what needs a real project, and how to run a session with a group of testers: **[docs/TESTING.md](docs/TESTING.md)**.
@@ -62,28 +62,30 @@ What each suite covers, what needs a real project, and how to run a session with
 ```
 src/
   App.jsx          routing, the session, and every write
-  components/      one folder per area; shared/ and ui/ are the design system
+  components/      one folder per area; layout/ is the shell (sidebar, top bar, command
+                   menu); shared/ and ui/ are the design system
   hooks/           data loading (useSupabaseCollection), idle sign-out, URL state
-  lib/             the Supabase client
+  lib/             the Supabase client, CSV and export helpers
   utils/           business rules with no React: stockLedger, orders, customers,
                    permissions, screenData, storageManager (reads/writes),
                    commands (database commands), copy (words on screen)
 supabase/          schema.sql, migrations/, integrity_check.sql, seeds, functions/
 tests/             Playwright specs and the stubbed Supabase they run against
 docs/              workflows, database, testing
+design/            admin-dashboard/: the design boards (*.dc.html) and theme.css the app implements
 ```
 
-`PRODUCT.md` and `DESIGN.md` describe the users and the design system for the design tooling in `.impeccable/`; the original design handoff is in `Professional UI mockups project/`.
+`PRODUCT.md` and `DESIGN.md` describe the users and the design system for the design tooling in `.impeccable/`. The design itself is the set of boards in `design/admin-dashboard/`; `Professional UI mockups project/` is the earlier handoff, kept for reference only.
 
 ## Design rules
 
-Two goals from the design handoff: **look professional** — like software a business runs on — and **be usable by every age on the floor**, including staff who are not confident with computers. Every screen follows six rules:
+The interface follows the admin dashboard boards in `design/admin-dashboard/`: a calm, neutral-first layout that a person on the shop floor can scan quickly. Every screen follows six rules; the token values are in [DESIGN.md](DESIGN.md).
 
-1. **Nothing under 16px** for readable text; table rows 62px, controls 44px or more. Only uppercase tracked signposts (a column header, a sidebar group label) are exempt.
+1. **One scale.** Inter at 14px, with 13px table cells and 12px captions; nothing under 11px, and that size only for sidebar group labels. Controls are 32px high and table rows 36px. A phone gets the same sizes, with the sidebar becoming a sheet below 768px.
 2. **Plain words, not jargon.** "Can sign in: Yes", not "Status: Active". The mapping from stored value to words lives in `src/utils/copy.js`.
-3. **Every icon has a word beside it.** The one exception is a dialog's close control.
-4. **High contrast**, and focus rings that are visible. The ring is global in `src/index.css`.
-5. **One question at a time.** Single-column forms in numbered bands, help text under the fields.
+3. **State is never colour alone.** A status has a label and a tone together (`StatusPill`), and the brand blue is kept for the one primary button per view, the active nav item, links and the focus ring.
+4. **Visible focus and real contrast** in both themes. The ring is global in `src/index.css`, and the dark theme is the single `html.dark` token block, so screens never write `dark:` classes.
+5. **One question at a time.** Add product and New order are dialogs over their lists; forms are single column, with help text under the fields and the first mistake focused.
 6. **Danger is spelled out.** A destructive confirm names the record, states the consequences and what survives, and its button says the verb.
 
 ## Performance on older computers
@@ -97,8 +99,7 @@ The app is built for the shop's older PCs and phones:
 
 ## Known gaps
 
-- **Real photography.** The sign-in brand panel and product photo slots are placeholders; the logo is 128px.
-- **The "Write a new order" screen** follows the handoff's form vocabulary but has had no design pass of its own.
+- **Real photography.** Product photo slots are placeholders until each product has a picture, and the logo is 128px.
 - **Order lines are JSON inside `orders.items`**, so a line's product link is checked by the database commands and `integrity_check.sql` rather than a foreign key.
 - **Creating an order and its delivery** are two writes: if the delivery fails, the form keeps its entries and a retry finishes the same order rather than writing a second one.
 - **Not yet audited:** a deployed-site security-header review and an automated accessibility scan.

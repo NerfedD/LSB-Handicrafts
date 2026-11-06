@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design tokens</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0;background:#ffffff}</style>
+</helmet>
+<div style="width: 1440px; height: 1180px; box-sizing: border-box; padding: 32px; display: flex; flex-direction: column; gap: 24px; background: #ffffff; color: #09090b; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px;">
+
+<div>
+<h1 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Tokens</h1>
+<p style="margin: 2px 0 0; font-size: 13px; color: #71717a;">shadcn/ui variables on the zinc scale. #004E89 is the only brand colour: it marks the one primary action, the active nav item, focus, links and selected controls.</p>
+</div>
+
+<div style="display: flex; gap: 28px; align-items: flex-start;">
+
+<!-- Light -->
+<section style="width: 380px; border: 1px solid #e4e4e7; border-radius: 8px; overflow: hidden;">
+<div style="display: flex; justify-content: space-between; align-items: center; height: 40px; padding: 0 12px; border-bottom: 1px solid #e4e4e7; background: #fafafa;"><h2 style="margin: 0; font-size: 14px; font-weight: 600;">Light · :root</h2><span style="font-size: 12px; color: #71717a;">default</span></div>
+<div style="padding: 4px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 16px;">
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d4d4d8; background: #F1FAEE;"></span><span style="flex: 1;">--background</span><span style="color: #71717a;">#F1FAEE</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #09090b;"></span><span style="flex: 1;">--foreground</span><span style="color: #71717a;">#09090B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #ffffff;"></span><span style="flex: 1;">--card / --popover</span><span style="color: #71717a;">#FFFFFF</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #f4f4f5;"></span><span style="flex: 1;">--muted / --accent</span><span style="color: #71717a;">#F4F4F5</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #71717a;"></span><span style="flex: 1;">--muted-foreground</span><span style="color: #71717a;">#71717A</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #18181b;"></span><span style="flex: 1;">--accent-foreground</span><span style="color: #71717a;">#18181B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #a1a1aa; background: #d4d4d8;"></span><span style="flex: 1;">--border / --input</span><span style="color: #71717a;">#D4D4D8</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #f8fafc;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #004E89; background: #004E89;"></span><span style="flex: 1; font-weight: 600;">--primary</span><span style="color: #004E89; font-weight: 600;">#004E89</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #ffffff;"></span><span style="flex: 1;">--primary-foreground</span><span style="color: #71717a;">#FFFFFF</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #f8fafc;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #004E89; background: #004E89;"></span><span style="flex: 1; font-weight: 600;">--ring</span><span style="color: #004E89; font-weight: 600;">#004E89</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #b91c1c;"></span><span style="flex: 1;">--destructive</span><span style="color: #71717a;">#B91C1C</span></div>
+<div style="height: 1px; margin: 4px 0; background: #e4e4e7;"></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #fafafa;"></span><span style="flex: 1;">--sidebar</span><span style="color: #71717a;">#FAFAFA</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #3f3f46;"></span><span style="flex: 1;">--sidebar-foreground</span><span style="color: #71717a;">#3F3F46</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #f4f4f5;"></span><span style="flex: 1;">--sidebar-accent</span><span style="color: #71717a;">#F4F4F5</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #09090b;"></span><span style="flex: 1;">--sidebar-accent-foreground</span><span style="color: #71717a;">#09090B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #d4d4d8; background: #e4e4e7;"></span><span style="flex: 1;">--sidebar-border</span><span style="color: #71717a;">#E4E4E7</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #f8fafc;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #004E89; background: #004E89;"></span><span style="flex: 1; font-weight: 600;">--sidebar-primary</span><span style="color: #004E89; font-weight: 600;">#004E89</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #e4e4e7; background: #ffffff;"></span><span style="flex: 1;">--sidebar-primary-foreground</span><span style="color: #71717a;">#FFFFFF</span></div>
+<div style="height: 1px; margin: 4px 0; background: #e4e4e7;"></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #dcfce7; background: #f0fdf4;"></span><span style="flex: 1;">--success / -foreground</span><span style="color: #71717a;">#F0FDF4 · #15803D</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #fef3c7; background: #fffbeb;"></span><span style="flex: 1;">--warning / -foreground</span><span style="color: #71717a;">#FFFBEB · #B45309</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #fee2e2; background: #fef2f2;"></span><span style="flex: 1;">--danger-soft / -foreground</span><span style="color: #71717a;">#FEF2F2 · #B91C1C</span></div>
+</div>
+</section>
+
+<!-- Dark -->
+<section style="width: 380px; border: 1px solid #27272a; border-radius: 8px; overflow: hidden; background: #09090b; color: #fafafa;">
+<div style="display: flex; justify-content: space-between; align-items: center; height: 40px; padding: 0 12px; border-bottom: 1px solid #27272a; background: #18181b;"><h2 style="margin: 0; font-size: 14px; font-weight: 600;">Dark · .dark</h2><span style="font-size: 12px; color: #a1a1aa;">same rules</span></div>
+<div style="padding: 4px 0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; line-height: 16px;">
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #09090b;"></span><span style="flex: 1;">--background</span><span style="color: #a1a1aa;">#09090B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #fafafa;"></span><span style="flex: 1;">--foreground</span><span style="color: #a1a1aa;">#FAFAFA</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #18181b;"></span><span style="flex: 1;">--card / --popover</span><span style="color: #a1a1aa;">#18181B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #27272a;"></span><span style="flex: 1;">--muted / --accent</span><span style="color: #a1a1aa;">#27272A</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #a1a1aa;"></span><span style="flex: 1;">--muted-foreground</span><span style="color: #a1a1aa;">#A1A1AA</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #fafafa;"></span><span style="flex: 1;">--accent-foreground</span><span style="color: #a1a1aa;">#FAFAFA</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #52525b; background: #2e2e33;"></span><span style="flex: 1;">--border / --input</span><span style="color: #a1a1aa;">#2E2E33 · #52525B</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #0c1622;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #2878BE; background: #2878BE;"></span><span style="flex: 1; font-weight: 600;">--primary</span><span style="color: #6aa8de; font-weight: 600;">#2878BE</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #ffffff;"></span><span style="flex: 1;">--primary-foreground</span><span style="color: #a1a1aa;">#FFFFFF</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #0c1622;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #2878BE; background: #2878BE;"></span><span style="flex: 1; font-weight: 600;">--ring</span><span style="color: #6aa8de; font-weight: 600;">#2878BE</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #f87171;"></span><span style="flex: 1;">--destructive</span><span style="color: #a1a1aa;">#F87171</span></div>
+<div style="height: 1px; margin: 4px 0; background: #27272a;"></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #111113;"></span><span style="flex: 1;">--sidebar</span><span style="color: #a1a1aa;">#111113</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #d4d4d8;"></span><span style="flex: 1;">--sidebar-foreground</span><span style="color: #a1a1aa;">#D4D4D8</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #27272a;"></span><span style="flex: 1;">--sidebar-accent</span><span style="color: #a1a1aa;">#27272A</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #fafafa;"></span><span style="flex: 1;">--sidebar-accent-foreground</span><span style="color: #a1a1aa;">#FAFAFA</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #52525b; background: #27272a;"></span><span style="flex: 1;">--sidebar-border</span><span style="color: #a1a1aa;">#27272A</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px; background: #0c1622;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #2878BE; background: #2878BE;"></span><span style="flex: 1; font-weight: 600;">--sidebar-primary</span><span style="color: #6aa8de; font-weight: 600;">#2878BE</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3f3f46; background: #ffffff;"></span><span style="flex: 1;">--sidebar-primary-foreground</span><span style="color: #a1a1aa;">#FFFFFF</span></div>
+<div style="height: 1px; margin: 4px 0; background: #27272a;"></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #1e3a27; background: #13241a;"></span><span style="flex: 1;">--success / -foreground</span><span style="color: #a1a1aa;">#13241A · #4ADE80</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #3d2f14; background: #2a2010;"></span><span style="flex: 1;">--warning / -foreground</span><span style="color: #a1a1aa;">#2A2010 · #FBBF24</span></div>
+<div style="display: flex; align-items: center; gap: 10px; height: 26px; padding: 0 12px;"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid #4a1f1f; background: #2a1414;"></span><span style="flex: 1;">--danger-soft / -foreground</span><span style="color: #a1a1aa;">#2A1414 · #F87171</span></div>
+</div>
+</section>
+
+<!-- Dark preview -->
+<section aria-label="Dark mode preview" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px;">
+<span style="font-size: 12px; font-weight: 500; color: #71717a;">Dark preview · inset shell</span>
+<div style="display: flex; height: 620px; padding: 8px 8px 8px 0; box-sizing: border-box; border-radius: 8px; background: #18181b; overflow: hidden;">
+<div style="flex: none;"><dc-import name="AppSidebar" theme="dark" active="dashboard" h="604" hint-size="240px,604px"></dc-import></div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; border: 1px solid #27272a; border-radius: 8px; background: #09090b; color: #fafafa;">
+<div style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px; border-bottom: 1px solid #27272a; font-size: 14px;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="#d4d4d8" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="32" y="48" width="192" height="160" rx="8"></rect><path d="M88 48v160"></path></svg><span style="width: 1px; height: 16px; background: #27272a;"></span><span style="color: #a1a1aa;">Overview</span><span style="color: #52525b;">/</span><span style="font-weight: 500;">Dashboard</span></div>
+<div style="padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;"><h3 style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600;">Dashboard</h3><span style="display: inline-flex; align-items: center; height: 32px; padding: 0 12px; border-radius: 6px; background: #2878BE; color: #ffffff; font-size: 14px; font-weight: 500;">New order</span></div>
+<div style="border: 1px solid #2e2e33; border-radius: 8px; background: #18181b; padding: 16px; display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 13px; font-weight: 500; color: #a1a1aa;">Orders this month</span><span style="font-size: 24px; line-height: 32px; font-weight: 600;">148</span><span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #a1a1aa;"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid #1e3a27; background: #13241a; color: #4ade80; font-weight: 500;">+12.4%</span>vs September</span></div>
+<div style="border: 1px solid #2e2e33; border-radius: 8px; overflow: hidden; background: #18181b; font-size: 13px;">
+<div style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 1px solid #27272a; color: #a1a1aa; font-weight: 500;"><span style="flex: 1;">Staff</span><span style="width: 110px;">Status</span></div>
+<div style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 1px solid #232327;"><span style="flex: 1;">Ana Reyes</span><span style="width: 110px;"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid #3d2f14; background: #2a2010; color: #fbbf24; font-size: 12px; font-weight: 500;">Pending</span></span></div>
+<div style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 1px solid #232327;"><span style="flex: 1;">Lito Garcia</span><span style="width: 110px;"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid #1e3a27; background: #13241a; color: #4ade80; font-size: 12px; font-weight: 500;">Done</span></span></div>
+<div style="display: flex; align-items: center; height: 36px; padding: 0 12px;"><span style="flex: 1;">Rosa Navarro</span><span style="width: 110px;"><span style="display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; border: 1px solid #4a1f1f; background: #2a1414; color: #f87171; font-size: 12px; font-weight: 500;">Suspended</span></span></div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: #d4d4d8;"><span style="width: 16px; height: 16px; border-radius: 4px; background: #2878BE; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg></span>Selected checkbox<span style="width: 32px; height: 18px; border-radius: 9px; background: #2878BE; position: relative;"><span style="position: absolute; top: 2px; left: 16px; width: 14px; height: 14px; border-radius: 50%; background: #ffffff;"></span></span>Switch on</div>
+</div>
+</div>
+</div>
+<p style="margin: 0; font-size: 12px; line-height: 16px; color: #71717a;">Dark mode is three greys deep: page #09090B, sidebar #111113, cards #18181B, borders #2E2E33. The primary lifts to #2878BE so white button text keeps 4.6:1; links use #6AA8DE. Status tints drop to near-black so badges read as labels, not lights. Switch with the sun/moon button in any top bar.</p>
+</section>
+</div>
+
+<!-- Type, sizing, colour use -->
+<div style="display: flex; gap: 28px; align-items: stretch;">
+<section style="flex: 1; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+<h2 style="margin: 0 0 4px; font-size: 14px; font-weight: 600;">Type · Inter</h2>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 20px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Page title</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">20/28 · 600</span></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 14px; font-weight: 600;">Card title</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">14/20 · 600</span></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 14px;">Body, buttons, inputs</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">14/20 · 400–500</span></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 13px;">Table cells and descriptions</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">13/18 · 400</span></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 12px; font-weight: 500; color: #71717a;">Group labels, badges, captions</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">12/16 · 500</span></div>
+<div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px;"><span style="font-size: 24px; line-height: 32px; font-weight: 600; letter-spacing: -0.02em;">₱312,450.00</span><span style="font-size: 12px; color: #71717a; font-family: ui-monospace, Menlo, monospace;">stat 24/32 · tabular</span></div>
+</section>
+
+<section style="flex: 1; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+<h2 style="margin: 0 0 4px; font-size: 14px; font-weight: 600;">Size and space</h2>
+<div style="display: flex; justify-content: space-between;"><span>Gap between sections</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">gap-4 · 16px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Card padding</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">p-4 · 16px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Buttons, inputs, selects</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">h-8 · 32px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Table rows</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">h-9 · 36px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Top bar</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">h-12 · 48px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Sidebar open / icon</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">15rem / 3rem</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Radius: controls / cards</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">6px / 8px</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Elevation</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">shadow-xs only</span></div>
+<div style="display: flex; justify-content: space-between;"><span>Icons: menus and buttons / headers</span><span style="font-family: ui-monospace, Menlo, monospace; color: #71717a;">16px / 20px</span></div>
+</section>
+
+<section style="flex: 1; border: 1px solid #e4e4e7; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+<h2 style="margin: 0 0 4px; font-size: 14px; font-weight: 600;">Where the blue goes</h2>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px; background: #004E89; color: #ffffff; font-size: 13px; font-weight: 500;">Add user</span><span style="color: #3f3f46;">One primary button per view</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px; background: #004E89; color: #ffffff; font-size: 13px; font-weight: 500;">Dashboard</span><span style="color: #3f3f46;">Selected sidebar item, solid fill</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid #e4e4e7; font-size: 13px; outline: 2px solid #004E89; outline-offset: 2px;">Export</span><span style="color: #3f3f46;">Focus ring, 2px, offset 2px</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="color: #004E89; font-weight: 500;">Forgot password?</span><span style="color: #3f3f46;">Text links</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="width: 16px; height: 16px; border-radius: 4px; background: #004E89; display: inline-flex; align-items: center; justify-content: center;"><svg width="12" height="12" viewBox="0 0 256 256" fill="none" stroke="#ffffff" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M40 144l56 56L224 72"></path></svg></span><span style="width: 32px; height: 18px; border-radius: 9px; background: #004E89; position: relative;"><span style="position: absolute; top: 2px; left: 16px; width: 14px; height: 14px; border-radius: 50%; background: #ffffff;"></span></span><span style="color: #3f3f46;">Selected checkbox and switch</span></div>
+<div style="display: flex; align-items: center; gap: 10px;"><span style="width: 28px; height: 2px; background: #004E89;"></span><span style="width: 28px; height: 0; border-top: 2px dashed #a1a1aa;"></span><span style="color: #3f3f46;">Main chart series only; comparisons stay zinc</span></div>
+<p style="margin: 2px 0 0; font-size: 12px; color: #71717a;">Everything else stays zinc. Status colours appear only inside small, soft badges, each with a dot and a word.</p>
+</section>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Start batch dialog</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="./theme.css">
+<script src="./theme.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-modal="true" aria-labelledby="sb-title" aria-describedby="sb-desc" style="position: relative; box-sizing: border-box; width: 520px; max-width: 100%; border: 1px solid var(--border, #d4d4d8); border-radius: 8px; background: var(--card, #ffffff); color: var(--foreground, #09090b); box-shadow: 0 4px 16px rgba(0,0,0,0.08); font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 14px; line-height: 20px; font-variant-numeric: tabular-nums;">
+
+<button type="button" aria-label="Close" onClick="{{close}}" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 6px; background: transparent; color: var(--muted-fg, #71717a); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M200 56L56 200M200 200L56 56"></path></svg></button>
+
+<div style="padding: 20px 52px 0 20px;">
+<h2 id="sb-title" style="margin: 0; font-size: 16px; line-height: 24px; font-weight: 600;">Plan a batch</h2>
+<p id="sb-desc" style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">The material is set aside now and used up only when you finish the batch.</p>
+</div>
+
+<div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span id="sb-prod-label" style="font-size: 14px; font-weight: 500;">Product</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="sb-prod-label sb-prod-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="sb-prod-value">Styro ball, 6 inch <span style="color: var(--muted-fg, #71717a); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;">SB-060</span></span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+<span style="font-size: 13px; line-height: 18px; color: var(--muted-fg, #71717a);">Open orders #2048 and #2049 are 202 short. 18 on the shelf.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="sb-qty" style="font-size: 14px; font-weight: 500;">How many</label>
+<input id="sb-qty" type="text" inputmode="numeric" value="{{qty}}" onChange="{{onQty}}" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: right; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<span id="sb-by-label" style="font-size: 14px; font-weight: 500;">Made by</span>
+<button type="button" aria-haspopup="listbox" aria-labelledby="sb-by-label sb-by-value" style="display: flex; align-items: center; justify-content: space-between; gap: 6px; height: 32px; padding: 0 8px 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; text-align: left; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;"><span id="sb-by-value" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Lito Garcia</span><svg width="16" height="16" viewBox="0 0 256 256" fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex: none; stroke: var(--muted-fg, #71717a)"><path d="M80 176l48 48 48-48M80 80l48-48 48 48"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0;">
+<label for="sb-start" style="font-size: 14px; font-weight: 500;">Start on</label>
+<input id="sb-start" type="text" value="Wed, Oct 29" style="height: 32px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-size: 14px; font-weight: 500;">Material to set aside</span>
+<div role="table" aria-label="Material to set aside" style="border: 1px solid var(--border, #d4d4d8); border-radius: 6px; overflow: hidden; font-size: 13px; line-height: 18px;">
+<div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 80px 80px 112px; align-items: center; height: 32px; background: var(--surface-2, #fafafa); border-bottom: 1px solid var(--border, #d4d4d8); color: var(--muted-fg, #71717a); font-weight: 500;">
+<div role="columnheader" style="padding: 0 10px;">Material</div>
+<div role="columnheader" style="padding: 0 6px; text-align: right;">Needs</div>
+<div role="columnheader" style="padding: 0 6px; text-align: right;">Free</div>
+<div role="columnheader" style="padding: 0 10px 0 6px;"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);">Enough?</span></div>
+</div>
+<sc-for list="{{materials}}" as="m" hint-placeholder-count="3">
+<div role="row" style="display: grid; grid-template-columns: minmax(0, 1fr) 80px 80px 112px; align-items: center; height: 36px; border-bottom: 1px solid var(--row-divider, #f4f4f5);">
+<div role="cell" style="padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{m.name}}</div>
+<div role="cell" style="padding: 0 6px; text-align: right; font-weight: 500;">{{m.needsLabel}}</div>
+<div role="cell" style="padding: 0 6px; text-align: right; color: var(--muted-fg, #71717a);">{{m.freeLabel}}</div>
+<div role="cell" style="padding: 0 10px 0 6px;"><span style="display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 4px; border: 1px solid {{m.st.bd}}; background: {{m.st.bg}}; color: {{m.st.fg}}; font-size: 12px; font-weight: 500; white-space: nowrap;"><span style="width: 6px; height: 6px; border-radius: 50%; background: currentColor;"></span>{{m.st.label}}</span></div>
+</div>
+</sc-for>
+</div>
+<sc-if value="{{short}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--danger-fg, #b91c1c);">There is not enough material for {{qty}} pieces. Make fewer, or order more first.</p>
+</sc-if>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; padding: 0 20px 20px;">
+<button type="button" onClick="{{close}}" style="height: 32px; padding: 0 12px; border: 1px solid var(--border, #d4d4d8); border-radius: 6px; background: var(--card, #ffffff); color: var(--foreground, #09090b); font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">Cancel</button>
+<button type="button" onClick="{{close}}" disabled="{{short}}" style="height: 32px; padding: 0 12px; border: 1px solid {{ctaBd}}; border-radius: 6px; background: {{ctaBg}}; color: {{ctaFg}}; font: inherit; font-size: 14px; font-weight: 500; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: {{ctaCursor}};">Plan batch</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"onClose":{"editor":null},"$preview":{"width":520,"height":600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const s = this.state || {};
+    const p = this.props;
+    const qty = s.qty ?? '200';
+    const n = parseInt(qty, 10) || 0;
+    const OK = { label: 'Enough', bg: 'var(--success-bg, #f0fdf4)', fg: 'var(--success-fg, #15803d)', bd: 'var(--success-bd, #dcfce7)' };
+    const SHORT = { label: 'Not enough', bg: 'var(--danger-bg, #fef2f2)', fg: 'var(--danger-fg, #b91c1c)', bd: 'var(--danger-bd, #fee2e2)' };
+    // Per 100 pieces of a 6 inch ball.
+    const materials = [
+      { name: 'EPS block, raw, 1 × 1 × 2 m', per: 1, free: 10, unit: 'block', units: 'blocks' },
+      { name: 'Hot-wire, nichrome', per: 3, free: 30, unit: 'm', units: 'm' },
+      { name: 'Spray paint, white', per: 2, free: 36, unit: 'can', units: 'cans' }
+    ].map((m) => {
+      const needs = Math.ceil((n / 100) * m.per);
+      const ok = needs <= m.free;
+      return {
+        ...m,
+        needsLabel: needs + ' ' + (needs === 1 ? m.unit : m.units),
+        freeLabel: m.free + ' ' + m.units,
+        st: ok ? OK : SHORT,
+        ok
+      };
+    });
+    const short = materials.some((m) => !m.ok) || n === 0;
+    return {
+      qty,
+      materials,
+      short,
+      ctaBg: short ? 'var(--muted-strong, #e4e4e7)' : 'var(--primary, #004E89)',
+      ctaBd: short ? 'var(--border-subtle, #e4e4e7)' : 'var(--primary, #004E89)',
+      ctaFg: short ? 'var(--muted-fg, #71717a)' : 'var(--on-primary, #ffffff)',
+      ctaCursor: short ? 'not-allowed' : 'pointer',
+      onQty: (e) => this.setState({ qty: e.target.value.replace(/[^0-9]/g, '') }),
+      close: () => { if (typeof p.onClose === 'function') p.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

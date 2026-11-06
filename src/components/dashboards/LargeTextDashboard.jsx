@@ -1,47 +1,16 @@
-import {
-  Boxes,
-  ClipboardList,
-  Hammer,
-  Handshake,
-  LayoutDashboard,
-  Truck,
-  UserRound,
-  Users,
-} from "../icons";
+import { CaretRight, Factory, Hammer, Package, Plus, Receipt, SquaresFour, Storefront, Truck, User, Users } from "../icons";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import IconChip from "../shared/Chip";
-import { DestinationTile, HeroStat } from "../shared/dashboard";
-import { EmptySlot } from "../shared/PageStates";
-import { productIcon } from "../shared/productIcons";
+import { Mono } from "../shared/Chip";
+import { EmptyState, Page, PageHeader, SectionCard } from "../shared/page";
 import StatusPill from "../shared/StatusPill";
 import { greeting } from "../../utils/profileFormat";
 import { isAdminRole } from "../../utils/permissions";
 
 /**
- * The large-text dashboard — screen 1c.
- *
- * THE SAME SYSTEM AT KIOSK SCALE. Not a simplified version and not a different
- * product: the same data, the same destinations, set at a size somebody can
- * read from across a workshop without leaning in. Nothing on this screen is
- * below 15px and the three numbers are 56px.
- *
- * A PER-ACCOUNT PREFERENCE, NOT A ROLE. Anybody can choose it, from their
- * profile or from the account menu, and it changes only what they see. That
- * matters: making it a role would mean an administrator deciding, on somebody
- * else's behalf, that they need bigger text — which is a conversation nobody
- * wants to have.
- *
- * "WHERE DO YOU WANT TO GO?" replaces reading down a sidebar. Six tiles, each a
- * 96px target with a 60px icon and a line saying what is behind it, so choosing
- * a destination is one large deliberate press rather than a small accurate one.
- *
- * PRODUCTION KEEPS ITS MAKE LIST HERE TOO. This screen used to show the same
- * six destination tiles to every role, which meant choosing large text — an
- * accessibility preference, not a role — quietly cost a Production Staff
- * member the one dashboard built for their actual job: knowing what to make
- * next. The make list below is the standard dashboard's own data, at the
- * sizes this screen already uses everywhere else.
+ * The large-text dashboard: the person's own choice on Your profile, for
+ * whoever reads the screen from further away. Not on the boards; built from
+ * the dashboard's parts (PageHeader, stat cards, section cards, rows) one
+ * size up: 16px body, 30px figures, 36px controls.
  */
 export default function LargeTextDashboard({
   profile,
@@ -61,179 +30,108 @@ export default function LargeTextDashboard({
   const topOfList = makeList.slice(0, 5);
 
   const destinations = [
-    {
-      key: "products",
-      icon: <Boxes className="h-7 w-7" />,
-      tone: "clay",
-      label: "Products & stock",
-      hint: "What we make and how many there are",
-      view: "products",
-    },
-    {
-      key: "orders",
-      icon: <ClipboardList className="h-7 w-7" />,
-      tone: "cobalt",
-      label: "Orders",
-      hint: "What customers have asked for",
-      view: "orders",
-    },
-    {
-      key: "deliveries",
-      icon: <Truck className="h-7 w-7" />,
-      tone: "amber",
-      label: "Deliveries",
-      hint: "What is going out, and where it is",
-      view: "deliveries",
-    },
-    !isProduction && {
-      key: "customers",
-      icon: <UserRound className="h-7 w-7" />,
-      tone: "purple",
-      label: "Customers",
-      hint: "Who buys from us",
-      view: "customers",
-    },
-    !isProduction && {
-      key: "suppliers",
-      icon: <Handshake className="h-7 w-7" />,
-      tone: "clay",
-      label: "Suppliers",
-      hint: "Who we buy materials from",
-      view: "suppliers",
-    },
-    isAdmin && {
-      key: "staff",
-      icon: <Users className="h-7 w-7" />,
-      tone: "navy",
-      label: "Staff & accounts",
-      hint: "Who can sign in, and what they do",
-      view: "staff",
-    },
-    {
-      key: "profile",
-      icon: <LayoutDashboard className="h-7 w-7" />,
-      tone: "green",
-      label: "My profile",
-      hint: "Your details, and how this looks",
-      view: "profile",
-    },
+    { key: "products", icon: Package, label: "Inventory", hint: "What we make and how many there are", view: "products" },
+    { key: "orders", icon: Receipt, label: "Orders", hint: "What customers have asked for", view: "orders" },
+    { key: "deliveries", icon: Truck, label: "Deliveries", hint: "What is going out, and where it is", view: "deliveries" },
+    !isProduction && { key: "customers", icon: Storefront, label: "Customers", hint: `${customerCount} on the books`, view: "customers" },
+    !isProduction && { key: "suppliers", icon: Factory, label: "Suppliers", hint: `${supplierCount} on the books`, view: "suppliers" },
+    isAdmin && { key: "staff", icon: Users, label: "User Management", hint: `${peopleCount} with accounts`, view: "staff" },
+    { key: "profile", icon: User, label: "Your profile", hint: "Your details, and how this looks", view: "profile" },
   ].filter(Boolean);
 
+  const stats = [
+    { label: "Need making", value: stock.low + stock.out, hint: stock.low + stock.out === 0 ? "Nothing is running low today." : "Products below the level you set.", tone: stock.out ? "red" : stock.low ? "amber" : "green" },
+    { label: "Orders waiting", value: waiting, hint: waiting === 0 ? "Everything is finished." : "Not finished yet.", tone: "neutral" },
+    { label: "Deliveries late", value: late, hint: late === 0 ? "Everything is on time." : "Past the day promised.", tone: late ? "red" : "green" },
+  ];
+
   return (
-    <div className="flex flex-col gap-7">
-      <div>
-        <p className="text-[20px] text-muted">{greeting()},</p>
-        <h2 className="pt-1 text-[40px] font-extrabold leading-tight tracking-[-0.03em] text-ink">
-          {profile?.name?.split(" ")[0] || "there"}.
-        </h2>
-      </div>
+    <Page className="text-base">
+      <PageHeader
+        icon={SquaresFour}
+        title="Dashboard"
+        description={`${greeting()}, ${profile?.name?.split(" ")[0] || "there"}. This is the large-text view; change it on Your profile.`}
+      />
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <HeroStat
-          icon={<Boxes className="h-6 w-6" />}
-          tone={stock.out > 0 ? "red" : stock.low > 0 ? "amber" : "green"}
-          value={stock.low + stock.out}
-          label="Need making"
-          hint={
-            stock.low + stock.out === 0
-              ? "Nothing is running low today."
-              : "Products below the level you set."
+      <section aria-label="Key numbers" className="grid gap-4 md:grid-cols-3">
+        {stats.map((stat) => (
+          <div key={stat.label} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-5 shadow-xs">
+            <span className="text-base font-medium text-muted-fg">{stat.label}</span>
+            <span className="text-[30px] font-semibold leading-9 tracking-[-0.02em]">{stat.value}</span>
+            <span className="flex items-center gap-2 text-sm text-muted-fg">
+              <StatusPill label={stat.tone === "green" ? "Fine" : stat.tone === "neutral" ? "Today" : "Look"} tone={stat.tone} />
+              {stat.hint}
+            </span>
+          </div>
+        ))}
+      </section>
+
+      {isProduction ? (
+        <SectionCard
+          title={<span className="text-base">Needed next, most urgent first</span>}
+          footer={
+            onRecordMade ? (
+              <Button size="lg" onClick={() => onRecordMade()}>
+                <Plus aria-hidden="true" />
+                Start batch
+              </Button>
+            ) : null
           }
-        />
-        <HeroStat
-          icon={<ClipboardList className="h-6 w-6" />}
-          tone="cobalt"
-          value={waiting}
-          label="Orders waiting"
-          hint={waiting === 0 ? "Everything is finished." : "Not finished yet."}
-        />
-        <HeroStat
-          icon={<Truck className="h-6 w-6" />}
-          tone={late > 0 ? "red" : "green"}
-          value={late}
-          label="Deliveries late"
-          hint={late === 0 ? "Everything is on time." : "Past the day promised."}
-        />
-      </div>
-
-      {isProduction && (
-        <Card variant="lift" className="border-l-[5px] border-l-clay">
-          <CardHeader className="bg-tint-clay">
-            <IconChip icon={<Hammer />} tone="clay" size="md" className="bg-white/70 dark:bg-white/[0.08]" />
-            <CardTitle className="text-[19px]">Needed next, most urgent first</CardTitle>
-          </CardHeader>
-
+        >
           {topOfList.length === 0 ? (
-            <EmptySlot className="py-10 text-[16px]">
-              Nothing is running low. The shelves are where they should be.
-            </EmptySlot>
+            <div className="border-t border-border">
+              <EmptyState icon={Hammer} title="Nothing to make" description="Nothing is running low. The shelves are where they should be." />
+            </div>
           ) : (
-            <ul>
+            <ul className="m-0 list-none p-0">
               {topOfList.map(({ product, onShelf, needed, urgency, tone, backorder }) => (
-                <li
-                  key={`${backorder ? "owed" : "low"}-${product.id}`}
-                  className="flex flex-wrap items-center gap-4.5 border-b border-hair px-5.5 py-4.5 last:border-b-0"
-                >
-                  <IconChip icon={productIcon(product.productType)} tone={backorder ? "red" : "neutral"} size="lg" />
+                <li key={`${backorder ? "owed" : "low"}-${product.id}`} className="flex flex-wrap items-center gap-4 border-t border-row-divider px-4 py-3.5">
                   <div className="min-w-[220px] flex-1">
-                    <p className="text-[18px] font-extrabold leading-[1.3] text-ink">
-                      {product.name}
-                    </p>
-                    <p
-                      className={
-                        backorder
-                          ? "pt-1 text-[16px] font-bold leading-[1.4] text-red-text"
-                          : "pt-1 text-[16px] leading-[1.4] text-muted"
-                      }
-                    >
-                      {backorder
-                        ? "Somebody is already waiting for this"
-                        : `${onShelf} on the shelf — need ${needed} more`}
-                    </p>
+                    <p className="m-0 text-base font-medium">{product.name}</p>
+                    {backorder ? (
+                      <p className="m-0 text-sm font-medium text-danger-fg">Somebody is already waiting for this</p>
+                    ) : (
+                      <p className="m-0 text-sm text-muted-fg">
+                        {onShelf} on the shelf, need {needed} more · <Mono>{product.itemCode}</Mono>
+                      </p>
+                    )}
                   </div>
-                  <StatusPill label={urgency} tone={tone} mark="dot" />
-                  <Button variant="clay" onClick={() => onRecordMade(product.id, needed * (product.packSize || 1))}>Start batch</Button>
+                  <StatusPill label={urgency} tone={tone} />
+                  <Button variant="outline" size="lg" onClick={() => onRecordMade(product.id, needed * (product.packSize || 1))}>
+                    Start batch
+                  </Button>
                 </li>
               ))}
             </ul>
           )}
+        </SectionCard>
+      ) : null}
 
-          {onRecordMade && (
-            <div className="border-t border-hair p-4">
-              <Button variant="clay" size="xl" block onClick={onRecordMade}>
-                <Hammer className="h-5 w-5" />
-                Start batch
-              </Button>
-            </div>
-          )}
-        </Card>
-      )}
-
-      <div>
-        <h3 className="pb-4 text-[15px] font-extrabold uppercase tracking-[0.1em] text-muted">
-          Where do you want to go?
-        </h3>
-        <div className="grid gap-4 sm:grid-cols-2 desk:grid-cols-3">
-          {destinations.map((destination) => (
-            <DestinationTile
-              key={destination.key}
-              icon={destination.icon}
-              tone={destination.tone}
-              label={destination.label}
-              hint={
-                destination.key === "customers"
-                  ? `${customerCount} on the books`
-                  : destination.key === "suppliers"
-                    ? `${supplierCount} on the books`
-                    : destination.key === "staff"
-                      ? `${peopleCount} with accounts`
-                      : destination.hint
-              }
-              onClick={() => onNavigate(destination.view)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+      <SectionCard title={<span className="text-base">Where do you want to go?</span>}>
+        <ul className="m-0 grid list-none gap-px border-t border-row-divider bg-row-divider p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {destinations.map((destination) => {
+            const Icon = destination.icon;
+            return (
+              <li key={destination.key} className="bg-card">
+                <button
+                  type="button"
+                  onClick={() => onNavigate(destination.view)}
+                  className="flex w-full items-center gap-3 border-0 bg-transparent px-4 py-4 text-left hover:bg-surface-2"
+                >
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border text-fg-2 shadow-xs">
+                    <Icon className="size-5" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-base font-medium">{destination.label}</span>
+                    <span className="block text-sm text-muted-fg">{destination.hint}</span>
+                  </span>
+                  <CaretRight className="size-4 text-muted-fg" aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </SectionCard>
+    </Page>
   );
 }

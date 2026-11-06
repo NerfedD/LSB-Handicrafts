@@ -2,7 +2,6 @@ import FormError from "../shared/FormError";
 import { guardForm, reportFormError } from "../../utils/formErrors";
 import { useState } from "react";
 
-import { CircleAlert, ClipboardList, Hammer, Shield, Truck, UserCog } from "../icons";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { ChoiceButtons, Field, RequirementList } from "../shared/forms";
+import { Input, LockedInput } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Field, RequirementList, Row } from "../shared/forms";
+import { ROLE_BLURB, roleLabel } from "../../utils/copy";
 import { passwordIsAcceptable, passwordRequirements } from "../../utils/password";
 import { cleanPhoneInput, localPhoneDigits, phoneProblem } from "../../utils/phone";
 import { ROLES } from "../../utils/staffData";
@@ -54,23 +55,7 @@ const EMPTY = {
   password: "",
 };
 
-const ROLE_ICONS = {
-  Admin: <Shield className="h-5 w-5" />,
-  Manager: <UserCog className="h-5 w-5" />,
-  "Sales Staff": <ClipboardList className="h-5 w-5" />,
-  "Production Staff": <Hammer className="h-5 w-5" />,
-  "Delivery Staff": <Truck className="h-5 w-5" />,
-};
-
-/**
- * Which of the two identity fields somebody else already has.
- *
- * Case-insensitively, because that is how both the database and the sign-in
- * screen compare them: staff_email_lower_idx and staff_username_lower_idx are
- * built over lower(), and the sign-in Edge Function matches on lower(trim()). A
- * check that disagreed with those would pass here and fail there, which is
- * worse than not checking at all.
- */
+const DEPARTMENT = { Admin: "Office", Manager: "Office", "Sales Staff": "Sales", "Production Staff": "Production", "Delivery Staff": "Delivery" };
 function takenBy(form, staff) {
   const found = {};
   const email = form.email.trim().toLowerCase();
@@ -181,131 +166,110 @@ export default function CreateAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[600px]">
+      <DialogContent>
         <form onSubmit={handleSubmit} noValidate className="flex min-h-0 flex-col">
           <DialogHeader>
-            <DialogTitle>Add a staff account</DialogTitle>
+            <DialogTitle>Add user</DialogTitle>
             <DialogDescription>
-              They will sign in with the email and first password you set here, and can
-              change the password afterwards.
+              They sign in with the email and the first password you set here, and can change the password afterwards.
             </DialogDescription>
           </DialogHeader>
 
-          <DialogBody className="flex flex-col gap-5.5">
+          <DialogBody>
             <FormError message={error} />
 
-            <Field label="Their name" required>
+            <Field label="Full name" required>
               {(props) => (
                 <Input
                   {...props}
                   maxLength={120}
                   value={form.name}
                   onChange={(event) => setField("name")(event.target.value)}
-                  placeholder="Ana Reyes"
+                  placeholder="Juan Dela Cruz"
                 />
               )}
             </Field>
 
-            <Field label="What they do" required hint="This decides which screens they can open.">
-              <ChoiceButtons
-                label="What they do"
-                value={form.role}
-                onChange={setField("role")}
-                className="sm:grid-cols-3"
-                options={ROLES.map((role) => ({
-                  value: role,
-                  label: role === "Admin" ? "Administrator" : role,
-                  icon: ROLE_ICONS[role],
-                }))}
-              />
-            </Field>
-
-            <Field
-              label="Email address"
-              required
-              error={fieldErrors.email}
-              hint="This is what they type to sign in."
-            >
+            <Field label="Work email" required error={fieldErrors.email} hint="This is what they type to sign in.">
               {(props) => (
                 <Input
                   {...props}
                   type="email"
                   value={form.email}
                   onChange={(event) => setField("email")(event.target.value)}
-                  placeholder="them@example.com"
+                  placeholder="name@lsbhandicrafts.ph"
                 />
               )}
             </Field>
 
-            <Field
-              label="Username"
-              error={fieldErrors.username}
-              hint="Optional. A shorter thing to type than an email — they can use either."
-            >
-              {(props) => (
-                <Input
-                  {...props}
-                  pattern="[a-zA-Z0-9._\-]{3,50}"
-                  maxLength={50}
-                  title="Use 3 to 50 letters, numbers, dots, underscores or hyphens."
-                  value={form.username}
-                  onChange={(event) => setField("username")(event.target.value)}
-                  placeholder="ana.reyes"
-                />
-              )}
-            </Field>
+            <Row>
+              <Field label="Role" required>
+                {(props) => (
+                  <NativeSelect {...props} value={form.role} onChange={(event) => setField("role")(event.target.value)}>
+                    <option value="">Choose a role</option>
+                    {ROLES.map((role) => (
+                      <option key={role} value={role}>{roleLabel(role)}</option>
+                    ))}
+                  </NativeSelect>
+                )}
+              </Field>
+              <Field label="Department" hint="Follows from the role.">
+                {(props) => <LockedInput {...props} value={DEPARTMENT[form.role] ?? ""} placeholder="Choose a role first" />}
+              </Field>
+            </Row>
+            {form.role ? <p className="-mt-1.5 text-13 text-muted-fg">{ROLE_BLURB[form.role]}</p> : null}
 
-            <Field
-              label="Phone number"
-              error={fieldErrors.contactNumber}
-              hint="So colleagues can reach them without asking around."
-            >
-              {(props) => (
-                <Input
-                  {...props}
-                  type="tel"
-                  value={form.contactNumber}
-                  onChange={(event) => setField("contactNumber")(cleanPhoneInput(event.target.value))}
-                  placeholder="09171234503"
-                />
-              )}
-            </Field>
+            <Row>
+              <Field label={<>Username <span className="font-normal text-muted-fg">(optional)</span></>} error={fieldErrors.username} hint="Shorter to type than the email.">
+                {(props) => (
+                  <Input
+                    {...props}
+                    pattern="[a-zA-Z0-9._\-]{3,50}"
+                    maxLength={50}
+                    title="Use 3 to 50 letters, numbers, dots, underscores or hyphens."
+                    value={form.username}
+                    onChange={(event) => setField("username")(event.target.value)}
+                    placeholder="juan.delacruz"
+                  />
+                )}
+              </Field>
+              <Field label={<>Mobile <span className="font-normal text-muted-fg">(optional)</span></>} error={fieldErrors.contactNumber}>
+                {(props) => (
+                  <Input
+                    {...props}
+                    type="tel"
+                    value={form.contactNumber}
+                    onChange={(event) => setField("contactNumber")(cleanPhoneInput(event.target.value))}
+                    placeholder="0917 000 0000"
+                  />
+                )}
+              </Field>
+            </Row>
 
-            <Field
-              label="First password"
-              required
-              hint="Tell it to them in person. They can change it once they are in."
-            >
-              {(props) => (
-                <Input
-                  {...props}
-                  type="text"
-                  maxLength={128}
-                  value={form.password}
-                  onChange={(event) => setField("password")(event.target.value)}
-                  placeholder="Something they can type"
-                  autoComplete="off"
-                />
-              )}
-            </Field>
-
-            {/* Shown in the clear, deliberately: an administrator has to read
-                this out loud to somebody standing next to them, and a masked
-                field they cannot check is a password typed wrong twice. */}
-            <RequirementList requirements={requirements} />
+            <div className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <Field label="First password" required hint="Tell it to them in person. They can change it once they are in.">
+                {(props) => (
+                  <Input
+                    {...props}
+                    type="text"
+                    maxLength={128}
+                    value={form.password}
+                    onChange={(event) => setField("password")(event.target.value)}
+                    placeholder="Something they can type"
+                    autoComplete="off"
+                  />
+                )}
+              </Field>
+              <RequirementList requirements={requirements} />
+            </div>
           </DialogBody>
 
-          <DialogFooter className="justify-between">
-            <Button
-              variant="outline"
-              size="lg"
-              disabled={submitting}
-              onClick={() => handleOpenChange(false)}
-            >
+          <DialogFooter>
+            <Button variant="outline" disabled={submitting} onClick={() => handleOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="cobalt" size="lg" disabled={submitting}>
-              {submitting ? "Creating…" : "Create the account"}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Adding…" : "Add user"}
             </Button>
           </DialogFooter>
         </form>
