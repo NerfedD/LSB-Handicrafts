@@ -116,7 +116,7 @@ test("a corrected price reaches the paper", async ({ page, baseURL }) => {
   await page.screenshot({ path: `${OUT}/slip-corrected.png`, fullPage: true });
 });
 
-test("a refund reaches the paper, and so does what is left owing", async ({ page, baseURL }) => {
+test("a refund reaches the paper, and a called-off order is not billed for the rest", async ({ page, baseURL }) => {
   await stubSupabase(page);
   await signIn(page, baseURL);
   // #1044 was refunded in full in the fixtures.
@@ -126,10 +126,13 @@ test("a refund reaches the paper, and so does what is left owing", async ({ page
   const slip = page.locator(".slip");
   await expect(slip).toBeVisible();
   await expect(slip).toContainText("was given back");
-  await expect(slip).toContainText("What they still owe");
   // #1044 is a cancelled order. A slip that reads the same whether the goods
   // are coming or not is the one that gets somebody waiting for a delivery
   // that was called off weeks ago.
   await expect(slip).toContainText("Called off");
+  // Nothing is owed on an order that was called off (utils/payments
+  // balanceOf), so the paper does not put a figure against "still owe". What a
+  // live order is left owing is checked in payments-settings.spec.js.
+  await expect(slip).not.toContainText("What they still owe");
   await page.screenshot({ path: `${OUT}/slip-refunded.png`, fullPage: true });
 });

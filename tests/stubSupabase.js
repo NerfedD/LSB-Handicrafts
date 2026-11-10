@@ -308,8 +308,12 @@ function fakeJwt(payload) {
  * `as` is the email the stub signs in as. It defaults to the administrator,
  * which is what nearly every case wants; pass another staff member's address
  * to exercise a screen as a role that sees less of it.
+ *
+ * `seed` is handed this run's own copy of the tables before anything is
+ * served, for a case that needs a state the fixtures do not carry (an order
+ * already part-paid, say). What it changes does not reach the next test.
  */
-export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOrderResponseOnce = false } = {}) {
+export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOrderResponseOnce = false, seed } = {}) {
   // A per-run copy, so a test that blocks an account does not leak that state
   // into the next test in the file.
   const tables = Object.fromEntries(
@@ -328,6 +332,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
   tables.business_settings ??= [{ id: 1, business_name: 'LSB Handicrafts', tin: null, phone: null, email: null, address: null,
     vat_registered: false, delivery_fee: null, free_delivery_from: null, delivery_areas: [], open_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     opens_at: null, closes_at: null, revision: 0, updated_at: null, updated_by: null }];
+  seed?.(tables);
   const paymentRequests = new Map();
   tables.loyalty_rules ??= [{ id: 1, enabled: false, regular_after_orders: 3, reward_after_orders: 5, reward_percent: 5, revision: 0, updated_at: null, updated_by: null }];
   const stockRequests = new Map();

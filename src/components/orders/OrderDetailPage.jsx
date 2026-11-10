@@ -69,7 +69,15 @@ function Panel({ id, title, action, children, className }) {
   );
 }
 
-function Totals({ order, totals }) {
+/**
+ * The same lines, under the same conditions, as the printed slip (OrderSlip):
+ * what was given back, what has been paid, and what is left. `owed` is
+ * balanceOf (utils/payments), the figure the Payments panel calls "Still
+ * owed", so the two never disagree. A cancelled order owes nothing and does
+ * not say it owes anything.
+ */
+function Totals({ order, totals, paid = 0, owed = 0, cancelled = false }) {
+  const received = Number(paid) || 0;
   const rows = [
     ["Items", formatPeso(totals.items)],
     ["Delivery", totals.delivery > 0 ? formatPeso(totals.delivery) : "Free"],
@@ -91,8 +99,18 @@ function Totals({ order, totals }) {
         <>
           <dt className="text-muted-fg">Given back</dt>
           <dd className="m-0 text-danger-fg">−{formatPeso(totals.refunded)}</dd>
+        </>
+      ) : null}
+      {received > 0 ? (
+        <>
+          <dt className="text-muted-fg">Paid</dt>
+          <dd className="m-0">−{formatPeso(received)}</dd>
+        </>
+      ) : null}
+      {(totals.refunded > 0 || received > 0) && !cancelled ? (
+        <>
           <dt className="font-medium">What they still owe</dt>
-          <dd className="m-0 font-semibold">{formatPeso(totals.net)}</dd>
+          <dd className="m-0 font-semibold">{formatPeso(owed)}</dd>
         </>
       ) : null}
     </dl>
@@ -264,7 +282,7 @@ export default function OrderDetailPage({
               </Table>
             )}
             <div className="border-t border-border">
-              <Totals order={order} totals={totals} />
+              <Totals order={order} totals={totals} paid={paid} owed={owedAmount} cancelled={isCancelled} />
             </div>
           </Panel>
 

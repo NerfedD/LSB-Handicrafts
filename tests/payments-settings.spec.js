@@ -11,6 +11,12 @@ import { signIn, stubSupabase } from "./stubSupabase.js";
 const REYES = 1041;
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
 
+/** The totals under the order's items, as { label: value }. */
+function totalsOf(page) {
+  return page.getByRole("region", { name: "Items", exact: true }).locator("dl").evaluate((dl) =>
+    Object.fromEntries([...dl.querySelectorAll("dt")].map((dt) => [dt.textContent.trim(), dt.nextElementSibling.textContent.trim()])));
+}
+
 test("a payment recorded on an order shows what is paid and what is still owed", async ({ page, baseURL }) => {
   const writes = [];
   await stubSupabase(page, { onWrite: (w) => writes.push(w) });
@@ -37,12 +43,63 @@ test("a payment recorded on an order shows what is paid and what is still owed",
   await expect(page.getByText("₱2,000.00 recorded.")).toBeVisible();
   await expect(panel.getByRole("list", { name: "Payments received" })).toContainText("₱2,000.00 received · GCash · GC-778812");
   await expect(panel).toContainText("Still owed₱4,280.00");
+  // The totals under the items say the same, the way the printed slip does.
+  await expect.poll(() => totalsOf(page)).toMatchObject({ "Paid": "−₱2,000.00", "What they still owe": "₱4,280.00" });
   expect(writes.find((w) => w.table === "order_payments")?.row).toMatchObject({ order_id: REYES, amount: 2000, method: "gcash" });
 
   // A manager can take one back that was entered by mistake.
   await panel.getByRole("button", { name: "Remove the ₱2,000.00 payment" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Remove payment" }).click();
   await expect(panel.getByText("No payment has been recorded on this order.")).toBeVisible();
+  // Nothing paid and nothing given back: the order total is the whole story.
+  await expect.poll(() => totalsOf(page)).not.toHaveProperty("What they still owe");
+});
+
+// The order screen said what was owed in two places that did not agree: the
+// totals took off refunds only, the Payments panel took off payments as well.
+test("an order's totals take payments off what is still owed, as the Payments panel and the slip do", async ({ page, baseURL }) => {
+  await stubSupabase(page, {
+    seed: (tables) => {
+      // ₱6,280.00, of which ₱1,000.00 was given back and ₱2,000.00 has been paid.
+      Object.assign(tables.orders.find((o) => o.id === REYES), {
+        refunded_amount: 1000,
+        refund_history: [{ id: 5101, amount: 1000, refundedAt: new Date().toISOString(), refundedBy: "Maria Santos", reason: "changed-mind", method: "cash", restockedItems: [] }],
+      });
+      tables.order_payments.push({ id: 7101, order_id: REYES, amount: 2000, method: "cash", reference: null,
+        received_on: new Date().toISOString().slice(0, 10), note: null, recorded_by: "Maria Santos", created_at: new Date().toISOString() });
+    },
+  });
+  await signIn(page, baseURL);
+  await page.goto(`${baseURL}/orders/${REYES}`);
+
+  await expect.poll(() => totalsOf(page)).toMatchObject({
+    "Order total": "₱6,280.00",
+    "Given back": "−₱1,000.00",
+    "Paid": "−₱2,000.00",
+    "What they still owe": "₱3,280.00",
+  });
+  await expect(page.getByRole("region", { name: "Payments", exact: true })).toContainText("Still owed₱3,280.00");
+  await expect(page.locator(".slip .slip-total-row").filter({ hasText: "What they still owe" })).toContainText("₱3,280.00");
+});
+
+test("a cancelled order does not say anything is still owed, even when only part was given back", async ({ page, baseURL }) => {
+  await stubSupabase(page, {
+    seed: (tables) => {
+      // #1044 is cancelled; here ₱300.00 of its ₱840.00 went back rather than all of it.
+      const order = tables.orders.find((o) => o.id === 1044);
+      order.refunded_amount = 300;
+      order.refund_history[0].amount = 300;
+    },
+  });
+  await signIn(page, baseURL);
+  await page.goto(`${baseURL}/orders/1044`);
+  await expect(page.getByText("This order was cancelled.")).toBeVisible();
+
+  const totals = await totalsOf(page);
+  expect(totals).toMatchObject({ "Order total": "₱840.00", "Given back": "−₱300.00" });
+  expect(totals).not.toHaveProperty("What they still owe");
+  await expect(page.getByRole("region", { name: "Payments", exact: true })).toContainText("Still owed—");
+  await expect(page.locator(".slip")).not.toContainText("What they still owe");
 });
 
 test("a customer's payment is offered against every order they still owe on", async ({ page, baseURL }) => {
