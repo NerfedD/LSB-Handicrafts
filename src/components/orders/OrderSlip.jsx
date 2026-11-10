@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 
 import { normalizeItems } from "../../utils/orderItems";
-import { orderTotals, lastPriceAdjustment } from "../../utils/orders";
+import { orderTotals, lastPriceAdjustment, refundWords } from "../../utils/orders";
 import { formatPeso, formatLongDate } from "../../utils/profileFormat";
 import { letterheadOf, vatInside } from "../../utils/office";
 import { orderLabel, priceReasonLabel, refundReasonLabel } from "../../utils/copy";
@@ -217,7 +217,7 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [], 
           )}
           {refunds.map((refund, index) => (
             <p key={refund.id ?? index}>
-              {formatPeso(refund.amount)} was given back on{" "}
+              {refundWords(refund, { sentence: true })} on{" "}
               {formatLongDate(refund.refundedAt)} — {refundReasonLabel(refund.reason).toLowerCase()}.
             </p>
           ))}

@@ -36,9 +36,15 @@ import {
   isBackorderDelivery,
   lastPriceAdjustment,
   orderNetTotal,
+  handedBackOf,
   orderTotals,
+  refundWords,
   returnHistory,
 } from "../../utils/orders";
+
+/** "₱150.00 given back · Cash", or just the words when none of it was money. */
+const refundLine = (entry) =>
+  handedBackOf(entry) > 0 ? `${refundWords(entry)} · ${refundMethodLabel(entry.method)}` : refundWords(entry);
 import { dueLabel, isLate } from "../../utils/deliveries";
 import { committedOf, outstandingOf, stockLines } from "../../utils/stockLedger";
 import { timeLabel } from "../../utils/activityLog";
@@ -343,7 +349,7 @@ export default function OrderDetailPage({
                     <span className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="font-medium">
                         {entry.resolution === "refund"
-                          ? `${formatPeso(entry.amount)} given back · ${refundMethodLabel(entry.method)}`
+                          ? refundLine(entry)
                           : `Replaced: ${entry.replacementQuantity} × ${entry.replacementName} sent out`}
                       </span>
                       <span className="text-muted-fg">{formatShortDate(entry.at)}{entry.handledBy ? ` · ${entry.handledBy}` : ""}</span>

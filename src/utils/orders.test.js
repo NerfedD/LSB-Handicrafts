@@ -197,3 +197,47 @@ describe("money on an order", () => {
     expect(counts.cancelled).toBe(1);
   });
 });
+
+/**
+ * The dialog's preview of what the database stamps on a refund. The database
+ * is the authority (private.stamp_refund_money, directWriteGuards.test.js);
+ * these keep the preview saying the same thing.
+ */
+describe("how much of a refund is money handed back", () => {
+  const paidFor = { totalAmount: 600, refundedAmount: 0, refundHistory: [] };
+
+  it("is nothing on an order nobody has paid for", async () => {
+    const { refundSplit } = await import("./orders");
+    expect(refundSplit(paidFor, 150, 0, "cash")).toEqual({ handedBack: 0, offBalance: 150 });
+  });
+
+  it("is all of it on an order paid in full", async () => {
+    const { refundSplit } = await import("./orders");
+    expect(refundSplit(paidFor, 150, 600, "cash")).toEqual({ handedBack: 150, offBalance: 0 });
+  });
+
+  it("is only what was paid beyond what the order still comes to", async () => {
+    const { refundSplit } = await import("./orders");
+    expect(refundSplit(paidFor, 300, 450, "cash")).toEqual({ handedBack: 150, offBalance: 150 });
+    // And an earlier hand-back is not handed back twice.
+    const after = { totalAmount: 600, refundedAmount: 300, refundHistory: [{ amount: 300, handedBack: 150, offBalance: 150 }] };
+    expect(refundSplit(after, 150, 450, "cash")).toEqual({ handedBack: 150, offBalance: 0 });
+    expect(refundSplit(after, 300, 450, "cash")).toEqual({ handedBack: 300, offBalance: 0 });
+  });
+
+  it("is nothing when it is left on their account", async () => {
+    const { refundSplit } = await import("./orders");
+    expect(refundSplit(paidFor, 150, 600, "credit")).toEqual({ handedBack: 0, offBalance: 150 });
+  });
+
+  it("reads an entry from before the stamp as it described itself", async () => {
+    const { handedBackOf, moneyHandedBack, refundWords } = await import("./orders");
+    expect(handedBackOf({ amount: 100, method: "cash" })).toBe(100);
+    expect(handedBackOf({ amount: 100, method: "credit" })).toBe(0);
+    expect(handedBackOf({ amount: 100, method: "cash", handedBack: 0 })).toBe(0);
+    expect(moneyHandedBack({ refundHistory: [{ amount: 100, method: "cash" }, { amount: 50, handedBack: 20 }] })).toBe(120);
+    expect(refundWords({ amount: 100, method: "cash" })).toMatch(/100\.00 given back$/);
+    expect(refundWords({ amount: 100, handedBack: 0 })).toMatch(/100\.00 off what they owe$/);
+    expect(refundWords({ amount: 100, handedBack: 40 }, { sentence: true })).toMatch(/40\.00 was given back and .*60\.00 came off what was owed$/);
+  });
+});

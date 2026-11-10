@@ -101,20 +101,27 @@ it('FLOW-01: 20 -> 16 -> 17 -> 16; refund and replacement preserve the exact mon
 
 it('FLOW-02: dispatch 6 then 4, linked follow-up, shelf 20 -> 14 -> 10 and total 1000', async () => {
   await product(20); await order(10);
-  await asApi(db, 'sales', () => db.query("insert into public.deliveries(id,product,location,status,order_id) values(701,$1,'QA address','Ready To Go',601)", ['Order #601 - ' + label]));
+  // Raised unsent and walked to "Ready To Go" a stage at a time, as the board
+  // does: a browser cannot write a delivery straight into a later stage.
+  const raise = (id, parent = null) => asApi(db, 'sales', async () => {
+    await db.query("insert into public.deliveries(id,product,location,status,order_id,parent_delivery_id) values($1,$2,'QA address','Not Yet Delivered',601,$3)", [id, 'Order #601 - ' + label, parent]);
+    for (const status of ['Being Made', 'Ready To Go']) await db.query('update public.deliveries set status=$1 where id=$2', [status, id]);
+  });
+  await raise(701);
   for (const [deliveryId, quantity] of [[701, 6], [702, 4]]) {
     const source = await readOrder();
+    const run = await one(db, 'select revision from public.deliveries where id=$1', [deliveryId]);
     // The ledger helper takes the cumulative manifest; the UI converts this
     // trip's quantity to that total before calling it (see App.jsx).
     const moved = commitPartialDelivery([], source, [{ lineIndex: 0, units: (source.items[0].committedUnits || 0) + quantity }]);
-    await repeat('order', 'dispatch', { orderId: 601, deliveryId, expectedRevision: source.revision, expectedDeliveryRevision: 0,
+    await repeat('order', 'dispatch', { orderId: 601, deliveryId, expectedRevision: source.revision, expectedDeliveryRevision: Number(run.revision),
       deltas: moved.deltas, order: { items: moved.items, stockCommittedAt: moved.stockCommittedAt }, delivery: { status: 'On The Way' } });
     await balance('dispatch-' + deliveryId, deliveryId === 701 ? 14 : 10, deliveryId === 701 ? 4 : 0);
     if (deliveryId === 701) {
       // These non-stock writes are separate supported collection operations;
       // automatic follow-up creation and its retries still need the UI test.
       await asApi(db, 'sales', () => db.exec("update public.deliveries set status='Delivered' where id=701"));
-      await asApi(db, 'sales', () => db.query("insert into public.deliveries(id,product,location,status,order_id,parent_delivery_id) values(702,$1,'QA address','Ready To Go',601,701)", ['Order #601 - ' + label]));
+      await raise(702, 701);
     }
   }
   const source = await readOrder();
