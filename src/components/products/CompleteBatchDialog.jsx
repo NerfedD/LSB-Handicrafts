@@ -12,8 +12,12 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
     const produced = countProblem(v.produced, { label: 'The pieces produced' });
     const damaged = countProblem(v.damaged, { label: 'The damaged pieces' });
     const counts = completionCounts(v.produced, v.damaged, size);
+    // The database's line too (private.guard_batch_output): more than twice
+    // the plan is far more likely a slip of the keyboard than a good day.
+    const ceiling = 2 * (Number(batch.target_output_qty) || 0);
     return {
       produced: produced
+        ?? (Number(v.produced) > ceiling ? `That is more than twice the ${batch.target_output_qty} planned. If that many really came out, a manager changes the batch's target first.` : null)
         ?? (counts && !counts.wholePacks ? `Good pieces must fill whole packs of ${size}; ${counts.good} good pieces do not.` : null),
       damaged: damaged ?? (!produced && Number(v.damaged) > Number(v.produced) ? 'Damaged pieces cannot be more than the pieces produced.' : null),
       reason: (Number(v.damaged) > 0 || String(v.produced).trim() === '0') && !v.reason ? 'Choose why the pieces were damaged.' : null,

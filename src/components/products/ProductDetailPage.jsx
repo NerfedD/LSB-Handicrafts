@@ -202,7 +202,7 @@ export default function ProductDetailPage({
           tone="amber"
           icon={<ArrowUUpLeft />}
           title="No longer sold"
-          action={canEdit ? <Button variant="outline" size="sm" onClick={() => onRestore?.(product)}>Put it back on sale</Button> : null}
+          action={canDelete ? <Button variant="outline" size="sm" onClick={() => onRestore?.(product)}>Put it back on sale</Button> : null}
         >
           It is hidden from the products list and the order form. Its stock record and every order, delivery and batch that mentions it are kept.
         </Callout>

@@ -68,6 +68,9 @@ export const NAV_TREE = [
     label: "Deliveries",
     icon: "Truck",
     group: "operations",
+    // A delivery carries the customer's address, which production does not
+    // see (the database refuses it), so the board is not theirs either.
+    hideFrom: ["Production Staff"],
     count: "deliveries",
     countLabel: "open",
     views: ["deliveries", "delivery-detail"],

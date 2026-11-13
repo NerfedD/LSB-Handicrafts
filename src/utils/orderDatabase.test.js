@@ -136,14 +136,27 @@ describe('order transactions', () => {
       .rejects.toThrow(/different order/);
   });
 
-  it('returns only what a partial dispatch took when the order is cancelled', async () => {
+  it('will not call off an order while its goods are on the van, and does once they come back', async () => {
     const moved = commitPartialDelivery([], await order(), [{ lineIndex: 0, units: 2 }]);
     await command('dispatch', { orderId: 1, deliveryId: 11, expectedRevision: 0, expectedDeliveryRevision: 0,
-      deltas: moved.deltas, order: { items: moved.items, stockCommittedAt: moved.stockCommittedAt }, delivery: { status: 'On The Way' } });
+      deltas: moved.deltas, order: { items: moved.items, stockCommittedAt: moved.stockCommittedAt },
+      delivery: { status: 'On The Way', itemsManifest: [{ productId: 101, name: 'Sheets', orderedQty: 4, deliveredQty: 2, backorderQty: 2 }] } });
+    expect(await stocks()).toEqual([62, 20]);
     const source = await order();
     const back = uncommitOrder([], source);
-    await command('cancel', { orderId: 1, expectedRevision: source.revision, deltas: back.deltas,
+    const cancel = (from) => command('cancel', { orderId: 1, expectedRevision: from.revision, deltas: back.deltas,
       order: { items: back.items, status: 'Cancelled', stockCommittedAt: null } });
+    // Putting 2 back while they are on the van would count them twice when the van is unloaded.
+    await expect(cancel(source)).rejects.toThrow(/on the way/);
+    expect(await stocks()).toEqual([62, 20]);
+
+    const run = await one(db, 'select revision from public.deliveries where id = 11');
+    await command('return_run', { orderId: 1, deliveryId: 11, expectedRevision: source.revision,
+      expectedDeliveryRevision: Number(run.revision) });
+    expect(await stocks()).toEqual([64, 20]);
+    const waiting = await order();
+    await command('cancel', { orderId: 1, expectedRevision: waiting.revision, deltas: [],
+      order: { items: uncommitOrder([], waiting).items, status: 'Cancelled', stockCommittedAt: null } });
     expect(await stocks()).toEqual([64, 20]);
   });
 

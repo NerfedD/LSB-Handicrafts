@@ -224,6 +224,57 @@ function runOrderCommand(tables, body, onWrite) {
     return { order, delivery: null, inventory: moved, removedDeliveries: [] };
   }
 
+  const runsOf = () => deliveries.filter((run) => (run.order_id != null
+    ? Number(run.order_id) === Number(order.id)
+    : String(run.product).startsWith(`Order #${order.id} - `)));
+
+  // As order_command does since 20261113120000: a run that came back puts what
+  // its manifest says it carried back on the shelf.
+  if (action === "return_run") {
+    if (!delivery || delivery.status !== "On The Way") return { error: "Only a delivery that is on the way can come back." };
+    if (order.status !== "Pending") return { error: "This order is no longer waiting, so what its delivery carried cannot be put back here." };
+    const manifest = delivery.items_manifest ?? [];
+    if (!manifest.length) return { error: "Nothing was recorded as loaded on this delivery, so there is nothing to put back." };
+    const moved = [];
+    manifest.forEach((entry, index) => {
+      const back = Number(entry.deliveredQty) || 0;
+      const itemLine = order.items[index];
+      if (!back || !itemLine) return;
+      itemLine.committedUnits = (Number(itemLine.committedUnits) || 0) - back;
+      const row = inventory.find((item) => Number(item.id) === Number(itemLine.productId));
+      if (row) {
+        row.stock += back;
+        recordMovement(tables, row, back, "cancellation", { order_id: order.id });
+        if (!moved.includes(row)) moved.push(row);
+      }
+    });
+    order.stock_committed_at = null;
+    order.revision = (order.revision ?? 0) + 1;
+    delivery.status = "Ready To Go";
+    delivery.items_manifest = [];
+    delivery.revision = (delivery.revision ?? 0) + 1;
+    const removedDeliveries = [];
+    for (const run of [...deliveries]) {
+      if (Number(run.parent_delivery_id) === Number(delivery.id) && !["On The Way", "Delivered"].includes(run.status)) {
+        deliveries.splice(deliveries.indexOf(run), 1);
+        removedDeliveries.push(run.id);
+      }
+    }
+    Object.assign(storedOrder, order);
+    Object.assign(storedDelivery, delivery);
+    onWrite?.({ table: "deliveries", method: "RPC", row: delivery, action });
+    return { order, delivery, inventory: moved, removedDeliveries };
+  }
+
+  if (["cancel", "reopen"].includes(action)) {
+    if (runsOf().some((run) => run.status === "On The Way")) {
+      return { error: "A delivery for this order is on the way. Mark it delivered, or mark that it came back, first." };
+    }
+    if (runsOf().some((run) => run.status === "Delivered")) {
+      return { error: "Goods on this order have been delivered to the customer, so they are not on the shelf to put back. Give the money back instead, and say whether the goods came back." };
+    }
+  }
+
   if (action === "complete" && order.status !== "Pending") {
     return { error: "Only an order that is still waiting can be marked done." };
   }
@@ -285,12 +336,32 @@ function runOrderCommand(tables, body, onWrite) {
       }
     }
   }
+  // As order_command does: a short dispatch raises the run for what was left
+  // behind in the same transaction.
+  let followUp = null;
+  if (action === "dispatch" && data.followUp && delivery) {
+    const owed = (order.items ?? [])
+      .map((item) => ({ item, owed: (Number(item.stockUnits ?? item.quantity) || 0) - (Number(item.committedUnits) || 0) - (Number(item.voidedUnits) || 0) }))
+      .filter(({ owed }) => owed > 0);
+    if (owed.length) {
+      followUp = {
+        id: nextRecordId(), order_id: order.id, product: `Order #${order.id} - ${order.customer_name} (backorder)`,
+        size: owed.map(({ item, owed: units }) => `${units} × ${item.name}`).join(", "),
+        location: delivery.location, amount: 0, status: "Not Yet Delivered",
+        driver: data.followUp.driver || null, due_on: data.followUp.dueOn || null,
+        parent_delivery_id: delivery.id, items_manifest: [], revision: 0, created_at: new Date().toISOString(),
+      };
+      deliveries.push(followUp);
+      onWrite?.({ table: "deliveries", method: "RPC", row: followUp });
+    }
+  }
+
   Object.assign(storedOrder, order);
   if (storedDelivery) Object.assign(storedDelivery, delivery);
   onWrite?.({ table: "orders", method: "RPC", row: order });
   if (delivery) onWrite?.({ table: "deliveries", method: "RPC", row: delivery });
 
-  return { order, delivery, inventory: touched, removedDeliveries };
+  return { order, delivery, followUp, inventory: touched, removedDeliveries };
 }
 
 /** An unsigned JWT. Nothing client-side verifies it; supabase-js only decodes. */
@@ -442,6 +513,15 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       stockRequests.set(key, result);
       onWrite?.({ table: 'inventory', method: 'RPC', row, action });
       return json(route, result);
+    }
+    if (url.pathname.endsWith("/rpc/restore_product")) {
+      const { p_product_id: id } = request.postDataJSON();
+      const product = tables.products.find((row) => Number(row.id) === Number(id));
+      if (!product) return json(route, { code: 'P0001', message: 'That product no longer exists.' }, 400);
+      product.status = 'Active';
+      product.revision = (product.revision ?? 0) + 1;
+      onWrite?.({ table: 'products', method: 'RPC', row: product });
+      return json(route, { outcome: 'restored' });
     }
     if (url.pathname.endsWith("/rpc/remove_product")) {
       const { p_product_id: id } = request.postDataJSON();

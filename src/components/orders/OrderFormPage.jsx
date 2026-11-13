@@ -170,6 +170,8 @@ export default function OrderFormPage({
   settings = null,
   /** Whether this person may take a down payment as the order is written (recordPayments). */
   canTakePayment = false,
+  /** Whether this person may raise a delivery (handleDeliveries); without it the order is collected. */
+  canDeliver = true,
 }) {
   const isEdit = mode === "edit";
   const [customerName, setCustomerName] = useState(
@@ -179,7 +181,7 @@ export default function OrderFormPage({
     isEdit ? seedLines(order, products, inventory) : [emptyLine()]
   );
   const [address, setAddress] = useState(
-    isEdit ? delivery?.location ?? "" : customer?.address ?? ""
+    isEdit ? delivery?.location ?? "" : canDeliver ? customer?.address ?? "" : ""
   );
   const [dueOn, setDueOn] = useState(isEdit ? delivery?.dueOn ?? "" : "");
   const [dueError, setDueError] = useState(null);
@@ -380,7 +382,7 @@ export default function OrderFormPage({
     // board never mentioned it, and nobody found out until the customer rang
     // asking where their goods were. It is still allowed — plenty of orders are
     // collected at the shop — so this asks once and then gets out of the way.
-    if (!address.trim() && !askedAboutDelivery) {
+    if (canDeliver && !address.trim() && !askedAboutDelivery) {
       setDeliveryDoubt(
         delivery
           ? "Clearing this removes the delivery already raised for this order. Is it being collected from the shop instead?"
@@ -706,6 +708,11 @@ export default function OrderFormPage({
         </Callout>
       )}
 
+      {!canDeliver ? (
+        <p className="m-0 text-13 text-muted-fg">
+          This order is collected from the shop. If it needs delivering, sales or a manager adds the address.
+        </p>
+      ) : (
       <Field
         label="Where to"
         warning={deliveryDoubt}
@@ -725,6 +732,7 @@ export default function OrderFormPage({
           />
         )}
       </Field>
+      )}
 
       {address.trim() && (
         <Row className="sm:grid-cols-3">

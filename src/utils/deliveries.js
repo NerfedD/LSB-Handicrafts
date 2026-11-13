@@ -6,9 +6,30 @@
  * derivations here are what the columns, the chips and the "late" count read.
  */
 
-import { DELIVERY_STAGE } from "./constants";
+import { DELIVERY_STAGE, ORDER_STATUS } from "./constants";
 import { DELIVERY_STAGES, deliveryStageIndex } from "./copy";
 import { BACKORDER_SUFFIX, isBackorderDelivery } from "./orders";
+
+/**
+ * How many of one manifest line went on the van. Dispatch writes
+ * `deliveredQty` (with `orderedQty` and `backorderQty` beside it); `quantity`
+ * is read only for a manifest written some other way.
+ */
+export const manifestQty = (line) => Math.max(0, Number(line?.deliveredQty ?? line?.quantity) || 0);
+
+/** The manifest lines that actually went on the van. */
+export const loadedLines = (delivery) =>
+  (Array.isArray(delivery?.itemsManifest) ? delivery.itemsManifest : []).filter((line) => manifestQty(line) > 0);
+
+/**
+ * A run carrying a waiting order's goods that can come back undelivered:
+ * order_command's return_run puts what it carried back on the shelf. Moving
+ * one back by hand is refused, because the goods would stay off the shelf.
+ */
+export const runCanComeBack = (delivery, order) =>
+  delivery?.status === DELIVERY_STAGE.ON_THE_WAY &&
+  order?.status === ORDER_STATUS.PENDING &&
+  loadedLines(delivery).length > 0;
 
 /** Midnight today, as a number, for date-only comparisons. */
 const startOfToday = () => {

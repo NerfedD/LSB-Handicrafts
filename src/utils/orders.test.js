@@ -241,3 +241,46 @@ describe("how much of a refund is money handed back", () => {
     expect(refundWords({ amount: 100, handedBack: 40 }, { sentence: true })).toMatch(/40\.00 was given back and .*60\.00 came off what was owed$/);
   });
 });
+
+describe("short deliveries, call-off rules and what a run carried", () => {
+  const twoLines = (first, second) => order({
+    items: [line({ productId: 101, committedUnits: first }), line({ productId: 102, committedUnits: second })],
+  });
+
+  it("calls an order a backorder when a whole line was left behind", async () => {
+    const { backorderLines } = await import("./orders");
+    const allOfOneNoneOfOther = twoLines(5, 0);
+    expect(hasBackorder(allOfOneNoneOfOther)).toBe(true);
+    expect(backorderLines(allOfOneNoneOfOther).map((l) => l.productId)).toEqual([102]);
+    expect(backorderStatusOf(allOfOneNoneOfOther)).toBe(BACKORDER_STATUS.PARTIAL);
+    expect(backorderDemand([allOfOneNoneOfOther]).get(102)).toBe(5);
+    // Nothing gone yet is still just a waiting order.
+    expect(hasBackorder(twoLines(0, 0))).toBe(false);
+  });
+
+  it("will not call an order off while a run is out or has delivered", async () => {
+    const { callOffBlocker } = await import("./orders");
+    const runs = (status) => [{ id: 9, orderId: 1, status }];
+    expect(callOffBlocker(order({ id: 1 }), runs(DELIVERY_STAGE.READY))).toBeNull();
+    expect(callOffBlocker(order({ id: 1 }), runs(DELIVERY_STAGE.ON_THE_WAY))).toMatch(/on the way/);
+    expect(callOffBlocker(order({ id: 1 }), runs(DELIVERY_STAGE.ARRIVED))).toMatch(/delivered/);
+    expect(callOffBlocker(order({ id: 1 }), [{ id: 9, orderId: 2, status: DELIVERY_STAGE.ON_THE_WAY }])).toBeNull();
+  });
+
+  it("reads what a run carried from the field dispatch writes", async () => {
+    const { loadedLines, manifestQty, runCanComeBack } = await import("./deliveries");
+    const run = {
+      status: DELIVERY_STAGE.ON_THE_WAY,
+      itemsManifest: [
+        { name: "Sheets", orderedQty: 20, deliveredQty: 12, backorderQty: 8 },
+        { name: "Balls", orderedQty: 5, deliveredQty: 0, backorderQty: 5 },
+      ],
+    };
+    expect(manifestQty(run.itemsManifest[0])).toBe(12);
+    expect(manifestQty({ quantity: 3 })).toBe(3);
+    expect(loadedLines(run).map((l) => l.name)).toEqual(["Sheets"]);
+    expect(runCanComeBack(run, { status: ORDER_STATUS.PENDING })).toBe(true);
+    expect(runCanComeBack(run, { status: ORDER_STATUS.COMPLETED })).toBe(false);
+    expect(runCanComeBack({ ...run, itemsManifest: [] }, { status: ORDER_STATUS.PENDING })).toBe(false);
+  });
+});

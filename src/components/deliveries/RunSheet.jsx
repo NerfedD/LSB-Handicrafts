@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 
 import { letterheadOf } from "../../utils/office";
-import { customerFrom, dueTime, orderRefFrom } from "../../utils/deliveries";
+import { customerFrom, dueTime, loadedLines, manifestQty, orderRefFrom } from "../../utils/deliveries";
 import { formatLongDate, formatShortDate } from "../../utils/profileFormat";
 import { STAGE_LOOK } from "./stageLook";
 
@@ -102,8 +102,7 @@ export default function RunSheet({ deliveries = [], scope, settings = null }) {
               </thead>
               <tbody>
                 {runs.map((delivery) => {
-                  const manifest = Array.isArray(delivery.itemsManifest) ? delivery.itemsManifest : [];
-                  const count = manifest.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+                  const count = loadedLines(delivery).reduce((sum, line) => sum + manifestQty(line), 0);
                   const orderRef = orderRefFrom(delivery);
                   return (
                     <tr key={delivery.id}>

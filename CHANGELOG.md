@@ -1,6 +1,24 @@
 # Changelog
 
-## Unreleased — orders and deliveries cannot be written round their commands
+## Unreleased — stock counted back where it really is
+
+### Fixed
+- **A delivery that comes back undelivered** can be recorded: *Came back undelivered* puts what it carried back on the shelf and the run back to *Ready to go*. Moving it back a step used to leave the goods deducted.
+- **A run that goes out short** raises its follow-up in the same transaction, so goods can no longer be owed with nothing on the board to carry them; a line left behind entirely now counts as *Some left behind*.
+- **Calling off or re-opening an order** is refused while one of its deliveries is on the way or has delivered: it used to put goods back on the shelf that were on a van or with the customer.
+- **A refund after a replacement** no longer puts back on the shelf goods the replacement already swapped for a different product.
+- **Stock promised to an earlier order** can no longer be taken by marking a later one done or sending it out; managers and administrators may still let a later order go first.
+- **Printed delivery slips and run sheets** show how many of each line went on the van; the quantity column was blank.
+- **Price corrections**: once anything has happened to an order its total moves only with a correction naming the old and new totals, stamped by the database with who made it.
+- **Products**: one product per code in any capitalisation; a code cannot be changed by a direct write; archiving and putting back on sale are administrators' only, and a product or stock row is removed only through *Remove* (no direct delete).
+- **Finishing a batch** is refused above twice the pieces planned; a manager changes the target first if that many really came out.
+- **Production staff** no longer see the deliveries board (they could not read it) and write collected orders only; the database no longer lets them write deliveries blind.
+- Order and delivery statuses are checked by the database.
+
+### Database
+- New migration `20261113120000_stock_and_delivery_corrections.sql`. Apply it before deploying this client.
+
+## Earlier — orders and deliveries cannot be written round their commands
 
 ### Fixed
 - **Orders could be finished or faked by a direct write.** Any signed-in account could go straight to the API and mark an order done with nothing taken off the shelf, or type "sent" counts into its lines so a later cancel or re-open put back goods that never left. The database now refuses: a browser may add a waiting order and correct what it says, and everything that has *happened* to an order changes only through `order_command`.

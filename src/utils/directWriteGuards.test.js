@@ -132,8 +132,10 @@ describe('orders written straight to the table', () => {
     await expect(write('manager', `update public.orders set price_adjustments = '[]' where id = 1`)).rejects.toThrow(/can only be added to/);
     await expect(write('manager', `update public.orders set price_adjustments = '[{"oldTotal": 1, "newTotal": 550}]' where id = 1`))
       .rejects.toThrow(/can only be added to/);
+    // Adding to it, as the app does, sends back the saved history with the new entry on the end.
     await write('manager', `update public.orders set total_amount = 500,
-      price_adjustments = '[{"oldTotal": 600, "newTotal": 550}, {"oldTotal": 550, "newTotal": 500}]' where id = 1`);
+      price_adjustments = price_adjustments || '[{"oldTotal": 550, "newTotal": 500}]' where id = 1`);
+    expect((await one(db, 'select price_adjustments from public.orders where id = 1')).price_adjustments).toHaveLength(2);
   });
 
   it('keeps the lines of an order as they are once goods have moved, but still takes a price correction', async () => {
