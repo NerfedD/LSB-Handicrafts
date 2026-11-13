@@ -288,13 +288,19 @@ describe('manager-only changes', () => {
     });
   });
 
-  it.each([
-    ['replacement_history', `'[{"quantity": 9}]'::jsonb`],
-    ['discount_amount', '50'],
-  ])('guards %s against direct staff updates', async (column, value) => {
+  it('guards discount_amount against direct staff updates', async () => {
     await asApi(db, 'sales', async () => {
-      await expect(db.query(`update public.orders set ${column} = ${value} where id = 1`))
+      await expect(db.query('update public.orders set discount_amount = 50 where id = 1'))
         .rejects.toThrow(/administrator or a manager/);
+    });
+  });
+
+  // Nobody writes this column for themselves, a manager included: it is
+  // order_command's record of what it did (see directWriteGuards.test.js).
+  it.each(['sales', 'manager'])('guards replacement_history against a direct update by %s', async (who) => {
+    await asApi(db, who, async () => {
+      await expect(db.query(`update public.orders set replacement_history = '[{"quantity": 9}]'::jsonb where id = 1`))
+        .rejects.toThrow(/recorded with "Give money back" and "Replace goods"/);
     });
   });
 

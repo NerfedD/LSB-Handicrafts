@@ -20,7 +20,7 @@ import {
   REFUND_METHOD_OPTIONS,
   REFUND_REASON_OPTIONS,
 } from "../../utils/copy";
-import { orderNetTotal } from "../../utils/orders";
+import { orderNetTotal, refundSplit } from "../../utils/orders";
 import { roundMoney } from "../../utils/money";
 import { countProblem, moneyProblem } from "../../utils/validation";
 import { committedOf, orderedOf, stockLines, voidedOf } from "../../utils/stockLedger";
@@ -71,7 +71,7 @@ function refundableLines(order) {
   });
 }
 
-export default function RefundDialog({ open, onOpenChange, order, onSave }) {
+export default function RefundDialog({ open, onOpenChange, order, paid = 0, onSave }) {
   const lines = useMemo(() => refundableLines(order), [order]);
   const outstanding = orderNetTotal(order);
 
@@ -107,6 +107,17 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
   const suggested = roundMoney(chosen.reduce((sum, line) => sum + line.units * line.unitPrice, 0));
   const givingBack = amount === "" ? suggested : roundMoney(asMoney(amount));
   const isFull = givingBack >= outstanding && outstanding > 0;
+
+  // How much of it is money in the customer's hand. Worked out again by the
+  // database when the refund is saved (see refundSplit); said here first so
+  // nobody counts out cash for an order that has not been paid for.
+  const split = refundSplit(order, givingBack, paid, method);
+  let moneyNote;
+  if (givingBack > 0 && method !== REFUND_METHOD.CREDIT && split.offBalance > 0) {
+    moneyNote = split.handedBack > 0
+      ? `Hand back ${formatPeso(split.handedBack)}. ${formatPeso(paid)} has been paid on this order, so the other ${formatPeso(split.offBalance)} comes off what they still owe.`
+      : `No money to hand back: ${Number(paid) > 0 ? `the ${formatPeso(paid)} paid so far does not cover what the order still comes to` : "nothing has been paid on this order yet"}. The ${formatPeso(split.offBalance)} comes off what they owe.`;
+  }
   const needsDisposition = chosen.filter(
     (line) => line.tracked && line.committed > 0 && !disposition[line.index]
   );
@@ -277,7 +288,7 @@ export default function RefundDialog({ open, onOpenChange, order, onSave }) {
               )}
             </Field>
 
-            <Field label="How they get it">
+            <Field label="How they get it" hint={moneyNote}>
               <ChoiceButtons
                 label="How they get the money back"
                 options={REFUND_METHOD_OPTIONS}

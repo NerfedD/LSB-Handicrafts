@@ -74,6 +74,7 @@ import {
   backorderStatusOf,
   deliveryBelongsToOrder,
   deliveryForOrder,
+  handedBackOf,
   orderEditBlocker,
   orderIsEditable,
   orderRefunded,
@@ -1964,8 +1965,20 @@ export default function App() {
       return false;
     }
 
+    // How much of it is money in the customer's hand is the database's answer
+    // (private.stamp_refund_money): never more than was paid beyond what the
+    // order still comes to. The rest came off what they owe.
+    const saved = result.order?.refundHistory?.at(-1);
+    const handedBack = saved ? handedBackOf(saved) : amount;
+    const offBalance = roundMoney(amount - handedBack);
+    const moneyLine = offBalance <= 0
+      ? `${formatPeso(amount)} given back on order #${order.id}.`
+      : handedBack > 0
+        ? `${formatPeso(handedBack)} to hand back on order #${order.id}; ${formatPeso(offBalance)} came off what they owe.`
+        : `${formatPeso(amount)} came off what they owe on order #${order.id}. No money to hand back.`;
+
     markLanded("order", order.id);
-    toast.success(`${formatPeso(amount)} given back on order #${order.id}.`, {
+    toast.success(moneyLine, {
       description: full
         ? "The order is cancelled. Anything set aside for it has been released."
         : "What was put back on the shelf is on sale again.",
@@ -3173,6 +3186,7 @@ export default function App() {
         open={refundFor !== null}
         onOpenChange={(next) => !next && setRefundFor(null)}
         order={orders.find((o) => o.id === refundFor)}
+        paid={paid.get(refundFor) ?? 0}
         onSave={(refund) => issueRefund(orders.find((o) => o.id === refundFor), refund)}
       />
       <PriceAdjustmentDialog

@@ -1,6 +1,17 @@
 # Changelog
 
-## Unreleased — admin dashboard redesign
+## Unreleased — orders and deliveries cannot be written round their commands
+
+### Fixed
+- **Orders could be finished or faked by a direct write.** Any signed-in account could go straight to the API and mark an order done with nothing taken off the shelf, or type "sent" counts into its lines so a later cancel or re-open put back goods that never left. The database now refuses: a browser may add a waiting order and correct what it says, and everything that has *happened* to an order changes only through `order_command`.
+- **Deliveries could skip stages.** A delivery could be written straight to *Delivered*, and its record of what the van carried rewritten. Deliveries now move one stage at a time, an order's delivery goes out only through dispatch, and the manifest cannot be edited.
+- **A refund could record money "given back" that was never received.** The database now works out how much of each refund is money handed back — never more than was paid beyond what the order still comes to — and the rest comes off what the customer owes. *Give money back* says the split before saving, and the order screen, the toast and the printed slip say which part was money.
+- Refund, replacement and price-correction history can no longer be overwritten by a direct write, a manager's included.
+
+### Database
+- New migration `20261110120000_direct_write_guards.sql` (triggers and functions only; no row is changed). Apply it before deploying this client.
+
+## Earlier — admin dashboard redesign
 
 The whole interface now follows the boards in `design/admin-dashboard/`.
 

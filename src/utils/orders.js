@@ -44,7 +44,7 @@ import { DELIVERY_STAGE, ORDER_STATUS, BACKORDER_STATUS } from "./constants";
 import { deliveryStageIndex } from "./copy";
 import { normalizeItems, orderTotal } from "./orderItems";
 import { committedOf, outstandingOf } from "./stockLedger";
-import { formatShortDate } from "./profileFormat";
+import { formatPeso, formatShortDate } from "./profileFormat";
 import { roundMoney } from "./money";
 
 export const ORDER_STAGES = ["Written", "Being made", "Ready to go", "Delivered"];
@@ -166,6 +166,57 @@ export const orderNetTotal = (order) =>
 
 /** Has any money gone back on this order? */
 export const hasRefund = (order) => orderRefunded(order) > 0;
+
+/**
+ * How much of one refund was money handed back, as opposed to taken off what
+ * the customer owes. The database stamps `handedBack` on each entry when the
+ * refund is saved (private.stamp_refund_money); an entry from before that has
+ * none, and counts as handed back in full unless it was left on the account --
+ * which is what it claimed at the time.
+ */
+export function handedBackOf(entry) {
+  if (entry?.handedBack !== undefined && entry?.handedBack !== null) return roundMoney(entry.handedBack);
+  return entry?.method === "credit" ? 0 : roundMoney(entry?.amount);
+}
+
+/**
+ * One refund in words, saying which part was money: "₱150.00 given back",
+ * "₱100.00 given back, ₱50.00 off what they owe" or "₱150.00 off what they
+ * owe". `sentence` is the printed slip's form ("... was given back").
+ */
+export function refundWords(entry, { sentence = false } = {}) {
+  const amount = roundMoney(entry?.amount);
+  const handed = Math.min(amount, handedBackOf(entry));
+  const off = roundMoney(amount - handed);
+  const gave = sentence ? "was given back" : "given back";
+  const came = sentence ? "came off what was owed" : "off what they owe";
+  if (off <= 0) return `${formatPeso(amount)} ${gave}`;
+  if (handed <= 0) return `${formatPeso(amount)} ${came}`;
+  return `${formatPeso(handed)} ${gave}${sentence ? " and" : ","} ${formatPeso(off)} ${came}`;
+}
+
+/** Money handed back across every refund on this order. */
+export const moneyHandedBack = (order) =>
+  roundMoney((order?.refundHistory || []).reduce((sum, entry) => sum + handedBackOf(entry), 0));
+
+/**
+ * What a refund of `amount` will be split into, worked out the way the
+ * database will work it out, so the dialog can say it before it is saved.
+ *
+ * Money goes back only where the customer has paid more than the order still
+ * comes to after the refund; the rest comes off what they owe. Deliveries are
+ * paid on 30 or 60 day terms, so for most refunds nothing has been paid yet
+ * and all of it comes off the bill. This is a PREVIEW: the figure that counts
+ * is the one the database stamps.
+ */
+export function refundSplit(order, amount, paid, method) {
+  const giving = Math.max(0, roundMoney(amount));
+  if (method === "credit" || giving === 0) return { handedBack: 0, offBalance: giving };
+  const stillToPayFor = Math.max(0, roundMoney(orderNetTotal(order) - giving));
+  const room = roundMoney((Number(paid) || 0) - moneyHandedBack(order) - stillToPayFor);
+  const handedBack = Math.max(0, Math.min(giving, room));
+  return { handedBack, offBalance: roundMoney(giving - handedBack) };
+}
 
 /**
  * Every return on an order, oldest first: money given back and goods replaced,
