@@ -891,6 +891,16 @@ export async function saveProductImage(productId, dataUrl) {
   return { ok: true, data };
 }
 
+/** Puts an archived product back on sale (administrators; restore_product). */
+export async function restoreProduct(product) {
+  const { data, error } = await supabase.rpc('restore_product', {
+    p_product_id: product.id,
+    p_expected_revision: product.revision ?? 0,
+  });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't put that product back on sale.") };
+  return { ok: true, outcome: data?.outcome ?? 'restored' };
+}
+
 /** Puts an archived raw material back in use. */
 export async function restoreMaterial(material) {
   const { data, error } = await supabase.rpc('restore_material', {

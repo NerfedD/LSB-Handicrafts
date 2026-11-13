@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 
 import { letterheadOf } from "../../utils/office";
-import { customerFrom, orderRefFrom } from "../../utils/deliveries";
+import { customerFrom, loadedLines, manifestQty, orderRefFrom } from "../../utils/deliveries";
 import { formatPeso, formatLongDate, formatShortDate } from "../../utils/profileFormat";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import { STAGE_LOOK } from "./stageLook";
@@ -54,8 +54,9 @@ function Line({ children }) {
 export default function DeliverySlip({ delivery, settings = null, toCollect = null, termDays = null }) {
   if (!delivery) return null;
 
-  const manifest = Array.isArray(delivery.itemsManifest) ? delivery.itemsManifest : [];
-  const itemCount = manifest.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+  // Only what went on the van: a line left behind is the follow-up run's.
+  const manifest = loadedLines(delivery);
+  const itemCount = manifest.reduce((sum, line) => sum + manifestQty(line), 0);
   const orderRef = orderRefFrom(delivery);
   const customer = customerFrom(delivery);
   const charge = Number(delivery.amount) || 0;
@@ -122,7 +123,7 @@ export default function DeliverySlip({ delivery, settings = null, toCollect = nu
             manifest.map((line, index) => (
               <tr key={`${line.name}-${index}`}>
                 <td>{line.name}</td>
-                <td className="slip-td-qty">{line.quantity}</td>
+                <td className="slip-td-qty">{manifestQty(line)}</td>
               </tr>
             ))
           )}

@@ -105,16 +105,19 @@ export const originalDeliveryForOrder = (order, deliveries = []) =>
 /**
  * The lines with goods still owed after some of the order has already gone out.
  *
- * BOTH HALVES MATTER. `committedOf > 0` says part of this line has physically
- * left; `outstandingOf > 0` says part of it has not. A line where nothing has
- * left yet is not a backorder — it is simply an order waiting its turn, and
- * calling it a backorder would put every open order under the amber chip and
- * make the chip worthless.
+ * BOTH HALVES MATTER, AT THE LEVEL OF THE ORDER. Something on it has
+ * physically left (`committedOf > 0` on any line) and something has not
+ * (`outstandingOf > 0`). An order where nothing has left yet is not a
+ * backorder — it is simply waiting its turn, and calling it one would put
+ * every open order under the amber chip and make the chip worthless.
  */
 export function backorderLines(order) {
-  return normalizeItems(order?.items)
-    .map((line, index) => ({ ...line, index }))
-    .filter((line) => committedOf(line) > 0 && outstandingOf(line) > 0);
+  const lines = normalizeItems(order?.items).map((line, index) => ({ ...line, index }));
+  // Something on the ORDER has gone out, not necessarily on the same line: a
+  // van that took all of one product and none of another left that whole
+  // second line behind, and it is owed exactly as much as half a line is.
+  if (!lines.some((line) => committedOf(line) > 0)) return [];
+  return lines.filter((line) => outstandingOf(line) > 0);
 }
 
 /** Is this order still owing the customer goods it has already started sending? */
@@ -413,6 +416,23 @@ export function orderEditBlocker(order) {
   }
   if ((order.priceAdjustments || []).length > 0) {
     return "The price on this order has already been corrected once, and that correction records what the old total was.";
+  }
+  return null;
+}
+
+/**
+ * Why calling an order off, or putting a finished one back to waiting, would
+ * be wrong right now -- or null. Both put what the order took off the shelf
+ * back on it, which is only true of goods in the building. order_command
+ * refuses the same two cases.
+ */
+export function callOffBlocker(order, deliveries = []) {
+  const runs = deliveriesForOrder(order, deliveries);
+  if (runs.some((run) => run.status === DELIVERY_STAGE.ON_THE_WAY)) {
+    return "A delivery for this order is on the way. Mark it delivered, or mark that it came back, first.";
+  }
+  if (runs.some((run) => run.status === DELIVERY_STAGE.ARRIVED)) {
+    return "Goods on this order have been delivered, so they are not on the shelf to put back. Give the money back instead, and say whether they came back.";
   }
   return null;
 }

@@ -38,6 +38,11 @@ export const CAPABILITIES = {
   recordPayments: [...MANAGERS, "Sales Staff", "Delivery Staff"],
   /** See customers' contact details. */
   viewCustomers: [...MANAGERS, "Sales Staff", "Delivery Staff"],
+  /**
+   * Raise and move deliveries. The same roles as viewCustomers, because a
+   * delivery is an address: the database reads and writes them for these.
+   */
+  handleDeliveries: [...MANAGERS, "Sales Staff", "Delivery Staff"],
   /** Add or edit customers. */
   editCustomers: [...MANAGERS, "Sales Staff"],
   /** Add or edit suppliers, and order materials from them. */

@@ -303,6 +303,18 @@ export function commitPartialDelivery(inventory, order, delivered = [], now = ne
  * into the activity feed, because material loss nobody records is material loss
  * nobody can explain at the end of the month.
  */
+/**
+ * How many of a line's goods a replacement took back and swapped for another
+ * product. Same-product replacements leave the customer holding as many as
+ * before, so they do not count.
+ */
+export function swappedOf(order, index, line) {
+  return (order?.replacementHistory || [])
+    .filter((entry) => Number(entry?.lineIndex) === index)
+    .filter((entry) => String(entry?.replacementProductId ?? "") !== String(line?.productId ?? ""))
+    .reduce((sum, entry) => sum + positive(entry?.quantity), 0);
+}
+
 export function handleRefundStock(inventory, order, refundLines = []) {
   const byIndex = new Map();
   for (const entry of refundLines || []) {
@@ -332,11 +344,16 @@ export function handleRefundStock(inventory, order, refundLines = []) {
     const committed = committedOf(line);
     const units = Math.min(entry.units, Math.max(0, orderedOf(line) - voidedOf(line)));
     const returnable = Math.min(units, committed);
+    // Goods a replacement already took back and swapped for a DIFFERENT
+    // product are not with the customer to return: the replacement dealt with
+    // them. They still come off the line's "sent" count, but never back onto
+    // the shelf a second time. order_command applies the same cap.
+    const shelvable = Math.min(returnable, Math.max(0, committed - swappedOf(order, index, line)));
 
     if (returnable > 0) {
       if (entry.disposition === REFUND_DISPOSITION.RESTOCK) {
-        if (line.productId) {
-          back.set(line.productId, (back.get(line.productId) || 0) + returnable);
+        if (line.productId && shelvable > 0) {
+          back.set(line.productId, (back.get(line.productId) || 0) + shelvable);
         }
       } else {
         scrapped.push({

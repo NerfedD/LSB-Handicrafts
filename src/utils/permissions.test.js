@@ -30,6 +30,11 @@ describe('who may do what', () => {
 
   it('shows customer contact details only to the roles that sell and deliver', () => {
     expect(allowed('viewCustomers')).toEqual(['Admin', 'Manager', 'Sales Staff', 'Delivery Staff']);
+    // A delivery is an address, so the same roles raise and move them.
+    expect(allowed('handleDeliveries')).toEqual(allowed('viewCustomers'));
+    expect(canAccess('Production Staff', 'deliveries')).toBe(false);
+    expect(canAccess('Production Staff', 'delivery-detail')).toBe(false);
+    expect(canAccess('Delivery Staff', 'deliveries')).toBe(true);
     expect(allowed('editCustomers')).toEqual(['Admin', 'Manager', 'Sales Staff']);
   });
 

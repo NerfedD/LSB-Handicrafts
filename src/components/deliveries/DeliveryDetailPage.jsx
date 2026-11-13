@@ -6,13 +6,14 @@ import Callout from "../shared/Callout";
 import { Avatar } from "../shared/Chip";
 import { NotFoundState } from "../shared/PageStates";
 import { Page, PageHeader, TextLink } from "../shared/page";
+import ConfirmDialog from "../shared/ConfirmDialog";
 import DeliverySlip from "./DeliverySlip";
 import StageBadge from "./StageBadge";
 import { STAGE_LOOK } from "./stageLook";
 import { cn } from "@/lib/utils";
 import { DELIVERY_STAGE } from "../../utils/constants";
 import { DELIVERY_STAGES } from "../../utils/copy";
-import { customerFrom, dueLabel, nextStage, orderRefFrom, previousStage } from "../../utils/deliveries";
+import { customerFrom, dueLabel, loadedLines, manifestQty, nextStage, orderRefFrom, previousStage } from "../../utils/deliveries";
 import { timeLabel } from "../../utils/activityLog";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
 
@@ -48,6 +49,9 @@ export default function DeliveryDetailPage({
   onBack,
   onMoveForward,
   onMoveBack,
+  /** The run is carrying a waiting order's goods: stepping back means it came back, and the goods return to the shelf. */
+  canComeBack = false,
+  onCameBack,
   onAssignDriver,
   onOpenOrder,
   onOpenDelivery,
@@ -58,6 +62,7 @@ export default function DeliveryDetailPage({
   termDays = null,
 }) {
   const [history, setHistory] = useState([]);
+  const [confirmingReturn, setConfirmingReturn] = useState(false);
   const subject = delivery ? `delivery:${delivery.id}` : null;
   useEffect(() => {
     if (!subject || !loadActivity) return undefined;
@@ -79,8 +84,8 @@ export default function DeliveryDetailPage({
   const backward = previousStage(delivery);
   const orderRef = orderRefFrom(delivery);
   const stageIndex = DELIVERY_STAGES.findIndex((s) => s.value === delivery.status);
-  const manifest = delivery.itemsManifest ?? [];
-  const itemCount = manifest.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+  const manifest = loadedLines(delivery);
+  const itemCount = manifest.reduce((sum, line) => sum + manifestQty(line), 0);
   const done = delivery.status === DELIVERY_STAGE.ARRIVED;
   const verb = STAGE_LOOK[delivery.status]?.verb;
 
@@ -105,7 +110,12 @@ export default function DeliveryDetailPage({
         }
         actions={
           <>
-            {backward ? (
+            {canComeBack && onCameBack ? (
+              <Button variant="outline" disabled={busy} onClick={() => setConfirmingReturn(true)}>
+                <ArrowUUpLeft aria-hidden="true" />
+                Came back undelivered
+              </Button>
+            ) : backward ? (
               <Button variant="outline" disabled={busy} onClick={() => onMoveBack(backward.value)}>
                 <ArrowUUpLeft aria-hidden="true" />
                 Move back a step
@@ -165,7 +175,7 @@ export default function DeliveryDetailPage({
                 {manifest.map((line, index) => (
                   <li key={`${line.name}-${index}`} className="flex items-center gap-3 border-b border-row-divider px-4 py-2 text-13 last:border-b-0">
                     <span className="min-w-0 flex-1 truncate font-medium">{line.name}</span>
-                    <span>{line.quantity}</span>
+                    <span>{manifestQty(line)}</span>
                   </li>
                 ))}
               </ul>
@@ -234,6 +244,21 @@ export default function DeliveryDetailPage({
       {/* Renders to document.body, not here: the print stylesheet hides #root
           and shows .slip, which only works from outside the app's tree. */}
       <DeliverySlip delivery={delivery} settings={settings} toCollect={toCollect} termDays={termDays} />
+
+      <ConfirmDialog
+        open={confirmingReturn}
+        onOpenChange={setConfirmingReturn}
+        title={`Delivery #${delivery.id} came back undelivered?`}
+        consequences={`The ${itemCount} ${itemCount === 1 ? "item" : "items"} it carried go back on the shelf, and the delivery goes back to Ready to go so it can be sent out again. Anything raised for what it left behind comes off the board, because this run will carry it all.`}
+        confirmLabel="Yes, it came back"
+        keepLabel="It is still out"
+        intent="forward"
+        busy={busy}
+        onConfirm={async () => {
+          await onCameBack?.();
+          setConfirmingReturn(false);
+        }}
+      />
     </Page>
   );
 }

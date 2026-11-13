@@ -36,6 +36,7 @@ import {
   isBackorderDelivery,
   lastPriceAdjustment,
   orderNetTotal,
+  callOffBlocker,
   handedBackOf,
   orderTotals,
   refundWords,
@@ -152,6 +153,9 @@ export default function OrderDetailPage({
   const correction = lastPriceAdjustment(order);
   const returns = returnHistory(order);
   const delivered = stockLines(order).some((line) => committedOf(line) > 0);
+  // Calling it off or putting it back would put goods on the shelf that are on
+  // a van or with the customer; the database refuses both, so say why here.
+  const undoBlocker = callOffBlocker(order, deliveries);
   const stageIndex = delivery ? DELIVERY_STAGES.findIndex((s) => s.value === delivery.status) : -1;
   const history = [
     { at: order.createdAt, what: `Order taken for ${order.customerName}` },
@@ -199,7 +203,7 @@ export default function OrderDetailPage({
               </Button>
             ) : null}
             {canHandleMoney && !isCancelled && !isDone ? (
-              <Button variant="outline" onClick={() => setCallingOff(true)} disabled={busy}>Cancel order</Button>
+              <Button variant="outline" onClick={() => setCallingOff(true)} disabled={busy || Boolean(undoBlocker)}>Cancel order</Button>
             ) : null}
             {canEdit ? (
               <Button onClick={onEdit} disabled={busy}>
@@ -390,11 +394,18 @@ export default function OrderDetailPage({
           {canHandleMoney && isDone ? (
             <DangerBlock
               title="Marked as done by mistake?"
-              action={<Button variant="outline" disabled={busy} onClick={() => setReopening(true)}>Put it back to waiting</Button>}
+              action={<Button variant="outline" disabled={busy || Boolean(undoBlocker)} onClick={() => setReopening(true)}>Put it back to waiting</Button>}
             >
-              Everything this order took off the shelf goes back on it, and the order returns to Waiting. The activity log keeps who marked it done and when.
-              {order.stockCommittedAt == null ? " Nothing was taken off the shelf for this one, so only the status changes." : ""}
+              {undoBlocker ?? (
+                <>
+                  Everything this order took off the shelf goes back on it, and the order returns to Waiting. The activity log keeps who marked it done and when.
+                  {order.stockCommittedAt == null ? " Nothing was taken off the shelf for this one, so only the status changes." : ""}
+                </>
+              )}
             </DangerBlock>
+          ) : null}
+          {canHandleMoney && !isCancelled && !isDone && undoBlocker ? (
+            <p className="m-0 text-13 text-muted-fg">Cancelling is not possible right now. {undoBlocker}</p>
           ) : null}
           {canHandleMoney && !isCancelled && !isDone && !canEdit && editBlocker ? (
             <p className="m-0 text-13 text-muted-fg">{editBlocker}</p>
@@ -469,14 +480,7 @@ export default function OrderDetailPage({
         consequences={
           <>
             The order reads Cancelled from now on and anything it was holding goes back on the shelf. It stays in the orders list and the activity log. No money is recorded as moving, because none did.
-            {delivery ? (
-              <>
-                {" "}
-                {[DELIVERY_STAGE.ON_THE_WAY, DELIVERY_STAGE.ARRIVED].includes(delivery.status)
-                  ? "Its delivery has already gone out, so that record stays on the board."
-                  : "The delivery waiting to carry it comes off the deliveries board."}
-              </>
-            ) : null}
+            {delivery ? " The delivery waiting to carry it comes off the deliveries board." : null}
           </>
         }
         confirmLabel="Yes, cancel it"

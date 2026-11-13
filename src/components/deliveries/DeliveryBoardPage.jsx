@@ -29,6 +29,8 @@ import {
   isDueThisWeek,
   isDueToday,
   isLate,
+  loadedLines,
+  manifestQty,
   matchesChip,
   nextStage,
 } from "../../utils/deliveries";
@@ -107,8 +109,8 @@ export default function DeliveryBoardPage({
   const itemsOf = useMemo(() => {
     const byId = new Map(orders.map((order) => [order.id, order]));
     return (delivery) => {
-      const manifest = delivery.itemsManifest ?? [];
-      if (manifest.length) return manifest.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
+      const manifest = loadedLines(delivery);
+      if (manifest.length) return manifest.reduce((sum, line) => sum + manifestQty(line), 0);
       const order = byId.get(delivery.orderId);
       return order?.items?.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0) ?? null;
     };

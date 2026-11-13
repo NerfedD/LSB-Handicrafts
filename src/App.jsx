@@ -22,6 +22,7 @@ import {
   recordPayment,
   removePayment,
   removeProduct,
+  restoreProduct as restoreProductRecord,
   removeMaterial,
   removeSupplier,
   restoreMaterial,
@@ -69,8 +70,8 @@ import {
   uncommitOrder,
 } from "./utils/stockLedger";
 import { normalizeItems } from "./utils/orderItems";
+import { runCanComeBack } from "./utils/deliveries";
 import {
-  BACKORDER_SUFFIX,
   backorderStatusOf,
   deliveryBelongsToOrder,
   deliveryForOrder,
@@ -1319,11 +1320,17 @@ export default function App() {
 
   /** Puts an archived product back on the lists and the order form. */
   async function restoreProduct(product) {
-    const result = await productsState.update(product.id, { ...product, status: "Active", updatedAt: nowIso() });
+    if (!can(role, "removeRecords")) {
+      toast.error("Only an administrator can put a product back on sale.");
+      return;
+    }
+    const result = await restoreProductRecord(product);
     if (!result.ok) {
       toast.error(result.message || "That product was not put back on sale.");
       return;
     }
+    productsState.reload();
+    productsState.setRows((rows) => rows.map((row) => (row.id === product.id ? { ...row, status: "Active" } : row)));
     markLanded("product", product.id);
     toast.success(`${product.name} is on sale again.`);
   }
@@ -1878,6 +1885,12 @@ export default function App() {
     const savedDelivery = result.data.delivery
       ? deliveriesCollection.fromRow(result.data.delivery)
       : null;
+    // A short dispatch raises the run for what was left behind in the same
+    // transaction; it joins the board straight away.
+    const followUp = result.data.followUp ? deliveriesCollection.fromRow(result.data.followUp) : null;
+    if (followUp) {
+      deliveriesState.setRows((current) => (current.some((row) => row.id === followUp.id) ? current : [...current, followUp]));
+    }
     const changed = (result.data.inventory ?? []).map(inventoryCollection.fromRow);
 
     // Synced from what the database actually stored rather than from what was
@@ -1896,7 +1909,7 @@ export default function App() {
       inventoryState.setRows((current) => current.map((row) => saved.get(row.id) ?? row));
       if (!inventoryState.isLoaded) inventoryState.reload();
     }
-    return { ok: true, changed, removedDeliveries, order: savedOrder, delivery: savedDelivery };
+    return { ok: true, changed, removedDeliveries, order: savedOrder, delivery: savedDelivery, followUp };
   }
 
   /**
@@ -2156,8 +2169,9 @@ export default function App() {
    * Records what actually went out, deducts only that, and raises a second
    * delivery for anything left behind.
    *
-   * The stock, order and manifest share one transaction. A follow-up delivery
-   * is raised afterwards; a failure there is reported separately.
+   * The stock, order and manifest share one transaction, and so does the
+   * follow-up delivery for anything left behind: order_command raises it, so a
+   * run can never go out short with nothing on the board to carry the rest.
    *
    * THE FOLLOW-UP KEEPS THE SAME "Order #N - " PREFIX. That string is how an
    * order finds its deliveries — there is no foreign key — so the suffix goes
@@ -2177,57 +2191,60 @@ export default function App() {
     // the person to go and count the shelf themselves because the goods had
     // already been deducted against a delivery that was never recorded.
     const sent = { ...order, items, stockCommittedAt };
+    const short = manifest.filter((line) => line.backorderQty > 0);
     const result = await applyOrderChange("dispatch", {
       orderId: order.id,
       deliveryId: delivery.id,
       deltas,
       order: { items, stockCommittedAt, backorderStatus: backorderStatusOf(sent) },
       delivery: { status: toStage, itemsManifest: manifest },
+      // The run for what is left behind, raised by the database in the same
+      // transaction. A second trip for a shortfall the shop caused is not a
+      // second charge, so it carries none.
+      ...(short.length > 0 ? { followUp: { driver: followUp?.driver || "", dueOn: followUp?.dueOn || "" } } : {}),
     });
+    setBusy(false);
     if (!result.ok) {
-      setBusy(false);
       toast.error(result.message || "That delivery was not recorded.");
       return false;
     }
-
-    const short = manifest.filter((line) => line.backorderQty > 0);
-    let raised = true;
-
-    if (short.length > 0) {
-      const followUpResult = await deliveriesState.create({
-        orderId: order.id,
-        product: `Order #${order.id} - ${order.customerName}${BACKORDER_SUFFIX}`,
-        size: short.map((line) => `${line.backorderQty} × ${line.name}`).join(", "),
-        location: delivery.location,
-        // A second trip for a shortfall the shop caused is not a second charge.
-        amount: 0,
-        status: DELIVERY_STAGE.NOT_SENT,
-        driver: followUp?.driver || null,
-        dueOn: followUp?.dueOn || null,
-        parentDeliveryId: delivery.id,
-        itemsManifest: [],
-        createdAt: nowIso(),
-      });
-      raised = followUpResult.ok;
-    }
-
-    setBusy(false);
 
     const to = deliveryStage(toStage);
     markLanded("delivery", delivery.id);
     if (short.length === 0) {
       toast.success(`Delivery #${delivery.id} is now ${to.label.toLowerCase()}.`);
-    } else if (raised) {
-      toast.success(`Delivery #${delivery.id} went out short.`, {
-        description: "A second delivery has been raised for what was left behind.",
-      });
     } else {
-      toast.error("What went out was recorded, but the second delivery was not raised.", {
-        description: "Raise it from the deliveries board so it does not get missed.",
+      toast.success(`Delivery #${delivery.id} went out short.`, {
+        description: result.followUp
+          ? `Delivery #${result.followUp.id} has been raised for what was left behind.`
+          : "A second delivery has been raised for what was left behind.",
       });
     }
 
     return true;
+  }
+
+  /**
+   * A run that came back with its goods: order_command puts what its manifest
+   * says it carried back on the shelf, takes those goods off the order's
+   * "sent" counts, and returns the run to Ready to go to be loaded again.
+   */
+  async function returnRun(delivery) {
+    const order = orderForDelivery(delivery);
+    if (!order) return;
+    setBusy(true);
+    const result = await applyOrderChange("return_run", { orderId: order.id, deliveryId: delivery.id });
+    setBusy(false);
+    if (!result.ok) {
+      toast.error(result.message || "That was not recorded.");
+      return;
+    }
+    markLanded("delivery", delivery.id);
+    toast.success(`Delivery #${delivery.id} is back, and what it carried is on the shelf again.`, {
+      description: result.removedDeliveries.length > 0
+        ? "The delivery raised for what it left behind came off the board: this one carries everything again."
+        : "It is ready to go out again.",
+    });
   }
 
   async function assignDriver(delivery, driver) {
@@ -2710,6 +2727,8 @@ export default function App() {
             // out at that moment would invite somebody to answer it twice.
             onMoveForward={(next) => advanceDelivery(selectedDelivery, next)}
             onMoveBack={(next) => moveDelivery(selectedDelivery, next)}
+            canComeBack={runCanComeBack(selectedDelivery, orderForDelivery(selectedDelivery))}
+            onCameBack={() => returnRun(selectedDelivery)}
             onAssignDriver={() => setAssignDriverFor(selectedDelivery.id)}
             onOpenOrder={openOrder}
             onOpenDelivery={openDelivery}
@@ -3061,6 +3080,7 @@ export default function App() {
           customer={orderDraftFor}
           settings={settings}
           canTakePayment={can(role, "recordPayments")}
+          canDeliver={can(role, "handleDeliveries")}
           saving={busy}
           onSave={async (values) => {
             const result = await saveOrder(values);

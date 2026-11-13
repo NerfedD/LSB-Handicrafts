@@ -125,10 +125,10 @@ describe('promised dates', () => {
   });
 
   it('refuses a customer delivery promised before today, but not an edit that leaves an old date alone', async () => {
-    await expect(db.query(`insert into public.deliveries (id, product, location, status, due_on) values ($1, 'Order #1 - A', 'Davao', 'Not Sent', $2)`,
+    await expect(db.query(`insert into public.deliveries (id, product, location, status, due_on) values ($1, 'Order #1 - A', 'Davao', 'Not Yet Delivered', $2)`,
       [uid(), await shopDay(-1)])).rejects.toThrow(/has already passed/);
     const id = uid();
-    await db.query(`insert into public.deliveries (id, product, location, status, due_on) values ($1, 'Order #2 - B', 'Davao', 'Not Sent', $2)`,
+    await db.query(`insert into public.deliveries (id, product, location, status, due_on) values ($1, 'Order #2 - B', 'Davao', 'Not Yet Delivered', $2)`,
       [id, await shopDay(1)]);
     await db.exec(`alter table public.deliveries disable trigger deliveries_guard_due_on;
       update public.deliveries set due_on = '${await shopDay(-5)}' where id = ${id};

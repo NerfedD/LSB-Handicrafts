@@ -442,3 +442,20 @@ describe("when stock needs replenishing", () => {
     expect(statusOf({ stock: 20, reserved: 12, lowStockThreshold: 10 })).toBe("Low Stock");
   });
 });
+
+describe("a refund after a replacement sent out a different product", () => {
+  it("voids the whole line but puts back only what the customer still holds of it", async () => {
+    const { handleRefundStock, swappedOf } = await import("./stockLedger");
+    const order = {
+      items: [{ productId: 101, name: "Sheets", quantity: 4, stockUnits: 4, committedUnits: 4 }],
+      replacementHistory: [
+        { lineIndex: 0, quantity: 2, replacementProductId: 102 },
+        { lineIndex: 0, quantity: 1, replacementProductId: 101 },
+      ],
+    };
+    expect(swappedOf(order, 0, order.items[0])).toBe(2);
+    const moved = handleRefundStock([], order, [{ lineIndex: 0, units: 4, disposition: "restock" }]);
+    expect(moved.deltas).toEqual([{ productId: 101, delta: 2 }]);
+    expect(moved.items[0]).toMatchObject({ committedUnits: 0, voidedUnits: 4 });
+  });
+});
