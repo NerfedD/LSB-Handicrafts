@@ -270,7 +270,7 @@ test.describe('production', () => {
     await page.goto(`${baseURL}/production`);
     await page.getByRole('main').getByRole('button', { name: 'Start batch', exact: true }).first().click();
     const dialog = page.getByRole('dialog');
-    const picker = dialog.getByLabel(/^Material \(/);
+    const picker = dialog.getByLabel(/^Raw material \(/);
     await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toBeDisabled();
     await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toContainText('No stock');
     await expect(picker.locator('option', { hasText: 'Styro Sheet 2 inch' })).toBeEnabled();
@@ -283,11 +283,11 @@ test.describe('production', () => {
     await page.getByRole('main').getByRole('button', { name: 'Start batch', exact: true }).first().click();
     const dialog = page.getByRole('dialog');
     await dialog.getByLabel(/^Product/).selectOption('1');
-    await dialog.getByLabel(/^How many/).fill('10');
-    await dialog.getByLabel(/^Material \(/).selectOption('701');
-    await dialog.getByLabel(/^Material to set aside/).fill('60');
+    await dialog.getByLabel(/^Planned pieces/).fill('10');
+    await dialog.getByLabel(/^Raw material \(/).selectOption('701');
+    await dialog.getByLabel(/^Material quantity to reserve/).fill('60');
     await dialog.getByRole('button', { name: 'Plan batch' }).click();
-    await expect(dialog.getByLabel(/^Material to set aside/)).toHaveAccessibleDescription('Only 48 sheets of Styro Sheet 2 inch are free after other batches. Set aside 48 or fewer.');
+    await expect(dialog.getByLabel(/^Material quantity to reserve/)).toHaveAccessibleDescription('Only 48 sheets of Styro Sheet 2 inch are available. Enter 48 or fewer.');
   });
 });
 

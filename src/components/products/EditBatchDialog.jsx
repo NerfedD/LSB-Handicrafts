@@ -21,19 +21,19 @@ export default function EditBatchDialog({ batch, product, material, products = [
 
   function validate(v) {
     return {
-      output_qty: countProblem(v.output_qty, { min: 1, label: 'The target' }),
-      material_qty: countProblem(v.material_qty, { min: 1, label: 'The material to set aside' })
+      output_qty: countProblem(v.output_qty, { min: 1, label: 'The planned quantity' }),
+      material_qty: countProblem(v.material_qty, { min: 1, label: 'Material quantity to reserve' })
         ?? (!released && material && Number(v.material_qty) > free
-          ? `Only ${units(free, material.unit)} of ${material.name} are free after other batches. Set aside ${free} or fewer.`
+          ? `Only ${units(free, material.unit)} of ${material.name} are available. Enter ${free} or fewer.`
           : null),
-      assigned_staff_id: v.assigned_staff_id ? null : 'Choose who will make it.',
+      assigned_staff_id: v.assigned_staff_id ? null : 'Assign a worker.',
     };
   }
 
   return <WorkshopForm title={`Edit ${batch.batch_code}`}
     description={released
-      ? 'Its material is released, so the product, the material and the counts can all be corrected.'
-      : `${product?.name ?? 'This product'} from ${material?.name ?? 'its material'}. Undo the last step to change the product or material.`}
+      ? 'Update the product, material, or planned quantity.'
+      : `${product?.name ?? 'This product'} from ${material?.name ?? 'its material'}. Undo the last step to release the reservation before changing the product or material.`}
     submitLabel="Save changes"
     initial={{ id: batch.id, expectedRevision: batch.revision ?? 0, output_qty: String(batch.target_output_qty), material_qty: String(batch.raw_material_used_qty),
       ...(released ? { product_id: batch.target_product_id, raw_material_id: batch.raw_material_id } : {}),
@@ -46,19 +46,19 @@ export default function EditBatchDialog({ batch, product, material, products = [
         <WorkshopField name="raw_material_id" label="Raw material" required value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)}
           options={materials.filter((m) => m.status !== 'Archived').map((m) => ({ value: m.id, label: m.name }))} />
       </>}
-      <WorkshopField name="output_qty" label="How many" hint="Pieces, even when they are sold in packs." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
-      <WorkshopField name="material_qty" label="Material to set aside" hint={material ? `Up to ${units(free, material.unit)} of ${material.name}, counting what other batches have set aside.` : 'The material this batch was planned with.'} type="number" inputMode="numeric" min="1" max={released ? 2000000000 : Math.max(1, free)} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
-      <WorkshopField name="assigned_staff_id" label="Made by" required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
-      <WorkshopField name="order_id" label="For order" hint="Leave blank when making shelf stock." placeholder="None: for shelf stock" options={waiting.map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
-      <WorkshopField name="notes" label={<>Notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="A custom size, event details or changes to the recipe." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
+      <WorkshopField name="output_qty" label="Planned pieces" hint="Enter the number of individual pieces." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
+      <WorkshopField name="material_qty" label="Material quantity to reserve" hint={released ? 'Enter the quantity in the selected material’s stock unit.' : material ? `${units(free, material.unit)} available for this batch.` : undefined} type="number" inputMode="numeric" min="1" max={released ? 2000000000 : Math.max(1, free)} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
+      <WorkshopField name="assigned_staff_id" label="Assigned worker" required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
+      <WorkshopField name="order_id" label="Customer order" hint="Leave blank for shelf stock." placeholder="None (shelf stock)" options={waiting.map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
+      <WorkshopField name="notes" label={<>Notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="Add any custom dimensions or production instructions." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
       <ReviewBox>
-        {batch.order_id && !orderStillWaiting && <p>Order #{batch.order_id} is no longer waiting, so this batch will be for shelf stock unless another order is chosen.</p>}
+        {batch.order_id && !orderStillWaiting && <p>Order #{batch.order_id} is no longer pending. Select another order or leave the field blank for shelf stock.</p>}
         {released
-          ? <p>Material is set aside again when the batch moves forward.</p>
+          ? <p>The material will be reserved when you resume the batch.</p>
           : material && Number(v.material_qty) > 0
             ? <>Sets aside {units(Number(v.material_qty), material.unit)} of {material.name} for this batch. Nothing is deducted until it is finished.</>
             : 'Nothing is deducted from stock until the batch is finished.'}
-        <p>Changed by {profile.name}. This is saved in the activity log.</p>
+        <p>The activity log will record this change under {profile.name}.</p>
       </ReviewBox>
     </>}
   </WorkshopForm>;

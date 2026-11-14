@@ -210,13 +210,13 @@ export function RecipeDialog({ products, materials, onSave, onClose }) {
     material_qty: countProblem(v.material_qty, { min: 1, label: 'The material needed' }),
     output_qty: countProblem(v.output_qty, { min: 1, label: 'The pieces produced' }),
   });
-  return <WorkshopForm title="Material recipe" description="The usual amount of material for a finished product. A batch can still use a different amount."
+  return <WorkshopForm title="Material recipe" description="Set the standard material quantity and expected output for a product."
     submitLabel="Save recipe" initial={{ product_id: '', raw_material_id: '', material_qty: '', output_qty: '' }} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => <>
-      <WorkshopField name="product_id" label="Finished product" hint="Saving this product and material again replaces its previous recipe." required options={products.map((p) => ({ value: p.id, label: p.name }))} value={v.product_id} onChange={(e) => change('product_id', e.target.value)} />
-      <WorkshopField name="raw_material_id" label="Raw material" hint="The size and density normally used." required options={materials.map((m) => ({ value: m.id, label: m.name }))} value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)} />
-      <WorkshopField name="material_qty" label="Material units needed" hint="A whole number, for example 45 sheets." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
-      <WorkshopField name="output_qty" label="Expected pieces produced" hint="A whole number, for example about 100 pieces before damaged pieces are counted." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
+      <WorkshopField name="product_id" label="Finished product" hint="Saving updates the recipe for this product and material." required options={products.map((p) => ({ value: p.id, label: p.name }))} value={v.product_id} onChange={(e) => change('product_id', e.target.value)} />
+      <WorkshopField name="raw_material_id" label="Raw material" hint="Select the material size and density used for this recipe." required options={materials.map((m) => ({ value: m.id, label: m.name }))} value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)} />
+      <WorkshopField name="material_qty" label="Material quantity" hint="Use the material’s stock unit, such as sheets." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
+      <WorkshopField name="output_qty" label="Expected pieces" hint="Enter the total expected output before deducting damage." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
     </>}
   </WorkshopForm>;
 }

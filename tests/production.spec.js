@@ -61,9 +61,9 @@ test('finishing a batch sends one transaction and shows 95 good pieces with 45 s
   await page.goto(`${baseURL}/production`);
   await page.getByRole('button', { name: 'Count and finish' }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/^Pieces made/).fill('100');
-  await dialog.getByLabel(/^Damaged \(/).fill('5');
-  await dialog.getByLabel(/^Why pieces were damaged/).selectOption('Broke during hotwire/cutting');
+  await dialog.getByLabel(/^Total pieces made/).fill('100');
+  await dialog.getByLabel(/^Damaged pieces \(/).fill('5');
+  await dialog.getByLabel(/^Damage reason/).selectOption('Broke during hotwire/cutting');
   await expect(dialog).toContainText('adds 95 good pieces');
   await expect(dialog).toContainText('Deducts 45 sheets');
   await expect(dialog).toContainText('Checked by Maria Santos');
@@ -86,12 +86,12 @@ test('recipe fills material count and adjusts when the target changes', async ({
   await page.getByRole('button', { name: 'Start batch', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel(/^Product/).selectOption('1');
-  await dialog.getByLabel(/^How many/).fill('100');
-  await expect(dialog.getByLabel(/^Material to set aside/)).toHaveValue('45');
-  await dialog.getByLabel(/^How many/).fill('101');
-  await expect(dialog.getByLabel(/^Material to set aside/)).toHaveValue('46');
-  await dialog.getByLabel(/^Material to set aside/).fill('47');
-  await expect(dialog.getByLabel(/^Material to set aside/)).toHaveValue('47');
+  await dialog.getByLabel(/^Planned pieces/).fill('100');
+  await expect(dialog.getByLabel(/^Material quantity to reserve/)).toHaveValue('45');
+  await dialog.getByLabel(/^Planned pieces/).fill('101');
+  await expect(dialog.getByLabel(/^Material quantity to reserve/)).toHaveValue('46');
+  await dialog.getByLabel(/^Material quantity to reserve/).fill('47');
+  await expect(dialog.getByLabel(/^Material quantity to reserve/)).toHaveValue('47');
 });
 
 test('sending to check confirms actual pieces and carries them into shelving', async ({ page, baseURL }) => {
@@ -110,15 +110,15 @@ test('sending to check confirms actual pieces and carries them into shelving', a
   await page.goto(`${baseURL}/production`);
   await page.getByRole('button', { name: 'Send to check', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel(/^Pieces made/).fill('8');
-  await dialog.getByLabel(/^Damaged/).fill('1');
+  await dialog.getByLabel(/^Total pieces made/).fill('8');
+  await dialog.getByLabel(/^Damaged pieces/).fill('1');
   await expect(dialog).toContainText('8 made, 1 damaged: 7 good pieces for the checker to confirm.');
   await dialog.getByRole('button', { name: 'Send to check', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(command).toMatchObject({ p_action: 'batch_status', p_data: { status: 'Quality Check', produced: '8', damaged: '1' } });
   await page.getByRole('button', { name: 'Count and finish' }).click();
-  await expect(dialog.getByLabel(/^Pieces made/)).toHaveValue('8');
-  await expect(dialog.getByLabel(/^Damaged/)).toHaveValue('1');
+  await expect(dialog.getByLabel(/^Total pieces made/)).toHaveValue('8');
+  await expect(dialog.getByLabel(/^Damaged pieces/)).toHaveValue('1');
   await expect(dialog).toContainText('7 loose pieces on the shelf after packing.');
 });
 
@@ -193,7 +193,7 @@ for (const view of ['standard', 'large']) {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     expect(await dialog.getByLabel(/^Product/).inputValue()).not.toBe('');
-    expect(Number(await dialog.getByLabel(/^How many/).inputValue())).toBeGreaterThan(0);
-    await expect(dialog.getByLabel(/^Made by/)).toHaveValue('3');
+    expect(Number(await dialog.getByLabel(/^Planned pieces/).inputValue())).toBeGreaterThan(0);
+    await expect(dialog.getByLabel(/^Assigned worker/)).toHaveValue('3');
   });
 }
