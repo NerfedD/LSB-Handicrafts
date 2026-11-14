@@ -27,7 +27,7 @@ async function setup(page, baseURL, as, configure) {
 // button ("Start making", "Send to check", "Count and finish") and puts the
 // corrections behind the row's "More for <batch>" menu.
 const PRIMARY = ['Start making', 'Send to check', 'Count and finish'];
-const MENU = ['Back to planned', 'Back to in production', 'Change details', 'Cancel batch', 'Re-open batch', 'Delete batch'];
+const MENU = ['Undo start', 'Undo send to check', 'Change details', 'Cancel batch', 'Re-open batch', 'Delete batch'];
 
 async function openMore(page) {
   await page.getByRole('main').getByRole('button', { name: `More for ${BATCH.batch_code}` }).click();
@@ -40,14 +40,14 @@ const EXPECTED = {
     [ADMIN]: ['Start making', 'Change details', 'Cancel batch', 'Delete batch'],
   },
   'In Progress': {
-    [PRODUCTION]: ['Send to check', 'Back to planned'],
-    [MANAGER]: ['Send to check', 'Back to planned', 'Change details', 'Cancel batch'],
-    [ADMIN]: ['Send to check', 'Back to planned', 'Change details', 'Cancel batch'],
+    [PRODUCTION]: ['Send to check', 'Undo start'],
+    [MANAGER]: ['Send to check', 'Undo start', 'Change details', 'Cancel batch'],
+    [ADMIN]: ['Send to check', 'Undo start', 'Change details', 'Cancel batch'],
   },
   'Quality Check': {
-    [PRODUCTION]: ['Count and finish', 'Back to in production'],
-    [MANAGER]: ['Count and finish', 'Back to in production', 'Change details', 'Cancel batch'],
-    [ADMIN]: ['Count and finish', 'Back to in production', 'Change details', 'Cancel batch'],
+    [PRODUCTION]: ['Count and finish', 'Undo send to check'],
+    [MANAGER]: ['Count and finish', 'Undo send to check', 'Change details', 'Cancel batch'],
+    [ADMIN]: ['Count and finish', 'Undo send to check', 'Change details', 'Cancel batch'],
   },
   Completed: { [PRODUCTION]: [], [MANAGER]: [], [ADMIN]: ['Re-open batch'] },
   Cancelled: { [PRODUCTION]: [], [MANAGER]: [], [ADMIN]: ['Delete batch'] },

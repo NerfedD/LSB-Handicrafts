@@ -143,7 +143,7 @@ it('FLOW-03: receive 8 usable, consume 3, make 5 good and 1 defect; claims do no
   expect(received).toMatchObject({ quantity_usable: 8, claim_status: 'Needs review' });
   const batch = await command('workshop', 'start_batch', { product_id: 500, raw_material_id: material.id, material_qty: 3, output_qty: 6, assigned_staff_id: 14 });
   expect((await one(db, 'select stock from public.raw_materials where id=$1', [material.id])).stock).toBe(8);
-  for (const status of ['In Progress', 'Quality Check']) await command('workshop', 'batch_status', { id: batch.id, status });
+  for (const status of ['In Progress', 'Quality Check']) await command('workshop', 'batch_status', { id: batch.id, status, ...(status === 'Quality Check' ? { produced: 6, damaged: 1 } : {}) });
   await repeat('workshop', 'complete_batch', { id: batch.id, produced: 6, damaged: 1, material_qty: 3, reason: 'Broke during hotwire/cutting' });
   const beforeClaim = await all(db, 'select stock from public.raw_materials');
   await repeat('workshop', 'review_claim', { id: purchase.id, reason: label + ' claim resolved without stock adjustment' });

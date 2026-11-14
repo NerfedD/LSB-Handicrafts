@@ -63,7 +63,7 @@ function Figures({ material, status }) {
       {[
         ["On hand", units(material.stock, material.unit)],
         ["Set aside", units(Math.max(0, status.reserved), material.unit)],
-        ["Free to use", units(status.free, material.unit)],
+        ["In stock", units(status.free, material.unit)],
       ].map(([label, value]) => (
         <div key={label} className="bg-card px-3 py-2">
           <div className="text-xs text-muted-fg">{label}</div>
@@ -287,7 +287,7 @@ export default function MaterialsSection({ ws }) {
                       <TableCell>
                         <span className="flex items-center gap-2.5">
                           <StockBar material={m} status={status} />
-                          <span className="whitespace-nowrap text-fg-2"><span className="font-medium text-foreground">{status.free}</span> free</span>
+                          <span className="whitespace-nowrap text-fg-2"><span className="font-medium text-foreground">{status.free}</span> in stock</span>
                         </span>
                       </TableCell>
                       <TableCell><StatusPill label={status.label} tone={status.tone} /></TableCell>

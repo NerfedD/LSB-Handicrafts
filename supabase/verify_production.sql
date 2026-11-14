@@ -72,7 +72,7 @@ begin
   exception when raise_exception then failed:=true; end;
   assert failed,'cannot skip quality check';
   perform public.workshop_command('batch_status',jsonb_build_object('id',batch_id,'status','In Progress'),gen_random_uuid());
-  perform public.workshop_command('batch_status',jsonb_build_object('id',batch_id,'status','Quality Check'),gen_random_uuid());
+  perform public.workshop_command('batch_status',jsonb_build_object('id',batch_id,'status','Quality Check','produced',100,'damaged',0),gen_random_uuid());
   select count(*) into before_log from public.activity_log;
   failed:=false;
   begin perform public.workshop_command('complete_batch',jsonb_build_object('id',batch_id,'produced',100,'damaged',101,'material_qty',45,'reason','Broke during hotwire/cutting'),gen_random_uuid());
@@ -93,7 +93,7 @@ begin
   result:=public.workshop_command('start_batch',jsonb_build_object('product_id',product_id,'raw_material_id',material_id,'material_qty',3,'output_qty',10,'assigned_staff_id',worker_id),gen_random_uuid());
   other_batch_id:=(result->>'id')::bigint;
   perform public.workshop_command('batch_status',jsonb_build_object('id',other_batch_id,'status','In Progress'),gen_random_uuid());
-  perform public.workshop_command('batch_status',jsonb_build_object('id',other_batch_id,'status','Quality Check'),gen_random_uuid());
+  perform public.workshop_command('batch_status',jsonb_build_object('id',other_batch_id,'status','Quality Check','produced',10,'damaged',0),gen_random_uuid());
   failed:=false;
   begin perform public.workshop_command('complete_batch',jsonb_build_object('id',other_batch_id,'produced',10,'damaged',0,'material_qty',4),gen_random_uuid());
   exception when raise_exception then failed:=true; end;
@@ -114,12 +114,8 @@ begin
   update public.raw_material_lots set remaining=3 where raw_material_id=material_id;
   update public.inventory set pack_size=5 where id=inventory_id;
   set local role authenticated;
-  failed:=false;
-  begin perform public.workshop_command('complete_batch',jsonb_build_object('id',other_batch_id,'produced',9,'damaged',0,'material_qty',3),gen_random_uuid());
-  exception when raise_exception then failed:=true; end;
-  assert failed,'partial selling packs are refused';
-  perform public.workshop_command('complete_batch',jsonb_build_object('id',other_batch_id,'produced',10,'damaged',0,'material_qty',3),gen_random_uuid());
-  assert (select stock=97 from public.inventory where id=inventory_id),'10 pieces add 2 packs, not 10 packs';
+  perform public.workshop_command('complete_batch',jsonb_build_object('id',other_batch_id,'produced',9,'damaged',0,'material_qty',3),gen_random_uuid());
+  assert (select stock=96 and loose_pieces=4 from public.inventory where id=inventory_id),'9 pieces add one pack and four loose pieces';
 
   perform set_config('request.jwt.claims',jsonb_build_object('sub','00000000-0000-0000-0000-000000000003','email','sales-'||suffix||'@example.invalid','role','authenticated')::text,true);
   failed:=false;

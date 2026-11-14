@@ -94,6 +94,34 @@ test('recipe fills material count and adjusts when the target changes', async ({
   await expect(dialog.getByLabel(/^Material to set aside/)).toHaveValue('47');
 });
 
+test('sending to check confirms actual pieces and carries them into shelving', async ({ page, baseURL }) => {
+  const batch = { id: 1001, batch_code: 'BATCH-2026-1114-1608', target_product_id: 1, inventory_id: 101,
+    raw_material_id: 701, raw_material_used_qty: 2, target_output_qty: 8, status: 'In Progress', assigned_staff_id: 1 };
+  await setup(page, baseURL, undefined, (tables) => {
+    tables.production_batches.push(batch);
+    tables.inventory.find((i) => i.id === 101).pack_size = 12;
+  });
+  let command;
+  await page.route('**/rest/v1/rpc/workshop_command', async (route) => {
+    command = route.request().postDataJSON();
+    Object.assign(batch, { status: 'Quality Check', revision: 1, reported_output_qty: 8, reported_damaged_qty: 1 });
+    await route.fulfill({ json: batch });
+  });
+  await page.goto(`${baseURL}/production`);
+  await page.getByRole('button', { name: 'Send to check', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel(/^Pieces made/).fill('8');
+  await dialog.getByLabel(/^Damaged/).fill('1');
+  await expect(dialog).toContainText('8 made, 1 damaged: 7 good pieces for the checker to confirm.');
+  await dialog.getByRole('button', { name: 'Send to check', exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(command).toMatchObject({ p_action: 'batch_status', p_data: { status: 'Quality Check', produced: '8', damaged: '1' } });
+  await page.getByRole('button', { name: 'Count and finish' }).click();
+  await expect(dialog.getByLabel(/^Pieces made/)).toHaveValue('8');
+  await expect(dialog.getByLabel(/^Damaged/)).toHaveValue('1');
+  await expect(dialog).toContainText('7 loose pieces on the shelf after packing.');
+});
+
 test('phone receiving form has readable text, large controls and no horizontal overflow', async ({ page, baseURL }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await setup(page, baseURL);

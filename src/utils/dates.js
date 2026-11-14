@@ -1,5 +1,11 @@
 const SHOP_TIME_ZONE = 'Asia/Manila';
 const shopCalendar = new Intl.DateTimeFormat('en-CA', { timeZone: SHOP_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
+const shopClock = new Intl.DateTimeFormat('en-PH', { timeZone: SHOP_TIME_ZONE, dateStyle: 'medium', timeStyle: 'short' });
+
+export function shopDateTime(value) {
+  const date = new Date(value);
+  return value && Number.isFinite(date.getTime()) ? shopClock.format(date) : 'Time not recorded';
+}
 
 /**
  * Today as yyyy-mm-dd on the SHOP's calendar (Asia/Manila), whatever this

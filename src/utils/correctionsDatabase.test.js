@@ -22,14 +22,14 @@ const lotsLeft = async (id) => Number((await one(db,
   'select coalesce(sum(remaining), 0) as n from public.raw_material_lots where raw_material_id = $1', [id])).n);
 
 /** A product with its stock row, and a material with `stock` sheets in one lot. */
-async function workshop({ stock = 20, onShelf = 0 } = {}) {
+async function workshop({ stock = 20, onShelf = 0, packSize = 1 } = {}) {
   const productId = uid();
   const inventoryId = productId + 100000;
   const code = `FIX-${productId}`;
-  await db.query('insert into public.products (id, item_code, name, unit_price, pack_size) values ($1, $2, $3, 100, 1)',
-    [productId, code, `Product ${productId}`]);
-  await db.query(`insert into public.inventory (id, sku, name, category, price, stock, pack_size) values ($1, $2, $3, 'QA', 100, $4, 1)`,
-    [inventoryId, code, `Product ${productId}`, onShelf]);
+  await db.query('insert into public.products (id, item_code, name, unit_price, pack_size) values ($1, $2, $3, 100, $4)',
+    [productId, code, `Product ${productId}`, packSize]);
+  await db.query(`insert into public.inventory (id, sku, name, category, price, stock, pack_size) values ($1, $2, $3, 'QA', 100, $4, $5)`,
+    [inventoryId, code, `Product ${productId}`, onShelf, packSize]);
   const materialId = uid();
   await db.query(`insert into public.raw_materials (id, sku, name, unit, stock) values ($1, $2, $3, 'sheet', 0)`,
     [materialId, `RM-${materialId}`, `Material ${materialId}`]);
@@ -46,22 +46,53 @@ const start = ({ productId, materialId }, materialQty = 5, who = 'production') =
 
 async function finished(setup, { produced = 6, damaged = 1, materialQty = 3 } = {}) {
   const batch = await start(setup, materialQty);
-  for (const status of ['In Progress', 'Quality Check']) await as('production', 'batch_status', { id: batch.id, status });
+  for (const status of ['In Progress', 'Quality Check']) await as('production', 'batch_status', { id: batch.id, status, ...(status === 'Quality Check' ? { produced: 6, damaged: 1 } : {}) });
   await as('production', 'complete_batch', { id: batch.id, produced, damaged, material_qty: materialQty,
     reason: damaged ? 'Broke during hotwire/cutting' : undefined });
   return batch;
 }
 
 describe('stepping a batch back', () => {
+  it('releases the reservation on either undo and checks availability before proceeding again', async () => {
+    const setup = await workshop({ stock: 5 });
+    const batch = await start(setup, 5);
+    const making = await as('production', 'batch_status', { id: batch.id, status: 'In Progress', expectedRevision: 0 });
+    const expectedCode = await one(db, "select 'BATCH-'||to_char($1::timestamptz at time zone 'Asia/Manila','YYYY-MMDD-HH24MI') as code", [making.started_at]);
+    expect(making.batch_code).toBe(expectedCode.code);
+    const checking = await as('production', 'batch_status', { id: batch.id, status: 'Quality Check', produced: 8, damaged: 1 });
+    expect(checking).toMatchObject({ reported_output_qty: 8, reported_damaged_qty: 1, made_by_staff_id: 14 });
+    await refused(as('production', 'batch_step_back', { id: batch.id, expectedRevision: making.revision }), 'has changed');
+    expect(await as('production', 'batch_step_back', { id: batch.id, expectedRevision: checking.revision }))
+      .toMatchObject({ status: 'In Progress', material_reserved: false, reported_output_qty: null });
+    const other = await start(setup, 5);
+    await refused(as('production', 'batch_status', { id: batch.id, status: 'Quality Check', produced: 8, damaged: 1 }), 'not enough material');
+    const undone = await as('production', 'batch_step_back', { id: batch.id });
+    expect(undone).toMatchObject({ status: 'Queued', batch_code: making.batch_code, material_reserved: false });
+    await refused(as('production', 'batch_status', { id: batch.id, status: 'In Progress' }), 'not enough material');
+    await as('production', 'cancel_batch', { id: other.id, reason: 'Planned by mistake' });
+    expect(await as('production', 'batch_status', { id: batch.id, status: 'In Progress' }))
+      .toMatchObject({ batch_code: making.batch_code, material_reserved: true });
+    expect(await one(db, "select actor_staff_id, at from public.activity_log where subject=$1 and description like '%released 5%'",
+      [`batch:${batch.id}`])).toMatchObject({ actor_staff_id: 14, at: expect.any(Date) });
+  });
   it('lets production staff undo a step pressed by mistake, one stage at a time', async () => {
     const batch = await start(await workshop());
     await as('production', 'batch_status', { id: batch.id, status: 'In Progress' });
-    await as('production', 'batch_status', { id: batch.id, status: 'Quality Check' });
+    await as('production', 'batch_status', { id: batch.id, status: 'Quality Check', produced: 8, damaged: 1 });
 
     expect(await as('production', 'batch_step_back', { id: batch.id })).toMatchObject({ status: 'In Progress' });
     const back = await as('production', 'batch_step_back', { id: batch.id });
     expect(back).toMatchObject({ status: 'Queued', started_at: null });
     await refused(as('production', 'batch_step_back', { id: batch.id }), 'can go back a step');
+  });
+
+  it('refuses a reported count above twice the target, as finishing does', async () => {
+    const batch = await start(await workshop());
+    await as('production', 'batch_status', { id: batch.id, status: 'In Progress' });
+    await refused(as('production', 'batch_status', { id: batch.id, status: 'Quality Check', produced: 21, damaged: 0 }),
+      'more than twice the 10 planned');
+    expect(await as('production', 'batch_status', { id: batch.id, status: 'Quality Check', produced: 20, damaged: 0 }))
+      .toMatchObject({ status: 'Quality Check', reported_output_qty: 20 });
   });
 
   it('is not open to sales or delivery staff', async () => {
@@ -141,6 +172,19 @@ describe('deleting a batch entered by mistake', () => {
 });
 
 describe('re-opening a finished batch', () => {
+  it('shelves good loose pieces, packs them across batches, and reverses the piece count', async () => {
+    const setup = await workshop({ stock: 20, packSize: 12 });
+    const inventory = () => one(db, 'select stock, loose_pieces from public.inventory where id=$1', [setup.inventoryId]);
+    const first = await finished(setup, { produced: 8, damaged: 1 });
+    expect(await inventory()).toEqual({ stock: 0, loose_pieces: 7 });
+    expect(await batchRow(first.id)).toMatchObject({ made_by_staff_id: 14, completed_at: expect.any(Date), good_output_qty: 7 });
+    expect(await one(db, 'select quantity_change, loose_change from public.stock_movements where inventory_id=$1 and batch_id=$2',
+      [setup.inventoryId, first.id])).toEqual({ quantity_change: 0, loose_change: 7 });
+    await finished(setup, { produced: 6, damaged: 0 });
+    expect(await inventory()).toEqual({ stock: 1, loose_pieces: 1 });
+    await as('admin', 'reopen_batch', { id: first.id, reason: 'Correct the output' });
+    expect(await inventory()).toEqual({ stock: 0, loose_pieces: 6 });
+  });
   it('takes the good pieces back off the shelf and returns the material to its lots', async () => {
     const setup = await workshop({ stock: 20 });
     const batch = await finished(setup, { produced: 6, damaged: 1, materialQty: 3 });
@@ -159,6 +203,19 @@ describe('re-opening a finished batch', () => {
     // Finished again with the right counts, from the same quality check.
     await as('production', 'complete_batch', { id: batch.id, produced: 4, damaged: 0, material_qty: 2 });
     expect([await shelf(setup.inventoryId), await materialStock(setup.materialId), await lotsLeft(setup.materialId)]).toEqual([4, 18, 18]);
+  });
+
+  it('holds the returned material for the re-opened batch, so another batch cannot take it', async () => {
+    const setup = await workshop({ stock: 10 });
+    const batch = await finished(setup, { produced: 6, damaged: 0, materialQty: 3 });
+    expect(await batchRow(batch.id)).toMatchObject({ material_reserved: false });
+
+    const reopened = await as('admin', 'reopen_batch', { id: batch.id, reason: 'Counted wrong' });
+    expect(reopened).toMatchObject({ status: 'Quality Check', material_reserved: true, raw_material_used_qty: 3 });
+    expect(await materialStock(setup.materialId)).toBe(10);
+    await refused(start(setup, 8), 'Only 7 sheet');
+    await as('production', 'complete_batch', { id: batch.id, produced: 6, damaged: 0, material_qty: 3 });
+    expect(await materialStock(setup.materialId)).toBe(7);
   });
 
   it('refuses when waiting orders already hold those pieces, and changes nothing', async () => {

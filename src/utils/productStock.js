@@ -83,6 +83,7 @@ export function stockFor(product, index) {
     rowId: row.id,
     revision: row.revision ?? 0,
     onHand,
+    loosePieces: row.loosePieces ?? 0,
     reserved,
     available,
     threshold,

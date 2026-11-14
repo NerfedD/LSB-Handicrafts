@@ -33,7 +33,7 @@ export const activeBatch = (batch) => ['Queued', 'In Progress', 'Quality Check']
  * as a bug rather than as "seven short".
  */
 export function availableMaterial(material, batches = [], exceptId) {
-  return (material?.stock || 0) - batches.filter((b) => b.raw_material_id === material?.id && b.id !== exceptId && activeBatch(b))
+  return (material?.stock || 0) - batches.filter((b) => b.raw_material_id === material?.id && b.id !== exceptId && activeBatch(b) && b.material_reserved !== false)
     .reduce((sum, b) => sum + b.raw_material_used_qty, 0);
 }
 
@@ -60,11 +60,12 @@ export function receiptCounts(ordered, arrived, damaged) {
   if (total === null || loss === null || loss > total) return null;
   return { usable: total - loss, short: Math.max(0, ordered - total), extra: Math.max(0, total - ordered), claim: total !== ordered || loss > 0 };
 }
-export function completionCounts(produced, damaged, packSize = 1) {
+export function completionCounts(produced, damaged, packSize = 1, loosePieces = 0) {
   const total = countValue(produced), loss = countValue(damaged);
   if (total === null || loss === null || loss > total) return null;
   const good = total - loss, size = Math.max(1, Number(packSize) || 1);
-  return { good, shelfUnits: good / size, wholePacks: good % size === 0, yield: total ? good / total * 100 : 0 };
+  const piecesToPack = good + loosePieces;
+  return { good, shelfUnits: Math.floor(piecesToPack / size), loosePieces: piecesToPack % size, yield: total ? good / total * 100 : 0 };
 }
 export function recipeEstimate(recipe, pieces) {
   return recipe && countValue(pieces, 1) !== null ? Math.ceil(Number(pieces) * recipe.material_qty / recipe.output_qty) : '';

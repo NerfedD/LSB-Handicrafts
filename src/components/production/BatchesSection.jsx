@@ -12,6 +12,7 @@ import { FlowStrip, LookBadge, MoreActions, ToggleChips } from "./parts";
 import { cn } from "@/lib/utils";
 import { materialShortfall, productionTotals, units } from "../../utils/production";
 import { formatShortDate } from "../../utils/profileFormat";
+import { shopDateTime } from "../../utils/dates";
 
 /**
  * Production · Batches, drawn to the "7 · Production · Batches" board:
@@ -36,8 +37,8 @@ const STAGE = {
 
 const FLOW = [
   ["1. Plan", "Choose the product and the material. The material is set aside, not used up."],
-  ["2. Make and check", "Start production, then send the finished pieces to quality check."],
-  ["3. Finish", "Count good and damaged pieces. Good pieces go into inventory in the same step."],
+  ["2. Make and check", "Start making, then send the pieces to check with how many were made and damaged."],
+  ["3. Finish", "The checker confirms or corrects the counts. Good pieces go into inventory in the same step."],
 ];
 
 const WEEK = 7 * 86_400_000;
@@ -75,11 +76,10 @@ export default function BatchesSection({ ws }) {
   const nextStep = (b) => {
     if (!canMake) return null;
     if (b.status === "Queued") {
-      return () => ws.showConfirm("batch_status", b.id, "In Progress", "Start production?", `${b.batch_code} will be marked as in production. Its material stays set aside and is deducted only when the batch is finished.`);
+      return () => ws.showConfirm("batch_status", b.id, "In Progress", "Start making?",
+        `${b.batch_code} goes into production and gets its start code. Its material stays set aside and is deducted only when the batch is finished.`, b.revision ?? 0);
     }
-    if (b.status === "In Progress") {
-      return () => ws.showConfirm("batch_status", b.id, "Quality Check", "Send to quality check?", `The pieces for ${b.batch_code} are ready to count and inspect. Stock changes only when the batch is finished after the check.`);
-    }
+    if (b.status === "In Progress") return () => ws.setDialog({ kind: "handoff", record: b });
     if (b.status === "Quality Check") return () => ws.setDialog({ kind: "complete", record: b });
     return null;
   };
@@ -89,11 +89,12 @@ export default function BatchesSection({ ws }) {
     const batchMaterial = mat(b.raw_material_id);
     return [
       ["In Progress", "Quality Check"].includes(b.status) && canMake && {
-        label: b.status === "In Progress" ? "Back to planned" : "Back to in production",
+        label: b.status === "In Progress" ? "Undo start" : "Undo send to check",
         icon: <ArrowUUpLeft aria-hidden="true" />,
         onClick: () => ws.showConfirm("batch_step_back", b.id, undefined,
-          b.status === "In Progress" ? "Move back to planned?" : "Move back to in production?",
-          `${b.batch_code} goes back one step, for a step pressed by mistake. Its material stays set aside, and no stock changes.`),
+          b.status === "In Progress" ? "Undo start?" : "Undo sending to check?",
+          `${b.batch_code} goes back one step and releases the material set aside for it${b.status === "Quality Check" ? ", and the counts sent to check are cleared" : ""}. If material was already cut, record what cannot be used again as damage on the material.`,
+          b.revision ?? 0),
       },
       open && canCorrect && {
         label: "Change details",
@@ -224,7 +225,8 @@ export default function BatchesSection({ ws }) {
                   const look = STAGE[b.status] ?? STAGE.Queued;
                   const landed = landedRow(change, "batch", b.id);
                   const go = nextStep(b);
-                  const by = worker(b.assigned_staff_id);
+                  const by = worker(b.made_by_staff_id ?? b.assigned_staff_id);
+                  const released = ["Queued", "In Progress", "Quality Check"].includes(b.status) && b.material_reserved === false;
                   return (
                     <TableRow key={landed.key} className={landed.className}>
                       <TableCell><Mono className="text-fg-2">{b.batch_code}</Mono></TableCell>
@@ -233,16 +235,28 @@ export default function BatchesSection({ ws }) {
                         {b.order_id ? <Badge variant="outline" className="ml-2">Order #{b.order_id}</Badge> : null}
                       </TableCell>
                       <TableCell className="text-right">{b.target_output_qty}</TableCell>
-                      <TableCell><LookBadge look={look} /></TableCell>
+                      <TableCell>
+                        <LookBadge look={look} />
+                        {released ? <span className="block pt-1 text-xs text-muted-fg">Material released</span> : null}
+                      </TableCell>
                       <TableCell><Progress step={look.step} done={b.status === "Completed"} /></TableCell>
                       <TableCell className="text-fg-2">
-                        {b.status === "Completed" ? `${b.good_output_qty} / ${b.damaged_qty}` : "—"}
+                        {b.status === "Completed"
+                          ? `${b.good_output_qty} / ${b.damaged_qty}`
+                          : b.status === "Quality Check" && b.reported_output_qty != null
+                            ? <>{b.reported_output_qty - (b.reported_damaged_qty ?? 0)} / {b.reported_damaged_qty ?? 0}<span className="block text-xs text-muted-fg">reported, to check</span></>
+                            : "—"}
                       </TableCell>
                       <TableCell>
                         <span className="inline-flex min-w-0 items-center gap-2">
                           <Avatar name={by} />
                           <span className="truncate">{by}</span>
                         </span>
+                        {b.status === "Completed" ? (
+                          <span className="block pt-1 text-xs text-muted-fg">
+                            Checked by {worker(b.completed_by_staff_id)} · shelved {shopDateTime(b.completed_at)}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="text-muted-fg">{formatShortDate(b.started_at || b.created_at) || "—"}</TableCell>
                       <TableCell>

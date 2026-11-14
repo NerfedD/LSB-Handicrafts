@@ -59,7 +59,7 @@ export default function StartBatchDialog({ products, materials, recipes, batches
           options={usable.map((m) => {
             const left = freeMaterial(m, batches);
             return { value: m.id, disabled: left <= 0,
-              label: left > 0 ? `${m.name} · ${units(left, m.unit)} free` : `${m.name} · none free${m.stock <= 0 ? ' (out of stock)' : ' (all set aside)'}` };
+              label: left > 0 ? `${m.name} · ${units(left, m.unit)} in stock` : `${m.name} · ${m.stock <= 0 ? 'No stock' : 'All set aside'}` };
           })}
           value={v.raw_material_id} onChange={(e) => {
             const id = Number(e.target.value), r = recipes.find((one) => one.product_id === Number(v.product_id) && one.raw_material_id === id);

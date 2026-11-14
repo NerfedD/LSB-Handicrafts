@@ -283,7 +283,9 @@ describe('finishing a batch', () => {
     await signIn(db, 'production');
     const ws = (action, data) => rpc(db, 'workshop_command', action, data);
     const batch = await ws('start_batch', { product_id: 902, raw_material_id: 7001, material_qty: 2, output_qty: 10, assigned_staff_id: 14 });
-    for (const status of ['In Progress', 'Quality Check']) await ws('batch_status', { id: batch.id, status });
+    await ws('batch_status', { id: batch.id, status: 'In Progress' });
+    await ws('batch_status', { id: batch.id, status: 'Quality Check', produced: 10, damaged: 0 });
+    // The checker's count is held to the same line as the maker's.
     await expect(ws('complete_batch', { id: batch.id, produced: 1000000, damaged: 0, material_qty: 1 }))
       .rejects.toThrow(/more than twice the 10 planned/);
     expect(await stock(102)).toBe(20);
