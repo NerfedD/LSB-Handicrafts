@@ -71,7 +71,10 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
     // Products still sold only: a removed product must not keep asking to be made.
     nextToMake: makeList({ products: products.filter((p) => p.status !== 'Archived'), inventory, orders }),
     setDialog, setRemoving, working,
-    showConfirm: (action, id, status, title, description) => setDialog({ kind: 'confirm', action, initial: { id, status }, title, description }),
+    // A batch step also carries the revision the screen showed, so a step
+    // pressed on a stale screen is refused rather than applied twice.
+    showConfirm: (action, id, status, title, description, revision) =>
+      setDialog({ kind: 'confirm', action, initial: revision === undefined ? { id, status } : { id, status, expectedRevision: revision }, title, description }),
     askWhy: (action, id, { title, description, verb, question }) => setDialog({ kind: 'correct', action, id, title, description, verb, question }),
     onNavigate, onViewMaterial, onStockCommand,
     restoreMaterial: async (material) => {
@@ -151,7 +154,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {dialog?.kind === 'recipe' && <RecipeDialog products={products.filter((p) => p.status !== 'Archived')} materials={inUse} onSave={save('save_recipe')} onClose={close} />}
       {dialog?.kind === 'transfer' && <TransferDialog material={dialog.material} inventory={inventory.find((i) => i.sku.toLowerCase() === dialog.material.sku.toLowerCase())} profile={profile} onSave={save('transfer_stock')} onClose={close} />}
       {dialog?.kind === 'receive' && <ReceiveSupplierDeliveryDialog order={dialog.record} material={mat(dialog.record.raw_material_id)} supplier={dialog.record.supplier_id ? supplierName(dialog.record.supplier_id) : null} profile={profile} onSave={save('receive_delivery')} onClose={close} />}
-      {dialog?.kind === 'complete' && <CompleteBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} inventory={inventory.find((i) => i.id === dialog.record.inventory_id)} material={mat(dialog.record.raw_material_id)} batches={batches} profile={profile} onSave={save('complete_batch')} onClose={close} />}
+      {['complete', 'handoff'].includes(dialog?.kind) && <CompleteBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} inventory={inventory.find((i) => i.id === dialog.record.inventory_id)} material={mat(dialog.record.raw_material_id)} batches={batches} profile={profile} handoff={dialog.kind === 'handoff'} onSave={save(dialog.kind === 'handoff' ? 'batch_status' : 'complete_batch')} onClose={close} />}
       {dialog?.kind === 'start' && <StartBatchDialog {...data} productId={dialog.productId} needed={dialog.needed} profile={profile} onSave={save('start_batch')} onClose={close} />}
       {dialog?.kind === 'stock' && (
         <StockChangeDialog
@@ -168,7 +171,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {dialog?.kind === 'correct' && <WorkshopConfirmation title={dialog.title} description={dialog.description} initial={{ id: dialog.id }} action={dialog.verb} danger needsReason
         reasonLabel={dialog.question} reasonHint="A sentence is enough. It is saved in the activity log with your name." reasonMissing="Write why, so the activity log explains it." reasonMax={500}
         profile={profile} onSave={save(dialog.action)} onClose={close} />}
-      {dialog?.kind === 'edit-batch' && <EditBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} material={mat(dialog.record.raw_material_id)} batches={batches} staff={staff} orders={orders} profile={profile} onSave={save('edit_batch')} onClose={close} />}
+      {dialog?.kind === 'edit-batch' && <EditBatchDialog batch={dialog.record} product={prod(dialog.record.target_product_id)} material={mat(dialog.record.raw_material_id)} products={products} materials={materials} inventory={inventory} batches={batches} staff={staff} orders={orders} profile={profile} onSave={save('edit_batch')} onClose={close} />}
       {dialog?.kind === 'claim' && <WorkshopConfirmation title={`Settle the order #${dialog.record.id} claim`} description={`${mat(dialog.record.raw_material_id)?.name ?? 'Material'} from ${supplierName(dialog.record.supplier_id)}. Received stock and the damage history are kept.`} initial={{ id: dialog.record.id }} action="Close the claim" cancelLabel="Keep it open" needsReason reasonLabel="How it was settled" reasonHint="A replacement, a credit on the next order, a refund, or the loss absorbed. A replacement is ordered and received as a new order." profile={profile} onSave={save('review_claim')} onClose={close} />}
       {dialog?.kind === 'lots' && (
         <WorkshopForm

@@ -14,8 +14,9 @@ describe('supplier and production counts', () => {
   });
   it('distinguishes individual pieces from selling packs', () => {
     expect(completionCounts(100, 5)).toMatchObject({ good: 95, shelfUnits: 95, yield: 95 });
-    expect(completionCounts(100, 5, 5)).toMatchObject({ shelfUnits: 19, wholePacks: true });
-    expect(completionCounts(100, 4, 5).wholePacks).toBe(false);
+    expect(completionCounts(100, 5, 5)).toMatchObject({ shelfUnits: 19, loosePieces: 0 });
+    expect(completionCounts(8, 1, 12)).toMatchObject({ good: 7, shelfUnits: 0, loosePieces: 7 });
+    expect(completionCounts(6, 0, 12, 7)).toMatchObject({ shelfUnits: 1, loosePieces: 1 });
     expect(completionCounts(0, 0).yield).toBe(0);
   });
   it('reserves material for open batches and releases cancelled allocations', () => {

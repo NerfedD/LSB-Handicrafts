@@ -150,7 +150,7 @@ function workshopMessage(action, payload, saved) {
     case 'transfer_stock':
       return ['The stock was moved to raw materials.', 'Both counts and both stock histories show the move.'];
     case 'batch_step_back':
-      return [`${saved.batch_code} went back a step.`, 'No stock changed.'];
+      return [`${saved.batch_code} went back a step.`, 'Any material held for the batch is available again.'];
     case 'cancel_batch':
       return [`${saved.batch_code} was cancelled.`, 'The material it had set aside is free again. No stock was deducted.'];
     case 'edit_batch':

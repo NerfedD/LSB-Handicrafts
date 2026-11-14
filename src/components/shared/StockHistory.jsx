@@ -53,6 +53,11 @@ export default function StockHistory({ rows = [], isLoaded = true, error = null,
                 <TableCell className="py-2 text-muted-fg">{whenLabel(row.at)}</TableCell>
                 <TableCell className="whitespace-normal py-2">
                   <span className="font-medium">{movementLabel(row.kind)}</span> by {row.actorName}
+                  {row.looseChange ? (
+                    <span className="block text-xs text-muted-fg">
+                      {row.looseChange > 0 ? "+" : "−"}{Math.abs(row.looseChange)} loose {Math.abs(row.looseChange) === 1 ? "piece" : "pieces"} · {row.looseBalanceAfter} loose on the shelf
+                    </span>
+                  ) : null}
                   {why ? <span className="block text-xs text-muted-fg">{why}</span> : null}
                 </TableCell>
                 <TableCell className="py-2 text-right text-success-fg">{up ? `+${row.change}` : <span className="sr-only">none</span>}</TableCell>

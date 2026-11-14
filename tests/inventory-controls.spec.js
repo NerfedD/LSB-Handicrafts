@@ -272,7 +272,7 @@ test.describe('production', () => {
     const dialog = page.getByRole('dialog');
     const picker = dialog.getByLabel(/^Material \(/);
     await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toBeDisabled();
-    await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toContainText('none free (out of stock)');
+    await expect(picker.locator('option', { hasText: 'Styro Sheet 3 inch' })).toContainText('No stock');
     await expect(picker.locator('option', { hasText: 'Styro Sheet 2 inch' })).toBeEnabled();
     await expect(picker.locator('option', { hasText: 'Old glue' })).toHaveCount(0);
   });

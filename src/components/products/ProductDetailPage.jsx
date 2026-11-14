@@ -149,7 +149,8 @@ export default function ProductDetailPage({
   }
 
   const figures = [
-    ["On the shelf", stock.tracked ? stock.onHand : "—"],
+    // Pieces that do not yet fill a selling pack sit beside the pack count.
+    ["On the shelf", !stock.tracked ? "—" : stock.loosePieces > 0 ? `${stock.onHand} + ${stock.loosePieces} loose` : stock.onHand],
     ["Set aside for orders", stock.tracked ? stock.reserved : "—"],
     ["Free to sell", stock.tracked ? Math.max(0, stock.available) : "—"],
     ["Being made", beingMade],
