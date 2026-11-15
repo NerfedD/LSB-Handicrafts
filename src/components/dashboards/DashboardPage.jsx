@@ -24,6 +24,7 @@ import { attentionFor, followUpsFor, makeList } from "../../utils/dashboard";
 import { isLate } from "../../utils/deliveries";
 import { greeting, formatPeso } from "../../utils/profileFormat";
 import { stockCounts } from "../../utils/productStock";
+import { StockLevels, TopSellers } from "./DashboardReports";
 
 /**
  * The dashboard, drawn to the "2 · Dashboard" board:
@@ -38,11 +39,13 @@ import { stockCounts } from "../../utils/productStock";
  */
 const DAY = 86_400_000;
 const PERIODS = [
-  { value: "7", label: "Last 7 days", days: 7, compare: "the 7 days before" },
-  { value: "30", label: "Last 30 days", days: 30, compare: "the 30 days before" },
+  { value: "7", label: "Past week", days: 7, compare: "the week before" },
+  { value: "30", label: "Past month", days: 30, compare: "the month before" },
+  { value: "365", label: "Past year", days: 365, compare: "the year before" },
 ];
 // Orders are read for the last 120 days (see App), so the chart compares the
-// last 8 weeks with the 8 before: 16 weeks of history.
+// last 8 weeks with the 8 before: 16 weeks of history. Choosing the past year
+// asks App for every order (onNeedAllOrders) so the year can be counted.
 const WEEKS = 8;
 
 const live = (order) => order.status !== ORDER_STATUS.CANCELLED;
@@ -119,6 +122,7 @@ export default function DashboardPage({
   onRecordMade,
   onAddProduct,
   onAddCustomer,
+  onNeedAllOrders,
 }) {
   const role = profile?.role;
   const isSales = role === "Sales Staff";
@@ -227,7 +231,7 @@ export default function DashboardPage({
                 <CaretDown aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuRadioGroup value={periodKey} onValueChange={setPeriodKey}>
+                <DropdownMenuRadioGroup value={periodKey} onValueChange={(key) => { setPeriodKey(key); if (key === "365") onNeedAllOrders?.(); }}>
                   {PERIODS.map((p) => (
                     <DropdownMenuRadioItem key={p.value} value={p.value}>{p.label}</DropdownMenuRadioItem>
                   ))}
@@ -395,6 +399,11 @@ export default function DashboardPage({
           onOpen={(row) => onOpenFiltered?.("products", "low", row)}
           onOpenInventory={() => onOpenFiltered?.("products", "low")}
         />
+      </section>
+
+      <section className="flex flex-wrap gap-4">
+        <TopSellers orders={totals.current} periodLabel={period.label.toLowerCase()} />
+        <StockLevels products={products} inventory={inventory} />
       </section>
 
       <RecentActivity

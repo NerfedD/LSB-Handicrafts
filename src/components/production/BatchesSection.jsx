@@ -19,7 +19,7 @@ import { shopDateTime } from "../../utils/dates";
  *
  *   PageHeader (Production report, Start batch) → four compact StatCards →
  *   "How a batch moves" → the Batches / Make list switch → the batches table
- *   (Batch, Product, Planned, Stage, Progress, Good / damaged, Made by,
+ *   (Batch, Product, Planned, Stage, Progress, Passed / defective, Made by,
  *   Started, Next step) or the make list.
  *
  * The next step is the board's single button per row. The app's other batch
@@ -214,7 +214,7 @@ export default function BatchesSection({ ws }) {
                   <TableHead className="w-[90px] text-right">Planned</TableHead>
                   <TableHead className="w-[130px]">Stage</TableHead>
                   <TableHead className="w-[100px]">Progress</TableHead>
-                  <TableHead className="w-[120px]">Good / damaged</TableHead>
+                  <TableHead className="w-[120px]">Passed / defective</TableHead>
                   <TableHead className="w-[160px]">Made by</TableHead>
                   <TableHead className="w-[100px]">Started</TableHead>
                   <TableHead className="w-[190px]"><span className="sr-only">Next step</span></TableHead>
@@ -254,9 +254,11 @@ export default function BatchesSection({ ws }) {
                         </span>
                         {b.status === "Completed" ? (
                           <span className="block pt-1 text-xs text-muted-fg">
-                            Checked by {worker(b.completed_by_staff_id)} · shelved {shopDateTime(b.completed_at)}
+                            Checked and shelved by {worker(b.completed_by_staff_id)} · {shopDateTime(b.completed_at)}
                           </span>
                         ) : null}
+                        {b.handoff_remarks ? <span className="block pt-1 text-xs text-muted-fg">Maker: {b.handoff_remarks}</span> : null}
+                        {b.check_remarks ? <span className="block pt-1 text-xs text-muted-fg">Check: {b.check_remarks}</span> : null}
                       </TableCell>
                       <TableCell className="text-muted-fg">{formatShortDate(b.started_at || b.created_at) || "—"}</TableCell>
                       <TableCell>

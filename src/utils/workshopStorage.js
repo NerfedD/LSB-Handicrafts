@@ -26,3 +26,4 @@ export const productionRecipesCollection = workshopCollection('production_recipe
 export const productionDefectsCollection = workshopCollection('production_defect_logs');
 export const materialLotsCollection = workshopCollection('raw_material_lots');
 export const materialUsageCollection = workshopCollection('production_material_usage');
+export const supplierMaterialsCollection = workshopCollection('supplier_materials');

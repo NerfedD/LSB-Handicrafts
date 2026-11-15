@@ -759,6 +759,20 @@ export async function setSupplierPayment(orderId, method) {
   return { ok: true, data };
 }
 
+/** The maker's ('handoff') or checker's ('check') remarks on a batch's quality check. */
+export async function setBatchRemarks(batchId, stage, remarks) {
+  const { data, error } = await supabase.rpc('set_batch_remarks', { p_batch_id: batchId, p_stage: stage, p_remarks: remarks });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't save the remarks.") };
+  return { ok: true, data };
+}
+
+/** Replaces the list of raw materials a supplier provides. Managers and administrators. */
+export async function setSupplierMaterials(supplierId, materialIds) {
+  const { data, error } = await supabase.rpc('set_supplier_materials', { p_supplier_id: supplierId, p_material_ids: materialIds });
+  if (error) return { ok: false, message: humanizeError(error, "Couldn't save what this supplier provides.") };
+  return { ok: true, data };
+}
+
 /** Ends every session of another staff member's login. Administrators only. */
 export async function signOutStaff(staffId) {
   const { data, error } = await supabase.rpc('sign_out_staff', { p_staff_id: staffId });

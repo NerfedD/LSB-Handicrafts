@@ -341,6 +341,7 @@ export default function OrderDetailPage({
               owed={owedAmount}
               cancelled={isCancelled}
               termDays={order.paymentTermDays}
+              delivered={Boolean(delivery)}
               dueOn={dueDateOf(order)}
               loadPayments={loadPayments}
               version={paymentsVersion}

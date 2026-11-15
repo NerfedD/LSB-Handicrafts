@@ -6,6 +6,7 @@ import { formatPeso, formatLongDate } from "../../utils/profileFormat";
 import { letterheadOf, vatInside } from "../../utils/office";
 import { orderLabel, priceReasonLabel, refundReasonLabel } from "../../utils/copy";
 import { ORDER_STATUS } from "../../utils/constants";
+import { termLabel } from "../../utils/payments";
 
 /**
  * The printed order slip.
@@ -195,10 +196,10 @@ export default function OrderSlip({ order, customer, delivery, deliveries = [], 
               <dd>{formatPeso(stillOwed)}</dd>
             </div>
           )}
-          {order.paymentTermDays && !cancelled ? (
+          {delivery && !cancelled ? (
             <div>
-              <dt>Payment terms</dt>
-              <dd>{order.paymentTermDays} days from delivery</dd>
+              <dt>Payment</dt>
+              <dd>{termLabel(order.paymentTermDays, true)}</dd>
             </div>
           ) : null}
         </dl>
