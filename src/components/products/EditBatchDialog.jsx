@@ -22,7 +22,7 @@ export default function EditBatchDialog({ batch, product, material, products = [
   function validate(v) {
     return {
       output_qty: countProblem(v.output_qty, { min: 1, label: 'The planned quantity' }),
-      material_qty: countProblem(v.material_qty, { min: 1, label: 'Material quantity to reserve' })
+      material_qty: countProblem(v.material_qty, { min: 1, label: 'Amount of material required' })
         ?? (!released && material && Number(v.material_qty) > free
           ? `Only ${units(free, material.unit)} of ${material.name} are available. Enter ${free} or fewer.`
           : null),
@@ -47,7 +47,7 @@ export default function EditBatchDialog({ batch, product, material, products = [
           options={materials.filter((m) => m.status !== 'Archived').map((m) => ({ value: m.id, label: m.name }))} />
       </>}
       <WorkshopField name="output_qty" label="Planned pieces" hint="Enter the number of individual pieces." type="number" inputMode="numeric" min="1" max="2000000000" step="1" required value={v.output_qty} onChange={(e) => change('output_qty', e.target.value)} />
-      <WorkshopField name="material_qty" label="Material quantity to reserve" hint={released ? 'Enter the quantity in the selected material’s stock unit.' : material ? `${units(free, material.unit)} available for this batch.` : undefined} type="number" inputMode="numeric" min="1" max={released ? 2000000000 : Math.max(1, free)} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
+      <WorkshopField name="material_qty" label="Amount of material required" hint={released ? 'Enter the quantity in the selected material’s stock unit.' : material ? `${units(free, material.unit)} available for this batch.` : undefined} type="number" inputMode="numeric" min="1" max={released ? 2000000000 : Math.max(1, free)} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
       <WorkshopField name="assigned_staff_id" label="Assigned worker" required options={staff.filter((s) => s.status === 'Active' && ['Admin', 'Manager', 'Production Staff'].includes(s.role)).map((s) => ({ value: s.id, label: s.name }))} value={v.assigned_staff_id} onChange={(e) => change('assigned_staff_id', e.target.value)} />
       <WorkshopField name="order_id" label="Customer order" hint="Leave blank for shelf stock." placeholder="None (shelf stock)" options={waiting.map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
       <WorkshopField name="notes" label={<>Notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="Add any custom dimensions or production instructions." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
