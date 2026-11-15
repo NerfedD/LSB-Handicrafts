@@ -1452,8 +1452,10 @@ export default function App() {
   }
 
   const workshopStates = [rawMaterialsState, rawMaterialOrdersState, productionBatchesState,
-    productionRecipesState, productionDefectsState, materialLotsState, materialUsageState, supplierMaterialsState];
-  function reloadWorkshop() { workshopStates.forEach((state) => state.reload()); }
+    productionRecipesState, productionDefectsState, materialLotsState, materialUsageState];
+  // Supplier links are extra: if they cannot be read (say, before their migration
+  // is applied) the workshop still loads, just without them.
+  function reloadWorkshop() { [...workshopStates, supplierMaterialsState].forEach((state) => state.reload()); }
   const workshopData = { materials: rawMaterialsState.rows, materialOrders: rawMaterialOrdersState.rows,
     batches: productionBatchesState.rows, recipes: productionRecipesState.rows, defects: productionDefectsState.rows,
     lots: materialLotsState.rows, usage: materialUsageState.rows, supplierMaterials: supplierMaterialsState.rows, products, inventory, orders, suppliers, staff };
