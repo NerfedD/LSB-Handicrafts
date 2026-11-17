@@ -19,7 +19,7 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
 
   function validate(v) {
     const produced = countProblem(v.produced, { label: 'The total count' });
-    const damaged = countProblem(v.damaged, { label: 'The damage count' });
+    const damaged = countProblem(v.damaged, { label: 'The defective count' });
     // The database's line too (private.guard_batch_output, and the same check
     // at Send to check): more than twice the plan is far more likely a slip of
     // the keyboard than a good day.
@@ -27,7 +27,7 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
     const problems = {
       produced: produced
         ?? (Number(v.produced) > ceiling ? `Enter ${ceiling} pieces or fewer. Ask a manager to update the planned quantity if needed.` : null),
-      damaged: damaged ?? (!produced && Number(v.damaged) > Number(v.produced) ? 'Damaged pieces cannot be more than the pieces made.' : null),
+      damaged: damaged ?? (!produced && Number(v.damaged) > Number(v.produced) ? 'Defective pieces cannot be more than the pieces made.' : null),
     };
     if (handoff) return problems;
     return {
@@ -39,9 +39,9 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
   }
 
   const initial = handoff
-    ? { id: batch.id, expectedRevision: batch.revision ?? 0, status: 'Quality Check', produced: '', damaged: '0' }
+    ? { id: batch.id, expectedRevision: batch.revision ?? 0, status: 'Quality Check', produced: '', damaged: '0', remarks: '' }
     : { id: batch.id, expectedRevision: batch.revision ?? 0, produced: batch.reported_output_qty ?? '', damaged: String(batch.reported_damaged_qty ?? 0),
-        reason: '', material_qty: batch.raw_material_used_qty };
+        reason: '', material_qty: batch.raw_material_used_qty, remarks: '' };
 
   return <WorkshopForm size="lg" title={handoff ? `Send ${batch.batch_code} to check` : `Count and finish ${batch.batch_code}`}
     description={handoff
@@ -55,17 +55,23 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
       return <>
         {!handoff && batch.reported_output_qty != null && (
           <p className="m-0 text-13 text-muted-fg">
-            The maker reported {batch.reported_output_qty} pieces made and {batch.reported_damaged_qty ?? 0} damaged. Update the counts if needed.
+            The maker reported {batch.reported_output_qty} pieces made and {batch.reported_damaged_qty ?? 0} defective. Update the counts if needed.
           </p>
         )}
         <Row>
           <WorkshopField name="produced" label="Total pieces made" hint="Include damaged pieces. Enter 0 if the batch produced none." required type="number" inputMode="numeric" min="0" max="2000000000" step="1" value={v.produced} onChange={(e) => change('produced', e.target.value)} />
-          <WorkshopField name="damaged" label="Damaged pieces" hint="Enter 0 if none were damaged." required type="number" inputMode="numeric" min="0" step="1" value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
+          <WorkshopField name="damaged" label="Defective pieces" hint="Pieces that failed inspection. Enter 0 if all passed." required type="number" inputMode="numeric" min="0" step="1" value={v.damaged} onChange={(e) => change('damaged', e.target.value)} />
         </Row>
+        {!handoff && batch.handoff_remarks && (
+          <p className="m-0 text-13 text-muted-fg">Maker's remarks: {batch.handoff_remarks}</p>
+        )}
+        <WorkshopField name="remarks" label={<>Remarks <span className="font-normal text-muted-fg">(optional)</span></>}
+          hint={handoff ? 'Anything the checker should know, such as which pieces look off.' : 'What the check found, such as why pieces failed.'}
+          multiline maxLength={1000} value={v.remarks} onChange={(e) => change('remarks', e.target.value)} />
         {handoff ? (
           <ReviewBox>
             {counted
-              ? <>{v.produced} made, {v.damaged} damaged: {counts.good} good {counts.good === 1 ? 'piece' : 'pieces'} for the checker to confirm.</>
+              ? <>{v.produced} made, {v.damaged} defective: {counts.good} passed for the checker to confirm.</>
               : <>Enter the counts to see how many good pieces are ready for review.</>}
             <p>Stock updates when the checker finishes the batch. Sent by {profile.name}.</p>
           </ReviewBox>
@@ -73,7 +79,7 @@ export default function CompleteBatchDialog({ batch, product, inventory, materia
           {(Number(v.damaged) > 0 || String(v.produced) === '0') && <WorkshopField name="reason" label="Damage reason" hint="Select the main cause." required options={DEFECT_REASONS} value={v.reason} onChange={(e) => change('reason', e.target.value)} />}
           <WorkshopField name="material_qty" label="Material used" hint={`Enter the actual amount of ${material.name} used. ${units(freeMaterial(material, batches, batch.id), material.unit)} available.`} suffix={material.unit} required type="number" inputMode="numeric" min="1" step="1" value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
           <dl className="m-0 grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border text-13">
-            <div className="bg-card px-3 py-2"><dt className="text-xs text-muted-fg">Good pieces to shelve</dt><dd className="m-0 font-medium">{counted ? `+${counts.good} ${product.name}` : '—'}</dd></div>
+            <div className="bg-card px-3 py-2"><dt className="text-xs text-muted-fg">Passed inspection (to shelve)</dt><dd className="m-0 font-medium">{counted ? `+${counts.good} ${product.name}` : '—'}</dd></div>
             <div className="bg-card px-3 py-2"><dt className="text-xs text-muted-fg">Damage rate</dt><dd className="m-0 font-medium">{counted && Number(v.produced) > 0 ? `${(100 - counts.yield).toFixed(1)}%` : '—'}</dd></div>
           </dl>
           <ReviewBox warning={counted}>

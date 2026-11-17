@@ -20,7 +20,7 @@ import { formatPeso, formatShortDate } from "../../utils/profileFormat";
  * `termDays` is the order's term (null for a pick-up), and `dueOn` the day
  * payment falls due once it has been delivered (utils/payments dueDateOf).
  */
-export default function OrderPayments({ orderId, netTotal, paid, owed, cancelled = false, termDays = null, dueOn = null, loadPayments, version = 0, onRemove }) {
+export default function OrderPayments({ orderId, netTotal, paid, owed, cancelled = false, termDays = null, delivered = false, dueOn = null, loadPayments, version = 0, onRemove }) {
   const [state, setState] = useState({ for: null, rows: [], failed: false });
   const [removing, setRemoving] = useState(null);
   const [working, setWorking] = useState(false);
@@ -61,7 +61,7 @@ export default function OrderPayments({ orderId, netTotal, paid, owed, cancelled
           </div>
         ))}
       </dl>
-      {!cancelled ? <TermsLine termDays={termDays} dueOn={dueOn} owed={owed} /> : null}
+      {!cancelled ? <TermsLine termDays={termDays} delivered={delivered} dueOn={dueOn} owed={owed} /> : null}
       {!loaded ? (
         <p className="m-0 px-4 py-3 text-13 text-muted-fg">Loading payments…</p>
       ) : state.failed ? (
@@ -104,11 +104,11 @@ export default function OrderPayments({ orderId, netTotal, paid, owed, cancelled
 }
 
 /** When the money is due: on terms, the day it falls due and how far off; otherwise at pick-up. */
-function TermsLine({ termDays, dueOn, owed }) {
+function TermsLine({ termDays, delivered, dueOn, owed }) {
   let when = null;
   let late = false;
-  if (termDays && !dueOn) when = "due once it is delivered";
-  else if (termDays && dueOn) {
+  if (termDays != null && !dueOn) when = "due once it is delivered";
+  else if (termDays != null && dueOn) {
     const left = daysUntil(dueOn, localDateIso());
     late = owed > 0 && left < 0;
     when = owed === 0
@@ -119,7 +119,7 @@ function TermsLine({ termDays, dueOn, owed }) {
   }
   return (
     <p className={late ? "m-0 border-b border-border px-4 py-2 text-13 font-medium text-danger-fg" : "m-0 border-b border-border px-4 py-2 text-13 text-fg-2"}>
-      {termLabel(termDays)}{when ? ` · ${when}` : ""}
+      {termLabel(termDays, delivered)}{when ? ` · ${when}` : ""}
     </p>
   );
 }

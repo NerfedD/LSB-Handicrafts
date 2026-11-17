@@ -26,7 +26,7 @@ import { normalizeItems, orderTotal } from "../../utils/orderItems";
 import { roundMoney } from "../../utils/money";
 import { moneyProblem, nameProblem } from "../../utils/validation";
 import { formatPeso } from "../../utils/profileFormat";
-import { needsReference, PAYMENT_METHODS, TERM_OPTIONS } from "../../utils/payments";
+import { needsReference, PAYMENT_METHODS, PAYMENT_OPTIONS, paymentOptionOf, TERM_OPTIONS } from "../../utils/payments";
 import { shelfItems } from "../../utils/productStock";
 import { stockLabel } from "../../utils/copy";
 
@@ -195,6 +195,7 @@ export default function OrderFormPage({
   // in part, and whatever is paid as it is written is recorded straight away
   // (App's saveOrder), so it lands on the order like any other payment.
   const [termChoice, setTermChoice] = useState(null);
+  const [optionChoice, setOptionChoice] = useState(null);
   const [downAmount, setDownAmount] = useState("");
   const [downMethod, setDownMethod] = useState("cash");
   const [downReference, setDownReference] = useState("");
@@ -244,8 +245,12 @@ export default function OrderFormPage({
     : named.length === 1 ? named[0].id : null;
   const linked = customers.find((one) => one.id === customerId);
 
-  const term = termChoice ?? (isEdit ? order?.paymentTermDays ?? 30 : linked?.paymentTermDays ?? 30);
+  const savedTerm = isEdit && order?.paymentTermDays ? order.paymentTermDays : null;
+  const term = termChoice ?? savedTerm ?? linked?.paymentTermDays ?? 30;
   const onDelivery = address.trim() !== "";
+  // A delivered order is paid in full now, on the day it arrives, or on terms.
+  const payOption = optionChoice ?? (isEdit && onDelivery ? paymentOptionOf(order?.paymentTermDays) : "terms");
+  const takesPaymentNow = !onDelivery || payOption === "full";
 
   const [useReward, setUseReward] = useState(true);
   const earned = linked ? customerSummary(linked, customerStats, loyalty) : null;
@@ -395,7 +400,7 @@ export default function OrderFormPage({
     // Money paid now is checked like any payment, against the order's total.
     // Only a pick-up order takes any: a delivered one is paid on its terms.
     let downPayment = null;
-    if (!isEdit && canTakePayment && !onDelivery && String(downAmount).trim() !== "") {
+    if (!isEdit && canTakePayment && takesPaymentNow && String(downAmount).trim() !== "") {
       const value = Number(downAmount);
       let problem = null;
       if (!Number.isFinite(value) || value <= 0) problem = "Put in the amount paid, or leave it empty.";
@@ -473,7 +478,7 @@ export default function OrderFormPage({
             amount: charge,
           }
         : null,
-      paymentTermDays: onDelivery ? term : null,
+      paymentTermDays: !onDelivery || payOption === "full" ? null : payOption === "on_delivery" ? 0 : term,
       downPayment,
     });
     if (!result?.ok) fail(result?.message || 'The order was not saved. Check the details and retry.');
@@ -815,10 +820,10 @@ export default function OrderFormPage({
           <dt className="font-medium">Total to pay</dt>
           <dd className="m-0 text-base font-semibold tabular-nums">{formatPeso(total)}</dd>
         </div>
-        {onDelivery ? (
+        {onDelivery && payOption !== "full" ? (
           <div className="flex justify-between gap-6">
             <dt className="text-muted-fg">Payment</dt>
-            <dd className="m-0">Due {term} days after delivery</dd>
+            <dd className="m-0">{payOption === "on_delivery" ? "Due on the day it is delivered" : `Due ${term} days after delivery`}</dd>
           </div>
         ) : Number(downAmount) > 0 && Number(downAmount) <= total ? (
           <>
@@ -835,6 +840,12 @@ export default function OrderFormPage({
       </dl>
 
       {onDelivery ? (
+        <Field label="How they pay" hint="Full payment is recorded now. On delivery, the driver collects it. On terms, it is due 30 or 60 days after delivery.">
+          {() => <RadioRow label="How they pay" value={payOption} onChange={setOptionChoice} options={PAYMENT_OPTIONS} />}
+        </Field>
+      ) : null}
+
+      {onDelivery && payOption === "terms" ? (
         <Field
           label="Payment terms"
           hint={linked && !isEdit ? `Counted from the day it is delivered. ${linked.name}'s usual is ${linked.paymentTermDays ?? 30} days.` : "Counted from the day it is delivered. Nothing is paid down."}
@@ -845,9 +856,9 @@ export default function OrderFormPage({
 
       {/* A pick-up order is paid at the shop, in full or in part. Whatever is
           paid as the order is written is recorded now. */}
-      {!isEdit && canTakePayment && !onDelivery ? (
+      {!isEdit && canTakePayment && takesPaymentNow ? (
         <div className="flex flex-col gap-3.5 rounded-md border border-border p-3">
-          <Field label="Paid now" error={downProblem ?? undefined} hint="In full or in part. Leave empty if they pay when they pick it up.">
+          <Field label="Paid now" error={downProblem ?? undefined} hint={onDelivery ? "The full amount paid as the order is written." : "In full or in part. Leave empty if they pay when they pick it up."}>
             {(props) => (
               <div className="relative">
                 <span aria-hidden="true" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-13 text-muted-fg">₱</span>

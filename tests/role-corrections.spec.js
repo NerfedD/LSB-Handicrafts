@@ -118,11 +118,11 @@ test('a manager changes a batch already in production', async ({ page, baseURL }
   await page.getByRole('menuitem', { name: 'Change details', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Planned pieces').fill('120');
-  await dialog.getByLabel('Material quantity to reserve').fill('49');
+  await dialog.getByLabel('Amount of material required').fill('49');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toContainText('Only 48 sheets');
   expect(command).toBeUndefined();
-  await dialog.getByLabel('Material quantity to reserve').fill('48');
+  await dialog.getByLabel('Amount of material required').fill('48');
   await dialog.getByRole('button', { name: 'Save changes' }).click();
   await expect(dialog).toHaveCount(0);
   expect(command.p_action).toBe('edit_batch');
