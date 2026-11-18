@@ -12,7 +12,7 @@
 - Purchasing's agreed order totals are labelled **Ordered**, rather than **Spent**.
 
 ### Database
-- Apply `20261118155118_supplier_payment_ledger.sql` before deploying this client. See `docs/supplier-payments.md` for workflow and reconciliation details.
+- Apply `20261118152541_supplier_payment_ledger.sql` before deploying this client. See `docs/supplier-payments.md` for workflow and reconciliation details.
 
 ## Unreleased — stock counted back where it really is
 

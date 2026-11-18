@@ -147,7 +147,7 @@ describe('confirmed supplier payments', () => {
     const o = await order(150);
     await signIn(db, null);
     await db.query('update public.raw_material_orders set paid_at=now() where id=$1', [o.id]);
-    await db.exec(readSql('migrations/20261118155118_supplier_payment_ledger.sql'));
+    await db.exec(readSql('migrations/20261118152541_supplier_payment_ledger.sql'));
     expect((await one(db, 'select paid_at from public.raw_material_orders where id=$1', [o.id])).paid_at).not.toBeNull();
     expect(await balance(o.id)).toMatchObject({ paid: 0, outstanding: 150 });
   });
