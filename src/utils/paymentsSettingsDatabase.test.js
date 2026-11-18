@@ -182,20 +182,20 @@ describe('supplier payments', () => {
   }
   const paidAt = async (id) => (await one(db, 'select paid_at from public.raw_material_orders where id = $1', [id])).paid_at;
 
-  it('counts a card order as paid when placed, and a COD order when it arrives', async () => {
+  it('keeps payment method and delivery separate from confirmed payment', async () => {
     const card = await supplierOrder('card');
-    expect(card.paid_at).not.toBeNull();
+    expect(card.paid_at).toBeNull();
     const cod = await supplierOrder('cod');
     expect(cod.paid_at).toBeNull();
     await db.query(`update public.raw_material_orders set status = 'Arrived', quantity_arrived = 5 where id = $1`, [cod.id]);
-    expect(await paidAt(cod.id)).not.toBeNull();
+    expect(await paidAt(cod.id)).toBeNull();
   });
 
   it('lets a manager correct the method until the delivery arrives', async () => {
     const order = await supplierOrder('cod');
     const set = (who, method) => asApi(db, who, () => one(db, 'select public.set_supplier_payment($1, $2) as r', [order.id, method]));
     await expect(set('production', 'card')).rejects.toThrow(/Only a manager or administrator/);
-    expect((await set('manager', 'card')).r.paid_at).not.toBeNull();
+    expect((await set('manager', 'card')).r.paid_at).toBeNull();
     expect((await set('manager', 'cod')).r.paid_at).toBeNull();
     await db.query(`update public.raw_material_orders set status = 'Arrived', quantity_arrived = 5 where id = $1`, [order.id]);
     await expect(set('manager', 'card')).rejects.toThrow(/already closed/);
