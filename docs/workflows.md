@@ -1,5 +1,20 @@
 # How the business rules work
 
+## Supplier payments and cash flow
+
+Supplier ordering, receiving and paying are separate actions. Managers and
+administrators open **Payments** on a Purchasing order to record the actual amount,
+date, method and receipt reference, including partial payments or supplier refunds.
+**Payment or refund due** finds received orders with balances and cancelled orders
+still awaiting a refund. Card charges settle the supplier but increase the recorded
+card balance; **Record card-bill payment** records the later cash outflow.
+
+The dashboard and Purchasing show **Recorded cash flow**, based on recorded
+transactions by Manila calendar date. Agreed purchases, sales revenue, cash movement
+and card debt remain separate. These totals are not profit or a bank balance.
+Older automatic paid markers must be reconciled against receipts before recording
+missing payments. See [supplier payments](supplier-payments.md) for the full workflow.
+
 What the system does with stock, money and customers, and which database rule enforces each part. Screens are a courtesy; every rule below is enforced in `supabase/schema.sql`, whatever a browser sends.
 
 ## Stock: two ledgers, one history

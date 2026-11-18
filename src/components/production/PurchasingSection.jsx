@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ClipboardText, PencilSimple, Plus, Trash, Truck, X } from "../icons";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,9 @@ import { FlowStrip, LookBadge, MoreActions, ToggleChips } from "./parts";
 import { MATERIAL_ORDER_LABEL } from "../../utils/copy";
 import { pluralUnit, units } from "../../utils/production";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
+import { supplierBalance, supplierEntryLabel } from '../../utils/supplierPayments';
+import CashFlowSummary from '../dashboards/CashFlowSummary';
+import { localDateIso } from '../../utils/dates';
 
 /**
  * Production · Purchasing, drawn to the "7c · Production · Purchasing" board:
@@ -40,7 +43,7 @@ const FLOW = [
 const WEEK = 7 * 86_400_000;
 
 export default function PurchasingSection({ ws }) {
-  const { materialOrders, mat, supplierName, worker, manager, canRemoveRecords, change, query, setQuery, now } = ws;
+  const { materialOrders, mat, supplierName, worker, manager, canRemoveRecords, change, query, setQuery, now, paymentEntries = [], cardOwed = 0 } = ws;
   const [filter, setFilter] = useState(ws.initialFilter === "claims" ? "claims" : ws.initialFilter === "all" ? "all" : "active");
 
   const waiting = materialOrders.filter((o) => !["Arrived", "Cancelled"].includes(o.status));
@@ -50,23 +53,41 @@ export default function PurchasingSection({ ws }) {
     const at = new Date(o.expected_delivery_date).getTime();
     return at - now < WEEK && at - now > -86_400_000;
   });
-  const monthStart = new Date(now);
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-  const spent = materialOrders
-    .filter((o) => o.status !== "Cancelled" && o.order_date && new Date(o.order_date).getTime() >= monthStart.getTime())
+  const today = localDateIso(new Date(now));
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const purchases = materialOrders
+    .filter((o) => o.status !== "Cancelled" && o.order_date >= monthStart && o.order_date <= today)
     .reduce((sum, o) => sum + (Number(o.total_cost) || 0), 0);
-  const month = monthStart.toLocaleDateString("en-US", { month: "long" });
+  const month = new Date(now).toLocaleDateString("en-US", { month: "long", timeZone: 'Asia/Manila' });
+  const accounts = useMemo(() => {
+    const byOrder = new Map();
+    for (const entry of paymentEntries) {
+      const key = String(entry.order_id);
+      if (!byOrder.has(key)) byOrder.set(key, []);
+      byOrder.get(key).push(entry);
+    }
+    return new Map(materialOrders.map((o) => [o.id, supplierBalance(o, byOrder.get(String(o.id)) ?? [])]));
+  }, [materialOrders, paymentEntries]);
+  const account = (o) => accounts.get(o.id);
+  const unpaid = materialOrders.filter((o) => account(o).outstanding > 0 || account(o).refund_due > 0);
 
   const needle = query.trim().toLowerCase();
   const rows = materialOrders
-    .filter((o) => (filter === "all" ? true : filter === "claims" ? o.claim_status === "Needs review" : !["Arrived", "Cancelled"].includes(o.status)) || ws.justChanged("material-order", o.id))
+    .filter((o) => (filter === "all" ? true : filter === "owing" ? unpaid.includes(o) : filter === "claims" ? o.claim_status === "Needs review" : !["Arrived", "Cancelled"].includes(o.status)) || ws.justChanged("material-order", o.id))
     .filter((o) => `${mat(o.raw_material_id)?.name} ${supplierName(o.supplier_id)} ${o.id}`.toLowerCase().includes(needle))
     .slice()
     .reverse();
 
   const moreFor = (o) =>
     [
+      manager && account(o).outstanding > 0 && {
+        label: 'Record supplier payment',
+        onClick: () => ws.setDialog({ kind: 'supplier-payment', record: o, entryKind: 'payment' }),
+      },
+      manager && account(o).paid > account(o).refunded && {
+        label: 'Record supplier refund',
+        onClick: () => ws.setDialog({ kind: 'supplier-payment', record: o, entryKind: 'refund' }),
+      },
       manager && ["Ordered", "Delivery Scheduled"].includes(o.status) && {
         label: "Edit order",
         icon: <PencilSimple aria-hidden="true" />,
@@ -93,7 +114,7 @@ export default function PurchasingSection({ ws }) {
           verb: "Cancel order", question: "Why is it being cancelled?",
         }),
       },
-      canRemoveRecords && o.status !== "Arrived" && {
+      canRemoveRecords && o.status !== "Arrived" && !paymentEntries.some((e) => String(e.order_id) === String(o.id)) && {
         label: "Delete order",
         icon: <Trash aria-hidden="true" />,
         danger: true,
@@ -114,10 +135,13 @@ export default function PurchasingSection({ ws }) {
         description="Raw materials ordered from suppliers. Stock is added only when a delivery is received and counted."
         actions={
           manager ? (
+            <span className="flex flex-wrap gap-2">
+            {cardOwed > 0 && <Button variant="outline" onClick={() => ws.setDialog({ kind: 'supplier-payment', entryKind: 'card_settlement' })}>Record card-bill payment</Button>}
             <Button onClick={() => ws.setDialog({ kind: "order" })} aria-haspopup="dialog">
               <Plus aria-hidden="true" />
               New supplier order
             </Button>
+            </span>
           ) : null
         }
       />
@@ -126,7 +150,7 @@ export default function PurchasingSection({ ws }) {
         <StatCard compact label="Waiting to arrive" value={waiting.length} caption={waiting.length === 1 ? "order" : "orders"} onClick={() => setFilter("active")} />
         <StatCard compact label="Arriving this week" value={arrivingThisWeek.length} caption={arrivingThisWeek.length === 1 ? "order" : "orders"} />
         <StatCard compact label="Open claims" value={claims.length} caption={claims.length === 1 ? "claim" : "claims"} onClick={() => setFilter("claims")} />
-        <StatCard compact label={`Spent in ${month}`} value={formatPeso(spent)} caption="agreed totals" />
+        <StatCard compact label={`Ordered in ${month}`} value={formatPeso(purchases)} caption="agreed totals, including unpaid" />
       </StatCards>
 
       <FlowStrip label="How a supplier order works" steps={FLOW} />
@@ -141,6 +165,7 @@ export default function PurchasingSection({ ws }) {
             { value: "active", label: "Not received yet", count: waiting.length },
             { value: "all", label: "All orders", count: materialOrders.length },
             { value: "claims", label: "Claims", count: claims.length },
+            ...(manager ? [{ value: 'owing', label: 'Payment or refund due', count: unpaid.length }] : []),
           ]}
         />
       </div>
@@ -193,7 +218,7 @@ export default function PurchasingSection({ ws }) {
           {rows.length === 0 ? (
             <EmptyState
               icon={Truck}
-              title={filter === "active" ? "Nothing is waiting to arrive" : "No supplier orders yet"}
+              title={filter === 'owing' ? 'No payment or refund is due' : filter === "active" ? "Nothing is waiting to arrive" : "No supplier orders yet"}
               description={manager ? "Record what you ordered from a supplier. It waits here until somebody receives and counts the delivery." : "When a manager orders materials from a supplier, the order waits here until somebody receives and counts it."}
               action={query ? <Button variant="outline" onClick={() => setQuery("")}>Clear the search</Button> : null}
             />
@@ -223,7 +248,8 @@ export default function PurchasingSection({ ws }) {
                       <TableCell>{o.quantity_ordered} {pluralUnit(unit, o.quantity_ordered)}</TableCell>
                       <TableCell className="text-right">
                         {formatPeso(o.total_cost)}
-                        <span className="block text-xs text-muted-fg">{supplierPaymentLabel(o)}</span>
+                        {manager && <span className="block text-xs text-muted-fg">{formatPeso(account(o).paid)} paid · {formatPeso(account(o).outstanding)} owed</span>}
+                        {manager && account(o).refund_due > 0 && <span className="block text-xs text-warning-fg">{formatPeso(account(o).refund_due)} refund due</span>}
                       </TableCell>
                       <TableCell className="text-muted-fg">
                         {o.status === "Arrived" ? formatShortDate(o.actual_delivery_date) : o.expected_delivery_date ? formatShortDate(o.expected_delivery_date) : "Not set"}
@@ -236,6 +262,7 @@ export default function PurchasingSection({ ws }) {
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center justify-end gap-1">
+                          {manager && <Button variant="outline" size="sm" aria-label={`Payments for order ${o.id}`} onClick={() => ws.setDialog({ kind: 'supplier-payment-history', record: o })}>Payments</Button>}
                           {!["Arrived", "Cancelled"].includes(o.status) ? (
                             <Button variant="outline" size="sm" aria-label="Receive delivery" onClick={() => ws.setDialog({ kind: "receive", record: o })}>
                               Receive
@@ -253,17 +280,18 @@ export default function PurchasingSection({ ws }) {
         </section>
       )}
 
+      {manager && <>
+        <CashFlowSummary version={paymentEntries} />
+        <details className="rounded-lg border border-border bg-card p-4 text-sm">
+          <summary className="cursor-pointer font-semibold">Card-bill payment history</summary>
+          {paymentEntries.some((e) => e.kind === 'card_settlement') ? <ul className="m-0 mt-3 list-none divide-y divide-border p-0">
+            {paymentEntries.filter((e) => e.kind === 'card_settlement').slice().reverse().map((e) => <li key={e.id} className="py-2">
+              {supplierEntryLabel(e.kind)} · {formatPeso(e.amount)} · {formatShortDate(e.occurred_on)} · {e.reference || 'Cash'} · {worker(e.recorded_by)}
+              {e.note && <p className="m-0">{e.note}</p>}
+            </li>)}
+          </ul> : <p>No card-bill payments have been recorded.</p>}
+        </details>
+      </>}
     </Page>
   );
-}
-
-/**
- * How a supplier order is paid and whether it has been: by card when it was
- * placed, or cash on delivery once the goods arrive (the database stamps
- * paid_at either way -- see the 2026-10-31 migration).
- */
-function supplierPaymentLabel(order) {
-  const how = order.payment_method === 'card' ? 'Card' : 'COD';
-  if (order.status === 'Cancelled') return order.paid_at ? `${how} · paid, order cancelled` : `${how} · not paid`;
-  return order.paid_at ? `${how} · paid` : `${how} · pay on arrival`;
 }

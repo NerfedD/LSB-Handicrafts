@@ -127,7 +127,7 @@ export function MaterialDialog({ material, materials = [], profile, onSave, onCl
  * placed: a different supplier or material is a different order, so that one
  * is cancelled and a new one placed.
  */
-/** How a supplier order is paid. A card payment is made on ordering; COD on arrival. */
+/** Planned payment method. Confirmed payments are recorded separately. */
 const SUPPLIER_PAYMENT_METHODS = [
   { value: 'cod', label: 'Cash on delivery' },
   { value: 'card', label: 'Credit card' },
@@ -198,8 +198,8 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, suppl
           type="date" min={order?.expected_delivery_date && order.expected_delivery_date < today ? undefined : today}
           value={v.expected_delivery_date || ''} onChange={(e) => change('expected_delivery_date', e.target.value)} />
         </Row>
-        <WorkshopField name="payment_method" label="Paid by" required placeholder="Choose how"
-          hint={v.payment_method === 'card' ? 'Paid by card when the order is placed.' : 'Paid in cash when the delivery is received.'}
+        <WorkshopField name="payment_method" label="Planned payment method" required placeholder="Choose how"
+          hint="This does not confirm payment. Record the actual payment separately in Purchasing."
           options={SUPPLIER_PAYMENT_METHODS} value={v.payment_method} onChange={(e) => change('payment_method', e.target.value)} />
         <WorkshopField name="carrier_notes" label={<>Courier and delivery notes <span className="font-normal text-muted-fg">(optional)</span></>} hint="The driver's phone number and any delivery instructions. The expected date can wait until the supplier confirms." multiline maxLength={1000} value={v.carrier_notes || ''} onChange={(e) => change('carrier_notes', e.target.value)} />
         <ReviewBox>{order ? 'Changed' : 'Placed'} by {profile.name}.</ReviewBox>

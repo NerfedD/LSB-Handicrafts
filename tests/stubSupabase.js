@@ -1,4 +1,5 @@
 import { SIGNED_IN_EMAIL, TABLES } from "./fixtures.js";
+import { supplierBalance, cardBalance } from '../src/utils/supplierPayments.js';
 
 /**
  * A stand-in for Supabase, installed as a Playwright network route.
@@ -393,6 +394,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
     .map((name, index) => ({ id: 3000 + index, name }));
   tables.product_images ??= [];
   tables.order_payments ??= [];
+  tables.supplier_payments ??= [];
   tables.notifications ??= [];
   tables.notification_settings ??= [];
   tables.staff_photos ??= [];
@@ -400,6 +402,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
     vat_registered: false, delivery_fee: null, free_delivery_from: null, delivery_areas: [], open_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
     opens_at: null, closes_at: null, revision: 0, updated_at: null, updated_by: null }];
   const paymentRequests = new Map();
+  const supplierPaymentRequests = new Map();
   tables.loyalty_rules ??= [{ id: 1, enabled: false, regular_after_orders: 3, reward_after_orders: 5, reward_percent: 5, revision: 0, updated_at: null, updated_by: null }];
   const stockRequests = new Map();
   const orderRequests = new Map();
@@ -667,13 +670,44 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
       return json(route, { in_app: events });
     }
     if (url.pathname.endsWith("/rpc/refresh_alerts")) return json(route, { ok: true });
+    if (url.pathname.endsWith('/rpc/record_supplier_payment')) {
+      const { p_order_id: id, p_data: data, p_request_id: key } = request.postDataJSON();
+      if (supplierPaymentRequests.has(key)) return json(route, { entry: supplierPaymentRequests.get(key), replayed: true });
+      const order = tables.raw_material_orders.find((o) => Number(o.id) === Number(id));
+      const limit = data.kind === 'card_settlement' ? cardBalance(tables.supplier_payments)
+        : data.kind === 'refund' ? supplierBalance(order, tables.supplier_payments).paid - supplierBalance(order, tables.supplier_payments).refunded
+          : supplierBalance(order, tables.supplier_payments).outstanding;
+      if (!(Number(data.amount) > 0) || Number(data.amount) > limit) return json(route, { code: 'P0001', message: 'That is more than is owed.' }, 400);
+      const row = { ...data, id: nextRecordId(), order_id: id, amount: Number(data.amount), recorded_by: tables.staff.find((s) => s.email === as)?.id,
+        created_at: new Date().toISOString(), request_id: key };
+      tables.supplier_payments.push(row);
+      supplierPaymentRequests.set(key, row);
+      onWrite?.({ table: 'supplier_payments', method: 'RPC', row });
+      return json(route, { entry: row, replayed: false });
+    }
+    if (url.pathname.endsWith('/rpc/cash_flow_summary')) {
+      const { p_from: from, p_to: to } = request.postDataJSON();
+      const within = (day) => day >= from && day <= to;
+      const entries = tables.supplier_payments.filter((e) => within(e.occurred_on));
+      const sum = (rows) => Math.round(rows.reduce((s, e) => s + Number(e.amount), 0) * 100) / 100;
+      const customer_collections = sum(tables.order_payments.filter((e) => within(e.received_on)));
+      const supplier_payments = sum(entries.filter((e) => e.kind === 'payment' && e.method !== 'card'));
+      const supplier_refunds = sum(entries.filter((e) => e.kind === 'refund' && e.method !== 'card'));
+      const card_settlements = sum(entries.filter((e) => e.kind === 'card_settlement'));
+      const customer_refunds = tables.orders.flatMap((o) => o.refund_history ?? []).filter((e) => within(String(e.refundedAt).slice(0, 10)))
+        .reduce((s, e) => s + Number(e.handedBack ?? (e.method === 'credit' ? 0 : e.amount)), 0);
+      return json(route, { customer_collections, customer_refunds, supplier_payments, supplier_refunds, card_settlements,
+        net_cash: customer_collections - customer_refunds - supplier_payments + supplier_refunds - card_settlements,
+        card_balance: cardBalance(tables.supplier_payments), undated_refunds: 0,
+        purchases: tables.raw_material_orders.filter((o) => o.status !== 'Cancelled' && within(o.order_date)).reduce((s, o) => s + Number(o.total_cost), 0),
+        supplier_outstanding: tables.raw_material_orders.reduce((s, o) => s + supplierBalance(o, tables.supplier_payments).outstanding, 0) });
+    }
     if (url.pathname.endsWith("/rpc/set_supplier_payment")) {
       const { p_order_id: id, p_method: method } = request.postDataJSON();
       const row = tables.raw_material_orders.find((o) => Number(o.id) === Number(id));
       if (!row) return json(route, { code: 'P0001', message: 'That supplier order no longer exists.' }, 400);
       if (['Arrived', 'Cancelled'].includes(row.status)) return json(route, { code: 'P0001', message: 'This order is already closed, so how it was paid can no longer change.' }, 400);
       row.payment_method = method;
-      row.paid_at = method === 'card' ? new Date().toISOString() : null;
       onWrite?.({ table: 'raw_material_orders', method: 'RPC', row });
       return json(route, { id: row.id, payment_method: row.payment_method, paid_at: row.paid_at });
     }

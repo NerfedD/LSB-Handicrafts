@@ -759,6 +759,36 @@ export async function setSupplierPayment(orderId, method) {
   return { ok: true, data };
 }
 
+/** Manager-only, immutable supplier entries, paged to avoid the API row cap. */
+export const supplierPaymentsCollection = {
+  table: 'supplier_payments',
+  load: () => readRows('supplier_payments', () => loadAllRows('supplier_payments'), identity),
+};
+
+export async function recordSupplierPayment(orderId, values, requestId) {
+  try {
+    const { data, error } = await supabase.rpc('record_supplier_payment', {
+      p_order_id: orderId, p_data: values, p_request_id: requestId,
+    });
+    if (error) throw error;
+    if (!data?.entry?.id) throw new Error('The payment was not confirmed. Please retry.');
+    return { ok: true, data: data.entry };
+  } catch (error) {
+    return { ok: false, message: humanizeError(error, "Couldn't record that supplier payment.") };
+  }
+}
+
+export async function fetchCashFlow(from, to) {
+  try {
+    const { data, error } = await supabase.rpc('cash_flow_summary', { p_from: from, p_to: to });
+    if (error) throw error;
+    if (!data || data.net_cash == null) throw new Error('Cash flow is unavailable.');
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, message: humanizeError(error, "Couldn't load recorded cash flow.") };
+  }
+}
+
 /** The maker's ('handoff') or checker's ('check') remarks on a batch's quality check. */
 export async function setBatchRemarks(batchId, stage, remarks) {
   const { data, error } = await supabase.rpc('set_batch_remarks', { p_batch_id: batchId, p_stage: stage, p_remarks: remarks });
