@@ -17,6 +17,7 @@ import { EmptyState, Page, PageHeader, SectionCard, StatCard, StatCards } from "
 import { Mono } from "../shared/Chip";
 import StatusPill from "../shared/StatusPill";
 import LargeTextDashboard from "./LargeTextDashboard";
+import CashFlowSummary from './CashFlowSummary';
 import { downloadCsv } from "@/lib/csv";
 import { DASHBOARD_VIEW, ORDER_STATUS } from "../../utils/constants";
 import { customerSummary, DEFAULT_LOYALTY } from "../../utils/customers";
@@ -374,6 +375,8 @@ export default function DashboardPage({
           caption={`${list.filter((row) => row.backorder).length} owed to customers`}
         />
       </StatCards>
+
+      {(role === 'Admin' || role === 'Manager') && <CashFlowSummary days={period.days} />}
 
       <AttentionList
         title={isSales ? "Your follow-ups" : "Needs your attention"}

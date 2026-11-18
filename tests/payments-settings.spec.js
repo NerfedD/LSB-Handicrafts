@@ -156,7 +156,7 @@ test("a delivered order is on terms: nothing paid down, and nothing for the driv
   await expect(panel).toContainText("60 days from delivery · due once it is delivered");
 });
 
-test("a supplier order paid by card counts as paid as soon as it is placed", async ({ page, baseURL }) => {
+test("choosing card on a supplier order does not confirm a payment", async ({ page, baseURL }) => {
   const tables = await stubSupabase(page);
   tables.suppliers.push({ id: 6100, name: "Foamtech Manila", status: "Active", revision: 0 });
   tables.raw_materials.push({ id: 6200, sku: "RM-ADH-001", name: "Glue, foam-safe", unit: "bottle", stock: 3, low_stock_threshold: 4, status: "Active", revision: 0 });
@@ -178,9 +178,10 @@ test("a supplier order paid by card counts as paid as soon as it is placed", asy
   await dialog.getByLabel(/^Supplier/).selectOption({ label: "Foamtech Manila" });
   await dialog.getByLabel(/^How much/).fill("5");
   await dialog.getByLabel(/^Agreed price/).fill("380");
-  await dialog.getByLabel(/^Paid by/).selectOption("card");
+  await dialog.getByLabel(/^Planned payment method/).selectOption("card");
   await dialog.getByRole("button", { name: "Place order" }).click();
 
   await expect(dialog).toBeHidden();
-  await expect(page.getByRole("table", { name: "Supplier orders" })).toContainText("Card · paid");
+  await expect(page.getByRole("table", { name: "Supplier orders" })).toContainText("₱0.00 paid · ₱1,900.00 owed");
+  expect(tables.supplier_payments).toHaveLength(0);
 });

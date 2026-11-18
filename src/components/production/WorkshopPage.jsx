@@ -19,6 +19,10 @@ import BatchesSection from './BatchesSection';
 import MaterialsSection, { MaterialDetail } from './MaterialsSection';
 import PurchasingSection from './PurchasingSection';
 import ReportSection from './ReportSection';
+import SupplierPaymentDialog, { SupplierPaymentHistory } from './SupplierPaymentDialog';
+import useSupabaseCollection from '../../hooks/useSupabaseCollection';
+import { supplierPaymentsCollection, recordSupplierPayment } from '../../utils/storageManager';
+import { cardBalance } from '../../utils/supplierPayments';
 
 /**
  * The workshop's screens, one per Production sub-item on the sidebar:
@@ -39,6 +43,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
 
   const manager = can(profile.role, 'manageSuppliers');
   const purchasing = section === 'raw-material-orders';
+  const payments = useSupabaseCollection(supplierPaymentsCollection, { enabled: manager && purchasing });
   const detail = section === 'raw-material-detail';
 
   const close = () => setDialog(null);
@@ -59,6 +64,8 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const ws = {
     section, materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff,
     manager,
+    paymentEntries: payments.rows,
+    cardOwed: cardBalance(payments.rows),
     canMake: can(profile.role, 'makeBatches'),
     canRecordDamage: can(profile.role, 'recordDamage'),
     canCorrectStock: can(profile.role, 'correctStock'),
@@ -84,8 +91,19 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
     },
   };
 
+  const savePayment = async (orderId, values, key) => {
+    const result = await recordSupplierPayment(orderId, values, key);
+    if (result.ok) {
+      payments.setRows((rows) => [...rows.filter((r) => r.id !== result.data.id), result.data]);
+      payments.reload();
+    }
+    return result;
+  };
+
   if (error) return <Page><ErrorState onRetry={onRetry} onGoToDashboard={() => onNavigate('dashboard')} noun="workshop records" /></Page>;
   if (!isLoaded) return <Page><LoadingState noun="workshop records" /></Page>;
+  if (manager && purchasing && payments.error) return <Page><ErrorState noun="supplier payments" onRetry={payments.reload} onGoToDashboard={() => onNavigate('dashboard')} /></Page>;
+  if (manager && purchasing && !payments.isLoaded) return <Page><LoadingState noun="supplier payments" /></Page>;
   if (detail && !mat(materialId)) return <NotFoundState noun="raw material" onBack={() => onNavigate('raw-materials')} />;
 
   const material = detail ? mat(materialId) : null;
@@ -116,6 +134,12 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {section === 'production-report' ? <ReportSection ws={ws} /> : null}
 
       {/* -- dialogs ---------------------------------------------------------- */}
+
+      {dialog?.kind === 'supplier-payment' && <SupplierPaymentDialog order={dialog.record} kind={dialog.entryKind}
+        entries={payments.rows} cardOwed={ws.cardOwed} supplier={dialog.record ? supplierName(dialog.record.supplier_id) : null} onSave={savePayment} onClose={close} />}
+      {dialog?.kind === 'supplier-payment-history' && <SupplierPaymentHistory order={dialog.record} entries={payments.rows} worker={worker}
+        supplier={supplierName(dialog.record.supplier_id)} onClose={close}
+        onRecord={(entryKind) => setDialog({ kind: 'supplier-payment', record: dialog.record, entryKind })} />}
 
       {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} materials={materials} onSave={save('save_material')} onClose={close} />}
       {detail && material && (

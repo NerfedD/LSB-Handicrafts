@@ -5,6 +5,7 @@ import { EmptyState, Page, PageHeader, SectionCard } from "../shared/page";
 import StatusPill from "../shared/StatusPill";
 import { greeting } from "../../utils/profileFormat";
 import { isAdminRole } from "../../utils/permissions";
+import CashFlowSummary from './CashFlowSummary';
 
 /**
  * The large-text dashboard: the person's own choice on Your profile, for
@@ -65,6 +66,8 @@ export default function LargeTextDashboard({
           </div>
         ))}
       </section>
+
+      {(role === 'Admin' || role === 'Manager') && <CashFlowSummary />}
 
       {isProduction ? (
         <SectionCard

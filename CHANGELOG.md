@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — confirmed supplier payments and cash flow
+
+### Added
+- Managers can record partial supplier payments, supplier refunds and card-bill payments, with dates, references and retained history.
+- Purchasing shows amounts paid, remaining balances and refunds due on cancelled orders. Orders with payment history stay on file.
+- The dashboard and Purchasing show customer collections, cash refunds, supplier cash payments, card-bill payments and net recorded cash movement. Card charges remain separate from cash.
+
+### Fixed
+- Placing a card order or receiving a COD delivery no longer confirms payment automatically. Older automatic paid markers remain available for receipt reconciliation and do not create payment entries.
+- Purchasing's agreed order totals are labelled **Ordered**, rather than **Spent**.
+
+### Database
+- Apply `20261118152541_supplier_payment_ledger.sql` before deploying this client. See `docs/supplier-payments.md` for workflow and reconciliation details.
+
 ## Unreleased — stock counted back where it really is
 
 ### Fixed
