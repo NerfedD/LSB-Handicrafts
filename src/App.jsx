@@ -2963,11 +2963,11 @@ export default function App() {
           <StaffDirectoryPage
             staff={staff}
             isLoaded={isStaffLoaded}
-            onAdd={() => setIsCreateStaffOpen(true)}
-            onOpen={(id) => {
+            onAdd={can(role, "manageStaff") ? () => setIsCreateStaffOpen(true) : undefined}
+            onOpen={can(role, "manageStaff") ? (id) => {
               setSelectedAccountId(id);
               setView("manage-account");
-            }}
+            } : undefined}
           />
         );
 

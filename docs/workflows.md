@@ -164,6 +164,7 @@ Both are Admin/Manager actions on the order screen, both are validated by `order
 | Batches: cancel one in production, change its details; cancel a supplier order on the way; remove a recipe | ✓ | ✓ | | | |
 | Delete a batch or supplier order entered by mistake; re-open a finished batch | ✓ | | | | |
 | Remove customers, suppliers, products, raw materials; put a product back on sale | ✓ | | | | |
+| Read the Staff Directory (names, roles, phone numbers) | ✓ | ✓ | | | |
 | Staff accounts, activity log | ✓ | | | | |
 
 The same lists are in `src/utils/permissions.js` (screens) and `supabase/schema.sql` (enforcement); `src/utils/permissions.test.js` and `src/utils/permissionsDatabase.test.js` keep them in step.

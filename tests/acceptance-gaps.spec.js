@@ -139,6 +139,7 @@ for (const role of ['Admin', 'Manager', 'Sales Staff', 'Production Staff', 'Deli
       ['orders/1041/edit', manager, 'Edit order #1041'],
       ['production-report', manager, 'Production report'],
       ['staff', role === 'Admin', 'User Management'],
+      ['directory', manager, 'Staff Directory'],
       ['customers', role !== 'Production Staff', 'Customers'],
     ]) {
       await page.goto(`${baseURL}/${path}`);

@@ -81,6 +81,14 @@ describe('screen access', () => {
     for (const role of ROLES) expect(canAccess(role, 'raw-material-orders'), role).toBe(true);
   });
 
+  it('lets managers read the Staff Directory while accounts stay with the administrator', () => {
+    for (const role of ROLES) {
+      expect(canAccess(role, 'directory'), role).toBe(role === 'Admin' || role === 'Manager');
+      expect(canAccess(role, 'staff'), role).toBe(role === 'Admin');
+      expect(canAccess(role, 'manage-account'), role).toBe(role === 'Admin');
+    }
+  });
+
   it('keeps production staff out of the customer screens', () => {
     expect(canAccess('Production Staff', 'customers')).toBe(false);
     expect(canAccess('Delivery Staff', 'customers')).toBe(true);

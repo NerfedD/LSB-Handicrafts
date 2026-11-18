@@ -121,7 +121,9 @@ export const NAV_TREE = [
     label: "Staff Directory",
     icon: "IdentificationCard",
     group: "people",
-    adminOnly: true,
+    // Managers read it too: it is names, roles and phone numbers. Adding people
+    // and opening their accounts stay with manageStaff (see App.jsx).
+    hideFrom: ["Sales Staff", "Production Staff", "Delivery Staff"],
     count: "people",
     countLabel: "people",
     views: ["directory"],
