@@ -468,6 +468,13 @@ export default function App() {
   const inventoryState = useSupabaseCollection(inventoryCollection, use());
   const ordersState = useSupabaseCollection(ordersCollection,
     use(null, allOrders ? undefined : { since: historySince, pinned: pinnedOrderIds }));
+  const salesHistory = {
+    isLoaded: ordersState.isLoaded,
+    settled: allOrders && ordersState.settled,
+    error: ordersState.error,
+    reload: ordersState.reload,
+    loadAll: () => setAllOrders(true),
+  };
   const deliveriesState = useSupabaseCollection(deliveriesCollection,
     use(null, { since: historySince, pinned: pinnedDeliveryIds, pinnedOrders: pinnedOrderIds }));
   const activityState = useSupabaseCollection(activityLogCollection, use("activity", { limit: activityLimit }));
@@ -2479,7 +2486,7 @@ export default function App() {
             batches={productionBatchesState.rows}
             onNavigate={navigate}
             onOpenFiltered={openFiltered}
-            onNeedAllOrders={() => setAllOrders(true)}
+            salesHistory={salesHistory}
             // openAddProduct clears the selection, which is what makes this an
             // ADD: saveProduct decides between adding and editing purely from
             // selectedProductId, and the dashboard is reachable from a
@@ -2499,7 +2506,7 @@ export default function App() {
       case 'raw-material-orders':
       case 'production':
       case 'production-report':
-        return <WorkshopPage key={view} section={view} profile={profile} data={workshopData}
+        return <WorkshopPage key={view} section={view} profile={profile} data={workshopData} salesHistory={salesHistory}
           materialId={selectedRawMaterialId} onViewMaterial={(id) => { setSelectedRawMaterialId(id); navigate('raw-material-detail'); }}
           isLoaded={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].every((s) => s.isLoaded) && isStaffLoaded}
           error={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].find((s) => s.error)?.error || staffError}
