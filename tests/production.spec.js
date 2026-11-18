@@ -80,6 +80,43 @@ test('finishing a batch sends one transaction and shows 95 good pieces with 45 s
   await expect(totals).toContainText('5.0% of everything made');
 });
 
+test('dashboard and production report rank completed sales and can load a full year', async ({ page, baseURL }) => {
+  const tables = await stubSupabase(page);
+  const order = (id, daysAgo, status, productId, name, quantity, committedUnits) => ({
+    id,
+    status,
+    customer_name: 'Test customer',
+    created_at: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
+    items: [{ productId, name, quantity, price: 10, stockUnits: quantity, committedUnits, voidedUnits: committedUnits == null ? 0 : quantity - committedUnits }],
+    total_amount: quantity * 10,
+  });
+  tables.orders.splice(0, tables.orders.length,
+    order(1101, 3, 'Completed', 101, 'Previous product name', 8, 6),
+    order(1102, 12, 'Completed', 101, 'Styro Ball 4 inch', 5),
+    order(1103, 4, 'Completed', 102, 'Styro Ball 6 inch', 7),
+    order(1104, 2, 'Pending', 103, 'Unfinished sale', 30),
+    order(1105, 2, 'Cancelled', 105, 'Cancelled sale', 50),
+    order(1106, 200, 'Completed', 104, 'Styro Sheet 1/2 inch', 20),
+  );
+  await signIn(page, baseURL);
+  const chart = page.getByRole('region', { name: 'Top-selling products' });
+  const rows = chart.getByRole('listitem');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText(/Styro Ball 4 inch.*11 sold/);
+  await expect(rows.nth(1)).toContainText('7 sold');
+  await page.getByRole('button', { name: 'Past month', exact: true }).click();
+  await page.getByRole('menuitemradio', { name: 'Past week' }).click();
+  await expect(rows.nth(0)).toContainText(/Styro Ball 6 inch.*7 sold/);
+  await expect(rows.nth(1)).toContainText('6 sold');
+
+  await page.goto(`${baseURL}/production-report`);
+  await expect(rows.nth(0)).toContainText('11 sold');
+  await page.getByRole('button', { name: 'Sales period, Past month' }).click();
+  await page.getByRole('menuitemradio', { name: 'Past year' }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText(/Styro Sheet 1\/2 inch.*20 sold/);
+});
+
 test('recipe fills material count and adjusts when the target changes', async ({ page, baseURL }) => {
   await setup(page, baseURL);
   await page.goto(`${baseURL}/production`);
