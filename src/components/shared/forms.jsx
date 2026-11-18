@@ -60,15 +60,16 @@ export function Row({ children, className }) {
 
 /**
  * A small set of exclusive choices drawn as the boards' segmented control: a
- * --muted track with the chosen option as a --card chip. Neutral, never blue.
+ * --muted track with a neutral or brand-colored highlight for the chosen option.
  */
-export function ChoiceButtons({ options, value, onChange, label, className }) {
+export function ChoiceButtons({ options, value, onChange, label, variant = "neutral", className }) {
   const index = Math.max(0, options.findIndex((option) => option.value === value));
+  const primary = variant === "primary";
   return (
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("seg w-full rounded-md bg-muted p-0.5", className)}
+      className={cn("seg w-full rounded-md bg-muted p-0.5", primary && "gap-0.5 [--seg-bg:var(--primary)]", className)}
       style={{ "--seg-count": options.length, "--seg-index": index }}
     >
       <span className="seg-ind" aria-hidden="true" />
@@ -83,7 +84,7 @@ export function ChoiceButtons({ options, value, onChange, label, className }) {
             onClick={() => onChange(option.value)}
             className={cn(
               "inline-flex h-7 min-w-0 items-center justify-center gap-1.5 rounded px-2.5 text-13 font-medium",
-              selected ? "text-foreground" : "text-muted-fg hover:text-foreground"
+              selected ? (primary ? "text-on-primary" : "text-foreground") : "text-muted-fg hover:text-foreground"
             )}
           >
             {option.icon ? <span className="flex shrink-0 [&_svg]:size-4">{option.icon}</span> : null}
@@ -168,15 +169,15 @@ export function RadioRow({ options, value, onChange, label, className }) {
   );
 }
 
-/** An empty photo slot: a dashed --border box with an image mark. */
+/** A photo placeholder with a dashed border and an image mark. */
 export function PhotoSlot({ ratio = "1 / 1", label, hint, className }) {
   return (
     <div
-      className={cn("flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border bg-surface-2 p-4 text-center", className)}
+      className={cn("flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-primary-text bg-[color-mix(in_srgb,var(--primary)_8%,var(--card))] p-4 text-center text-primary-text", className)}
       style={{ aspectRatio: ratio }}
     >
-      <ImageSquare className="size-5 text-muted-fg" aria-hidden="true" />
-      <p className="m-0 text-13 font-medium text-fg-2">{label}</p>
+      <ImageSquare className="size-5" aria-hidden="true" />
+      <p className="m-0 text-13 font-medium">{label}</p>
       {hint ? <p className="m-0 text-xs text-muted-fg">{hint}</p> : null}
     </div>
   );

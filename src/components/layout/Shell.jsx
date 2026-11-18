@@ -53,8 +53,7 @@ import {
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Kbd } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
-import { initialsOf } from "@/components/ui/avatar";
-import { useStaffPhoto } from "../shared/staffPhotos";
+import { Avatar } from "../shared/Chip";
 import NotificationBell from "./NotificationBell";
 import { cn } from "@/lib/utils";
 import CommandMenu from "./CommandMenu";
@@ -365,8 +364,7 @@ function WorkspaceSwitcher({ collapsed }) {
 /** The account menu at the foot of the sidebar: Profile, then Log out. */
 function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
   const name = profile?.name || "Signed in";
-  const initials = initialsOf(name);
-  const photo = useStaffPhoto(profile?.name);
+  const avatar = <Avatar name={name} size="sm" className="rounded-md bg-primary text-on-primary" />;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -376,9 +374,7 @@ function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
           collapsed ? "h-8 justify-center p-0" : "h-12 px-2"
         )}
       >
-        <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted-strong text-xs font-medium text-foreground">
-          {photo ? <img src={photo} alt="" className="size-full object-cover" /> : initials}
-        </span>
+        {avatar}
         {!collapsed ? (
           <>
             <span className="flex min-w-0 flex-1 flex-col">
@@ -391,9 +387,7 @@ function AccountMenu({ profile, collapsed, onNavigate, onSignOut }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-56">
         <DropdownMenuHeader className="flex items-center gap-2">
-          <span aria-hidden="true" className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted-strong text-xs font-medium">
-            {initials}
-          </span>
+          {avatar}
           <span className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-medium leading-[18px]">{name}</span>
             <span className="text-xs text-muted-fg">{profile?.role || "No role yet"}</span>

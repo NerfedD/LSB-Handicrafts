@@ -309,6 +309,7 @@ export default function ProductFormPage({
       <Field label="Kind" hint="This decides which measurements are asked for.">
         <ChoiceButtons
           label="Kind"
+          variant="primary"
           value={values.productType}
           onChange={(next) => setField("productType", next)}
           options={PRODUCT_TYPE_OPTIONS.map(({ value, label }) => ({ value, label }))}

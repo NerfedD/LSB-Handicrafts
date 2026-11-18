@@ -311,8 +311,16 @@ test.describe("products & stock", () => {
   });
 
   test("the add form is adaptive and generates the code", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light" });
     await page.getByRole("button", { name: "Add product" }).first().click();
-    await expect(page.getByRole("dialog", { name: "Add product" })).toBeVisible();
+    const dialog = page.getByRole("dialog", { name: "Add product" });
+    await expect(dialog).toBeVisible();
+    const kind = dialog.getByRole("radiogroup", { name: "Kind" });
+    const ball = kind.getByRole("radio", { name: "Styro ball" });
+    await expect(ball).toBeChecked();
+    await expect(ball).toHaveCSS("color", "rgb(255, 255, 255)");
+    await expect(kind.locator(".seg-ind")).toHaveCSS("background-color", "rgb(0, 78, 137)");
+    await expect(dialog.getByText("No photo yet")).toHaveCSS("color", "rgb(0, 78, 137)");
 
     // A ball is asked its diameter…
     await expect(page.getByLabel(/How wide across/)).toBeVisible();
@@ -320,7 +328,10 @@ test.describe("products & stock", () => {
 
     // …a sheet is asked its thickness and edges instead. That swap IS the
     // adaptive form.
-    await page.getByRole("radio", { name: "Styro sheet" }).click();
+    const sheet = kind.getByRole("radio", { name: "Styro sheet" });
+    await sheet.click();
+    await expect(sheet).toBeChecked();
+    await expect(sheet).toHaveCSS("color", "rgb(255, 255, 255)");
     await expect(page.getByLabel(/How thick/)).toBeVisible();
     await expect(page.getByLabel(/How long/)).toBeVisible();
     await expect(page.getByLabel(/How wide across/)).toHaveCount(0);

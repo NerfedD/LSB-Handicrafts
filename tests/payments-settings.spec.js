@@ -102,17 +102,26 @@ test("the business settings save, and the order slip prints them", async ({ page
 
 test("a person can put their own photo on their profile, and take it off again", async ({ page, baseURL }) => {
   await stubSupabase(page);
+  await page.emulateMedia({ colorScheme: "light" });
   await signIn(page, baseURL);
   await page.goto(`${baseURL}/profile`);
 
   await page.getByLabel("Photo", { exact: true }).setInputFiles({ name: "me.png", mimeType: "image/png", buffer: PNG });
   await expect(page.getByText("Your photo was saved.")).toBeVisible();
-  // The account chip at the foot of the sidebar shows it too.
-  await expect(page.getByRole("button", { name: /^Account menu for/ }).locator("img")).toHaveCount(1);
+  const account = page.getByRole("button", { name: /^Account menu for/ });
+  const menu = page.getByRole("menu");
+  const photo = account.locator("img");
+  await expect(photo).toBeVisible();
+  await account.click();
+  await expect(menu.locator("img")).toHaveAttribute("src", await photo.getAttribute("src"));
+  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Use initials" }).click();
   await expect(page.getByText("Your initials are back.")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Account menu for/ }).locator("img")).toHaveCount(0);
+  await expect(photo).toHaveCount(0);
+  await expect(account.getByText("MS", { exact: true })).toHaveCSS("background-color", "rgb(0, 78, 137)");
+  await account.click();
+  await expect(menu.getByText("MS", { exact: true })).toHaveCSS("background-color", "rgb(0, 78, 137)");
 });
 
 test("an administrator can sign somebody else out everywhere", async ({ page, baseURL }) => {
