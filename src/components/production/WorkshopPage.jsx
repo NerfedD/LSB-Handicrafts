@@ -28,7 +28,7 @@ import ReportSection from './ReportSection';
  * This component owns what they share: the data, who may do what, and every
  * dialog a section can open. A section asks for one through `ws.setDialog`.
  */
-export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onStockCommand, onRemoveMaterial, onRestoreMaterial, onNavigate, change, initialFilter }) {
+export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, salesHistory, isLoaded, error, onRetry, onCommand, onStockCommand, onRemoveMaterial, onRestoreMaterial, onNavigate, change, initialFilter }) {
   const { materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff, supplierMaterials = [] } = data;
   const [dialog, setDialog] = useState(null);
   const [removing, setRemoving] = useState(false);
@@ -113,7 +113,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {section === 'raw-materials' ? <MaterialsSection ws={ws} /> : null}
       {detail && material ? <MaterialDetail ws={ws} material={material} /> : null}
       {purchasing ? <PurchasingSection ws={ws} /> : null}
-      {section === 'production-report' ? <ReportSection ws={ws} /> : null}
+      {section === 'production-report' ? <ReportSection ws={ws} salesHistory={salesHistory} /> : null}
 
       {/* -- dialogs ---------------------------------------------------------- */}
 
