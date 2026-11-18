@@ -1,14 +1,12 @@
 import { useMemo, useState } from "react";
 
-import { CalendarBlank, CaretDown, DownloadSimple, Hammer, Money, Package, Plus, Receipt, SquaresFour, UserPlus, Users } from "../icons";
+import { CaretDown, DownloadSimple, Hammer, Money, Package, Plus, Receipt, SquaresFour, UserPlus, Users } from "../icons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +14,7 @@ import { AttentionList, CountUp, RecentActivity, StockWatch, WeeklyChart } from 
 import { EmptyState, Page, PageHeader, SectionCard, StatCard, StatCards } from "../shared/page";
 import { Mono } from "../shared/Chip";
 import StatusPill from "../shared/StatusPill";
+import TopSellingProducts, { SalesPeriodMenu } from "../shared/TopSellingProducts";
 import LargeTextDashboard from "./LargeTextDashboard";
 import CashFlowSummary from './CashFlowSummary';
 import { downloadCsv } from "@/lib/csv";
@@ -24,7 +23,9 @@ import { customerSummary, DEFAULT_LOYALTY } from "../../utils/customers";
 import { attentionFor, followUpsFor, makeList } from "../../utils/dashboard";
 import { isLate } from "../../utils/deliveries";
 import { greeting, formatPeso } from "../../utils/profileFormat";
+import { DAY_MS as DAY, SALES_PERIODS } from "../../utils/productSales";
 import { stockCounts } from "../../utils/productStock";
+import { StockLevels } from "./DashboardReports";
 
 /**
  * The dashboard, drawn to the "2 · Dashboard" board:
@@ -37,13 +38,9 @@ import { stockCounts } from "../../utils/productStock";
  * who neither take orders nor see revenue, get the make list in the chart's
  * place: what to make next, with a Start batch on each line.
  */
-const DAY = 86_400_000;
-const PERIODS = [
-  { value: "7", label: "Last 7 days", days: 7, compare: "the 7 days before" },
-  { value: "30", label: "Last 30 days", days: 30, compare: "the 30 days before" },
-];
 // Orders are read for the last 120 days (see App), so the chart compares the
-// last 8 weeks with the 8 before: 16 weeks of history.
+// last 8 weeks with the 8 before: 16 weeks of history. Choosing the past year
+// asks App for every order so both years can be compared.
 const WEEKS = 8;
 
 const live = (order) => order.status !== ORDER_STATUS.CANCELLED;
@@ -120,6 +117,7 @@ export default function DashboardPage({
   onRecordMade,
   onAddProduct,
   onAddCustomer,
+  salesHistory,
 }) {
   const role = profile?.role;
   const isSales = role === "Sales Staff";
@@ -129,7 +127,7 @@ export default function DashboardPage({
   const [measure, setMeasure] = useState("orders");
   // One "now" per visit, so the figures do not shift under somebody reading them.
   const [now] = useState(() => Date.now());
-  const period = PERIODS.find((p) => p.value === periodKey) ?? PERIODS[1];
+  const period = SALES_PERIODS.find((p) => p.value === periodKey);
 
   const customerRows = useMemo(
     () => customers.map((customer) => ({ customer, summary: customerSummary(customer, customerStats, loyalty) })),
@@ -221,20 +219,10 @@ export default function DashboardPage({
           </Button>
         ) : (
           <>
-            <DropdownMenu>
-              <DropdownMenuTrigger render={<Button variant="outline" />}>
-                <CalendarBlank aria-hidden="true" />
-                {period.label}
-                <CaretDown aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuRadioGroup value={periodKey} onValueChange={setPeriodKey}>
-                  {PERIODS.map((p) => (
-                    <DropdownMenuRadioItem key={p.value} value={p.value}>{p.label}</DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SalesPeriodMenu period={period} onChange={(key) => {
+              setPeriodKey(key);
+              if (key === "365") salesHistory.loadAll();
+            }} />
             <Button variant="outline" onClick={exportOrders}>
               <DownloadSimple aria-hidden="true" />
               Export
@@ -398,6 +386,11 @@ export default function DashboardPage({
           onOpen={(row) => onOpenFiltered?.("products", "low", row)}
           onOpenInventory={() => onOpenFiltered?.("products", "low")}
         />
+      </section>
+
+      <section className="flex flex-wrap gap-4">
+        <TopSellingProducts orders={orders} inventory={inventory} period={period} now={now} history={salesHistory} className="flex-[1_1_320px]" />
+        <StockLevels products={products} inventory={inventory} />
       </section>
 
       <RecentActivity

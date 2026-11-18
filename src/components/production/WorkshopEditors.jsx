@@ -39,7 +39,7 @@ function unitChoices(materials = [], current = '') {
   return [...seen].filter(Boolean).sort((a, b) => a.localeCompare(b));
 }
 
-export function MaterialDialog({ material, materials = [], onSave, onClose }) {
+export function MaterialDialog({ material, materials = [], profile, onSave, onClose }) {
   const editing = Boolean(material);
   const unitsOffered = unitChoices(materials, material?.unit);
   const others = materials.filter((m) => m.id !== material?.id);
@@ -114,7 +114,7 @@ export function MaterialDialog({ material, materials = [], onSave, onClose }) {
       <WorkshopField name="low_stock_threshold" label="Order more below" hint="At or below this many free to use, the material shows as running low." suffix={v.unit === OTHER_UNIT ? undefined : pluralUnit(v.unit, 2)} required type="number" inputMode="numeric" min="0" max="2000000000" step="1" value={v.low_stock_threshold} onChange={(e) => change('low_stock_threshold', e.target.value)} />
       <ReviewBox>{editing
         ? 'Changing these details never changes the count on hand. Stock only changes when a supplier order is received, a production batch is finished, damage is written off or a manager corrects the count.'
-        : 'A new material starts at 0 on hand. After this, stock only comes in when a supplier order is received.'}</ReviewBox>
+        : `Added by ${profile?.name ?? 'you'}. A new material starts at 0 on hand. After this, stock only comes in when a supplier order is received.`}</ReviewBox>
     </>}
   </WorkshopForm>;
 }
@@ -133,7 +133,7 @@ const SUPPLIER_PAYMENT_METHODS = [
   { value: 'card', label: 'Credit card' },
 ];
 
-export function SupplierOrderDialog({ order, preset, materials, suppliers, profile, onSave, onClose }) {
+export function SupplierOrderDialog({ order, preset, materials, suppliers, supplierMaterials = [], profile, onSave, onClose }) {
   const today = localDateIso();
   const initial = order
     ? { id: order.id, quantity_ordered: String(order.quantity_ordered ?? ''), unit_price: String(order.unit_price ?? ''),
@@ -168,6 +168,11 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
     submitLabel={order ? 'Save changes' : 'Place order'} initial={initial} validate={validate} onSave={onSave} onClose={onClose}>
     {(v, change) => {
       const material = order ? orderedMaterial : materials.find((m) => String(m.id) === String(v.raw_material_id));
+      // Once a material is chosen, only the suppliers linked to it -- unless none are yet.
+      const active = suppliers.filter((s) => s.status !== 'Archived');
+      const linkedTo = material ? new Set(supplierMaterials.filter((r) => r.raw_material_id === material.id).map((r) => r.supplier_id)) : new Set();
+      const linkedOnly = !order && active.some((s) => linkedTo.has(s.id));
+      const offered = linkedOnly ? active.filter((s) => linkedTo.has(s.id)) : active;
       return <>
         {!order && <>
           {suppliers.length === 0 && (
@@ -177,7 +182,7 @@ export function SupplierOrderDialog({ order, preset, materials, suppliers, profi
           <WorkshopField name="raw_material_id" label="Material" required
             options={materials.map((m) => ({ value: m.id, label: `${m.name} (${m.sku})` }))}
             value={v.raw_material_id} onChange={(e) => change('raw_material_id', e.target.value)} />
-          <WorkshopField name="supplier_id" label="Supplier" required options={suppliers.filter((s) => s.status !== 'Archived').map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
+          <WorkshopField name="supplier_id" label="Supplier" required hint={linkedOnly ? `Suppliers set up to provide ${material.name}.` : undefined} options={offered.map((s) => ({ value: s.id, label: s.name }))} value={v.supplier_id} onChange={(e) => change('supplier_id', e.target.value)} />
           </Row>
         </>}
         {material ? (

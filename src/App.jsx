@@ -38,6 +38,8 @@ import {
   refreshAlerts,
   saveNotificationSettings,
   setSupplierPayment,
+  setBatchRemarks,
+  setSupplierMaterials,
   signOutStaff,
   staffCollection,
   staffPhotosCollection,
@@ -82,7 +84,7 @@ import {
 } from "./utils/orders";
 import { stockCounts, stockForProduct } from "./utils/productStock";
 import { rawMaterialsCollection, rawMaterialOrdersCollection, productionBatchesCollection, productionRecipesCollection,
-  productionDefectsCollection, materialLotsCollection, materialUsageCollection } from './utils/workshopStorage';
+  productionDefectsCollection, materialLotsCollection, materialUsageCollection, supplierMaterialsCollection } from './utils/workshopStorage';
 import Shell from "./components/layout/Shell";
 import { NotAllowedState, NotFoundState } from "./components/shared/PageStates";
 import { Toaster, toast } from "@/components/ui/sonner";
@@ -466,6 +468,13 @@ export default function App() {
   const inventoryState = useSupabaseCollection(inventoryCollection, use());
   const ordersState = useSupabaseCollection(ordersCollection,
     use(null, allOrders ? undefined : { since: historySince, pinned: pinnedOrderIds }));
+  const salesHistory = {
+    isLoaded: ordersState.isLoaded,
+    settled: allOrders && ordersState.settled,
+    error: ordersState.error,
+    reload: ordersState.reload,
+    loadAll: () => setAllOrders(true),
+  };
   const deliveriesState = useSupabaseCollection(deliveriesCollection,
     use(null, { since: historySince, pinned: pinnedDeliveryIds, pinnedOrders: pinnedOrderIds }));
   const activityState = useSupabaseCollection(activityLogCollection, use("activity", { limit: activityLimit }));
@@ -477,6 +486,7 @@ export default function App() {
   const productionDefectsState = useSupabaseCollection(productionDefectsCollection, use("defects"));
   const materialLotsState = useSupabaseCollection(materialLotsCollection, use("lots"));
   const materialUsageState = useSupabaseCollection(materialUsageCollection, use("usage"));
+  const supplierMaterialsState = useSupabaseCollection(supplierMaterialsCollection, use("supplierMaterials"));
 
   const { rows: customers } = customersState;
   const { rows: products } = productsState;
@@ -1409,9 +1419,16 @@ export default function App() {
     // How a supplier order is paid is set by its own function once the order
     // exists (set_supplier_payment), not by workshop_command, so it is taken
     // off the request and applied after.
-    const { payment_method: paymentMethod, ...command } = payload ?? {};
-    const result = await runCommand("workshop_command", action, action === "save_order" ? command : payload, requestId);
+    // Quality-check remarks are the same: saved by set_batch_remarks after the step.
+    const { payment_method: paymentMethod, remarks, ...command } = payload ?? {};
+    const sent = ["save_order", "batch_status", "complete_batch"].includes(action) ? command : payload;
+    const result = await runCommand("workshop_command", action, sent, requestId);
     if (!result.ok) return result;
+    if (["batch_status", "complete_batch"].includes(action) && remarks?.trim()) {
+      const noted = await setBatchRemarks(result.data.id, action === "complete_batch" ? "check" : "handoff", remarks);
+      if (noted.ok) result.data = { ...result.data, ...noted.data };
+      else toast.warning(`${result.data.batch_code} was saved, but not the remarks.`, { description: noted.message });
+    }
     if (action === "save_order" && paymentMethod && paymentMethod !== (result.data.payment_method ?? "cod")) {
       const paying = await setSupplierPayment(result.data.id, paymentMethod);
       if (paying.ok) result.data = { ...result.data, ...paying.data };
@@ -1443,10 +1460,12 @@ export default function App() {
 
   const workshopStates = [rawMaterialsState, rawMaterialOrdersState, productionBatchesState,
     productionRecipesState, productionDefectsState, materialLotsState, materialUsageState];
-  function reloadWorkshop() { workshopStates.forEach((state) => state.reload()); }
+  // Supplier links are extra: if they cannot be read (say, before their migration
+  // is applied) the workshop still loads, just without them.
+  function reloadWorkshop() { [...workshopStates, supplierMaterialsState].forEach((state) => state.reload()); }
   const workshopData = { materials: rawMaterialsState.rows, materialOrders: rawMaterialOrdersState.rows,
     batches: productionBatchesState.rows, recipes: productionRecipesState.rows, defects: productionDefectsState.rows,
-    lots: materialLotsState.rows, usage: materialUsageState.rows, products, inventory, orders, suppliers, staff };
+    lots: materialLotsState.rows, usage: materialUsageState.rows, supplierMaterials: supplierMaterialsState.rows, products, inventory, orders, suppliers, staff };
 
   // ---- orders --------------------------------------------------------------
 
@@ -2467,6 +2486,7 @@ export default function App() {
             batches={productionBatchesState.rows}
             onNavigate={navigate}
             onOpenFiltered={openFiltered}
+            salesHistory={salesHistory}
             // openAddProduct clears the selection, which is what makes this an
             // ADD: saveProduct decides between adding and editing purely from
             // selectedProductId, and the dashboard is reachable from a
@@ -2486,7 +2506,7 @@ export default function App() {
       case 'raw-material-orders':
       case 'production':
       case 'production-report':
-        return <WorkshopPage key={view} section={view} profile={profile} data={workshopData}
+        return <WorkshopPage key={view} section={view} profile={profile} data={workshopData} salesHistory={salesHistory}
           materialId={selectedRawMaterialId} onViewMaterial={(id) => { setSelectedRawMaterialId(id); navigate('raw-material-detail'); }}
           isLoaded={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].every((s) => s.isLoaded) && isStaffLoaded}
           error={[...workshopStates, productsState, inventoryState, ordersState, suppliersState].find((s) => s.error)?.error || staffError}
@@ -2816,6 +2836,14 @@ export default function App() {
             supplier={selectedSupplier}
             purchaseOrders={rawMaterialOrdersState.rows.filter((order) => order.supplier_id === selectedSupplierId)}
             materials={rawMaterialsState.rows}
+            linkedMaterialIds={supplierMaterialsState.rows.filter((row) => row.supplier_id === selectedSupplierId).map((row) => row.raw_material_id)}
+            onSaveMaterials={async (ids) => {
+              const result = await setSupplierMaterials(selectedSupplierId, ids);
+              if (!result.ok) { toast.error(result.message); return result; }
+              supplierMaterialsState.reload();
+              toast.success("Saved what this supplier provides.");
+              return result;
+            }}
             canEdit={can(role, "manageSuppliers")}
             onOpenPurchases={() => navigate('raw-material-orders')}
             canDelete={can(role, "removeRecords")}

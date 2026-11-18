@@ -47,7 +47,7 @@ function StockBar({ material, status }) {
   return (
     <span
       role="img"
-      aria-label={`${aside} set aside, ${free} free, order more below ${material.low_stock_threshold}`}
+      aria-label={`${aside} required for batches, ${free} in stock, order more below ${material.low_stock_threshold}`}
       className="relative inline-flex h-1.5 w-[120px] shrink-0 overflow-hidden rounded-sm bg-muted"
     >
       <span className="h-full bg-fg-3" style={{ width: `${(aside / max) * 100}%` }} />
@@ -62,7 +62,7 @@ function Figures({ material, status }) {
     <div className="grid grid-cols-3 gap-px overflow-hidden rounded-md border border-border bg-border">
       {[
         ["On hand", units(material.stock, material.unit)],
-        ["Set aside", units(Math.max(0, status.reserved), material.unit)],
+        ["Required for batches", units(Math.max(0, status.reserved), material.unit)],
         ["In stock", units(status.free, material.unit)],
       ].map(([label, value]) => (
         <div key={label} className="bg-card px-3 py-2">
@@ -105,11 +105,13 @@ function MaterialHistory({ material, ws }) {
   return <StockHistory rows={movements.rows} isLoaded={movements.isLoaded} error={movements.error} onUndoDamage={undo} busy={busy} />;
 }
 
-function usualSupplier(materialOrders, supplierName, id) {
+function usualSupplier(materialOrders, supplierName, id, supplierMaterials = []) {
+  // The suppliers set up to provide it; until any are, the last one ordered from.
+  const linked = supplierMaterials.filter((r) => r.raw_material_id === id).map((r) => supplierName(r.supplier_id));
   const mine = materialOrders.filter((o) => o.raw_material_id === id);
   const last = mine[mine.length - 1];
   const received = mine.filter((o) => o.actual_delivery_date).sort((a, b) => String(b.actual_delivery_date).localeCompare(String(a.actual_delivery_date)))[0];
-  return { supplier: last ? supplierName(last.supplier_id) : "None yet", lastReceived: received ? formatShortDate(received.actual_delivery_date) : "Never" };
+  return { supplier: linked.length ? linked.join(", ") : last ? supplierName(last.supplier_id) : "None yet", lastReceived: received ? formatShortDate(received.actual_delivery_date) : "Never" };
 }
 
 /** The panel's and the detail screen's actions, each only for who may do it. */
@@ -138,7 +140,7 @@ function MaterialActions({ ws, material, compact }) {
 
 function DetailPanel({ ws, material, onClose }) {
   const status = materialStatus(material, ws.batches);
-  const { supplier, lastReceived } = usualSupplier(ws.materialOrders, ws.supplierName, material.id);
+  const { supplier, lastReceived } = usualSupplier(ws.materialOrders, ws.supplierName, material.id, ws.supplierMaterials);
   const using = ws.batches.filter((b) => b.raw_material_id === material.id && ["Queued", "In Progress", "Quality Check"].includes(b.status));
   return (
     <aside aria-labelledby="rm-detail-title" className="flex w-full flex-col gap-4 rounded-lg border border-border bg-card p-4 shadow-xs lg:w-[340px] lg:shrink-0">
@@ -158,11 +160,13 @@ function DetailPanel({ ws, material, onClose }) {
       <MaterialActions ws={ws} material={material} compact />
       <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-13">
         <dt className="text-muted-fg">Order more below</dt><dd className="m-0">{units(material.low_stock_threshold, material.unit)}</dd>
-        <dt className="text-muted-fg">Usual supplier</dt><dd className="m-0">{supplier}</dd>
+        <dt className="text-muted-fg">Suppliers</dt><dd className="m-0">{supplier}</dd>
         <dt className="text-muted-fg">Last received</dt><dd className="m-0">{lastReceived}</dd>
+        <dt className="text-muted-fg">Added by</dt>
+        <dd className="m-0">{material.created_by_staff_id ? ws.worker(material.created_by_staff_id) : "Not recorded"}{material.created_at ? ` · ${formatShortDate(material.created_at)}` : ""}</dd>
       </dl>
       <div>
-        <h3 className="m-0 mb-1 text-13 font-semibold">Set aside for</h3>
+        <h3 className="m-0 mb-1 text-13 font-semibold">Required for</h3>
         <ul className="m-0 list-none p-0">
           {using.length === 0 ? <li className="py-1 text-13 text-muted-fg">Nothing planned uses it right now.</li> : null}
           {using.map((b) => (
@@ -228,7 +232,7 @@ export default function MaterialsSection({ ws }) {
       <StatCards label="Raw material totals" min={160}>
         <StatCard compact label="In use" value={inUse.length} caption={inUse.length === 1 ? "material" : "materials"} />
         <StatCard compact label="Needs ordering" value={toReorder.length} caption={`${outOfStock.length} out of stock`} onClick={() => setFilter("reorder")} />
-        <StatCard compact label="Set aside for batches" value={settingAside.length} caption={settingAside.length === 1 ? "batch" : "batches"} />
+        <StatCard compact label="Material required by batches" value={settingAside.length} caption={settingAside.length === 1 ? "batch" : "batches"} />
         <StatCard compact label="On the way" value={onTheWay.length} caption={onTheWay.length === 1 ? "supplier order" : "supplier orders"} onClick={() => ws.onNavigate("raw-material-orders")} />
       </StatCards>
 
@@ -246,8 +250,8 @@ export default function MaterialsSection({ ws }) {
         />
         <span className="flex-[1_1_0]" />
         <span aria-hidden="true" className="flex flex-wrap items-center gap-3 text-xs text-muted-fg">
-          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-fg-3" />Set aside</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-muted-2" />Free</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-fg-3" />Required for batches</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-muted-2" />In stock</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-px bg-danger" />Order-more level</span>
         </span>
       </div>
@@ -321,7 +325,7 @@ export function MaterialDetail({ ws, material }) {
   const archived = material.status === "Archived";
   const canTransfer = ws.manager && !archived && ws.inventory.some((i) => i.sku.toLowerCase() === material.sku.toLowerCase() && ["sheet", "block"].includes(i.productType));
   const used = ws.usage.filter((u) => ws.lots.some((l) => l.id === u.lot_id && l.raw_material_id === material.id));
-  const { supplier, lastReceived } = usualSupplier(ws.materialOrders, ws.supplierName, material.id);
+  const { supplier, lastReceived } = usualSupplier(ws.materialOrders, ws.supplierName, material.id, ws.supplierMaterials);
   const details = [
     materialKindLabel(material.material_type),
     material.thickness_in ? `${material.thickness_in} in thick` : null,
@@ -370,7 +374,7 @@ export function MaterialDetail({ ws, material }) {
         ) : null}
         <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-13 sm:grid-cols-[auto_1fr_auto_1fr_auto_1fr]">
           <dt className="text-muted-fg">Order more below</dt><dd className="m-0">{units(material.low_stock_threshold, material.unit)}</dd>
-          <dt className="text-muted-fg">Usual supplier</dt><dd className="m-0">{supplier}</dd>
+          <dt className="text-muted-fg">Suppliers</dt><dd className="m-0">{supplier}</dd>
           <dt className="text-muted-fg">Last received</dt><dd className="m-0">{lastReceived}</dd>
         </dl>
         <MaterialActions ws={ws} material={material} />

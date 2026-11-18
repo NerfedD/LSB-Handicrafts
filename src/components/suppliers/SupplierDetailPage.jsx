@@ -37,11 +37,72 @@ import { units } from "../../utils/production";
  * supplier with purchase history is kept on file as no longer used (and can be
  * put back), and only one nobody ever ordered from is deleted.
  */
+/**
+ * The raw materials this supplier is set up to provide, kept apart from what
+ * has actually been ordered so a new supplier can be linked before the first
+ * order. A material may have several suppliers.
+ */
+function SuppliedMaterials({ supplier, materials, linkedIds, canEdit, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [picked, setPicked] = useState([]);
+  const [saving, setSaving] = useState(false);
+  const linked = materials.filter((m) => linkedIds.includes(m.id));
+  const choices = materials.filter((m) => m.status !== "Archived" || linkedIds.includes(m.id));
+
+  function start() { setPicked(linkedIds); setEditing(true); }
+  function toggle(id) { setPicked((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id])); }
+  async function save() {
+    setSaving(true);
+    const result = await onSave(picked);
+    setSaving(false);
+    if (result?.ok) setEditing(false);
+  }
+
+  return (
+    <SectionCard
+      title="Materials they provide"
+      action={canEdit && !editing ? <Button variant="outline" size="sm" onClick={start}>Choose materials</Button> : null}
+      bodyClassName="p-0"
+    >
+      {editing ? (
+        <fieldset className="m-0 flex flex-col gap-1 border-0 px-4 pb-4">
+          <legend className="sr-only">Materials {supplier.name} provides</legend>
+          {choices.length === 0 ? <p className="m-0 text-13 text-muted-fg">Add a raw material first.</p> : null}
+          {choices.map((m) => (
+            <label key={m.id} className="flex min-h-9 items-center gap-2 text-13">
+              <input type="checkbox" checked={picked.includes(m.id)} onChange={() => toggle(m.id)} />
+              <span>{m.name}</span>
+            </label>
+          ))}
+          <div className="flex gap-2 pt-2">
+            <Button size="sm" disabled={saving} onClick={save}>Save</Button>
+            <Button size="sm" variant="ghost" disabled={saving} onClick={() => setEditing(false)}>Cancel</Button>
+          </div>
+        </fieldset>
+      ) : linked.length === 0 ? (
+        <EmptySlot>No materials chosen for {supplier.name} yet.</EmptySlot>
+      ) : (
+        <ul className="m-0 list-none p-0">
+          {linked.map((m) => (
+            <li key={m.id} className="flex min-h-10 items-center justify-between gap-3 border-b border-row-divider px-4 py-2 text-13 last:border-b-0">
+              <span className="font-medium">{m.name}</span>
+              <span className="text-muted-fg">{units(m.stock, m.unit)} in stock</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionCard>
+  );
+}
+
 export default function SupplierDetailPage({
   supplier,
   purchaseOrders = [],
   /** Raw materials, to name what this supplier has delivered. */
   materials = [],
+  /** Ids of the raw materials this supplier is set up to provide. */
+  linkedMaterialIds = [],
+  onSaveMaterials,
   onOpenPurchases,
   canEdit = false,
   canDelete = false,
@@ -126,7 +187,7 @@ export default function SupplierDetailPage({
 
       <StatCards label="Their numbers">
         <StatCard label="Supplier orders" value={purchaseOrders.length} caption={`${stillComing} not received yet`} />
-        <StatCard label="Materials they supply" value={supplied.length} caption="From their orders" />
+        <StatCard label="Materials they supply" value={linkedMaterialIds.length} caption={`${supplied.length} ordered so far`} />
         <StatCard
           label="Claims to settle"
           value={claimsNeedingReview}
@@ -162,6 +223,14 @@ export default function SupplierDetailPage({
             </ul>
           )}
         </SectionCard>
+
+        <SuppliedMaterials
+          supplier={supplier}
+          materials={materials}
+          linkedIds={linkedMaterialIds}
+          canEdit={canEdit && Boolean(onSaveMaterials)}
+          onSave={onSaveMaterials}
+        />
 
         <SectionCard title="How to reach them">
           <dl className="m-0 flex flex-col gap-3 px-4 pb-4">

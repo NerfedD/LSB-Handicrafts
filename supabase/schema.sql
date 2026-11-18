@@ -8188,6 +8188,152 @@ begin
   return result;
 end $fn$;
 
+-- Mirrored from migrations/20261115120000_material_added_by.sql
+-- Who added each raw material, taken from the signed-in account so nobody types it.
+alter table public.raw_materials
+  add column if not exists created_by_staff_id bigint references public.staff(id);
+
+create or replace function private.raw_materials_set_creator()
+returns trigger language plpgsql security definer set search_path = '' as $fn$
+begin
+  if new.created_by_staff_id is null and auth.jwt() is not null then
+    select id into new.created_by_staff_id from public.staff
+    where lower(email) = lower(auth.jwt() ->> 'email') and status = 'Active';
+  end if;
+  return new;
+end;
+$fn$;
+
+drop trigger if exists raw_materials_set_creator on public.raw_materials;
+create trigger raw_materials_set_creator before insert on public.raw_materials
+  for each row execute function private.raw_materials_set_creator();
+
+-- Mirrored from migrations/20261115120100_batch_check_remarks.sql
+-- Remarks on a batch's quality check: what the maker says when sending it to
+-- check, and what the checker says when finishing it. Set by their own
+-- function after the step itself, like set_supplier_payment, so
+-- workshop_command stays as it is.
+alter table public.production_batches
+  add column if not exists handoff_remarks text check (char_length(handoff_remarks) <= 1000),
+  add column if not exists check_remarks text check (char_length(check_remarks) <= 1000);
+
+create or replace function public.set_batch_remarks(p_batch_id bigint, p_stage text, p_remarks text)
+returns jsonb language plpgsql security definer set search_path = '' as $fn$
+declare
+  who text := private.caller_role();
+  actor text;
+  batch public.production_batches;
+  v_remarks text := nullif(btrim(coalesce(p_remarks, '')), '');
+begin
+  if who is null or who not in ('Admin', 'Manager', 'Production Staff') then
+    raise exception 'Only production staff, managers or administrators can add remarks to a batch.';
+  end if;
+  if p_stage is null or p_stage not in ('handoff', 'check') then
+    raise exception 'Which remarks these are is not clear.';
+  end if;
+  if char_length(v_remarks) > 1000 then
+    raise exception 'Keep the remarks to 1000 characters or fewer.';
+  end if;
+  select * into batch from public.production_batches where id = p_batch_id for update;
+  if not found then raise exception 'That batch no longer exists.'; end if;
+  if p_stage = 'handoff' and batch.status <> 'Quality Check' then
+    raise exception 'Remarks for the check can only be added once the batch is sent to check.';
+  end if;
+  if p_stage = 'check' and batch.status <> 'Completed' then
+    raise exception 'Checker remarks can only be added once the batch is finished.';
+  end if;
+  if p_stage = 'handoff' then
+    update public.production_batches set handoff_remarks = v_remarks where id = batch.id returning * into batch;
+  else
+    update public.production_batches set check_remarks = v_remarks where id = batch.id returning * into batch;
+  end if;
+  if v_remarks is not null then
+    select s.name into actor from public.staff s
+      where lower(s.email) = lower((select auth.jwt()) ->> 'email') limit 1;
+    insert into public.activity_log (id, type, staff_name, description, subject, at)
+      values (nextval('private.workshop_id_seq'), 'stock', coalesce(actor, 'System'),
+        format('%s %s remarks: %s', batch.batch_code, case p_stage when 'check' then 'quality check' else 'hand-off' end, v_remarks),
+        batch.batch_code, now());
+  end if;
+  return to_jsonb(batch);
+end;
+$fn$;
+revoke all on function public.set_batch_remarks(bigint, text, text) from public, anon;
+grant execute on function public.set_batch_remarks(bigint, text, text) to authenticated;
+
+-- Mirrored from migrations/20261115120200_supplier_materials.sql
+-- Which raw materials each supplier provides, set by a manager before any order
+-- is placed. A material can have several suppliers, and a supplier several
+-- materials, even though the shop mostly buys from one.
+create table if not exists public.supplier_materials (
+  id bigint primary key default nextval('private.workshop_id_seq'),
+  supplier_id bigint not null references public.suppliers(id) on delete cascade,
+  raw_material_id bigint not null references public.raw_materials(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (supplier_id, raw_material_id)
+);
+
+alter table public.supplier_materials enable row level security;
+drop policy if exists "Active staff read supplier materials" on public.supplier_materials;
+create policy "Active staff read supplier materials" on public.supplier_materials for select
+  using (private.is_active_staff());
+-- No write policies: changes go through set_supplier_materials.
+revoke insert, update, delete on public.supplier_materials from anon, authenticated;
+grant select on public.supplier_materials to authenticated;
+
+create or replace function public.set_supplier_materials(p_supplier_id bigint, p_material_ids bigint[])
+returns jsonb language plpgsql security definer set search_path = '' as $fn$
+declare
+  who text := private.caller_role();
+  actor text;
+  sup public.suppliers;
+  ids bigint[] := coalesce(p_material_ids, '{}');
+begin
+  if who is null or who not in ('Admin', 'Manager') then
+    raise exception 'Only a manager or administrator can change what a supplier provides.';
+  end if;
+  select * into sup from public.suppliers where id = p_supplier_id for update;
+  if not found then raise exception 'That supplier no longer exists.'; end if;
+  if exists (select 1 from unnest(ids) i where not exists (select 1 from public.raw_materials m where m.id = i)) then
+    raise exception 'One of those materials no longer exists. Refresh and try again.';
+  end if;
+
+  delete from public.supplier_materials where supplier_id = sup.id and raw_material_id <> all (ids);
+  insert into public.supplier_materials (supplier_id, raw_material_id)
+    select sup.id, i from unnest(ids) i
+    on conflict (supplier_id, raw_material_id) do nothing;
+
+  select s.name into actor from public.staff s
+    where lower(s.email) = lower((select auth.jwt()) ->> 'email') limit 1;
+  insert into public.activity_log (id, type, staff_name, description, subject, at)
+    values (nextval('private.workshop_id_seq'), 'stock', coalesce(actor, 'System'),
+      format('%s now supplies %s material(s)', sup.name, cardinality(ids)), sup.name, now());
+
+  return jsonb_build_object('supplier_id', sup.id,
+    'rows', coalesce((select jsonb_agg(to_jsonb(sm) order by sm.id) from public.supplier_materials sm where sm.supplier_id = sup.id), '[]'::jsonb));
+end;
+$fn$;
+revoke all on function public.set_supplier_materials(bigint, bigint[]) from public, anon;
+grant execute on function public.set_supplier_materials(bigint, bigint[]) to authenticated;
+
+-- Start from what the orders already show, so nothing looks unlinked on day one.
+insert into public.supplier_materials (supplier_id, raw_material_id)
+  select distinct supplier_id, raw_material_id from public.raw_material_orders
+  where supplier_id is not null and raw_material_id is not null
+on conflict (supplier_id, raw_material_id) do nothing;
+
+-- Mirrored from migrations/20261115120300_payment_on_delivery.sql
+-- A delivered order can now be paid one of three ways:
+--   full payment   paid as the order is written; payment_term_days is null
+--   on delivery    due the day it is delivered;  payment_term_days = 0
+--   payment terms  30 or 60 days from delivery, as before
+-- 0 rides on the existing due-date logic (delivered day + 0), so reminders for
+-- an unpaid delivery work unchanged. No interest is charged on terms:
+-- the business does not charge any.
+alter table public.orders drop constraint if exists orders_payment_term_check;
+alter table public.orders add constraint orders_payment_term_check
+  check (payment_term_days is null or payment_term_days in (0, 30, 60));
+
 -- Confirmed entries, never inferred from placing/receiving an order.
 -- Historical paid_at values are retained but are not evidence of payment.
 drop trigger if exists raw_material_orders_payment on public.raw_material_orders;

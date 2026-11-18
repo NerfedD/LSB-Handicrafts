@@ -32,8 +32,8 @@ import { cardBalance } from '../../utils/supplierPayments';
  * This component owns what they share: the data, who may do what, and every
  * dialog a section can open. A section asks for one through `ws.setDialog`.
  */
-export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, isLoaded, error, onRetry, onCommand, onStockCommand, onRemoveMaterial, onRestoreMaterial, onNavigate, change, initialFilter }) {
-  const { materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff } = data;
+export default function WorkshopPage({ section, materialId, onViewMaterial, profile, data, salesHistory, isLoaded, error, onRetry, onCommand, onStockCommand, onRemoveMaterial, onRestoreMaterial, onNavigate, change, initialFilter }) {
+  const { materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff, supplierMaterials = [] } = data;
   const [dialog, setDialog] = useState(null);
   const [removing, setRemoving] = useState(false);
   const [working, setWorking] = useState(false);
@@ -62,7 +62,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
   const justChanged = (kind, id) => Boolean(change && change.kind === kind && change.id === id);
 
   const ws = {
-    section, materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff,
+    section, materials, materialOrders, batches, recipes, defects, lots, usage, products, inventory, orders, suppliers, staff, supplierMaterials,
     manager,
     paymentEntries: payments.rows,
     cardOwed: cardBalance(payments.rows),
@@ -131,7 +131,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
       {section === 'raw-materials' ? <MaterialsSection ws={ws} /> : null}
       {detail && material ? <MaterialDetail ws={ws} material={material} /> : null}
       {purchasing ? <PurchasingSection ws={ws} /> : null}
-      {section === 'production-report' ? <ReportSection ws={ws} /> : null}
+      {section === 'production-report' ? <ReportSection ws={ws} salesHistory={salesHistory} /> : null}
 
       {/* -- dialogs ---------------------------------------------------------- */}
 
@@ -141,7 +141,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
         supplier={supplierName(dialog.record.supplier_id)} onClose={close}
         onRecord={(entryKind) => setDialog({ kind: 'supplier-payment', record: dialog.record, entryKind })} />}
 
-      {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} materials={materials} onSave={save('save_material')} onClose={close} />}
+      {dialog?.kind === 'material' && <MaterialDialog material={dialog.record} materials={materials} profile={profile} onSave={save('save_material')} onClose={close} />}
       {detail && material && (
         <ConfirmDialog
           open={removing}
@@ -165,7 +165,7 @@ export default function WorkshopPage({ section, materialId, onViewMaterial, prof
           }}
         />
       )}
-      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} preset={dialog.preset} materials={inUse} suppliers={suppliers} profile={profile}
+      {dialog?.kind === 'order' && <SupplierOrderDialog order={dialog.record} preset={dialog.preset} materials={inUse} suppliers={suppliers} supplierMaterials={supplierMaterials} profile={profile}
         onSave={async (values, key) => {
           const result = await onCommand('save_order', values, key);
           // Ordered from the materials screen: say where the order went, and

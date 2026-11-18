@@ -29,7 +29,7 @@ export default function StartBatchDialog({ products, materials, recipes, batches
       output_qty: countProblem(v.output_qty, { min: 1, label: 'The planned quantity' }),
       raw_material_id: !m ? 'Select a raw material.'
         : free <= 0 ? `${m.name} has no stock available. Select another material or order more.` : null,
-      material_qty: countProblem(v.material_qty, { min: 1, label: 'Material quantity to reserve' })
+      material_qty: countProblem(v.material_qty, { min: 1, label: 'Amount of material required' })
         ?? (m && Number(v.material_qty) > free
           ? `Only ${units(free, m.unit)} of ${m.name} are available. Enter ${free} or fewer.`
           : null),
@@ -59,13 +59,13 @@ export default function StartBatchDialog({ products, materials, recipes, batches
           options={usable.map((m) => {
             const left = freeMaterial(m, batches);
             return { value: m.id, disabled: left <= 0,
-              label: left > 0 ? `${m.name} · ${units(left, m.unit)} in stock` : `${m.name} · ${m.stock <= 0 ? 'No stock' : 'All set aside'}` };
+              label: left > 0 ? `${m.name} · ${units(left, m.unit)} in stock` : `${m.name} · ${m.stock <= 0 ? 'No stock' : 'All required by other batches'}` };
           })}
           value={v.raw_material_id} onChange={(e) => {
             const id = Number(e.target.value), r = recipes.find((one) => one.product_id === Number(v.product_id) && one.raw_material_id === id);
             set((old) => ({ ...old, raw_material_id: id, material_qty: recipeEstimate(r, old.output_qty) }));
           }} />
-        <WorkshopField name="material_qty" label="Material quantity to reserve" hint={selectedRecipe ? `Recipe estimate based on ${units(selectedRecipe.material_qty, material?.unit)} for ${selectedRecipe.output_qty} pieces. Adjust as needed.` : material ? `${units(free, material.unit)} available. Enter the amount needed.` : 'Select a raw material first.'} type="number" inputMode="numeric" min="1" max={material ? Math.max(1, free) : undefined} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
+        <WorkshopField name="material_qty" label="Amount of material required" hint={selectedRecipe ? `Recipe estimate based on ${units(selectedRecipe.material_qty, material?.unit)} for ${selectedRecipe.output_qty} pieces. Adjust as needed.` : material ? `${units(free, material.unit)} available. Enter the amount needed.` : 'Select a raw material first.'} type="number" inputMode="numeric" min="1" max={material ? Math.max(1, free) : undefined} step="1" required value={v.material_qty} onChange={(e) => change('material_qty', e.target.value)} />
         <WorkshopField name="order_id" label="Customer order" hint="Leave blank for shelf stock." placeholder="None (shelf stock)" options={orders.filter((o) => o.status === 'Pending').map((o) => ({ value: o.id, label: `Order #${o.id} · ${o.customerName ?? ''}`.replace(/ · $/, '') }))} value={v.order_id} onChange={(e) => change('order_id', e.target.value)} />
         <WorkshopField name="notes" label="Notes" hint="Optional. Add any custom dimensions or production instructions." multiline maxLength={1000} value={v.notes} onChange={(e) => change('notes', e.target.value)} />
         <ReviewBox>

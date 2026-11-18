@@ -387,7 +387,7 @@ export async function stubSupabase(page, { onWrite, as = SIGNED_IN_EMAIL, dropOr
   const tables = Object.fromEntries(
     Object.entries(TABLES).map(([name, rows]) => [name, structuredClone(rows)])
   );
-  for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage']) tables[name] ??= [];
+  for (const name of ['raw_materials', 'raw_material_orders', 'production_batches', 'production_recipes', 'production_defect_logs', 'raw_material_lots', 'production_material_usage', 'supplier_materials']) tables[name] ??= [];
   tables.stock_movements ??= [];
   // The category list, as the migration builds it from the labels on file.
   tables.product_categories ??= [...new Set((tables.inventory ?? []).map((row) => row.category).filter(Boolean))]

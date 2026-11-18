@@ -14,8 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Mono } from "../shared/Chip";
 import { EmptySlot } from "../shared/PageStates";
 import { Page, PageHeader, SectionCard, StatCard, StatCards } from "../shared/page";
+import TopSellingProducts, { SalesPeriodMenu } from "../shared/TopSellingProducts";
 import { downloadCsv } from "@/lib/csv";
 import { formatPeso, formatShortDate } from "../../utils/profileFormat";
+import { SALES_PERIODS } from "../../utils/productSales";
 
 /**
  * Production · Report, drawn to the "7d · Production · Report" board:
@@ -37,14 +39,16 @@ function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export default function ReportSection({ ws }) {
-  const { batches, defects, usage, lots, materialOrders, prod, worker, now } = ws;
+export default function ReportSection({ ws, salesHistory }) {
+  const { batches, defects, usage, lots, materialOrders, inventory, orders, prod, worker, now } = ws;
   const months = useMemo(() => {
     const keys = new Set([monthKey(new Date(now))]);
     for (const b of batches) if (b.completed_at) keys.add(monthKey(new Date(b.completed_at)));
     return [...keys].sort().reverse();
   }, [batches, now]);
   const [month, setMonth] = useState(months[0]);
+  const [salesPeriodKey, setSalesPeriodKey] = useState("30");
+  const salesPeriod = SALES_PERIODS.find((period) => period.value === salesPeriodKey);
   const monthLabel = (key) => {
     const [y, m] = key.split("-").map(Number);
     return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
@@ -211,6 +215,18 @@ export default function ReportSection({ ws }) {
           )}
         </section>
       </div>
+
+      <TopSellingProducts
+        orders={orders}
+        inventory={inventory}
+        period={salesPeriod}
+        now={now}
+        history={salesHistory}
+        action={<SalesPeriodMenu period={salesPeriod} label="Sales period" onChange={(key) => {
+          setSalesPeriodKey(key);
+          if (key === "365") salesHistory.loadAll();
+        }} />}
+      />
 
       <SectionCard title="By product" aria-labelledby="pr-prod">
         <div className="border-t border-border">

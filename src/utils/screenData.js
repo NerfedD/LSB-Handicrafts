@@ -10,7 +10,7 @@
  */
 import { can } from './permissions';
 
-const WORKSHOP = ['rawMaterials', 'materialOrders', 'batches', 'recipes', 'defects', 'lots', 'usage'];
+const WORKSHOP = ['supplierMaterials', 'rawMaterials', 'materialOrders', 'batches', 'recipes', 'defects', 'lots', 'usage'];
 const CUSTOMER_FACTS = ['customers', 'customerStats', 'loyalty'];
 
 const BY_VIEW = {
@@ -21,8 +21,8 @@ const BY_VIEW = {
   'order-edit': CUSTOMER_FACTS,
   'order-detail': ['customers'],
   // The Suppliers screen's on-time, lead-time and spend figures.
-  suppliers: ['suppliers', 'materialOrders', 'rawMaterials'],
-  'supplier-detail': ['suppliers', 'materialOrders', 'rawMaterials'],
+  suppliers: ['suppliers', 'materialOrders', 'rawMaterials', 'supplierMaterials'],
+  'supplier-detail': ['suppliers', 'materialOrders', 'rawMaterials', 'supplierMaterials'],
   activity: ['activity'],
   // The Inventory screen's "Raw materials to order" card.
   products: ['categories', 'rawMaterials', 'batches'],

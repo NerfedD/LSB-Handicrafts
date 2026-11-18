@@ -35,7 +35,23 @@ export const TERM_OPTIONS = [
   { value: 60, label: "60 days" },
 ];
 
-export const termLabel = (days) => (days ? `${days} days from delivery` : "Paid at pick-up");
+/**
+ * How a delivered order is paid: in full as it is written (no term), on the
+ * day it is delivered (a 0-day term), or on 30/60-day terms.
+ */
+export const PAYMENT_OPTIONS = [
+  { value: "full", label: "Full payment now" },
+  { value: "on_delivery", label: "Payment on delivery" },
+  { value: "terms", label: "Payment terms" },
+];
+
+/** The option an order's saved term stands for. */
+export const paymentOptionOf = (days) => (days == null ? "full" : Number(days) === 0 ? "on_delivery" : "terms");
+
+export const termLabel = (days, delivered = false) => (
+  days == null ? (delivered ? "Full payment" : "Paid at pick-up")
+    : Number(days) === 0 ? "Payment on delivery"
+      : `${days} days from delivery`);
 
 /**
  * The yyyy-mm-dd day payment falls due, or null: an order is due `term` days
@@ -43,7 +59,7 @@ export const termLabel = (days) => (days ? `${days} days from delivery` : "Paid 
  * done), and has no due day until then or when it is not on terms.
  */
 export function dueDateOf(order) {
-  if (!order?.paymentTermDays || !order.stockCommittedAt) return null;
+  if (order?.paymentTermDays == null || !order.stockCommittedAt) return null;
   const due = new Date(order.stockCommittedAt);
   due.setUTCDate(due.getUTCDate() + Number(order.paymentTermDays));
   return localDateIso(due);
